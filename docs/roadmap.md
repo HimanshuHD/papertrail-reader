@@ -4,7 +4,7 @@ Parent: [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1). Full det
 
 ## M0 - Repository and engineering foundation
 
-- [ ] [#2 [M0] Repository documentation and issue tracking](https://github.com/HimanshuHD/papertrail-reader/issues/2)
+- [x] [#2 [M0] Repository documentation and issue tracking](https://github.com/HimanshuHD/papertrail-reader/issues/2)
 - [ ] [#3 [M0] Bootstrap Vue 3, Vite and TypeScript](https://github.com/HimanshuHD/papertrail-reader/issues/3)
 - [ ] [#4 [M0] Integrate Tauri 2 desktop shell](https://github.com/HimanshuHD/papertrail-reader/issues/4)
 - [ ] [#5 [M0] Configure code quality, tests and GitHub Actions](https://github.com/HimanshuHD/papertrail-reader/issues/5)

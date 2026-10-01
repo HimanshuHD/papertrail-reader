@@ -6,7 +6,21 @@ A local-first desktop document reader planned with Vue 3, Vite, TypeScript and T
 
 ## Current status
 
-Repository foundation and product backlog are being established. **The application is not implemented yet.** No install or development commands are available until [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) lands.
+The Vue 3 + Vite + TypeScript foundation shows an accessible status screen. Folder selection, PDF/EPUB rendering and the native desktop runtime are still planned. Repository documentation was completed in PR #20.
+
+## Frontend commands
+
+GitHub Actions installs dependencies and verifies the build; no setup is required on your computer. For future developer use with Node.js 24.12+ (24.x):
+
+```sh
+npm ci
+npm run dev
+npm run type-check
+npm run build
+npm run preview
+```
+
+`build` includes strict Vue and Vite-config type checks. The initial frontend CI checks clean installation and build; lint and test coverage are tracked in #22.
 
 ## Planned technology
 
@@ -38,7 +52,7 @@ Start at [docs/README.md](docs/README.md). Read the [complete roadmap PDF](docs/
 
 ## GitHub-first development
 
-No local setup is required on the owner's computer. Source changes use issue-linked branches and pull requests. CI will validate the application after the tooling issue is implemented. Native dialogs and installers still require real desktop smoke tests.
+No local setup is required on the owner's computer. Source changes use issue-linked branches and pull requests. Frontend CI validates the foundation. Expanded quality/native checks remain in #5 and its child issues. Native dialogs and installers still require real desktop smoke tests.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for issue status, commit references, validation and completion rules.
 

@@ -1,0 +1,81 @@
+name: Reconcile merged issue tracking
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+permissions:
+  contents: write
+  issues: write
+concurrency:
+  group: merge-tracking
+  cancel-in-progress: false
+jobs:
+  reconcile:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            if (!pr?.merged || pr.base.ref !== 'main') return;
+            const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'all', per_page: 100 });
+            const byNumber = new Map(issues.filter(i => !i.pull_request).map(i => [i.number, i]));
+            const refs = new Set([...((pr.body || '').matchAll(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi))].map(m => Number(m[1])));
+            const evidence = 'Completed by merged PR #' + pr.number + '; merge commit \`' + pr.merge_commit_sha + '\`.';
+            for (const n of refs) {
+              const issue = byNumber.get(n);
+              if (!issue || issue.state !== 'closed') continue;
+              let body = issue.body || '';
+              body = body.replace(/Status: (?:Backlog|In progress|In review|Blocked)/g, 'Status: Completed');
+              if (!body.includes(evidence)) body += '\n\n## Merge evidence\n' + evidence + '\n';
+              if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: n, body });
+            }
+            for (const issue of byNumber.values()) {
+              if (issue.state !== 'open') continue;
+              let body = issue.body || '';
+              body = body.replace(/^- \[[ x]\] #(\d+)\s*$/gm, (line, n) => {
+                const child = byNumber.get(Number(n));
+                return child ? '- [' + (child.state === 'closed' && child.state_reason !== 'not_planned' ? 'x' : ' ') + '] #' + n : line;
+              });
+              if (issue.number === 1) {
+                const section = '## Latest merge\nPR #' + pr.number + ' merged at ' + pr.merged_at + '. Commit: \`' + pr.merge_commit_sha + '\`.\n\n';
+                body = body.replace(/## Latest merge\n[\s\S]*?(?=\n## |$)/, '').trim() + '\n\n' + section;
+              }
+              if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: issue.number, body });
+            }
+            const statuses = new Map([...byNumber].map(([n, issue]) => [n, issue.state === 'closed' ? (issue.state_reason === 'not_planned' ? 'Not planned' : 'Completed') : ((issue.body || '').match(/Status: ([^\n]+)/)?.[1] || 'Backlog')]));
+            async function changeFile(path, transform) {
+              for (let attempt = 0; attempt < 3; attempt++) {
+                const { data } = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });
+                const before = Buffer.from(data.content, 'base64').toString('utf8');
+                const after = transform(before);
+                if (before === after) return;
+                try {
+                  await github.rest.repos.createOrUpdateFileContents({ owner, repo, path, branch: 'main', sha: data.sha, message: 'docs: reconcile tracking after merge #' + pr.number + ' (refs #1)', content: Buffer.from(after).toString('base64') });
+                  return;
+                } catch (error) {
+                  if (error.status !== 409 || attempt === 2) throw error;
+                }
+              }
+            }
+            await changeFile('docs/progress.md', text => {
+              text = text.split('\n').map(line => {
+                if (!line.startsWith('| [#')) return line;
+                const n = Number(line.match(/^\| \[#(\d+)\]/)?.[1]);
+                if (!statuses.has(n)) return line;
+                const cells = line.split('|'); cells[4] = ' ' + statuses.get(n) + ' '; return cells.join('|');
+              }).join('\n');
+              const summary = 'Latest verified merge: [#' + pr.number + '](' + pr.html_url + ') at ' + pr.merged_at + '; commit \`' + pr.merge_commit_sha + '\`.';
+              if (/^Latest verified merge:.*$/m.test(text)) text = text.replace(/^Latest verified merge:.*$/m, summary);
+              else text = text.replace('## Current increment', summary + '\n\n## Current increment');
+              const closed = [...refs].filter(n => statuses.get(n) === 'Completed');
+              if (closed.length) {
+                text = text.replace(/## Current increment\n[\s\S]*?(?=\n## )/, '## Current increment\n\nPR #' + pr.number + ' completed ' + closed.map(n => '#' + n).join(', ') + '. See the reconciled issue table below for remaining work.\n');
+              }
+              return text;
+            });
+            await changeFile('docs/roadmap.md', text => text.replace(/^- \[[ x]\] (\[#(\d+)[^\n]+)$/gm, (line, link, n) => statuses.has(Number(n)) ? '- [' + (statuses.get(Number(n)) === 'Completed' ? 'x' : ' ') + '] ' + link : line));
+            

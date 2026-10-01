@@ -4,14 +4,14 @@ Updated: 1 October 2026. Parent tracker: [#1](https://github.com/HimanshuHD/pape
 
 ## Current increment
 
-Repository documentation and issue tracking (#2) is in review on `chore/2-repository-setup`. Application code and CI are not implemented. The initial README commit on main is `1d5b93dfe9f2e1bb85204fa8773300352f9a4b4d` and references #2. Setup PR: [#20](https://github.com/HimanshuHD/papertrail-reader/pull/20). Setup commit: [586c280](https://github.com/HimanshuHD/papertrail-reader/commit/586c280e2be572eaed723aa903fd32ed92e262b1). Its acceptance criteria are verified; merge to main is pending.
+#2 is completed by merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is In progress on `chore/3-vue-vite-bootstrap`. The frontend foundation and post-merge tracking workflow (#21) are under validation. Native runtime and document reading are pending.
 
 ## Backlog and dependencies
 
 | Issue | Milestone | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | M0 | Repository documentation and issue tracking | In review | None |
-| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | Backlog | #2 |
+| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | M0 | Repository documentation and issue tracking | Completed | None |
+| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | In progress | #2 |
 | [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4) | M0 | Integrate Tauri 2 desktop shell | Backlog | #3 |
 | [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5) | M0 | Configure code quality, tests and GitHub Actions | Backlog | #3; native checks after #4 |
 | [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6) | M1 | Design tokens, themes and application state | Backlog | #3 |
@@ -32,9 +32,26 @@ Repository documentation and issue tracking (#2) is in review on `chore/2-reposi
 ## Evidence and completion
 
 - #2: Initial README and setup commits above; PR #20 contains the requested files and tracking templates. All relative Markdown links resolved; PDF parsed as eight pages and uploaded blob matched source bytes. App CI does not exist yet.
-- No product implementation issue is completed yet.
-- Next: #3 frontend bootstrap, followed by #4 native shell and #5 CI/tooling.
+- #2 completed by merged PR #20. Frontend issue #3 remains open until validation and merge.
+- Next: finish #3 frontend validation, then #4 native shell and remaining #5 children.
 
 ## Maintenance
 
 Update this file when work starts, becomes blocked, enters review or completes. Record PR/commit links and validation results. Reconcile this snapshot with live issue state before beginning another increment. Do not mark planned features complete.
+
+## Child issue breakdown
+
+| Issue | Milestone | Work | Status | Depends on |
+| --- | --- | --- | --- | --- |
+| [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | See parent | [M0] Automate post-merge issue and progress reconciliation | In progress | Parent #5 |
+| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | See parent | [M0] Frontend quality checks and test coverage | Backlog | Parent #5 |
+| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | See parent | [M0] Rust formatting, lint and native test pipeline | Backlog | Parent #5 |
+| [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | See parent | [M2] Incremental cancellable native scanner | Backlog | Parent #9 |
+| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | See parent | [M2] Directory tree and library refresh UI | Backlog | Parent #9 |
+| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | See parent | [M7] Release 0.1 installer builds and release artifacts | Backlog | Parent #19 |
+| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | See parent | [M7] Desktop signing and notarization | Backlog | Parent #19 |
+| [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | See parent | [M7] Supported-platform installer smoke testing | Backlog | Parent #19 |
+
+## Post-merge reconciliation
+
+After a merged PR, merge-tracking.yml records live closed-issue state, parent checklists and completion evidence, and updates this file and roadmap.md on main. It does not close partially completed issues or automatically declare parent issues complete. Direct documentation updates use the repository token; if branch rules later block that write, change the workflow to open a tracking PR. Native sub-issue mutation is not available through the current connector, so children use reciprocal parent links and task lists.
