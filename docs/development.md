@@ -1,28 +1,23 @@
-# GitHub-first development
+# GitHub-first web development
 
-## Working model
+GitHub-first development continues: issue -> branch from main -> issue-linked commits -> PR -> CI -> review -> merge. No setup required on the owner's computer.
 
-All source changes are committed to this repository through branches and PRs. No setup is required on the owner's computer. This setup change establishes documentation only; frontend/native bootstrap and executable pipelines are separate tracked issues.
+Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 adds lint, formatting and meaningful unit/component tests. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
-## Daily tracking protocol
+Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification is pending; do not declare this automation complete until it writes successfully. Keep partial and deferred issues open.
 
-1. Read roadmap issue #1, the selected issue and docs/progress.md.
-2. Check issue state and current main; do not rely on historical conversation status.
-3. Record In progress, branch and dependencies.
-4. Reference the issue in every implementation commit.
-5. Open a PR with scope, issue links, validation and limitations.
-6. Mark In review and link the PR from the issue.
-7. Merge after review/checks. Close only completed scope; keep blocked/backlog work open.
-8. Record completion evidence and update the parent checklist.
+Status lifecycle: Backlog -> In progress -> In review -> Completed. Also use Blocked or Deferred with explicit reasons. PRs use Closes only for completed scope and Refs for partial work. Completed history is retained.
 
-This is a persistent project process, not a scheduled background automation.
+Issue parent mapping: #5 -> #21/#22; #9 -> #24/#25; #19 -> #26/#28; deferred #4 -> #23/#27. Current connector uses reciprocal links/task lists rather than native sub-issue relations.
 
-## Planned CI/CD
+Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Issue #5 implements frontend lint, formatting, type checking, unit tests and build checks, plus native checks when the Rust shell is present. It should use committed lockfiles, immutable action pins, least-privilege permissions and concurrency cancellation. Avoid duplicate push/PR runs for the same feature work.
+Next after PR #29: finish frontend quality #22 and UI/state #6, then browser selection #8. Tauri is no longer the next implementation step.
 
-Issue #19 covers platform installer/release workflows, checksums and signing when credentials exist. Tags must point to reviewed commits. Signing status must be explicit. Desktop testing is still required for dialogs, filesystem boundaries and installers.
+## Commands
 
-## Definition of done
+Node.js 24.12+ (24.x): npm ci; npm run dev; npm run type-check; npm run build; npm run preview. GitHub Actions performs installation and validation; no local setup is required on the owner's computer.
 
-Acceptance criteria met; implementation PR linked; appropriate validation recorded; documentation updated; remaining scope tracked explicitly. A passing build alone does not prove the reader's behavior.
+## Post-merge writes
+
+merge-tracking.yml reconciles live closed issues, parent checklists and progress/roadmap documents. It serializes tracking runs and retries SHA conflicts. If main protection later blocks direct documentation writes, move tracking changes into a PR. #21 stays open until a real merge verifies the workflow.

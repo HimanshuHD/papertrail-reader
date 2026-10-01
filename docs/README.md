@@ -1,14 +1,11 @@
 # Documentation
 
-This folder is the permanent home for PaperTrail documentation.
-
 | Document | Purpose |
 | --- | --- |
-| [Complete roadmap PDF](PaperTrail-Complete-Project-Roadmap.pdf) | Original eight-page product and engineering plan, 1 October 2026 |
-| [Roadmap](roadmap.md) | Milestones, issue mapping and first-release scope |
-| [Progress](progress.md) | Current work, statuses, dependencies and evidence |
-| [Development](development.md) | GitHub-first workflow and tracking rules |
+| [Web-first roadmap PDF](PaperTrail-Web-First-Roadmap.pdf) | Current complete roadmap, revision 2 |
+| [Roadmap](roadmap.md) | Browser milestones and later desktop scope |
+| [Progress](progress.md) | Issue states, dependencies and merge evidence |
+| [Architecture](architecture.md) | Browser library provider and reusable reader boundaries |
+| [Development](development.md) | GitHub-first CI and tracking process |
 
-The PDF is the original planning snapshot. GitHub issues and progress.md carry current implementation status; they must not imply that planned features are implemented.
-
-Add future architecture, decisions, user guides and validation reports here. Use descriptive filenames, link each document from this index, and reference its related issue in the commit/PR. Keep private document samples and credentials out of Git.
+The web-first roadmap supersedes the original desktop-first PDF, which remains available in Git history. Add future docs here and link them from this index. Current progress is held in issues/progress.md; plans do not imply implemented features.
