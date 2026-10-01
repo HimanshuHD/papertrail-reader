@@ -11,7 +11,10 @@ async function mountApp(path = '/') {
   const router = createAppRouter(createMemoryHistory())
   await router.push(path)
   await router.isReady()
-  const wrapper = mount(App, { attachTo: document.body, global: { plugins: [createPinia(), router] } })
+  const wrapper = mount(App, {
+    attachTo: document.body,
+    global: { plugins: [createPinia(), router] },
+  })
   return { wrapper, router }
 }
 
@@ -91,11 +94,14 @@ describe('home and product shell', () => {
     ['loading', 'Preparing your library', 'status'],
     ['error', 'PaperTrail could not prepare the library', 'alert'],
     ['demo', 'Demonstration workspace', 'status'],
-  ] as const)('presents the %s shell state with an accessible announcement', (state, text, role) => {
-    const wrapper = mount(ShellStatus, { props: { state } })
-    expect(wrapper.get(`[role="${role}"]`).text()).toContain(text)
-    wrapper.unmount()
-  })
+  ] as const)(
+    'presents the %s shell state with an accessible announcement',
+    (state, text, role) => {
+      const wrapper = mount(ShellStatus, { props: { state } })
+      expect(wrapper.get(`[role="${role}"]`).text()).toContain(text)
+      wrapper.unmount()
+    },
+  )
 
   it('identifies demonstration content and prevents unavailable file/reader actions', async () => {
     const { wrapper } = await mountApp('/app')
