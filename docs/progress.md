@@ -67,12 +67,21 @@ Pipeline review: PR #33. Live production and preview verification completed in #
 
 ## Pipeline refinement
 
-PR #36 merged at `6302efc`. Merge tracking run 36894959027 passed. Retried PR #34 closure CI; trusted publisher 36895110066 passed and the live URL now shows a retired page. PR #36's preview also retired. Main production publishing was retried after GitHub cancelled a queued publisher run during overlapping cleanup events.
+PR #36 merged at `6302efc`. Merge tracking run 36894959027 passed. Retried PR #34 closure CI; trusted publisher 36895110066 passed and the live URL now shows a retired page. PR #36's preview also retired. Main production publishing was retried after GitHub cancelled a queued publisher run during overlapping cleanup events. Publisher 36895563022 passed; live production metadata reports `6302efc316501a89f69431e1e838316c3ae5f1d9`.
 
 #35 remains In progress until a manual current-head preview, an unchanged preview after a later PR push, and documentation-only main filtering are verified live. Policy tests passed; do not confuse unit evidence with live deployment acceptance.
 
 ## Frontend quality increment
 
-#22 is implemented on `chore/22-frontend-quality`: ESLint, Prettier, Vitest/Vue Test Utils, type-checked component tests and existing deployment tests in the single frontend CI workflow. Review/CI evidence is recorded in the linked PR and issue before merge. #5 stays open; new child #37 tracks real browser E2E once shell/selection behavior exists.
+#22 is implemented on `chore/22-frontend-quality`: ESLint, Prettier, Vitest/Vue Test Utils, type-checked component tests and existing deployment tests in the single frontend CI workflow. PR #38 is in review; its first GitHub CI run 36895851991 passed. #5 stays open; new child #37 tracks real browser E2E once shell/selection behavior exists.
 
 Next after the tooling merge: #6 design tokens/themes/state, then #7 accessible shell and #8 browser selection. Tauri remains deferred.
+
+## Additional tracked children
+
+| Issue | Work                                             | Status                                                  | Depends on                                 |
+| ----- | ------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------ |
+| #35   | On-demand previews and publication filtering     | In progress; PR #36 merged, live checks partly verified | Manual preview and docs-only main evidence |
+| #37   | Browser E2E foundation and selection smoke tests | Backlog                                                 | #22; #7; #8                                |
+
+PR #38's automatic publisher selects skip for an open PR. Manual preview verification remains pending; no active preview is promised until published.

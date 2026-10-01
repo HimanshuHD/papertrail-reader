@@ -17,3 +17,5 @@ PR #34 is a draft with a one-heading verification change. It was closed without 
 ## Policy verification after PR #36
 
 Merge tracking run 36894959027 succeeded. Retirement passed. #35 remains open for live manual current-head publishing and unchanged preview after a subsequent push, plus docs-only main filtering. A queued production run was cancelled during overlapping cleanup; production CI was retried. Automated policy/assembly tests remain necessary but do not replace these live checks.
+
+Production retry publisher 36895563022 succeeded. Live deployment.json reports production SHA `6302efc316501a89f69431e1e838316c3ae5f1d9`, CI 36894958802, and retired previews #33/#34/#36. Tooling PR #38 CI 36895851991 passed; the open-PR publisher skips publication as intended.
