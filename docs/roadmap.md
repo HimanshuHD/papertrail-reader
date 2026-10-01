@@ -128,7 +128,7 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 
 - [ ] [#28 [M7] Supported-browser release validation](https://github.com/HimanshuHD/papertrail-reader/issues/28)
 - [ ] [#26 [M7] Web build, HTTPS deployment and release artifacts](https://github.com/HimanshuHD/papertrail-reader/issues/26)
-- [ ] [#25 [M2] Directory tree and browser library refresh UI](https://github.com/HimanshuHD/papertrail-reader/issues/25)
+- [x] [#25 [M2] Directory tree and browser library refresh UI](https://github.com/HimanshuHD/papertrail-reader/issues/25)
 - [x] [#24 [M2] Incremental browser indexing and cancellation](https://github.com/HimanshuHD/papertrail-reader/issues/24)
 - [x] [#22 [M0] Frontend quality checks and test coverage](https://github.com/HimanshuHD/papertrail-reader/issues/22)
 - [x] [#21 [M0] Automate post-merge issue and progress reconciliation](https://github.com/HimanshuHD/papertrail-reader/issues/21)
