@@ -57,7 +57,8 @@ async function renderPage() {
     if (sequence !== renderSequence) return
     if (
       error instanceof Error &&
-      (error.name === 'RenderingCancelledException' || error.message === 'TextLayer task cancelled.')
+      (error.name === 'RenderingCancelledException' ||
+        error.message === 'TextLayer task cancelled.')
     ) {
       return
     }
