@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const repository = 'https://github.com/HimanshuHD/papertrail-reader'
 const buildSha: string = import.meta.env.VITE_BUILD_SHA || ''
+const branch: string = import.meta.env.VITE_BRANCH_NAME || ''
+const branchUrl = `${repository}/tree/${branch.split('/').map(encodeURIComponent).join('/')}`
 const prNumber: string = import.meta.env.VITE_PR_NUMBER || ''
 const sha = /^[0-9a-f]{40}$/i.test(buildSha) ? buildSha : ''
 const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
@@ -12,7 +14,10 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
       <span v-if="pr"
         >Preview · <a :href="`${repository}/pull/${pr}`">PR #{{ pr }}</a></span
       >
-      <span v-else>Production · main</span>
+      <span v-else>Production</span>
+      <span v-if="branch"
+        >Branch <a :href="branchUrl">{{ branch }}</a></span
+      >
       <span
         >SHA <a :href="`${repository}/commit/${sha}`" :title="sha">{{ sha.slice(0, 7) }}</a></span
       >
@@ -28,6 +33,7 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
   justify-content: center;
   gap: 0.5rem 1rem;
   padding: 1rem;
+  overflow-wrap: anywhere;
   font-size: 0.8rem;
   color: #526473;
 }
