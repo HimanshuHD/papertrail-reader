@@ -27,7 +27,7 @@ jobs:
             const evidence = 'Completed by merged PR #' + pr.number + '; merge commit \`' + pr.merge_commit_sha + '\`.';
             for (const n of refs) {
               const issue = byNumber.get(n);
-              if (!issue || issue.state !== 'closed') continue;
+              if (!issue || issue.state !== 'closed' || (issue.state_reason && issue.state_reason !== 'completed')) continue;
               let body = issue.body || '';
               body = body.replace(/Status: (?:Backlog|In progress|In review|Blocked)/g, 'Status: Completed');
               if (!body.includes(evidence)) body += '\n\n## Merge evidence\n' + evidence + '\n';
@@ -38,7 +38,7 @@ jobs:
               let body = issue.body || '';
               body = body.replace(/^- \[[ x]\] #(\d+)\s*$/gm, (line, n) => {
                 const child = byNumber.get(Number(n));
-                return child ? '- [' + (child.state === 'closed' && child.state_reason !== 'not_planned' ? 'x' : ' ') + '] #' + n : line;
+                return child ? '- [' + (child.state === 'closed' && (!child.state_reason || child.state_reason === 'completed') ? 'x' : ' ') + '] #' + n : line;
               });
               if (issue.number === 1) {
                 const section = '## Latest merge\nPR #' + pr.number + ' merged at ' + pr.merged_at + '. Commit: \`' + pr.merge_commit_sha + '\`.\n\n';
@@ -46,7 +46,7 @@ jobs:
               }
               if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: issue.number, body });
             }
-            const statuses = new Map([...byNumber].map(([n, issue]) => [n, issue.state === 'closed' ? (issue.state_reason === 'not_planned' ? 'Not planned' : 'Completed') : ((issue.body || '').match(/Status: ([^\n]+)/)?.[1] || 'Backlog')]));
+            const statuses = new Map([...byNumber].map(([n, issue]) => [n, issue.state === 'closed' ? (issue.state_reason && issue.state_reason !== 'completed' ? 'Closed (' + issue.state_reason + ')' : 'Completed') : ((issue.body || '').match(/Status: ([^\n]+)/)?.[1] || 'Backlog')]));
             async function changeFile(path, transform) {
               for (let attempt = 0; attempt < 3; attempt++) {
                 const { data } = await github.rest.repos.getContent({ owner, repo, path, ref: 'main' });

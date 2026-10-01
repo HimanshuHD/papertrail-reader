@@ -4,7 +4,7 @@ Updated: 1 October 2026. Parent tracker: [#1](https://github.com/HimanshuHD/pape
 
 ## Current increment
 
-#2 is completed by merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is In review on `chore/3-vue-vite-bootstrap`. The frontend foundation passed clean npm ci, type checking and production build in [GitHub run 36884610560](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36884610560). Post-merge workflow #21 passed representative reconciliation checks; real-merge verification is pending. Native runtime and document reading are pending.
+#2 is completed by merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is In review in [PR #29](https://github.com/HimanshuHD/papertrail-reader/pull/29) on `chore/3-vue-vite-bootstrap`. The frontend foundation passed clean npm ci, type checking and production build in [GitHub run 36884610560](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36884610560). Post-merge workflow #21 passed representative reconciliation checks; real-merge verification is pending. Native runtime and document reading are pending.
 
 ## Backlog and dependencies
 
@@ -43,14 +43,14 @@ Update this file when work starts, becomes blocked, enters review or completes. 
 
 | Issue | Milestone | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | See parent | [M0] Automate post-merge issue and progress reconciliation | In progress | Parent #5 |
-| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | See parent | [M0] Frontend quality checks and test coverage | Backlog | Parent #5 |
-| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | See parent | [M0] Rust formatting, lint and native test pipeline | Backlog | Parent #5 |
-| [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | See parent | [M2] Incremental cancellable native scanner | Backlog | Parent #9 |
-| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | See parent | [M2] Directory tree and library refresh UI | Backlog | Parent #9 |
-| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | See parent | [M7] Release 0.1 installer builds and release artifacts | Backlog | Parent #19 |
-| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | See parent | [M7] Desktop signing and notarization | Backlog | Parent #19 |
-| [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | See parent | [M7] Supported-platform installer smoke testing | Backlog | Parent #19 |
+| [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | M0 | Automate post-merge issue and progress reconciliation | In review | Parent #5 |
+| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | M0 | Frontend quality checks and test coverage | Backlog | Parent #5 |
+| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | M0 | Rust formatting, lint and native test pipeline | Backlog | Parent #5 |
+| [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | M2 | Incremental cancellable native scanner | Backlog | Parent #9 |
+| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | M2 | Directory tree and library refresh UI | Backlog | Parent #9 |
+| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | M7 | Release 0.1 installer builds and release artifacts | Backlog | Parent #19 |
+| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | M7 | Desktop signing and notarization | Backlog | Parent #19 |
+| [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | M7 | Supported-platform installer smoke testing | Backlog | Parent #19 |
 
 ## Post-merge reconciliation
 
