@@ -109,7 +109,11 @@ describe('home and product shell', () => {
     expect(wrapper.text()).toContain('does not open a document')
     expect(wrapper.text()).toContain('Demonstration workspace')
     expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
-    expect(wrapper.get('button:nth-of-type(1)').exists()).toBe(true)
+    const folderButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Choose folder')
+    expect(folderButton).toBeTruthy()
+    expect(folderButton!.attributes('disabled')).toBeUndefined()
     expect(wrapper.findAll('button:disabled')).toHaveLength(2)
     wrapper.unmount()
   })
