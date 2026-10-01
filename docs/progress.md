@@ -31,7 +31,7 @@ PR #29 completed #3/#30. Merge tracking #21 was verified by successful run 36887
 | [#18](https://github.com/HimanshuHD/papertrail-reader/issues/18) | Web           | Optional split view and annotation export                | Backlog                  | #15; #17                        |
 | [#19](https://github.com/HimanshuHD/papertrail-reader/issues/19) | Web           | Web release readiness and delivery                       | Backlog                  | Web M0-M4; #13; #26; #28        |
 | [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | Web           | Automate post-merge issue and progress reconciliation    | Completed                | #3; real merge                  |
-| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web           | Frontend quality checks and test coverage                | Backlog                  | #3                              |
+| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web           | Frontend quality checks and test coverage                | In review                  | #3                              |
 | [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline           | Deferred - desktop phase | After web release               |
 | [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web           | Incremental browser indexing and cancellation            | Backlog                  | #8                              |
 | [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web           | Directory tree and browser library refresh UI            | Backlog                  | #24; #7                         |
@@ -85,3 +85,7 @@ Next after the tooling merge: #6 design tokens/themes/state, then #7 accessible 
 | #37   | Browser E2E foundation and selection smoke tests | Backlog                                                 | #22; #7; #8                                |
 
 PR #38's automatic publisher selects skip for an open PR. Manual preview verification remains pending; no active preview is promised until published.
+
+## Deployment identifier footer (#35, PR #38)
+
+CI embeds the source head SHA and PR number at build time. The footer shows Preview / PR number with a short SHA linked to the full commit, or Production / main with its SHA. Local builds without CI metadata show Development / SHA unavailable. Rerun Publish website with PR number 38 after the new head passes CI to inspect this footer; the existing preview stays on its previously published build until manual deployment.

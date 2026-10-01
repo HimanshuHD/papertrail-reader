@@ -36,6 +36,8 @@ jobs:
       - run: npm test
       - name: Build for production or PR path
         env:
+          VITE_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          VITE_PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
         run: |

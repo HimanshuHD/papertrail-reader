@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import BuildFooter from './components/BuildFooter.vue'
 const plannedFormats: readonly string[] = ['PDF', 'EPUB']
 </script>
 
@@ -17,4 +18,5 @@ const plannedFormats: readonly string[] = ['PDF', 'EPUB']
       <p class="note">This screen does not scan or open files yet.</p>
     </section>
   </main>
+  <BuildFooter />
 </template>

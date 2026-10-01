@@ -29,3 +29,7 @@ Run `npm run check` for ESLint (zero warnings), Prettier, Node deployment-policy
 CI runs these checks before building and uploading an artifact. Test configuration uses jsdom and Vue Test Utils; tests are type-checked with vue-tsc. The foundation tests verify labeled landmarks and honest file-access messaging. These are component checks, not browser accessibility certification. Add behavior tests with each reader/library increment; real browser selection/focus checks follow in #37.
 
 Dependencies are pinned exactly with a committed npm lockfile. Prettier excludes generated output, lockfile and PDF artifacts. Node.js 24.x remains required. CI needs no local setup on the owner's computer.
+
+## Deployment identifier footer (#35, PR #38)
+
+CI embeds the source head SHA and PR number at build time. The footer shows Preview / PR number with a short SHA linked to the full commit, or Production / main with its SHA. Local builds without CI metadata show Development / SHA unavailable. Rerun Publish website with PR number 38 after the new head passes CI to inspect this footer; the existing preview stays on its previously published build until manual deployment.

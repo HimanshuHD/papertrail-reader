@@ -1,0 +1,42 @@
+<script setup lang="ts">
+const repository = 'https://github.com/HimanshuHD/papertrail-reader'
+const buildSha: string = import.meta.env.VITE_BUILD_SHA || ''
+const prNumber: string = import.meta.env.VITE_PR_NUMBER || ''
+const sha = /^[0-9a-f]{40}$/i.test(buildSha) ? buildSha : ''
+const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
+</script>
+
+<template>
+  <footer class="build-footer" aria-label="Deployment information">
+    <template v-if="sha">
+      <span v-if="pr"
+        >Preview · <a :href="`${repository}/pull/${pr}`">PR #{{ pr }}</a></span
+      >
+      <span v-else>Production · main</span>
+      <span
+        >SHA <a :href="`${repository}/commit/${sha}`" :title="sha">{{ sha.slice(0, 7) }}</a></span
+      >
+    </template>
+    <span v-else>Development · SHA unavailable</span>
+  </footer>
+</template>
+
+<style scoped>
+.build-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem 1rem;
+  padding: 1rem;
+  font-size: 0.8rem;
+  color: #526473;
+}
+.build-footer a {
+  color: inherit;
+  text-underline-offset: 0.2em;
+}
+.build-footer a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+}
+</style>
