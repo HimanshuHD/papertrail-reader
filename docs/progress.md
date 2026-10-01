@@ -50,7 +50,9 @@ Post-merge automation reconciles closed completed issues and docs on main. It do
 
 | Issue | Phase | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web | Main deployment and PR previews | In progress | #26; Pages enablement; eligible plan |
+| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web | Main deployment and PR previews | In review | #26; Pages enablement; eligible plan |
 | [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32) | Web | Versioned releases and promotion | Backlog | #31; release acceptance |
 
 Deployment design: [deployment.md](deployment.md). Main root plus preview/pr-N paths use one hostname. Live URLs are not verified yet.
+
+Pipeline review: PR #33. Live Pages verification remains pending; no deployment issue is completed by build-only validation.

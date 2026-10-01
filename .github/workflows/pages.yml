@@ -3,9 +3,6 @@ on:
   workflow_run:
     workflows: [Frontend CI]
     types: [completed]
-  pull_request:
-    types: [closed]
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -36,11 +33,6 @@ jobs:
           script: |
             const { owner, repo } = context.repo;
             let run = context.payload.workflow_run;
-            if (context.eventName === 'pull_request') {
-              core.setOutput('kind', 'retire');
-              core.setOutput('pr', context.payload.pull_request.number);
-              return;
-            }
             if (context.eventName === 'workflow_dispatch') {
               const runs = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'ci.yml', branch: 'main', event: 'push', status: 'success', per_page: 1 });
               run = runs.data.workflow_runs[0];

@@ -19,7 +19,7 @@ test('production and PR previews coexist, stale production cannot overwrite, and
     await assemble({ site, artifact: preview, kind: 'production', sha: 'stale', runId: 19 })
     assert.equal(await readFile(path.join(site, 'index.html'), 'utf8'), 'production')
     await assemble({ site, kind: 'retire', pr: 7 })
-    assert.match(await readFile(path.join(site, 'preview/pr-7/index.html'), 'utf8'), /href="../../"/)
+    assert.ok((await readFile(path.join(site, 'preview/pr-7/index.html'), 'utf8')).includes('href="../../"'))
     await assert.rejects(assemble({ site, kind: 'preview', artifact: preview, pr: '../escape' }))
   } finally { await rm(root, { recursive: true, force: true }) }
 })

@@ -23,7 +23,7 @@ Frontend CI installs from the lockfile, runs strict type/build validation and pi
 
 Publish website runs from main on successful Frontend CI workflow completion. It downloads the artifact, verifies identity, rejects fork/unrelated builds and stale PR heads, then combines it with pages-state. Main builds preserve previews; preview builds preserve main and other previews. A serialized publisher prevents cross-channel updates from racing. Older production runs cannot replace newer production state. The state branch is generated output, not source for development.
 
-Closed PRs retire their preview. Manual Publish website uses the latest successful main CI build, useful after Pages is first enabled. Do not run artifacts as scripts in the publisher; it executes only the assembly script from main.
+Closed PRs trigger a lightweight CI retirement marker; its successful workflow completion retires the preview from the trusted main publisher. Manual Publish website uses the latest successful main CI build, useful after Pages is first enabled. Do not run artifacts as scripts in the publisher; it executes only the assembly script from main.
 
 Actions-generated pages-state commits do not recursively start CI. Custom workflow deployment uses official upload-pages-artifact/deploy-pages actions; it does not rely on Pages rebuilding bot branch commits.
 

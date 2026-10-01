@@ -65,3 +65,7 @@ No license has been selected. Do not assume open-source licensing or redistribut
 The first release is a browser app. Folder access is user-selected and capability-based: optional showDirectoryPicker under HTTPS, directory-input snapshots, and individual-file fallback. Saved reading state may require files to be reselected. Documents are processed client-side without upload.
 
 Tauri #4, Rust checks #23 and desktop signing #27 are deferred to a later desktop phase. Next work is frontend quality #22 and state/UI #6, then browser selection #8. Hosting and deployment audience are decided before publishing (#26).
+
+## Website deployment
+
+GitHub Pages pipeline is in [PR #33](https://github.com/HimanshuHD/papertrail-reader/pull/33). Main builds deploy the website root; open PR commits get isolated preview/pr-N paths on the same hostname. Closed previews display a link back to main. Live deployment awaits Pages enablement and pipeline merge; see [deployment guide](docs/deployment.md). Release promotion is tracked in #32.
