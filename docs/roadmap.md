@@ -40,10 +40,10 @@ M0 - Engineering foundation (#2, #3, #5; children #21, #22)
 Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Quality checks/tests #22 are completed. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
 
 M1 - UI and state (#6, #7)
-Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. #43 is in progress for complete keyboard/focus and explicit empty/loading/error/demo status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
+Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. Keyboard/focus and explicit empty/loading/error/demo status states #43 are completed in PR #53. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
-Add user-triggered folder selection, feature detection, directory-input and individual-file fallbacks. Index selected files incrementally, reconstruct hierarchy from relative paths, filter case-insensitive extensions and support cancellation. Explain handle refresh versus snapshot reselection.
+#8 is in progress on `feat/8-browser-file-selection`. Add user-triggered folder selection, feature detection, directory-input and individual-file fallbacks. Index selected files incrementally, reconstruct hierarchy from relative paths, filter case-insensitive extensions and support cancellation. Explain handle refresh versus snapshot reselection.
 
 Exit: nested files, empty selections, permission denial, picker dismissal, unsupported APIs, Unicode paths and large selected libraries handled. Browser selection boundaries are respected. Individual-file fallback never invents directory paths.
 
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after PR #50: #43 implements shell keyboard/focus/status behavior on its feature branch, then browser selection #8 and library discovery #9. Tauri is no longer the next implementation step.
+Current after merged PR #53: #8 browser source selection is the active product increment, followed by library discovery #9. Tauri is no longer the next implementation step.
 
 ## 7. Release acceptance and sources
 
@@ -166,14 +166,14 @@ CI runs on every PR update; previews publish manually at review checkpoints. Mai
 
 ## Frontend tooling increment (#22)
 
-ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6 and layout/home entry #42/#49 are completed. #43 is in progress, then #8.
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6, layout/home entry #42/#49 and focus/status #43 are completed. #8 is in progress.
 
 ## Current milestone snapshot after PR #50
 
-Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 remains partial for #37; M1 parent #7 remains partial for #43. M2–M7 product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
+Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 remains partial for #37; M1 parent #7 remains open only for explicit browser acceptance in #37. M2 starts with #8 in progress; later product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
 
 Version 0.1.0 records the initial foundation; the existing PDF is a planning snapshot. This Markdown roadmap and live issues carry current completion status. See [progress.md](progress.md), [browser-testing.md](browser-testing.md) and [branch-maintenance.md](branch-maintenance.md). Tauri remains deferred.
 
 ## Automatic CI policy (#52)
 
-Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones; a manual GitHub browser workflow is not currently configured. Past PR #50 browser results remain recorded evidence.
+Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones. The #8 branch adds a Browser E2E workflow that runs only by manual dispatch or when a draft PR is marked Ready for review. Past PR #50 browser results remain recorded evidence.
