@@ -17,7 +17,7 @@ Latest merged increment: PR #57, merge commit `b643425b57ede9a934837356701cfe996
 | [#7](https://github.com/HimanshuHD/papertrail-reader/issues/7)   | Web           | Split reader layout and accessible app shell                          | Completed |
 | [#8](https://github.com/HimanshuHD/papertrail-reader/issues/8)   | Web           | Browser folder/file selection and permission handling                 | Completed |
 | [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | Completed |
-| [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | Backlog |
+| [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | In progress — feat/10-pdf-reader-core |
 | [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Backlog |
 | [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | Backlog |
 | [#13](https://github.com/HimanshuHD/papertrail-reader/issues/13) | Web           | Browser document identity, saved positions and bookmarks              | Backlog |
@@ -67,7 +67,7 @@ Post-merge #50 main CI/deployment evidence is recorded in deployment-verificatio
 
 ## Next work and completion rules
 
-Current sequence: M0 #5, M1 #7 and M2 #8/#9 are complete. #24/#25 completed M2 in merged PRs #55/#57. #10 PDF.js reader/navigation/zoom is next, with #11 following for PDF search/contents/shortcuts. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
+Current sequence: M0 #5, M1 #7 and M2 #8/#9 are complete. #10 is active on `feat/10-pdf-reader-core`: bundled PDF.js worker/document lifetime, explicit local-PDF open, page navigation, zoom and fit are the first slice. Text layer/lazy continuous pages and invalid/password acceptance remain in #10; #11 follows for search/contents/shortcuts. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
 
 Web 0.1 acceptance requires M0–M4 plus #13 and release-relevant reliability/browser delivery checks. Foundation version 0.1.0 does not claim completed reader release acceptance. Deferred desktop scope remains open and does not block web delivery. Close only accepted scope after review/merge and preserve validation evidence.
 
