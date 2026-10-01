@@ -36,14 +36,14 @@ Folders: src/components/{layout,library,viewer}; src/features/{library,pdf,epub,
 
 ## 3. Milestones M0-M2
 
-M0 - Engineering foundation (#2, #3, #5; children #21, #22)
-Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Quality checks/tests #22 are completed. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
+M0 - Engineering foundation (#2, #3, #5; children #21, #22, #35, #37, #52)
+Repository docs #2, frontend bootstrap #3 and tooling parent #5 are completed. Merge tracking #21, quality checks/tests #22, preview policy #35, explicit browser E2E #37 and fast-CI policy #52 are accepted. Exit criteria are met for the browser foundation; Tauri #4 and Rust #23 remain deferred.
 
 M1 - UI and state (#6, #7)
-Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. Keyboard/focus and explicit empty/loading/error/demo status states #43 are completed in PR #53. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
+Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. Keyboard/focus and explicit empty/loading/error/demo status states #43 are completed in PR #53. Parent #7 is completed after explicit Chromium acceptance in run 36924070741. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
-#8 is finishing review on `feat/8-browser-file-selection`. #24 is active on the stacked `feat/24-browser-indexing` branch: it normalizes selected sources into PDF/EPUB documents, preserves relative paths, traverses approved handles incrementally, reports progress, yields during work, supports cancellation and retains partial results after recoverable access failures. #25 follows with hierarchy rendering and refresh/reselection UI. Explain handle refresh versus snapshot reselection.
+#8 source selection is completed in PR #54. #24 incremental discovery is completed in PR #55: selected sources normalize into PDF/EPUB documents with preserved relative paths, recursive handle traversal, progress, yielding, cancellation and recoverable partial results. #25 is the next increment for hierarchy rendering and refresh/reselection UI. Explain handle refresh versus snapshot reselection.
 
 Exit: nested files, empty selections, permission denial, picker dismissal, unsupported APIs, Unicode paths and large selected libraries handled. Browser selection boundaries are respected. Individual-file fallback never invents directory paths.
 
@@ -84,7 +84,7 @@ No current desktop installer or signing claim is made. Browser compatibility is 
 
 GitHub-first development continues: issue -> branch from main -> issue-linked commits -> PR -> CI -> review -> merge. No setup required on the owner's computer.
 
-Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 delivered lint, formatting and meaningful unit/component tests. #37 provides an explicit-run suite of 15 built-site Chromium shell checks and screenshot/report output; #52 removes automatic browser installation/execution from CI; focus/status and selection coverage expands with #43/#8. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
+Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 delivered lint, formatting and meaningful unit/component tests. #37 is completed: explicit Chromium acceptance covers the shell, keyboard/focus, selection fallbacks and discovery behavior. #52 keeps browser installation/execution out of automatic Frontend CI. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
 Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification passed in run 36887472079. Keep partial and deferred issues open.
 
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #53: #8 browser source selection is finishing acceptance in PR #54; #24 discovery is implemented on a stacked branch and becomes the next merge once #8 lands. Tauri is no longer the next implementation step.
+Current after merged PR #55: M0 #5 and M1 #7 are completed; #8 and #24 are completed in M2. #25 directory tree/list plus refresh/reselection UI is the next product increment. Tauri remains deferred.
 
 ## 7. Release acceptance and sources
 
@@ -144,9 +144,9 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#10 [M3] PDF.js reader, navigation and zoom](https://github.com/HimanshuHD/papertrail-reader/issues/10)
 - [ ] [#9 [M2] Browser document discovery and directory tree](https://github.com/HimanshuHD/papertrail-reader/issues/9)
 - [x] [#8 [M2] Browser folder/file selection and permission handling](https://github.com/HimanshuHD/papertrail-reader/issues/8)
-- [ ] [#7 [M1] Split reader layout and accessible app shell](https://github.com/HimanshuHD/papertrail-reader/issues/7)
+- [x] [#7 [M1] Split reader layout and accessible app shell](https://github.com/HimanshuHD/papertrail-reader/issues/7)
 - [x] [#6 [M1] Design tokens, themes and application state](https://github.com/HimanshuHD/papertrail-reader/issues/6)
-- [ ] [#5 [M0] Configure web code quality, tests and GitHub Actions](https://github.com/HimanshuHD/papertrail-reader/issues/5)
+- [x] [#5 [M0] Configure web code quality, tests and GitHub Actions](https://github.com/HimanshuHD/papertrail-reader/issues/5)
 - [x] [#3 [M0] Bootstrap Vue 3, Vite and TypeScript](https://github.com/HimanshuHD/papertrail-reader/issues/3)
 - [x] [#2 [M0] Repository documentation and issue tracking](https://github.com/HimanshuHD/papertrail-reader/issues/2)
 
@@ -166,14 +166,14 @@ CI runs on every PR update; previews publish manually at review checkpoints. Mai
 
 ## Frontend tooling increment (#22)
 
-ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6, layout/home entry #42/#49 and focus/status #43 are completed. #8 is in progress.
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E #37 is completed with explicit Chromium evidence. Parent #5 is completed. Foundation #6, layout/home entry #42/#49, focus/status #43, source selection #8 and discovery #24 are completed; #25 is next.
 
 ## Current milestone snapshot after PR #50
 
-Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 remains partial for #37; M1 parent #7 remains open only for explicit browser acceptance in #37. M2 starts with #8 in progress; later product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
+Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 and M1 parent #7 are completed. M2 has #8 and #24 completed with #25 next; later product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
 
 Version 0.1.0 records the initial foundation; the existing PDF is a planning snapshot. This Markdown roadmap and live issues carry current completion status. See [progress.md](progress.md), [browser-testing.md](browser-testing.md) and [branch-maintenance.md](branch-maintenance.md). Tauri remains deferred.
 
 ## Automatic CI policy (#52)
 
-Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones. The #8 branch adds a Browser E2E workflow that runs only by manual dispatch or when a draft PR is marked Ready for review. Past PR #50 browser results remain recorded evidence.
+Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones. The Browser E2E workflow runs only by manual dispatch or when a draft PR is marked Ready for review. Run 36924070741 is recorded acceptance evidence for focus, selection and discovery; automatic CI remains browser-free.
