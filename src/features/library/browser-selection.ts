@@ -10,17 +10,14 @@ export type BrowserLibrarySelection =
       files: readonly File[]
     }
 
-export type DirectoryPickerFailure =
-  | 'dismissed-or-denied'
-  | 'blocked'
-  | 'unavailable'
-  | 'failed'
+export type DirectoryPickerFailure = 'dismissed-or-denied' | 'blocked' | 'unavailable' | 'failed'
 
 export type DirectoryPickerResult =
-  | { ok: true; selection: BrowserLibrarySelection }
-  | { ok: false; reason: DirectoryPickerFailure }
+  { ok: true; selection: BrowserLibrarySelection } | { ok: false; reason: DirectoryPickerFailure }
 
-type DirectoryPicker = (options?: { mode?: 'read' | 'readwrite' }) => Promise<FileSystemDirectoryHandle>
+type DirectoryPicker = (options?: {
+  mode?: 'read' | 'readwrite'
+}) => Promise<FileSystemDirectoryHandle>
 
 type DirectoryPickerWindow = Window & {
   showDirectoryPicker?: DirectoryPicker
