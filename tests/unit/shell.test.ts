@@ -1,11 +1,35 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+
+const pdfSessionMocks = vi.hoisted(() => ({
+  open: vi.fn(),
+  render: vi.fn(),
+  close: vi.fn(),
+}))
+
+vi.mock('../../src/features/pdf/pdf-session', () => {
+  class PdfOpenError extends Error {}
+  return {
+    PdfOpenError,
+    openPdfDocument: pdfSessionMocks.open,
+  }
+})
 import App from '../../src/App.vue'
 import ShellStatus from '../../src/components/viewer/ShellStatus.vue'
 import ReaderView from '../../src/views/ReaderView.vue'
 import { createAppRouter } from '../../src/router'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  pdfSessionMocks.render.mockResolvedValue({ scale: 1.25, width: 765, height: 990 })
+  pdfSessionMocks.open.mockImplementation(async () => ({
+    totalPages: 3,
+    render: pdfSessionMocks.render,
+    close: pdfSessionMocks.close,
+  }))
+})
 
 async function mountApp(path = '/') {
   const router = createAppRouter(createMemoryHistory())
@@ -176,11 +200,32 @@ describe('home and product shell', () => {
       .findAll('button')
       .find((button) => button.text().includes('guide.pdf'))!
     await guide.trigger('click')
+    await flushPromises()
 
     expect(guide.attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toContain(
-      'Selected local document: guide.pdf',
+    expect(pdfSessionMocks.open).toHaveBeenCalledWith(files[0])
+    expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
+    expect(wrapper.text()).toContain('Page 1 of 3')
+    expect(wrapper.findAll('button').some((button) => button.text() === 'Next')).toBe(true)
+
+    const next = wrapper.findAll('button').find((button) => button.text() === 'Next')!
+    await next.trigger('click')
+    await flushPromises()
+    expect(pdfSessionMocks.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 2,
+        textLayer: expect.any(HTMLElement),
+      }),
     )
+    expect(wrapper.text()).toContain('Page 2 of 3')
+
+    const book = localLibrary
+      .findAll('button')
+      .find((button) => button.text().includes('book.epub'))!
+    await book.trigger('click')
+    await flushPromises()
+    expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
+    expect(pdfSessionMocks.close).toHaveBeenCalled()
     expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
 
     const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
