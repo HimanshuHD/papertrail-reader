@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "format:check": "prettier --write docs/vue-architecture.md src/components/library/LibrarySourcePicker.vue src/features/library/browser-selection.ts tests/e2e/shell.spec.ts && git diff -- docs/vue-architecture.md src/components/library/LibrarySourcePicker.vue src/features/library/browser-selection.ts tests/e2e/shell.spec.ts && prettier --check .",
+    "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:pipeline": "node --test scripts/*.test.mjs",
