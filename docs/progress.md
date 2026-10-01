@@ -2,7 +2,7 @@
 
 Updated: 1 October 2026. Web-first decision: #30. Parent: #1.
 
-Latest verified merge: [#29](https://github.com/HimanshuHD/papertrail-reader/pull/29) at 2026-10-01T15:51:01Z; commit `bbf4887ae8de4cb8d6f01e4bf018508dc3133fc9`.
+Latest verified merge: [#33](https://github.com/HimanshuHD/papertrail-reader/pull/33) at 2026-10-01T16:13:20Z; commit `16e854621c419341b730bfa81d97ff222c93a2df`.
 
 ## Current increment
 
@@ -35,7 +35,7 @@ PR #29 completed #3/#30. Merge tracking #21 was verified by successful run 36887
 | [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline | Deferred - desktop phase | After web release |
 | [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web | Incremental browser indexing and cancellation | Backlog | #8 |
 | [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web | Directory tree and browser library refresh UI | Backlog | #24; #7 |
-| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web | Web build, HTTPS deployment and release artifacts | Backlog | #3; hosting/audience decision |
+| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web | Web build, HTTPS deployment and release artifacts | In progress | #3; hosting/audience decision |
 | [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization | Deferred - desktop phase | After web release |
 | [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | Web | Supported-browser release validation | Backlog | Web reader scope |
 | [#30](https://github.com/HimanshuHD/papertrail-reader/issues/30) | Web | Adopt web-first scope | Completed | #29 merge |
