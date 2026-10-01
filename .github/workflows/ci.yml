@@ -25,12 +25,13 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: node --test scripts/assemble-pages.test.mjs
+      - run: node --test scripts/*.test.mjs
       - name: Build for production or PR path
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -44,8 +45,10 @@ jobs:
       - name: Record artifact identity
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BUILD_EVENT: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
         run: |
-          node --input-type=module -e "import fs from 'node:fs'; fs.writeFileSync('dist/build.json', JSON.stringify({sha:process.env.SOURCE_SHA,runId:process.env.GITHUB_RUN_ID}))"
+          node scripts/build-info.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: web-build

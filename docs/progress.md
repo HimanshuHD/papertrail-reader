@@ -64,3 +64,7 @@ Pipeline review: PR #33. Live production and preview verification completed in #
 - Retired preview: https://himanshuhd.github.io/papertrail-reader/preview/pr-33/
 - Evidence: [deployment-verification.md](deployment-verification.md).
 - Draft PR #34 is verification-only; close rather than merge when inspection is complete. Issue #31 is completed; #26/#32 release scope remains open.
+
+## Pipeline refinement
+
+#35 is In review in PR #36: on-demand preview publishing, current-green-SHA selection and docs-only main deployment filtering. PR #34 was closed without merging, but its preview remained active because commit lookup omitted the closed unmerged PR. PR #36 fixes branch/SHA lookup; retirement needs revalidation after merge. Live behavioral verification of #35 requires its workflow to be merged; retain issue open until checked.

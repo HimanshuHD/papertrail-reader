@@ -10,12 +10,12 @@ Expected default URL after successful deployment: https://himanshuhd.github.io/p
 
 | Channel | Path | Updates |
 | --- | --- | --- |
-| Main website | /papertrail-reader/ | Every successful main build after a merge/push |
-| PR preview | /papertrail-reader/preview/pr-N/ | Every successful commit on an open same-repo PR targeting main |
+| Main website | /papertrail-reader/ | Every successful website-affecting main build |
+| PR preview | /papertrail-reader/preview/pr-N/ | On-demand successful build of an open same-repo PR |
 | Closed preview | Same PR path | Retired page linking to main, avoiding a 404 |
 | Versioned releases | Planned /papertrail-reader/releases/vX.Y.Z/ | Separate release implementation #32 |
 
-No shared develop branch is required. Open a draft PR early; its URL stays stable as new commits arrive. A feature branch with no PR gets no preview. PRs into an integration feature branch are not published by default: use a PR to main for this workflow.
+PR updates run CI without changing the preview. No shared develop branch is required. Open a draft PR early; its URL stays stable; manually redeploy when a review checkpoint is ready. A feature branch with no PR gets no preview. PRs into an integration feature branch are not published by default: use a PR to main for this workflow.
 
 ## Workflow design
 
@@ -23,7 +23,7 @@ Frontend CI installs from the lockfile, runs strict type/build validation and pi
 
 Publish website runs from main on successful Frontend CI workflow completion. It downloads the artifact, verifies identity, rejects fork/unrelated builds and stale PR heads, then combines it with pages-state. Main builds preserve previews; preview builds preserve main and other previews. A serialized publisher prevents cross-channel updates from racing. Older production runs cannot replace newer production state. The state branch is generated output, not source for development.
 
-Closed PRs trigger a lightweight CI retirement marker; its successful workflow completion retires the preview from the trusted main publisher. Manual Publish website uses the latest successful main CI build, useful after Pages is first enabled. Do not run artifacts as scripts in the publisher; it executes only the assembly script from main.
+Closed PRs trigger a lightweight CI retirement marker; its successful workflow completion retires the preview from the trusted main publisher. Manual Publish website accepts pr_number for an open same-repo PR with current green CI; blank uses the latest successful main CI build, useful after Pages is first enabled. Do not run artifacts as scripts in the publisher; it executes only the assembly script from main.
 
 Actions-generated pages-state commits do not recursively start CI. Custom workflow deployment uses official upload-pages-artifact/deploy-pages actions; it does not rely on Pages rebuilding bot branch commits.
 
@@ -46,3 +46,11 @@ Production and previews share an origin. Namespace future IndexedDB/localStorage
 ## Validation and status
 
 Tests cover coexistence, preserved previews after main updates, stale-production protection, retirement pages and invalid PR paths. Actual Pages activation, production URL, two preview URLs and retirement must be checked after enablement; #31 remains open until that evidence is recorded.
+
+## On-demand preview instructions (#35)
+
+Actions -> Publish website -> Run workflow -> select main -> enter pr_number -> Run workflow. Blank PR number republishes main. Deploy only the PR's current successful CI SHA; no fallback to older green commits. Failed/stale/closed/fork requests do not publish. If the 7-day build artifact has expired, rerun CI on the current commit, then deploy.
+
+Read /preview/pr-N/build.json to verify the exact deployed SHA. Subsequent PR pushes keep the preview unchanged until another manual request. Documentation-only main commits still run validation but mark their build publish=false; automatic publishing skips them. Explicit manual main republish remains available. Paths outside the documentation allowlist are treated as website-affecting.
+
+Closed-unmerged PR correction: commit association can omit these PRs, so the publisher falls back to all PRs for the exact same-repo source branch and SHA. Issue #35 includes live retirement revalidation.

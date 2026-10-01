@@ -68,4 +68,6 @@ Tauri #4, Rust checks #23 and desktop signing #27 are deferred to a later deskto
 
 ## Website deployment
 
-GitHub Pages pipeline is in [PR #33](https://github.com/HimanshuHD/papertrail-reader/pull/33). Main builds deploy the website root; open PR commits get isolated preview/pr-N paths on the same hostname. Closed previews display a link back to main. Live deployment awaits Pages enablement and pipeline merge; see [deployment guide](docs/deployment.md). Release promotion is tracked in #32.
+GitHub Pages pipeline is in [PR #33](https://github.com/HimanshuHD/papertrail-reader/pull/33). Main builds deploy the website root; manual requests deploy successful PR builds to isolated preview/pr-N paths on the same hostname. Closed previews display a link back to main. Live deployment awaits Pages enablement and pipeline merge; see [deployment guide](docs/deployment.md). Release promotion is tracked in #32.
+
+Preview policy refinement: PR #36 (#35) changes previews to on-demand publishing. CI remains continuous; use Actions -> Publish website -> Run workflow on main -> pr_number after the refinement merges.

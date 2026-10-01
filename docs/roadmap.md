@@ -158,4 +158,9 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 
 ## Continuous deployment increment
 
-GitHub Pages is selected. Main deploys to root after successful CI; open PR commits deploy to preview/pr-N; closed previews link back to main. See [deployment.md](deployment.md). #31 tracks pipeline activation; #32 tracks versioned release promotion. GitHub Pages settings must be enabled before live deployment. No live URL is claimed until verified.
+GitHub Pages is selected. Main deploys to root after successful CI; manual PR deployments update preview/pr-N; closed previews link back to main. See [deployment.md](deployment.md). #31 tracks pipeline activation; #32 tracks versioned release promotion. GitHub Pages settings must be enabled before live deployment. No live URL is claimed until verified.
+
+
+## Deployment policy refinement (#35)
+
+CI runs on every PR update; previews publish manually at review checkpoints. Main auto-publishes website changes; documentation-only main pushes skip publishing. Closed unmerged PR lookup is repaired in PR #36. Verify retirement and manual behavior after merging.
