@@ -183,9 +183,7 @@ describe('home and product shell', () => {
     )
     expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
 
-    const reselect = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Reselect files')!
+    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
     await reselect.trigger('click')
     expect(click).toHaveBeenCalledOnce()
     wrapper.unmount()
@@ -211,12 +209,13 @@ describe('home and product shell', () => {
 
     const folderButtons = localLibrary.findAll('button[aria-expanded]')
     expect(folderButtons.map((button) => button.text())).toEqual(
-      expect.arrayContaining([expect.stringContaining('Reading'), expect.stringContaining('Books')]),
+      expect.arrayContaining([
+        expect.stringContaining('Reading'),
+        expect.stringContaining('Books'),
+      ]),
     )
 
-    const reselect = wrapper
-      .findAll('button')
-      .find((button) => button.text() === 'Reselect folder')
+    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect folder')
     expect(reselect).toBeTruthy()
     wrapper.unmount()
   })
@@ -239,14 +238,12 @@ describe('home and product shell', () => {
         const file = new File([`version-${version}`], 'guide.pdf', {
           lastModified: version,
         })
-        yield [
-          'guide.pdf',
-          {
-            kind: 'file',
-            name: 'guide.pdf',
-            getFile: async () => file,
-          },
-        ] as [string, FileSystemHandle]
+        const fileHandle = {
+          kind: 'file',
+          name: 'guide.pdf',
+          getFile: async () => file,
+        } as unknown as FileSystemFileHandle
+        yield ['guide.pdf', fileHandle] as [string, FileSystemHandle]
       },
     } as unknown as FileSystemDirectoryHandle
 
@@ -281,15 +278,13 @@ describe('home and product shell', () => {
       await flushPromises()
 
       localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
-      guide = localLibrary
-        .findAll('button')
-        .find((button) => button.text().includes('guide.pdf'))!
+      guide = localLibrary.findAll('button').find((button) => button.text().includes('guide.pdf'))!
       expect(guide.attributes('aria-pressed')).toBe('true')
       expect(scan).toBe(2)
     } finally {
       wrapper?.unmount()
       if (originalSecure) Object.defineProperty(window, 'isSecureContext', originalSecure)
-      else delete (window as Window & { isSecureContext?: boolean }).isSecureContext
+      else Reflect.deleteProperty(window, 'isSecureContext')
 
       if (originalPicker) Object.defineProperty(window, 'showDirectoryPicker', originalPicker)
       else delete pickerWindow.showDirectoryPicker
