@@ -24,14 +24,14 @@ npm run preview
 
 ## Planned technology
 
-| Area | Technology |
-| --- | --- |
-| Frontend | Vue 3, Vite, TypeScript |
-| UI and state | Tailwind CSS, Pinia, Vue Router |
-| File access | Browser File/Blob APIs; optional directory handles with input fallbacks |
-| Readers | PDF.js and epub.js behind separate adapters |
-| Validation | Vitest, Vue Test Utils, Rust checks, Playwright |
-| Automation | GitHub Actions |
+| Area         | Technology                                                              |
+| ------------ | ----------------------------------------------------------------------- |
+| Frontend     | Vue 3, Vite, TypeScript                                                 |
+| UI and state | Tailwind CSS, Pinia, Vue Router                                         |
+| File access  | Browser File/Blob APIs; optional directory handles with input fallbacks |
+| Readers      | PDF.js and epub.js behind separate adapters                             |
+| Validation   | Vitest, Vue Test Utils, Rust checks, Playwright                         |
+| Automation   | GitHub Actions                                                          |
 
 ## Reading experience
 

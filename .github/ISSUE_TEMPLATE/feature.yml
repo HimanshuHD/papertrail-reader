@@ -1,12 +1,12 @@
 name: Feature or engineering task
 description: Track a scoped increment with acceptance criteria.
-title: "[M?] "
+title: '[M?] '
 body:
   - type: input
     id: roadmap
     attributes:
       label: Milestone and parent issue
-      placeholder: "M0; parent #1"
+      placeholder: 'M0; parent #1'
     validations:
       required: true
   - type: textarea

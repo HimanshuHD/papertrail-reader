@@ -90,7 +90,7 @@ Post-merge #21: reconcile completed issue evidence, parent checklists and docs/p
 
 Status lifecycle: Backlog -> In progress -> In review -> Completed. Also use Blocked or Deferred with explicit reasons. PRs use Closes only for completed scope and Refs for partial work. Completed history is retained.
 
-Issue parent mapping: #5 -> #21/#22; #9 -> #24/#25; #19 -> #26/#28; deferred #4 -> #23/#27. Current connector uses reciprocal links/task lists rather than native sub-issue relations.
+Issue parent mapping: #5 -> #21/#22/#35/#37; #9 -> #24/#25; #19 -> #26/#28; deferred #4 -> #23/#27. Current connector uses reciprocal links/task lists rather than native sub-issue relations.
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
@@ -99,6 +99,7 @@ Next after PR #29: finish frontend quality #22 and UI/state #6, then browser sel
 ## 7. Release acceptance and sources
 
 Web 0.1 checklist
+
 - Explicit folder or file selection yields the correct supported-document list/tree.
 - Folder capability fallback and permission/dismissal states work.
 - PDF navigation/progress/zoom and EPUB chapters/CFI/font controls work.
@@ -155,12 +156,14 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#23 [Desktop later] Rust formatting, lint and native test pipeline](https://github.com/HimanshuHD/papertrail-reader/issues/23)
 - [ ] [#27 [Desktop later] Desktop signing and notarization](https://github.com/HimanshuHD/papertrail-reader/issues/27)
 
-
 ## Continuous deployment increment
 
-GitHub Pages is selected. Main deploys to root after successful CI; manual PR deployments update preview/pr-N; closed previews link back to main. See [deployment.md](deployment.md). #31 tracks pipeline activation; #32 tracks versioned release promotion. GitHub Pages settings must be enabled before live deployment. No live URL is claimed until verified.
-
+GitHub Pages is selected. Main deploys to root after successful CI; manual PR deployments update preview/pr-N; closed previews link back to main. See [deployment.md](deployment.md). #31 tracks pipeline activation; #32 tracks versioned release promotion. GitHub Pages is enabled. Production and active/retired preview paths were verified in #31; see deployment-verification.md.
 
 ## Deployment policy refinement (#35)
 
-CI runs on every PR update; previews publish manually at review checkpoints. Main auto-publishes website changes; documentation-only main pushes skip publishing. Closed unmerged PR lookup is repaired in PR #36. Verify retirement and manual behavior after merging.
+CI runs on every PR update; previews publish manually at review checkpoints. Main auto-publishes website changes; documentation-only main pushes skip publishing. Closed unmerged PR lookup is repaired in PR #36. PR #36 is merged; closed previews #34/#36 are retired. #35 remains open for manual preview and no-auto-publish live checks.
+
+## Frontend tooling increment (#22)
+
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Next product implementation is #6, followed by #7/#8.
