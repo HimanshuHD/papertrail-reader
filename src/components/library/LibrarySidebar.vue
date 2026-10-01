@@ -38,9 +38,8 @@ const collections = computed(() => [
 
 const selectedLibraryDocument = computed(
   () =>
-    props.libraryDocuments.find(
-      (document) => document.id === props.selectedLibraryDocumentId,
-    ) ?? null,
+    props.libraryDocuments.find((document) => document.id === props.selectedLibraryDocumentId) ??
+    null,
 )
 </script>
 
