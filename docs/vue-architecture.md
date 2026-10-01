@@ -42,10 +42,10 @@ Light/Dark are explicit choices; System mode is removed in #46. Missing, invalid
 ## UI architecture work for #7
 
 - #42: component boundaries, responsive sidebar/workspace/toolbar and clearly labeled demonstration content.
-- #43: keyboard/focus behavior and empty/loading/error state presentation.
+- #43: keyboard/focus behavior and empty/loading/error/demo state presentation. ReaderView owns transient shell presentation and announcements; ShellStatus renders explicit view-only states. Escape from the library closes it and restores focus to the toggle. These states do not model file selection, indexing or reader services.
 - #37: real-browser E2E infrastructure and acceptance execution, rather than duplicating it in both UI children.
 
-#7 implementation remains Backlog during the documentation audit. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
+#7 implementation is in progress while #43 is under review. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
 
 Components should render state through explicit props and emit user intent. Application services or Pinia actions own workflows. Reader/library services own document work. Do not let the sidebar access the filesystem directly, or couple the root component to PDF.js/epub.js.
 
@@ -65,4 +65,4 @@ The sun/moon button uses native button keyboard activation, aria-pressed for Dar
 
 ## Reader shell and entry (#42/#49)
 
-HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 remains the next accessibility/status increment; #37 remains browser E2E infrastructure.
+HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 implements the accessibility/status increment on its feature branch; #37 remains browser E2E infrastructure. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.

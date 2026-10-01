@@ -6,3 +6,6 @@ export interface ShellDocument {
   collection: string
   detail: string
 }
+
+/** View-only shell presentation. Library/reader workflows own their own async state later. */
+export type ShellViewState = 'empty' | 'loading' | 'error' | 'demo'

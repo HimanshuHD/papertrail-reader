@@ -2,20 +2,20 @@
 import { computed } from 'vue'
 import type { ShellDocument } from '../../types/shell'
 const props = defineProps<{ documents: readonly ShellDocument[]; selectedId: string }>()
-defineEmits<{ select: [id: string] }>()
+defineEmits<{ select: [id: string]; close: [] }>()
 const collections = computed(() => [
   ...new Set(props.documents.map((document) => document.collection)),
 ])
 </script>
 
 <template>
-  <div class="p-5">
+  <div class="p-5" @keydown.esc.stop="$emit('close')">
     <div class="flex items-center justify-between gap-3">
       <h2 class="font-semibold">Your library</h2>
       <span class="rounded-full border border-line px-2 py-1 text-xs text-muted">Sample</span>
     </div>
     <p class="mt-2 text-sm leading-relaxed text-muted">
-      Explore the layout with demonstration titles.
+      Explore the layout with demonstration titles. Press Escape from the library to close it.
     </p>
     <button
       type="button"
