@@ -37,7 +37,7 @@ flowchart TD
 | src/router/index.ts               | Hash routes under import.meta.env.BASE_URL         | No host rewrite dependency                         |
 | src/types/reader.ts               | Format-specific adapter types                      | Not an engine implementation                       |
 
-Explicit Light/Dark overrides OS appearance; System follows OS changes. Invalid storage values fall back to System. Blocked storage does not stop theme changes. Theme choice is intentionally shared by production and previews on the same origin; future reading metadata must be namespaced by base path.
+Light/Dark are explicit choices; System mode is removed in #46. Missing, invalid and legacy System storage values fall back to Light. Blocked storage does not stop theme changes. Theme choice is intentionally shared by production and previews on the same origin; future reading metadata must be namespaced by base path.
 
 ## UI architecture work for #7
 
@@ -58,3 +58,7 @@ PDF and EPUB engines will share lifecycle/navigation/progress/contents boundarie
 ## Documentation practice
 
 Update this document and architecture.md when ownership or public contracts change. Update tests and issue/PR references together. Record accepted architecture decisions separately from planned work; preserve the roadmap PDF as a planning snapshot.
+
+## Appearance refinement (#46)
+
+The sun/moon button uses native button keyboard activation, aria-pressed for Dark mode, a visible focus ring and decorative SVG icons. Pinia contains Light/Dark only; theme-runtime watches explicit state with no matchMedia listener. Existing Light/Dark preferences persist; legacy System resolves to Light. This supersedes the original #6 System behavior.

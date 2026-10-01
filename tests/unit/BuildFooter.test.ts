@@ -1,5 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { version } from '../../package.json'
 import BuildFooter from '../../src/components/BuildFooter.vue'
 
 const sha = '1234567890abcdef1234567890abcdef12345678'
@@ -27,7 +28,7 @@ describe('deployment footer', () => {
     vi.stubEnv('VITE_PR_NUMBER', '')
     vi.stubEnv('VITE_BRANCH_NAME', 'main')
     const wrapper = mount(BuildFooter)
-    expect(wrapper.text()).toContain('Production')
+    expect(wrapper.text()).toContain(`Production · v${version}`)
     expect(wrapper.get('a[href$="/tree/main"]').text()).toBe('main')
     expect(wrapper.text()).not.toContain('PR #')
     wrapper.unmount()
