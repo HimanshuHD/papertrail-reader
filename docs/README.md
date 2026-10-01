@@ -19,6 +19,6 @@ Add new documentation here and update this index. Live issues and docs/progress.
 
 [Reader shell layout](shell-layout.md) documents home/app navigation, responsive layout and component boundaries (#42/#49).
 
-[Browser validation](browser-testing.md) covers the Playwright matrix, built-site CI and screenshot/report artifacts (#37).
+[Browser validation](browser-testing.md) covers the Playwright matrix, explicit browser checks and historical screenshot/report evidence (#37).
 
 [Branch maintenance](branch-maintenance.md) records verified stale work branches and the retained main/pages-state infrastructure.

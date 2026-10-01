@@ -84,7 +84,7 @@ No current desktop installer or signing claim is made. Browser compatibility is 
 
 GitHub-first development continues: issue -> branch from main -> issue-linked commits -> PR -> CI -> review -> merge. No setup required on the owner's computer.
 
-Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 delivered lint, formatting and meaningful unit/component tests. #37 now provides 15 built-site Chromium shell checks and screenshot/report artifacts; focus/status and selection coverage expands with #43/#8. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
+Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 delivered lint, formatting and meaningful unit/component tests. #37 provides an explicit-run suite of 15 built-site Chromium shell checks and screenshot/report output; #52 removes automatic browser installation/execution from CI; focus/status and selection coverage expands with #43/#8. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
 Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification passed in run 36887472079. Keep partial and deferred issues open.
 
@@ -173,3 +173,7 @@ ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join th
 Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 remains partial for #37; M1 parent #7 remains partial for #43. M2–M7 product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
 
 Version 0.1.0 records the initial foundation; the existing PDF is a planning snapshot. This Markdown roadmap and live issues carry current completion status. See [progress.md](progress.md), [browser-testing.md](browser-testing.md) and [branch-maintenance.md](branch-maintenance.md). Tauri remains deferred.
+
+## Automatic CI policy (#52)
+
+Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones; a manual GitHub browser workflow is not currently configured. Past PR #50 browser results remain recorded evidence.

@@ -48,6 +48,8 @@ Latest merged increment: PR #50, commit `3a1a82d5ceb6e518cefcbafe43dedacef372380
 | [#47](https://github.com/HimanshuHD/papertrail-reader/issues/47) | Web           | Display initial application version in production footer              | Completed                |
 | [#49](https://github.com/HimanshuHD/papertrail-reader/issues/49) | Web           | Preserve responsive home page and add Go to app navigation            | Completed                |
 
+| [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web | Restore fast automatic CI; browser tests explicit only | In review |
+
 ## Current application
 
 Version 0.1.0 is the initial foundation. Home retains its card and includes Go to app; /app provides a responsive sample library/workspace/toolbar. Light/Dark sun/moon preferences persist; System mode is removed. Production footer shows version and source SHA; previews show linked PR/branch/SHA. Real file selection, discovery, PDF/EPUB engines and reading persistence remain planned issues.
@@ -71,3 +73,7 @@ Next product increment: #43 keyboard/focus and loading/empty/error presentation.
 Web 0.1 acceptance requires M0–M4 plus #13 and release-relevant reliability/browser delivery checks. Foundation version 0.1.0 does not claim completed reader release acceptance. Deferred desktop scope remains open and does not block web delivery. Close only accepted scope after review/merge and preserve validation evidence.
 
 [Roadmap](roadmap.md) · [Architecture](architecture.md) · [Browser checks](browser-testing.md) · [Shell layout](shell-layout.md) · [Branch maintenance](branch-maintenance.md)
+
+## CI policy refinement (#52)
+
+Automatic browser installation/execution is removed in PR #51. Frontend CI retains lint/format/unit/pipeline/type/build validation; Playwright remains available for explicit checks. Prior #50 browser evidence is preserved, not presented as ongoing automatic coverage.
