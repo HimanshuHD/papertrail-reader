@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #50
 
-| Layer           | Implemented on main                                                                  | Remaining owner                        |
-| --------------- | ------------------------------------------------------------------------------------ | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView                         | Shell behavior #43 in review             |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell                          | #43 accessibility/status refinement      |
-| State           | Pinia explicit theme; view-local sample selection/sidebar collapse/status display | Library state #9; reading metadata #13   |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                                         | Future document routes as needed         |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                                   | Engines #10/#12                          |
-| File access     | Not implemented                                                                   | #8/#9                                    |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence                    | #13                                      |
+| Layer           | Implemented on main                                                | Remaining owner                        |
+| --------------- | ------------------------------------------------------------------ | -------------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Further shell behavior #43             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | #43 accessibility/status refinement    |
+| State           | Pinia explicit theme; view-local sample selection/sidebar collapse | Library state #9; reading metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
+| File access     | Not implemented                                                    | #8/#9                                  |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence     | #13                                    |
 
 #6/#46/#42/#49 are merged. Shell metadata is clearly labeled demonstration content; no file discovery or reader implementation is claimed.
 
@@ -45,7 +45,7 @@ Light/Dark are explicit choices; System mode is removed in #46. Missing, invalid
 - #43: keyboard/focus behavior and empty/loading/error/demo state presentation. ReaderView owns transient shell presentation and announcements; ShellStatus renders explicit view-only states. Escape from the library closes it and restores focus to the toggle. These states do not model file selection, indexing or reader services.
 - #37: real-browser E2E infrastructure and acceptance execution, rather than duplicating it in both UI children.
 
-#7 implementation remains Backlog during the documentation audit. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
+#7 implementation is in progress while #43 is under review. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
 
 Components should render state through explicit props and emit user intent. Application services or Pinia actions own workflows. Reader/library services own document work. Do not let the sidebar access the filesystem directly, or couple the root component to PDF.js/epub.js.
 
