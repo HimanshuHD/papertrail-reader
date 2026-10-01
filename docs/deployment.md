@@ -40,6 +40,6 @@ GitHub may cancel a pending publisher during overlapping cleanup/production even
 
 ## Base paths and storage
 
-CI supplies Vite base paths with trailing slash. A later custom-domain setup can use PAGES_BASE_PATH=/. Hash routing is implemented in PR #41 under review.
+CI supplies Vite base paths with trailing slash. A later custom-domain setup can use PAGES_BASE_PATH=/. Hash routing is implemented in PR #41 merged.
 
 Production and previews share an origin. Theme preference is intentionally shared in PR #41. Future reading positions, bookmarks and document identity must be namespaced by base path so preview experiments cannot overwrite production reading metadata. Do not publish private document fixtures.

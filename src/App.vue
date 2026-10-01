@@ -1,22 +1,11 @@
 <script setup lang="ts">
+import { RouterView } from 'vue-router'
 import BuildFooter from './components/BuildFooter.vue'
-const plannedFormats: readonly string[] = ['PDF', 'EPUB']
 </script>
 
 <template>
-  <main class="foundation" aria-labelledby="app-title">
-    <p class="eyebrow">Local-first document reader</p>
-    <h1 id="app-title">PaperTrail</h1>
-    <p class="tagline">Your documents. Your space. A better way to read.</p>
-    <section class="status" aria-labelledby="status-title">
-      <h2 id="status-title">The foundation is ready</h2>
-      <p>
-        Vue, Vite and TypeScript are in place. Folder selection and document reading arrive in later
-        milestones.
-      </p>
-      <p>Planned formats: {{ plannedFormats.join(' and ') }}.</p>
-      <p class="note">This screen does not scan or open files yet.</p>
-    </section>
-  </main>
-  <BuildFooter />
+  <div class="flex min-h-svh flex-col bg-canvas text-ink">
+    <div class="flex-1"><RouterView /></div>
+    <BuildFooter />
+  </div>
 </template>

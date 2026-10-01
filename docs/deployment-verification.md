@@ -16,7 +16,7 @@ Updated: 1 October 2026. Owners: #31/#35/#39.
 
 Production: https://himanshuhd.github.io/papertrail-reader/. Retired PR #40: https://himanshuhd.github.io/papertrail-reader/preview/pr-40/.
 
-PR #41 is still open with CI 36901032233 passed. It is owner review scope, not a merged production change.
+PR #41 merged at b54d41d236fd561d651404e1478e98b3d59328c7. Its pre-merge CI 36901032233 passed; post-merge deployment evidence is recorded separately from this historical #40 verification.
 
 ## Final check for #35
 

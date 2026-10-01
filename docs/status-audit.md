@@ -1,6 +1,6 @@
 # Issue and documentation audit
 
-Date: 1 October 2026. Scope: #1/#35. PR #41 remains under owner review; #7 implementation is paused.
+Date: 1 October 2026. Scope: #1/#35. PR #41 is merged and #6 is completed; #7 implementation remains Backlog.
 
 | Issue      | Status                   | Evidence / next action                                                              |
 | ---------- | ------------------------ | ----------------------------------------------------------------------------------- |
@@ -9,7 +9,7 @@ Date: 1 October 2026. Scope: #1/#35. PR #41 remains under owner review; #7 imple
 | #22        | Completed                | Quality checks delivered in PR #38                                                  |
 | #31        | Completed                | Production/preview isolation, publishing and retirement verified                    |
 | #39        | Completed                | Styled retirement page and linked branches in merged PR #40, checked live           |
-| #6         | In review                | PR #41 CI 36901032233 passed; owner review/merge pending                            |
+| #6         | Completed                | PR #41 merged at b54d41d; CI 36901032233 passed                                     |
 | #35        | Final live check pending | Docs-only main publishing skip must be verified after the docs-only audit PR merges |
 | #5         | In progress              | #35 final acceptance and #37 browser E2E remain                                     |
 | #7         | Backlog / paused         | Linked children #42 layout and #43 keyboard/status states                           |
@@ -29,6 +29,6 @@ Date: 1 October 2026. Scope: #1/#35. PR #41 remains under owner review; #7 imple
 
 ## Documentation audit
 
-Vue architecture: architecture.md plus vue-architecture.md, with an explicit implemented / PR #41 under review / future distinction. Deployment architecture: deployment.md plus deployment-architecture.md, including artifact trust, pages-state, trigger policy, concurrency limits and release gaps.
+Vue architecture: architecture.md plus vue-architecture.md, with an explicit implemented / future distinction. Deployment architecture: deployment.md plus deployment-architecture.md, including artifact trust, pages-state, trigger policy, concurrency limits and release gaps.
 
 Architecture changes must update module ownership/contracts and docs in the same PR. The roadmap PDF is a planning snapshot; live issues and progress track delivery. Documentation-only changes validate in CI and should not update production automatically.

@@ -1,10 +1,10 @@
 # Vue application architecture
 
-Updated: 1 October 2026. Owner: #1. Foundation: #3/#22. Pending increment: #6 / PR #41.
+Updated: 1 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 
 ## Implementation status
 
-| Layer           | Current main                            | PR #41 under review                                | Planned owner        |
+| Layer           | Current main                            | PR #41 merged                                      | Planned owner        |
 | --------------- | --------------------------------------- | -------------------------------------------------- | -------------------- |
 | App/root        | Foundation screen and deployment footer | Root composition, HomeView and RouterView          | #6                   |
 | Styling         | Foundation CSS and linked footer        | Tailwind semantic light/dark tokens                | #6                   |
@@ -14,9 +14,9 @@ Updated: 1 October 2026. Owner: #1. Foundation: #3/#22. Pending increment: #6 / 
 | File access     | Not implemented                         | Not implemented                                    | #8/#9                |
 | Persistence     | No reading-data persistence             | Theme choice only, localStorage                    | Reading metadata #13 |
 
-PR #41 is not merged at this audit. Its source files and tests are reviewable on feat/6-theme-state-foundation. Do not treat this document as a claim that folder selection or document reading works.
+PR #41 merged as b54d41d236fd561d651404e1478e98b3d59328c7. Its source files and tests are now on main. Do not treat this document as a claim that folder selection or document reading works.
 
-## Proposed foundation flow in PR #41
+## Implemented foundation flow (#6)
 
 ```mermaid
 flowchart TD
@@ -45,7 +45,7 @@ Explicit Light/Dark overrides OS appearance; System follows OS changes. Invalid 
 - #43: keyboard/focus behavior and empty/loading/error state presentation.
 - #37: real-browser E2E infrastructure and acceptance execution, rather than duplicating it in both UI children.
 
-#7 implementation is paused during owner validation of PR #41. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
+#7 implementation remains Backlog during the documentation audit. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
 
 Components should render state through explicit props and emit user intent. Application services or Pinia actions own workflows. Reader/library services own document work. Do not let the sidebar access the filesystem directly, or couple the root component to PDF.js/epub.js.
 
