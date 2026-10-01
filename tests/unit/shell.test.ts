@@ -216,7 +216,9 @@ describe('home and product shell', () => {
     )
     expect(wrapper.text()).toContain('Page 2 of 3')
 
-    const book = localLibrary.findAll('button').find((button) => button.text().includes('book.epub'))!
+    const book = localLibrary
+      .findAll('button')
+      .find((button) => button.text().includes('book.epub'))!
     await book.trigger('click')
     await flushPromises()
     expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
