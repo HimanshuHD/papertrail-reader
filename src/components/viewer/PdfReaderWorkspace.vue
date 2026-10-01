@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import PdfPageView from './PdfPageView.vue'
 import {
   openPdfDocument,
   PdfOpenError,
@@ -18,7 +19,6 @@ const emit = defineEmits<{
 
 type ReaderPhase = 'loading' | 'ready' | 'error'
 
-const canvas = ref<HTMLCanvasElement | null>(null)
 const viewport = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
@@ -28,8 +28,13 @@ const totalPages = ref(0)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
 const renderedScale = ref(1)
+const availableWidth = ref(720)
+const availableHeight = ref(900)
+const visibility = new Map<number, number>()
 let openSequence = 0
-let renderSequence = 0
+let resizeFrame = 0
+
+const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
 
 const progressPercent = computed(() =>
   totalPages.value > 0 ? Math.round((currentPage.value / totalPages.value) * 100) : 0,
@@ -42,48 +47,27 @@ function clampPage(page: number): number {
   return Math.min(totalPages.value, Math.max(1, Math.round(page)))
 }
 
+function measureViewport() {
+  const element = viewport.value
+  if (!element) return
+
+  availableWidth.value = Math.max(240, element.clientWidth - 32)
+  availableHeight.value = Math.max(320, element.clientHeight - 32)
+}
+
+function scheduleViewportMeasure() {
+  cancelAnimationFrame(resizeFrame)
+  resizeFrame = requestAnimationFrame(measureViewport)
+}
+
 async function closeCurrentSession() {
   const current = session.value
   session.value = null
   if (current) await current.close()
 }
 
-async function renderCurrentPage() {
-  const currentSession = session.value
-  const currentCanvas = canvas.value
-  const currentViewport = viewport.value
-  if (!currentSession || !currentCanvas || !currentViewport || phase.value !== 'ready') return
-
-  const sequence = ++renderSequence
-  const availableWidth = Math.max(240, currentViewport.clientWidth - 32)
-  const availableHeight = Math.max(320, currentViewport.clientHeight - 32)
-
-  try {
-    const result = await currentSession.render({
-      canvas: currentCanvas,
-      pageNumber: currentPage.value,
-      fitMode: fitMode.value,
-      zoom: zoom.value,
-      availableWidth,
-      availableHeight,
-    })
-
-    if (sequence !== renderSequence) return
-    renderedScale.value = result.scale
-    emit('status', `Page ${currentPage.value} of ${totalPages.value} rendered.`)
-  } catch (error) {
-    if (sequence !== renderSequence) return
-    if (error instanceof Error && error.name === 'RenderingCancelledException') return
-    phase.value = 'error'
-    errorMessage.value =
-      error instanceof Error ? error.message : 'PaperTrail could not render this PDF page.'
-    emit('status', errorMessage.value)
-  }
-}
-
 async function openDocument() {
   const sequence = ++openSequence
-  renderSequence += 1
   phase.value = 'loading'
   errorMessage.value = ''
   currentPage.value = 1
@@ -91,6 +75,7 @@ async function openDocument() {
   fitMode.value = 'width'
   zoom.value = 1
   renderedScale.value = 1
+  visibility.clear()
 
   await closeCurrentSession()
 
@@ -106,7 +91,7 @@ async function openDocument() {
     phase.value = 'ready'
     emit('status', `Opened ${props.document.name}. ${next.totalPages} pages.`)
     await nextTick()
-    await renderCurrentPage()
+    measureViewport()
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -122,20 +107,57 @@ async function openDocument() {
 
 async function goToPage(page: number) {
   const next = clampPage(page)
-  if (next === currentPage.value) return
   currentPage.value = next
-  await renderCurrentPage()
+  await nextTick()
+  document.getElementById(`pdf-page-${next}`)?.scrollIntoView({
+    block: 'start',
+    behavior: 'smooth',
+  })
+  emit('status', `Page ${next} of ${totalPages.value}.`)
 }
 
-async function changeZoom(delta: number) {
+function chooseMostVisiblePage() {
+  let bestPage = currentPage.value
+  let bestRatio = -1
+
+  for (const [pageNumber, ratio] of visibility) {
+    if (ratio > bestRatio || (ratio === bestRatio && pageNumber < bestPage)) {
+      bestPage = pageNumber
+      bestRatio = ratio
+    }
+  }
+
+  if (bestRatio > 0 && bestPage !== currentPage.value) {
+    currentPage.value = bestPage
+    emit('status', `Page ${bestPage} of ${totalPages.value}.`)
+  }
+}
+
+function handleVisibility(pageNumber: number, ratio: number) {
+  if (ratio > 0) visibility.set(pageNumber, ratio)
+  else visibility.delete(pageNumber)
+  chooseMostVisiblePage()
+}
+
+function handleRendered(pageNumber: number, scale: number) {
+  if (pageNumber === currentPage.value) renderedScale.value = scale
+}
+
+function handleRenderError(message: string) {
+  phase.value = 'error'
+  errorMessage.value = message
+  emit('status', message)
+}
+
+function changeZoom(delta: number) {
   fitMode.value = 'custom'
   zoom.value = Math.min(4, Math.max(0.25, renderedScale.value + delta))
-  await renderCurrentPage()
+  emit('status', `PDF zoom set to ${Math.round(zoom.value * 100)}%.`)
 }
 
-async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
   fitMode.value = mode
-  await renderCurrentPage()
+  emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
 }
 
 function handlePageInput(event: Event) {
@@ -148,13 +170,9 @@ function handleSlider(event: Event) {
   void goToPage(Number(input.value))
 }
 
-function handleResize() {
-  if (fitMode.value !== 'custom') void renderCurrentPage()
-}
-
 onMounted(() => {
   void openDocument()
-  globalThis.addEventListener('resize', handleResize)
+  globalThis.addEventListener('resize', scheduleViewportMeasure)
 })
 
 watch(
@@ -164,8 +182,8 @@ watch(
 
 onBeforeUnmount(() => {
   openSequence += 1
-  renderSequence += 1
-  globalThis.removeEventListener('resize', handleResize)
+  cancelAnimationFrame(resizeFrame)
+  globalThis.removeEventListener('resize', scheduleViewportMeasure)
   void closeCurrentSession()
 })
 </script>
@@ -257,7 +275,7 @@ onBeforeUnmount(() => {
 
     <section
       ref="viewport"
-      class="min-h-[70vh] min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
+      class="h-[70vh] min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
       aria-labelledby="reader-title"
     >
       <div
@@ -278,7 +296,7 @@ onBeforeUnmount(() => {
         <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
       </div>
 
-      <div v-else class="flex min-w-max flex-col items-center gap-4">
+      <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
         <input
           v-if="totalPages > 1"
           :value="currentPage"
@@ -286,15 +304,24 @@ onBeforeUnmount(() => {
           min="1"
           :max="totalPages"
           step="1"
-          class="w-full max-w-2xl"
+          class="sticky top-0 z-10 w-full max-w-2xl bg-canvas py-2"
           aria-label="PDF page progress"
           @input="handleSlider"
         />
-        <canvas
-          ref="canvas"
-          class="max-w-none rounded-sm bg-white shadow-sm"
-          aria-label="Rendered PDF page"
-        ></canvas>
+
+        <PdfPageView
+          v-for="pageNumber in pages"
+          :key="pageNumber"
+          :session="session"
+          :page-number="pageNumber"
+          :fit-mode="fitMode"
+          :zoom="zoom"
+          :available-width="availableWidth"
+          :available-height="availableHeight"
+          @visibility="handleVisibility"
+          @rendered="handleRendered"
+          @error="handleRenderError"
+        />
       </div>
     </section>
   </div>
