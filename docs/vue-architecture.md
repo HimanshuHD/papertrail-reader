@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #55
 
-| Layer           | Implemented on main                                            | Remaining owner                        |
-| --------------- | -------------------------------------------------------------- | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView      | Browser library tree #25                |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states         |
-| State           | Theme plus source selection and discovery progress/results      | Library tree state #25; metadata #13   |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed       |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                        |
-| File access     | Source selection #8 plus discovery/indexing #24                | Tree/refresh UI #25                    |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                    |
+| Layer           | Implemented on main                                            | Remaining owner                      |
+| --------------- | -------------------------------------------------------------- | ------------------------------------ |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | Browser library tree #25             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states       |
+| State           | Theme plus source selection and discovery progress/results     | Library tree state #25; metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed     |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                      |
+| File access     | Source selection #8 plus discovery/indexing #24                | Tree/refresh UI #25                  |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                  |
 
 #6/#46/#42/#49/#43/#8/#24 are merged. Shell metadata is clearly labeled demonstration content. Browser source selection and incremental discovery are implemented; #25 owns visible tree/list plus refresh/reselection UI, while reader implementation remains separate.
 
