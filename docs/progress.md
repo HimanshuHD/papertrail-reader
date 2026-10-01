@@ -4,7 +4,7 @@ Updated: 1 October 2026. Parent tracker: [#1](https://github.com/HimanshuHD/pape
 
 ## Current increment
 
-Repository documentation and issue tracking (#2) is in review on `chore/2-repository-setup`. Application code and CI are not implemented. The initial README commit on main is `1d5b93dfe9f2e1bb85204fa8773300352f9a4b4d` and references #2. The setup PR's commits provide the remaining evidence for this increment.
+Repository documentation and issue tracking (#2) is in review on `chore/2-repository-setup`. Application code and CI are not implemented. The initial README commit on main is `1d5b93dfe9f2e1bb85204fa8773300352f9a4b4d` and references #2. Setup PR: [#20](https://github.com/HimanshuHD/papertrail-reader/pull/20). Setup commit: [586c280](https://github.com/HimanshuHD/papertrail-reader/commit/586c280e2be572eaed723aa903fd32ed92e262b1). Its acceptance criteria are verified; merge to main is pending.
 
 ## Backlog and dependencies
 
@@ -31,7 +31,7 @@ Repository documentation and issue tracking (#2) is in review on `chore/2-reposi
 
 ## Evidence and completion
 
-- #2: Initial README commit above; setup branch contains requested files and tracking templates. Validation is documented in its PR and issue.
+- #2: Initial README and setup commits above; PR #20 contains the requested files and tracking templates. All relative Markdown links resolved; PDF parsed as eight pages and uploaded blob matched source bytes. App CI does not exist yet.
 - No product implementation issue is completed yet.
 - Next: #3 frontend bootstrap, followed by #4 native shell and #5 CI/tooling.
 
