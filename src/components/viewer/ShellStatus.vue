@@ -26,6 +26,11 @@ const content = computed(() => {
         title: 'Demonstration workspace',
         detail: 'Sample titles are available for layout exploration only. File access and real reading are not active yet.',
       }
+    default:
+      return {
+        title: 'PaperTrail workspace',
+        detail: 'The workspace state is unavailable. No files have been accessed or changed.',
+      }
   }
 })
 </script>
