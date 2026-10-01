@@ -2,19 +2,19 @@
 
 Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 
-## Implementation status after PR #55
+## Implementation status after PR #57
 
-| Layer           | Implemented on main                                            | Remaining owner                      |
-| --------------- | -------------------------------------------------------------- | ------------------------------------ |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView      | Browser library tree #25             |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states       |
-| State           | Theme plus source selection and discovery progress/results     | Library tree state #25; metadata #13 |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed     |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                      |
-| File access     | Source selection #8 plus discovery/indexing #24                | Tree/refresh UI #25                  |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                  |
+| Layer           | Implemented on main                                            | Remaining owner                    |
+| --------------- | -------------------------------------------------------------- | ---------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF reader integration #10         |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states     |
+| State           | Theme plus source selection/discovery/tree/local selection     | PDF reader state #10; metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed   |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                    |
+| File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13            |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                |
 
-#6/#46/#42/#49/#43/#8/#24 are merged. Shell metadata is clearly labeled demonstration content. Browser source selection and incremental discovery are implemented; #25 owns visible tree/list plus refresh/reselection UI, while reader implementation remains separate.
+#6/#46/#42/#49/#43/#8/#24/#25 are merged. M2 browser selection, discovery, hierarchy and refresh/reselection are complete. Local-document selection now hands a `File` toward the reader boundary; PDF.js implementation remains #10 and EPUB remains #12.
 
 ## Implemented foundation flow (#6)
 
@@ -51,7 +51,7 @@ Components should render state through explicit props and emit user intent. Appl
 
 ## Planned provider and reader layers
 
-Browser source selection starts in #8 with `src/features/library/browser-selection.ts`, which feature-detects the native directory picker, normalizes picker failures and preserves raw directory handles or selected `File` objects. `LibrarySourcePicker.vue` owns user-triggered controls and browser fallbacks. #24 adds `src/features/library/discovery.ts`: it consumes that selection, recursively traverses approved directory handles or snapshot `File[]`, filters PDF/EPUB case-insensitively, preserves relative paths, yields during large scans, supports `AbortSignal`, and returns partial documents plus recoverable per-path problems. `ReaderView` owns the current discovery controller/progress/result and passes only presentation data to the sidebar. Hierarchy rendering, refresh and reselection UI are active in #25 on `feat/25-library-tree-ui`.
+Browser source selection starts in #8 with `src/features/library/browser-selection.ts`, which feature-detects the native directory picker, normalizes picker failures and preserves raw directory handles or selected `File` objects. `LibrarySourcePicker.vue` owns user-triggered controls and browser fallbacks. #24 adds `src/features/library/discovery.ts`: it consumes that selection, recursively traverses approved directory handles or snapshot `File[]`, filters PDF/EPUB case-insensitively, preserves relative paths, yields during large scans, supports `AbortSignal`, and returns partial documents plus recoverable per-path problems. `ReaderView` owns the current discovery controller/progress/result and passes only presentation data to the sidebar. Hierarchy rendering, refresh and reselection UI completed in #25 / merged PR #57.
 
 PDF and EPUB engines will share lifecycle/navigation/progress/contents boundaries but expose different controls. PDF uses fixed pages and zoom/fit; EPUB uses CFI locations and typography. Reader adapters must release worker/render tasks and Blob URLs when switching. IndexedDB migrations, identity reconciliation and stored positions belong to #13.
 
