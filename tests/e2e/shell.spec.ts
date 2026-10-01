@@ -100,7 +100,28 @@ test('browser source selection handles native success, cancellation and file inp
   await page.addInitScript(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
-      value: async () => ({ kind: 'directory', name: 'Mock library' }),
+      value: async () => ({
+        kind: 'directory',
+        name: 'Mock library',
+        async *entries() {
+          yield [
+            'guide.pdf',
+            {
+              kind: 'file',
+              name: 'guide.pdf',
+              getFile: async () => new File(['pdf fixture'], 'guide.pdf', { type: 'application/pdf' }),
+            },
+          ]
+          yield [
+            'notes.txt',
+            {
+              kind: 'file',
+              name: 'notes.txt',
+              getFile: async () => new File(['text fixture'], 'notes.txt', { type: 'text/plain' }),
+            },
+          ]
+        },
+      }),
     })
   })
 
@@ -108,8 +129,10 @@ test('browser source selection handles native success, cancellation and file inp
   const sourceStatus = page
     .locator('section[aria-labelledby="library-source-title"]')
     .getByRole('status')
+  const discoveryStatus = page.locator('section[aria-labelledby="scan-title"]').getByRole('status')
   await page.getByRole('button', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
+  await expect(discoveryStatus).toContainText('1 supported document found.')
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -135,5 +158,6 @@ test('browser source selection handles native success, cancellation and file inp
     },
   ])
   await expect(sourceStatus).toContainText('2 items selected from the file picker')
+  await expect(discoveryStatus).toContainText('2 supported documents found.')
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
 })
