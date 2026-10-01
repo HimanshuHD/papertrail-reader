@@ -6,12 +6,12 @@ Automatic Frontend CI runs lint, formatting, pipeline/unit tests, strict types a
 
 ## Explicit browser checks
 
-Run npm run build, install Chromium with npx playwright install --with-deps --only-shell chromium, then npm run test:e2e when browser coverage is needed. Set E2E_BASE_PATH to match a build made with a production/preview prefix. On machines with an installed browser, repeat tests without reinstalling it. Optional WebKit projects use E2E_WEBKIT=1 after installing WebKit. A future manual GitHub workflow can be implemented if requested; none is currently configured.
+Run `npm run build`, install Chromium with `npx playwright install --with-deps chromium`, then run `npm run test:e2e` when browser coverage is needed. The repository also provides `.github/workflows/browser-e2e.yml`: it runs only on manual workflow dispatch or when a draft pull request is marked Ready for review. Automatic Frontend CI still does not install browsers. Set `E2E_BASE_PATH` only when validating a prefixed build. Optional WebKit projects use `E2E_WEBKIT=1` after installing WebKit.
 
-The suite has 15 default Chromium cases at 320/375/768/1024/1440px. It covers preserved home, Go to app/direct entry/history, keyboard/theme persistence, both themes, sidebar placement/collapse/selection, disabled actions, readable title width and overflow. It saves home/app screenshots, an HTML report and failure traces locally. Screenshot capture is not a pixel-baseline approval. Config/specs remain strictly type checked; generated reports are ignored.
+The suite keeps the Chromium width matrix at 320/375/768/1024/1440px and expands as interactive product behavior arrives. It covers preserved home, Go to app/direct entry/history, keyboard/theme persistence, both themes, sidebar placement/collapse/selection, disabled actions, readable title width and overflow. It saves home/app screenshots, an HTML report and failure traces locally. Screenshot capture is not a pixel-baseline approval. Config/specs remain strictly type checked; generated reports are ignored.
 
 ## Recorded PR #50 evidence
 
 CI 36912595432 passed 15 browser checks before the policy change. Artifact 11187462095 contains both-theme home/app screenshots; representative screenshots were inspected and the narrow toolbar title corrected. The artifact expires after seven days. These recorded results do not imply future commits are browser-tested automatically.
 
-#37 stays open for #43 full focus/status and #8 file/directory selection/fallback/error paths. Supported-release browser coverage remains #28; optional WebKit is not certification of every Safari/device version. File parsing and reader correctness are not claimed by the shell suite.
+#43 focus/status code is merged in PR #53. #37 stays open until explicit real-browser evidence covers the focus flow together with #8 file/directory selection, cancellation and fallback paths. Supported-release browser coverage remains #28; optional WebKit is not certification of every Safari/device version. File parsing and reader correctness are not claimed by the shell suite.
