@@ -64,7 +64,9 @@ async function renderPage() {
 
     emit(
       'error',
-      error instanceof Error ? error.message : `PaperTrail could not render page ${props.pageNumber}.`,
+      error instanceof Error
+        ? error.message
+        : `PaperTrail could not render page ${props.pageNumber}.`,
     )
   } finally {
     if (sequence === renderSequence) rendering.value = false
