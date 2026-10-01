@@ -8,7 +8,7 @@ defineProps<{ sidebarOpen: boolean }>()
       v-if="sidebarOpen"
       id="document-sidebar"
       class="min-w-0 border-b border-line bg-panel lg:border-r lg:border-b-0"
-      aria-label="Sample document library"
+      aria-label="Document library"
     >
       <slot name="sidebar" />
     </aside>
