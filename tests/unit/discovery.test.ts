@@ -194,6 +194,7 @@ describe('browser document discovery', () => {
       kind: 'directory',
       name: 'Broken',
       async *entries() {
+        yield* []
         throw new DOMException('directory unavailable', 'NotReadableError')
       },
     } as unknown as FileSystemDirectoryHandle
