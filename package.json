@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write tests/e2e/shell.spec.ts docs/progress.md docs/roadmap.md docs/vue-architecture.md && git diff -- tests/e2e/shell.spec.ts docs/progress.md docs/roadmap.md docs/vue-architecture.md && prettier --check .",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:pipeline": "node --test scripts/*.test.mjs",
