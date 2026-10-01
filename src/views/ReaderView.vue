@@ -5,6 +5,7 @@ import ThemePicker from '../components/ThemePicker.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
 import ReaderToolbar from '../components/viewer/ReaderToolbar.vue'
+import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
 import ShellStatus from '../components/viewer/ShellStatus.vue'
 import {
@@ -49,6 +50,7 @@ const documents: readonly ShellDocument[] = [
 
 const selectedId = ref('welcome')
 const selectedLibraryDocumentId = ref<string | null>(null)
+const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
 const sidebarToggle = ref<HTMLButtonElement | null>(null)
 const viewState = ref<ShellViewState>('demo')
@@ -126,14 +128,23 @@ function selectDocument(id: string) {
   const document = documents.find((item) => item.id === id)
   if (!document) return
   selectedId.value = id
+  activePdfDocument.value = null
   announcement.value = `Selected sample: ${document.title}.`
 }
 
 function selectLibraryDocument(id: string) {
   const document = discoveredDocuments.value.find((item) => item.id === id)
   if (!document) return
+
   selectedLibraryDocumentId.value = id
-  announcement.value = `Selected local document: ${document.name}. Reader integration is not active yet.`
+  if (document.format === 'PDF') {
+    activePdfDocument.value = document
+    announcement.value = `Opening local PDF: ${document.name}.`
+    return
+  }
+
+  activePdfDocument.value = null
+  announcement.value = `Selected local EPUB: ${document.name}. EPUB reading remains planned in #12.`
 }
 
 function restoreLibrarySelection(
@@ -190,6 +201,7 @@ async function runDiscovery(
 }
 
 async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  activePdfDocument.value = null
   librarySelection.value = selection
   selectedLibraryDocumentId.value = null
   announcement.value = describeLibrarySelection(selection)
@@ -200,6 +212,7 @@ async function refreshLibrary() {
   const selection = librarySelection.value
   if (!selection || selection.kind !== 'directory') return
 
+  activePdfDocument.value = null
   announcement.value = `Refreshing folder ${selection.handle.name}.`
   await runDiscovery(selection, true)
 }
@@ -231,9 +244,9 @@ async function closeSidebarAndRestoreFocus() {
         <RouterLink to="/" class="text-xl font-bold tracking-tight" aria-label="PaperTrail home"
           >PaperTrail<span class="ml-2 text-xs font-normal text-muted">Home ↗</span></RouterLink
         >
-        <span class="rounded-full border border-line px-3 py-1 text-xs text-muted"
-          >Layout preview</span
-        >
+        <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">{{
+          activePdfDocument ? 'PDF reader' : 'Layout preview'
+        }}</span>
       </div>
       <ThemePicker />
     </header>
@@ -277,9 +290,18 @@ async function closeSidebarAndRestoreFocus() {
           @close="closeSidebarAndRestoreFocus"
         />
       </template>
-      <template #toolbar><ReaderToolbar :document="selectedDocument" /></template>
-      <ShellStatus :state="viewState" />
-      <ReaderWorkspace v-if="viewState === 'demo'" :document="selectedDocument" />
+      <template v-if="!activePdfDocument" #toolbar>
+        <ReaderToolbar :document="selectedDocument" />
+      </template>
+      <PdfReaderWorkspace
+        v-if="activePdfDocument"
+        :document="activePdfDocument"
+        @status="announcement = $event"
+      />
+      <template v-else>
+        <ShellStatus :state="viewState" />
+        <ReaderWorkspace v-if="viewState === 'demo'" :document="selectedDocument" />
+      </template>
     </ReaderShell>
   </main>
 </template>
