@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #50
 
-| Layer           | Implemented on main                                                | Remaining owner                        |
-| --------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Shell behavior #43 in review             |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | #43 accessibility/status refinement    |
-| State           | Pinia explicit theme; view-local sample selection/sidebar collapse/status presentation | Library state #9; reading metadata #13 |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
-| File access     | Not implemented                                                    | #8/#9                                  |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence     | #13                                    |
+| Layer           | Implemented on main                                                                  | Remaining owner                        |
+| --------------- | ------------------------------------------------------------------------------------ | -------------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView                         | Shell behavior #43 in review             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell                          | #43 accessibility/status refinement      |
+| State           | Pinia explicit theme; view-local sample selection/sidebar collapse/status display | Library state #9; reading metadata #13   |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                                         | Future document routes as needed         |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                                   | Engines #10/#12                          |
+| File access     | Not implemented                                                                   | #8/#9                                    |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence                    | #13                                      |
 
 #6/#46/#42/#49 are merged. Shell metadata is clearly labeled demonstration content; no file discovery or reader implementation is claimed.
 
