@@ -12,6 +12,43 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
+function createPdfFixture(): Buffer {
+  const objects = [
+    '<< /Type /Catalog /Pages 2 0 R >>',
+    '<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 6 0 R >>',
+    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
+    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 7 0 R >>',
+  ]
+  const streams = [
+    'BT /F1 24 Tf 72 720 Td (First page) Tj ET',
+    'BT /F1 24 Tf 72 720 Td (Second page) Tj ET',
+  ]
+
+  for (const stream of streams) {
+    objects.push(`<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`)
+  }
+
+  let pdf = '%PDF-1.4\n'
+  const offsets = [0]
+
+  objects.forEach((body, index) => {
+    offsets.push(Buffer.byteLength(pdf, 'ascii'))
+    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`
+  })
+
+  const xrefOffset = Buffer.byteLength(pdf, 'ascii')
+  pdf += `xref\n0 ${objects.length + 1}\n`
+  pdf += '0000000000 65535 f \n'
+  for (const offset of offsets.slice(1)) {
+    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`
+  pdf += `startxref\n${xrefOffset}\n%%EOF\n`
+
+  return Buffer.from(pdf, 'ascii')
+}
+
 test('home and app respond in both themes without overflow', async ({ page }, info) => {
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
@@ -204,4 +241,45 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(localLibrary.getByRole('button', { name: /book.epub/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reselect files' })).toBeVisible()
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+})
+
+
+test('PDF reader renders local pages, text layer, navigation and malformed-file recovery', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const fileInput = page.locator('input[accept*=".pdf"]')
+  const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
+
+  await fileInput.setInputFiles({
+    name: 'reader.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(),
+  })
+  await expect(localLibrary.getByRole('button', { name: /reader\.pdf/ })).toBeVisible()
+  await localLibrary.getByRole('button', { name: /reader\.pdf/ }).click()
+
+  await expect(page.locator('#reader-title')).toHaveText('reader.pdf')
+  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
+  await expect(page.getByLabel('Rendered PDF page 1')).toBeVisible()
+  await expect(page.getByLabel('Selectable text for PDF page 1')).toContainText('First page')
+
+  await page.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText(/Page 2 of 2/)).toBeVisible()
+  await expect(page.getByLabel('Rendered PDF page 2')).toBeVisible()
+  await expect(page.getByLabel('Selectable text for PDF page 2')).toContainText('Second page')
+
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  await expect(page.getByRole('button', { name: 'Fit width' })).toHaveAttribute(
+    'aria-pressed',
+    'false',
+  )
+
+  await fileInput.setInputFiles({
+    name: 'broken.pdf',
+    mimeType: 'application/pdf',
+    buffer: Buffer.from('not a valid PDF'),
+  })
+  await localLibrary.getByRole('button', { name: /broken\.pdf/ }).click()
+  await expect(page.getByRole('alert')).toContainText('This file is not a valid or supported PDF.')
 })
