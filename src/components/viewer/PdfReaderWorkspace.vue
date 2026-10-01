@@ -109,7 +109,7 @@ async function goToPage(page: number) {
   const next = clampPage(page)
   currentPage.value = next
   await nextTick()
-  document.getElementById(`pdf-page-${next}`)?.scrollIntoView({
+  document.getElementById(`pdf-page-${next}`)?.scrollIntoView?.({
     block: 'start',
     behavior: 'smooth',
   })
