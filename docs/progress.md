@@ -16,7 +16,7 @@ Latest merged increment: PR #55, merge commit `1f9fdbe732cccdd964f796c1e106420ba
 | [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6)   | Web           | Design tokens, themes and application state                           | Completed |
 | [#7](https://github.com/HimanshuHD/papertrail-reader/issues/7)   | Web           | Split reader layout and accessible app shell                          | Completed |
 | [#8](https://github.com/HimanshuHD/papertrail-reader/issues/8)   | Web           | Browser folder/file selection and permission handling                 | Completed |
-| [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | In progress — #24 completed; #25 next |
+| [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | In progress — #25 active |
 | [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | Backlog |
 | [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Backlog |
 | [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | Backlog |
@@ -31,7 +31,7 @@ Latest merged increment: PR #55, merge commit `1f9fdbe732cccdd964f796c1e106420ba
 | [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web           | Frontend quality checks and test coverage                             | Completed |
 | [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline                        | Deferred - desktop phase |
 | [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web           | Incremental browser indexing and cancellation                         | Completed |
-| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web           | Directory tree and browser library refresh UI                         | Backlog |
+| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web           | Directory tree and browser library refresh UI                         | In progress — feat/25-library-tree-ui |
 | [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web           | Web build, HTTPS deployment and release artifacts                     | In progress |
 | [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization                                      | Deferred - desktop phase |
 | [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | Web           | Supported-browser release validation                                  | Backlog |
@@ -67,7 +67,7 @@ Post-merge #50 main CI/deployment evidence is recorded in deployment-verificatio
 
 ## Next work and completion rules
 
-Current sequence: #8 and #24 are completed in merged PRs #54/#55. M0 #5 and M1 #7 are complete. #25 is next: render normalized discovery results as the directory tree/list and add refresh/reselection behavior. Parent #9 remains open until #25 is accepted. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
+Current sequence: #8 and #24 are completed in merged PRs #54/#55. M0 #5 and M1 #7 are complete. #25 is active on `feat/25-library-tree-ui`: render normalized results as a nested local tree, preserve local selection across live refresh, and require explicit reselection for browser snapshots. Parent #9 remains open until #25 is accepted. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
 
 Web 0.1 acceptance requires M0–M4 plus #13 and release-relevant reliability/browser delivery checks. Foundation version 0.1.0 does not claim completed reader release acceptance. Deferred desktop scope remains open and does not block web delivery. Close only accepted scope after review/merge and preserve validation evidence.
 
