@@ -105,8 +105,11 @@ test('browser source selection handles native success, cancellation and file inp
   })
 
   await page.goto('./#/app')
+  const sourceStatus = page
+    .locator('section[aria-labelledby="library-source-title"]')
+    .getByRole('status')
   await page.getByRole('button', { name: 'Choose folder' }).click()
-  await expect(page.getByText(/Folder “Mock library” selected/)).toBeVisible()
+  await expect(sourceStatus).toContainText('Folder “Mock library” selected')
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -117,7 +120,7 @@ test('browser source selection handles native success, cancellation and file inp
     })
   })
   await page.getByRole('button', { name: 'Choose folder' }).click()
-  await expect(page.getByText(/cancelled or permission was not granted/)).toBeVisible()
+  await expect(sourceStatus).toContainText('cancelled or permission was not granted')
 
   await page.locator('input[accept*=".pdf"]').setInputFiles([
     {
@@ -131,6 +134,6 @@ test('browser source selection handles native success, cancellation and file inp
       buffer: Buffer.from('epub fixture'),
     },
   ])
-  await expect(page.getByText(/2 items selected from the file picker/)).toBeVisible()
+  await expect(sourceStatus).toContainText('2 items selected from the file picker')
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
 })
