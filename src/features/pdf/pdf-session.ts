@@ -1,9 +1,4 @@
-import type {
-  PDFDocumentLoadingTask,
-  PDFDocumentProxy,
-  PDFPageProxy,
-  RenderTask,
-} from 'pdfjs-dist'
+import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
 export type PdfFitMode = 'width' | 'page' | 'custom'
 
@@ -161,8 +156,7 @@ export class PdfDocumentSession {
     request.canvas.style.width = `${Math.floor(viewport.width)}px`
     request.canvas.style.height = `${Math.floor(viewport.height)}px`
 
-    const transform =
-      outputScale === 1 ? undefined : ([outputScale, 0, 0, outputScale, 0, 0] as const)
+    const transform = outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0]
 
     const task = page.render({
       canvas: request.canvas,
@@ -195,7 +189,7 @@ export class PdfDocumentSession {
     if (this.closed) return
     this.closed = true
     await this.cancelRender()
-    await this.document.destroy()
+    await this.document.cleanup()
     await this.loadingTask.destroy()
   }
 }
