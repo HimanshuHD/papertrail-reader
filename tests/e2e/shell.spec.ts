@@ -26,7 +26,9 @@ function createPdfFixture(): Buffer {
   ]
 
   for (const stream of streams) {
-    objects.push(`<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`)
+    objects.push(
+      `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
+    )
   }
 
   let pdf = '%PDF-1.4\n'
@@ -242,7 +244,6 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(page.getByRole('button', { name: 'Reselect files' })).toBeVisible()
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
 })
-
 
 test('PDF reader renders local pages, text layer, navigation and malformed-file recovery', async ({
   page,
