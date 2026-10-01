@@ -11,7 +11,7 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 | State           | Theme plus view-local sample/sidebar/browser source selection  | Library state #9; reading metadata #13 |
 | Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed       |
 | Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                        |
-| File access     | Explicit browser source selection in #8 branch                 | Discovery/indexing #9/#24              |
+| File access     | Source selection #8 plus discovery/indexing #24                | Tree/refresh UI #25                    |
 | Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                    |
 
 #6/#46/#42/#49/#43 are merged. Shell metadata is clearly labeled demonstration content. #8 adds explicit browser source selection only; file discovery and reader implementation are still separate.
@@ -51,7 +51,7 @@ Components should render state through explicit props and emit user intent. Appl
 
 ## Planned provider and reader layers
 
-Browser source selection starts in #8 with `src/features/library/browser-selection.ts`, which feature-detects the native directory picker, normalizes picker failures and preserves raw directory handles or selected `File` objects without enumerating them. `LibrarySourcePicker.vue` owns user-triggered controls and browser fallbacks; `ReaderView` retains the selected payload for later library discovery. Indexing, filtering, hierarchy reconstruction, refresh and reselection remain #9/#24/#25.
+Browser source selection starts in #8 with `src/features/library/browser-selection.ts`, which feature-detects the native directory picker, normalizes picker failures and preserves raw directory handles or selected `File` objects. `LibrarySourcePicker.vue` owns user-triggered controls and browser fallbacks. #24 adds `src/features/library/discovery.ts`: it consumes that selection, recursively traverses approved directory handles or snapshot `File[]`, filters PDF/EPUB case-insensitively, preserves relative paths, yields during large scans, supports `AbortSignal`, and returns partial documents plus recoverable per-path problems. `ReaderView` owns the current discovery controller/progress/result and passes only presentation data to the sidebar. Hierarchy rendering, refresh and reselection UI remain #25.
 
 PDF and EPUB engines will share lifecycle/navigation/progress/contents boundaries but expose different controls. PDF uses fixed pages and zoom/fit; EPUB uses CFI locations and typography. Reader adapters must release worker/render tasks and Blob URLs when switching. IndexedDB migrations, identity reconciliation and stored positions belong to #13.
 
@@ -66,3 +66,9 @@ The sun/moon button uses native button keyboard activation, aria-pressed for Dar
 ## Reader shell and entry (#42/#49)
 
 HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 completed the accessibility/status increment in merged PR #53; #37 remains the explicit browser-acceptance owner. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.
+
+## Browser discovery increment (#24)
+
+`discoverDocuments` is UI-neutral. Its normalized `DiscoveredDocument` identity is session-local only; persistent document identity remains #13. Individual-file fallback stays flat even when browser `File` objects originated elsewhere. Directory-input snapshots may use `webkitRelativePath`; approved directory handles are walked recursively from their granted root without exposing or inventing absolute paths.
+
+Discovery cancellation stops PaperTrail's application-level traversal and returns partial results. It does not claim to cancel picker/OS enumeration that already occurred before files reached the app. Read/enumeration failures are recorded per path so usable documents survive isolated access failures. #25 consumes these normalized results to build the visible library tree.

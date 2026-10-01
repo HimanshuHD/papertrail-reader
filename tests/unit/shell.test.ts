@@ -148,6 +148,7 @@ describe('home and product shell', () => {
     await flushPromises()
 
     expect(wrapper.text()).toContain('2 items selected from the file picker')
+    expect(wrapper.text()).toContain('2 supported documents found.')
     expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
     expect(wrapper.findAll('button:disabled')).toHaveLength(2)
     wrapper.unmount()

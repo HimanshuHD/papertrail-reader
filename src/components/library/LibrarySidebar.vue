@@ -8,12 +8,16 @@ const props = defineProps<{
   documents: readonly ShellDocument[]
   selectedId: string
   selectionSummary: string
+  discoverySummary: string
+  discoveryBusy: boolean
+  discoveryProblemCount: number
 }>()
 
 defineEmits<{
   select: [id: string]
   close: []
   librarySelection: [selection: BrowserLibrarySelection]
+  cancelDiscovery: []
 }>()
 
 const collections = computed(() => [
@@ -38,6 +42,29 @@ const collections = computed(() => [
         @selected="$emit('librarySelection', $event)"
       />
     </div>
+
+    <section class="mt-4 rounded-lg border border-line bg-canvas p-3" aria-labelledby="scan-title">
+      <div class="flex items-center justify-between gap-3">
+        <h3 id="scan-title" class="text-xs font-semibold tracking-wider text-muted uppercase">
+          Discovery
+        </h3>
+        <button
+          v-if="discoveryBusy"
+          type="button"
+          class="min-h-9 rounded-md border border-line px-3 py-1 text-xs font-medium"
+          @click="$emit('cancelDiscovery')"
+        >
+          Cancel scan
+        </button>
+      </div>
+      <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
+        {{ discoverySummary }}
+      </p>
+      <p v-if="discoveryProblemCount > 0" class="mt-2 text-xs leading-relaxed text-muted">
+        {{ discoveryProblemCount }} recoverable access issue(s) recorded. Other readable documents
+        remain available for the next library step.
+      </p>
+    </section>
 
     <nav class="mt-6 space-y-5" aria-label="Demonstration documents">
       <section v-for="collection in collections" :key="collection">
@@ -74,8 +101,8 @@ const collections = computed(() => [
       </section>
     </nav>
     <p class="mt-8 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-      PaperTrail only receives files you explicitly choose. Library discovery and the directory tree
-      are implemented separately in the next milestone.
+      PaperTrail only receives files you explicitly choose. Discovery now identifies supported
+      documents; directory-tree presentation and refresh UI remain the next milestone.
     </p>
   </div>
 </template>

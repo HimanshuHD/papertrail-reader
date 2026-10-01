@@ -11,7 +11,15 @@ import {
   describeLibrarySelection,
   type BrowserLibrarySelection,
 } from '../features/library/browser-selection'
+import {
+  discoverDocuments,
+  type DiscoveredDocument,
+  type DiscoveryProblem,
+  type DiscoveryProgress,
+} from '../features/library/discovery'
 import type { ShellDocument, ShellViewState } from '../types/shell'
+
+type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
 const documents: readonly ShellDocument[] = [
   {
@@ -36,17 +44,59 @@ const documents: readonly ShellDocument[] = [
     detail: 'A sample book',
   },
 ]
+
 const selectedId = ref('welcome')
 const sidebarOpen = ref(true)
 const sidebarToggle = ref<HTMLButtonElement | null>(null)
 const viewState = ref<ShellViewState>('demo')
 const announcement = ref('Demonstration workspace ready.')
+
 const librarySelection = shallowRef<BrowserLibrarySelection | null>(null)
+const discoveryPhase = ref<DiscoveryPhase>('idle')
+const discoveryProgress = ref<DiscoveryProgress>({
+  scanned: 0,
+  supported: 0,
+  currentPath: '',
+})
+const discoveredDocuments = shallowRef<readonly DiscoveredDocument[]>([])
+const discoveryProblems = shallowRef<readonly DiscoveryProblem[]>([])
+let discoveryController: AbortController | null = null
+
 const librarySelectionSummary = computed(() =>
   librarySelection.value
     ? describeLibrarySelection(librarySelection.value)
     : 'No folder or files selected yet.',
 )
+
+const discoverySummary = computed(() => {
+  switch (discoveryPhase.value) {
+    case 'idle':
+      return 'Document discovery starts after you choose a source.'
+    case 'indexing':
+      return `Scanning… ${discoveryProgress.value.scanned} files checked, ${discoveryProgress.value.supported} supported.`
+    case 'cancelled':
+      return `Discovery cancelled. ${discoveredDocuments.value.length} supported documents were found before cancellation.`
+    case 'error':
+      return 'Document discovery stopped unexpectedly. Your selected files were not changed.'
+    case 'ready': {
+      const count = discoveredDocuments.value.length
+      const noun = count === 1 ? 'document' : 'documents'
+      if (count === 0) {
+        return discoveryProblems.value.length > 0
+          ? 'No readable PDF or EPUB documents were found. Some selected items could not be accessed.'
+          : 'No PDF or EPUB documents were found in this selection.'
+      }
+      const problemSuffix =
+        discoveryProblems.value.length > 0
+          ? ` ${discoveryProblems.value.length} selected item(s) could not be read.`
+          : ''
+      return `${count} supported ${noun} found.${problemSuffix}`
+    }
+    default:
+      return 'Document discovery state is unavailable.'
+  }
+})
+
 const selectedDocument = computed(
   () => documents.find((document) => document.id === selectedId.value) ?? documents[0]!,
 )
@@ -58,9 +108,44 @@ function selectDocument(id: string) {
   announcement.value = `Selected sample: ${document.title}.`
 }
 
-function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
   librarySelection.value = selection
   announcement.value = describeLibrarySelection(selection)
+
+  discoveryController?.abort()
+  const controller = new AbortController()
+  discoveryController = controller
+  discoveryPhase.value = 'indexing'
+  discoveryProgress.value = { scanned: 0, supported: 0, currentPath: '' }
+  discoveredDocuments.value = []
+  discoveryProblems.value = []
+
+  try {
+    const result = await discoverDocuments(selection, {
+      signal: controller.signal,
+      onProgress(progress) {
+        if (discoveryController === controller) discoveryProgress.value = progress
+      },
+    })
+
+    if (discoveryController !== controller) return
+
+    discoveredDocuments.value = result.documents
+    discoveryProblems.value = result.problems
+    discoveryPhase.value = result.status === 'cancelled' ? 'cancelled' : 'ready'
+    announcement.value =
+      result.status === 'cancelled'
+        ? `Document discovery cancelled after ${result.scanned} files.`
+        : `${result.documents.length} supported documents discovered.`
+  } catch {
+    if (discoveryController !== controller) return
+    discoveryPhase.value = 'error'
+    announcement.value = 'Document discovery failed.'
+  }
+}
+
+function cancelDiscovery() {
+  discoveryController?.abort()
 }
 
 function toggleSidebar() {
@@ -116,8 +201,12 @@ async function closeSidebarAndRestoreFocus() {
           :documents="documents"
           :selected-id="selectedId"
           :selection-summary="librarySelectionSummary"
+          :discovery-summary="discoverySummary"
+          :discovery-busy="discoveryPhase === 'indexing'"
+          :discovery-problem-count="discoveryProblems.length"
           @select="selectDocument"
           @library-selection="acceptLibrarySelection"
+          @cancel-discovery="cancelDiscovery"
           @close="closeSidebarAndRestoreFocus"
         />
       </template>
