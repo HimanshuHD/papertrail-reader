@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #57
 
-| Layer           | Implemented on main                                            | Remaining owner                      |
-| --------------- | -------------------------------------------------------------- | ------------------------------------ |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF reader integration #10           |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states       |
-| State           | Theme plus source selection/discovery/tree/local selection      | PDF reader state #10; metadata #13   |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed     |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                      |
-| File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13              |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                  |
+| Layer           | Implemented on main                                            | Remaining owner                    |
+| --------------- | -------------------------------------------------------------- | ---------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF reader integration #10         |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states     |
+| State           | Theme plus source selection/discovery/tree/local selection     | PDF reader state #10; metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed   |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                    |
+| File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13            |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                |
 
 #6/#46/#42/#49/#43/#8/#24/#25 are merged. M2 browser selection, discovery, hierarchy and refresh/reselection are complete. Local-document selection now hands a `File` toward the reader boundary; PDF.js implementation remains #10 and EPUB remains #12.
 
