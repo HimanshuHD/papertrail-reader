@@ -2,7 +2,7 @@
 
 Updated: 1 October 2026. Web-first decision: #30. Parent: #1.
 
-Latest verified merge: [#33](https://github.com/HimanshuHD/papertrail-reader/pull/33) at 2026-10-01T16:13:20Z; commit `16e854621c419341b730bfa81d97ff222c93a2df`.
+Latest verified merge: [#36](https://github.com/HimanshuHD/papertrail-reader/pull/36) at 2026-10-01T16:50:12Z; commit `6302efc316501a89f69431e1e838316c3ae5f1d9`.
 
 ## Current increment
 
