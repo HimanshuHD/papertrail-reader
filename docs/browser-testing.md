@@ -1,15 +1,17 @@
 # Browser validation (#37)
 
-Frontend CI installs pinned @playwright/test and runs npx playwright install --with-deps --only-shell chromium on Ubuntu. The browser checks run after the production/preview build and before web-build upload, so failed browser acceptance blocks publication. Playwright's web server serves dist with the same E2E_BASE_PATH chosen by the build step. No separate test-only website build is used.
+## Current policy (#52)
 
-## Current shell coverage
+Automatic Frontend CI runs lint, formatting, pipeline/unit tests, strict types and production/preview build. It does not install browser binaries or OS dependencies and does not run Playwright. Browser installation added in PR #50 repeated on every fresh runner and delayed delivery; #52 removes those automatic steps. npm ci installs only the pinned test-runner package, not Chromium/WebKit binaries. Browser execution remains an explicit command, independent of publishing.
 
-Three browser tests run in five default Chromium projects (15 cases): 320, 375, 768, 1024 and 1440px. Set E2E_WEBKIT=1 to add optional WebKit projects at 375 and 1440px after installing WebKit. Default CI uses Chromium to avoid the large WebKit media dependency installation. Coverage includes preserved home content, Go to app, direct app entry, browser history, keyboard entry/theme activation, persisted appearance, both themes, responsive sidebar placement, collapse/restore with selected sample retained, disabled unavailable actions and horizontal overflow.
+## Explicit browser checks
 
-Each project saves home/app screenshots in Light and Dark. Download the browser-review artifact from the Frontend CI run (seven-day retention); open playwright-report/index.html to inspect screenshots and test results. test-results contains attachments plus screenshots/traces for failures. Screenshots support human design review; they are not pixel-baseline approvals.
+Run npm run build, install Chromium with npx playwright install --with-deps --only-shell chromium, then npm run test:e2e when browser coverage is needed. Set E2E_BASE_PATH to match a build made with a production/preview prefix. On machines with an installed browser, repeat tests without reinstalling it. Optional WebKit projects use E2E_WEBKIT=1 after installing WebKit. A future manual GitHub workflow can be implemented if requested; none is currently configured.
 
-Local commands: npm run build, npx playwright install --with-deps --only-shell chromium, npm run test:e2e. Set E2E_BASE_PATH when the build uses a production/preview prefix. npm run check covers unit/type/lint checks; test:e2e requires installed browsers and the built site. Browser config/specs are included in strict TypeScript checks. Generated reports/results are ignored.
+The suite has 15 default Chromium cases at 320/375/768/1024/1440px. It covers preserved home, Go to app/direct entry/history, keyboard/theme persistence, both themes, sidebar placement/collapse/selection, disabled actions, readable title width and overflow. It saves home/app screenshots, an HTML report and failure traces locally. Screenshot capture is not a pixel-baseline approval. Config/specs remain strictly type checked; generated reports are ignored.
 
-## Remaining scope
+## Recorded PR #50 evidence
 
-#37 remains open for full #43 focus/status acceptance and #8 file/directory selection, fallback and error paths. Firefox and real Safari/device validation remain release-browser scope #28. Optional synthetic WebKit tests do not certify every Safari version. Sample documents are layout metadata only; no file parsing or reader correctness is claimed.
+CI 36912595432 passed 15 browser checks before the policy change. Artifact 11187462095 contains both-theme home/app screenshots; representative screenshots were inspected and the narrow toolbar title corrected. The artifact expires after seven days. These recorded results do not imply future commits are browser-tested automatically.
+
+#37 stays open for #43 full focus/status and #8 file/directory selection/fallback/error paths. Supported-release browser coverage remains #28; optional WebKit is not certification of every Safari/device version. File parsing and reader correctness are not claimed by the shell suite.

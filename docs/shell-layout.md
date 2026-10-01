@@ -26,3 +26,7 @@ Check home and direct #/app entry; Go to app/home/history navigation; widths 320
 ## CI browser evidence
 
 See [browser-testing.md](browser-testing.md). PR #50 adds real Chromium checks (WebKit opt-in) against the built preview base path and home/app screenshots at representative widths. CI results and visual review must be recorded separately; a successful screenshot capture is not a pixel-comparison approval.
+
+## Policy update (#52)
+
+PR #50 browser screenshots/results are historical validation evidence. Automatic Frontend CI no longer installs/runs browsers; the retained suite is explicit-run tooling. See browser-testing.md for current commands and remaining coverage.

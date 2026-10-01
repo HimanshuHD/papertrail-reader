@@ -35,3 +35,7 @@ Unit policy tests passed, but the above live main-branch check has not happened 
 Pending publisher 36894992262 was cancelled during overlapping cleanup/production events; retry publisher 36895563022 recovered production. #44 now tracks durable reconciliation. Current concurrency should not be described as a lossless deployment queue.
 
 PDF/EPUB functionality, supported-browser acceptance (#28) and versioned release promotion (#32) remain outside these deployment checks.
+
+## Post-merge #50 checkpoint
+
+PR #50 merged at 3a1a82d5ceb6e518cefcbafe43dedacef3723808. Final PR CI 36912595432 passed 15 Chromium tests and ordinary checks; screenshots were reviewed. Merge tracking 36913102803 and preview-retirement publisher 36913124246 succeeded. Main CI 36913103586 and production publisher 36913855022 passed. Live build.json and deployment.json both report source 3a1a82d5ceb6e518cefcbafe43dedacef3723808 and CI run 36913103586; preview #50 is retired. The retirement deployment preserves the previous production build while replacing preview/pr-50 with the closed page. Do not infer app source identity from the Pages workflow SHA alone.

@@ -1,6 +1,6 @@
 # PaperTrail web-first roadmap
 
-Revision 2 - 1 October 2026. Decision: #30. Parent: #1. Supersedes the desktop-first plan.
+Revision 3 - 2 October 2026. Decision: #30. Parent: #1. Supersedes the desktop-first plan.
 
 [Complete PDF](PaperTrail-Web-First-Roadmap.pdf)
 
@@ -22,7 +22,7 @@ PDF has fixed pages. EPUB uses chapters, CFI/location and percentage; reflow cha
 
 ## 2. Architecture and persistence
 
-UI: Vue 3 + TypeScript. Build: Vite. Styling/state/routing: Tailwind, Pinia and Vue Router as their issues are delivered.
+UI: Vue 3 + TypeScript. Build: Vite. Styling/state/routing: Tailwind, Pinia and hash-based Vue Router are implemented in the foundation.
 
 Components call application services and Pinia actions. A LibraryProvider abstracts file selection, indexing, read access, capability checks and refresh. BrowserLibraryProvider uses File/Blob objects and optional directory handles. A future TauriLibraryProvider will implement native access behind the same boundary.
 
@@ -37,10 +37,10 @@ Folders: src/components/{layout,library,viewer}; src/features/{library,pdf,epub,
 ## 3. Milestones M0-M2
 
 M0 - Engineering foundation (#2, #3, #5; children #21, #22)
-Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Expand quality checks/tests #22. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
+Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Quality checks/tests #22 are completed. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
 
 M1 - UI and state (#6, #7)
-Add tokens, themes, Pinia/Router, format capability contracts, accessible split layout, sidebar, toolbar and status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
+Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. #43 remains for complete keyboard/focus and status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
 Add user-triggered folder selection, feature detection, directory-input and individual-file fallbacks. Index selected files incrementally, reconstruct hierarchy from relative paths, filter case-insensitive extensions and support cancellation. Explain handle refresh versus snapshot reselection.
@@ -84,17 +84,17 @@ No current desktop installer or signing claim is made. Browser compatibility is 
 
 GitHub-first development continues: issue -> branch from main -> issue-linked commits -> PR -> CI -> review -> merge. No setup required on the owner's computer.
 
-Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 adds lint, formatting and meaningful unit/component tests. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
+Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 delivered lint, formatting and meaningful unit/component tests. #37 provides an explicit-run suite of 15 built-site Chromium shell checks and screenshot/report output; #52 removes automatic browser installation/execution from CI; focus/status and selection coverage expands with #43/#8. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
 Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification passed in run 36887472079. Keep partial and deferred issues open.
 
 Status lifecycle: Backlog -> In progress -> In review -> Completed. Also use Blocked or Deferred with explicit reasons. PRs use Closes only for completed scope and Refs for partial work. Completed history is retained.
 
-Issue parent mapping: #5 -> #21/#22/#35/#37; #9 -> #24/#25; #19 -> #26/#28; deferred #4 -> #23/#27. Current connector uses reciprocal links/task lists rather than native sub-issue relations.
+Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#44/#47; #9 -> #24/#25; #19 -> #26/#28; deferred #4 -> #23/#27. Current connector uses reciprocal links/task lists rather than native sub-issue relations.
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Next after PR #29: finish frontend quality #22 and UI/state #6, then browser selection #8. Tauri is no longer the next implementation step.
+Next after PR #50: complete shell keyboard/focus/status #43, then browser selection #8 and library discovery #9. Tauri is no longer the next implementation step.
 
 ## 7. Release acceptance and sources
 
@@ -162,8 +162,18 @@ GitHub Pages is selected. Main deploys to root after successful CI; manual PR de
 
 ## Deployment policy refinement (#35)
 
-CI runs on every PR update; previews publish manually at review checkpoints. Main auto-publishes website changes; documentation-only main pushes skip publishing. Closed unmerged PR lookup is repaired in PR #36. PR #36 is merged; closed previews #34/#36 are retired. #35 remains open for manual preview and no-auto-publish live checks.
+CI runs on every PR update; previews publish manually at review checkpoints. Main auto-publishes website changes; documentation-only main pushes skip publishing. Closed unmerged PR lookup is repaired in PR #36. PR #36 is merged; closed previews #34/#36 are retired. #35 is completed, including documentation-only main filtering verified after PR #45.
 
 ## Frontend tooling increment (#22)
 
-ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Next product implementation is #6, followed by #7/#8.
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6 and layout/home entry #42/#49 are completed. Next is #43, then #8.
+
+## Current milestone snapshot after PR #50
+
+Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 remains partial for #37; M1 parent #7 remains partial for #43. M2–M7 product capabilities remain planned. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
+
+Version 0.1.0 records the initial foundation; the existing PDF is a planning snapshot. This Markdown roadmap and live issues carry current completion status. See [progress.md](progress.md), [browser-testing.md](browser-testing.md) and [branch-maintenance.md](branch-maintenance.md). Tauri remains deferred.
+
+## Automatic CI policy (#52)
+
+Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones; a manual GitHub browser workflow is not currently configured. Past PR #50 browser results remain recorded evidence.
