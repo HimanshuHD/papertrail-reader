@@ -16,3 +16,5 @@
 Add new documentation here and update this index. Live issues and docs/progress.md track delivery; plans and the roadmap PDF do not imply implemented features. Keep architecture changes and issue references together in the implementation PR.
 
 [Initial version history](../CHANGELOG.md) records the 0.1.0 foundation scope and its limitations.
+
+[Reader shell layout](shell-layout.md) documents home/app navigation, responsive layout and component boundaries (#42/#49).

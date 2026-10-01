@@ -39,3 +39,7 @@ Pinia owns the explicit Light/Dark preference and resolved appearance. theme-pre
 Router uses hash history with Vite BASE_URL, avoiding static-host rewrite requirements at production and preview paths. The foundation view is separated from the root/router/footer. The interactive split shell is #7.
 
 src/types/reader.ts defines format-specific navigation, progress, contents and adapter operations. PDF uses fixed pages and zoom/fit controls; EPUB uses CFI locations and typography controls. Both expose open/close/navigation/progress/contents through a generic contract. These types do not provide a working reader engine; PDF.js/epub.js implementations belong to #10/#12. File access/provider behavior remains #8/#9.
+
+## Home and product shell (#42/#49)
+
+The preserved home page links to /app. ReaderView composes the layout, sample library, toolbar and illustrative workspace; App.vue retains the common footer. See [shell-layout.md](shell-layout.md). This increment does not implement file access or reader engines.
