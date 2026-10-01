@@ -1,0 +1,7 @@
+node_modules/
+dist/
+coverage/
+package-lock.json
+docs/*.pdf
+_site/
+incoming/

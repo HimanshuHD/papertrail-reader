@@ -44,3 +44,4 @@ Thumbs.db
 /temp/
 
 # Commit package lockfiles, Cargo.lock, documentation PDFs and sanitized fixtures.
+

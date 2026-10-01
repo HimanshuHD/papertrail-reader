@@ -8,12 +8,12 @@ Expected default URL after successful deployment: https://himanshuhd.github.io/p
 
 ## One hostname, separate paths
 
-| Channel | Path | Updates |
-| --- | --- | --- |
-| Main website | /papertrail-reader/ | Every successful website-affecting main build |
-| PR preview | /papertrail-reader/preview/pr-N/ | On-demand successful build of an open same-repo PR |
-| Closed preview | Same PR path | Retired page linking to main, avoiding a 404 |
-| Versioned releases | Planned /papertrail-reader/releases/vX.Y.Z/ | Separate release implementation #32 |
+| Channel            | Path                                        | Updates                                            |
+| ------------------ | ------------------------------------------- | -------------------------------------------------- |
+| Main website       | /papertrail-reader/                         | Every successful website-affecting main build      |
+| PR preview         | /papertrail-reader/preview/pr-N/            | On-demand successful build of an open same-repo PR |
+| Closed preview     | Same PR path                                | Retired page linking to main, avoiding a 404       |
+| Versioned releases | Planned /papertrail-reader/releases/vX.Y.Z/ | Separate release implementation #32                |
 
 PR updates run CI without changing the preview. No shared develop branch is required. Open a draft PR early; its URL stays stable; manually redeploy when a review checkpoint is ready. A feature branch with no PR gets no preview. PRs into an integration feature branch are not published by default: use a PR to main for this workflow.
 

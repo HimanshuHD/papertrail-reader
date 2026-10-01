@@ -80,4 +80,3 @@ jobs:
               return text;
             });
             await changeFile('docs/roadmap.md', text => text.replace(/^- \[[ x]\] (\[#(\d+)[^\n]+)$/gm, (line, link, n) => statuses.has(Number(n)) ? '- [' + (statuses.get(Number(n)) === 'Completed' ? 'x' : ' ') + '] ' + link : line));
-            
