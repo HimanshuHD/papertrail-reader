@@ -211,8 +211,11 @@ describe('home and product shell', () => {
     const next = wrapper.findAll('button').find((button) => button.text() === 'Next')!
     await next.trigger('click')
     await flushPromises()
-    expect(pdfSessionMocks.render).toHaveBeenLastCalledWith(
-      expect.objectContaining({ pageNumber: 2 }),
+    expect(pdfSessionMocks.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pageNumber: 2,
+        textLayer: expect.any(HTMLElement),
+      }),
     )
     expect(wrapper.text()).toContain('Page 2 of 3')
 
