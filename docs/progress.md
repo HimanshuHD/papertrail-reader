@@ -42,7 +42,7 @@ Latest merged increment: PR #50, commit `3a1a82d5ceb6e518cefcbafe43dedacef372380
 | [#37](https://github.com/HimanshuHD/papertrail-reader/issues/37) | Web           | Browser E2E foundation and selection smoke tests                      | In progress — shell browser foundation verified in PR #50; selection/focus scope remains |
 | [#39](https://github.com/HimanshuHD/papertrail-reader/issues/39) | Web           | Improve closed-preview page and link deployed branch in footer        | Completed |
 | [#42](https://github.com/HimanshuHD/papertrail-reader/issues/42) | Web           | Reader shell components and responsive layout                         | Completed |
-| [#43](https://github.com/HimanshuHD/papertrail-reader/issues/43) | Web           | Shell keyboard navigation and status-state presentation               | Backlog |
+| [#43](https://github.com/HimanshuHD/papertrail-reader/issues/43) | Web           | Shell keyboard navigation and status-state presentation               | In progress — implementation on feat/43-shell-focus-status |
 | [#44](https://github.com/HimanshuHD/papertrail-reader/issues/44) | Web           | Reconcile publishing when GitHub cancels a queued deployment          | Backlog |
 | [#46](https://github.com/HimanshuHD/papertrail-reader/issues/46) | Web           | Replace appearance dropdown with light/dark icon toggle               | Completed |
 | [#47](https://github.com/HimanshuHD/papertrail-reader/issues/47) | Web           | Display initial application version in production footer              | Completed |
@@ -67,7 +67,7 @@ Post-merge #50 main CI/deployment evidence is recorded in deployment-verificatio
 
 ## Next work and completion rules
 
-Next product increment: #43 keyboard/focus and loading/empty/error presentation. Then #8 browser selection and #9 library discovery. #37 expands with those interactions; #5 remains open. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
+Current product increment: #43 keyboard/focus and loading/empty/error/demo presentation. ReaderView owns transient presentation; Escape from the library restores focus to its toggle; status changes use live regions. Then #8 browser selection and #9 library discovery. #37 expands with those interactions; #5 remains open. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
 
 Web 0.1 acceptance requires M0–M4 plus #13 and release-relevant reliability/browser delivery checks. Foundation version 0.1.0 does not claim completed reader release acceptance. Deferred desktop scope remains open and does not block web delivery. Close only accepted scope after review/merge and preserve validation evidence.
 
