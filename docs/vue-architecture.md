@@ -1,20 +1,20 @@
 # Vue application architecture
 
-Updated: 1 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
+Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 
-## Implementation status
+## Implementation status after PR #50
 
-| Layer           | Current main                            | PR #41 merged                                      | Planned owner        |
-| --------------- | --------------------------------------- | -------------------------------------------------- | -------------------- |
-| App/root        | Foundation screen and deployment footer | Root composition, HomeView and RouterView          | #6                   |
-| Styling         | Foundation CSS and linked footer        | Tailwind semantic light/dark tokens                | #6                   |
-| State           | No reader/library state yet             | Pinia theme preference and resolved appearance     | #6; later #7/#9      |
-| Routing         | Static foundation page                  | Hash routing with Vite BASE_URL; home and fallback | #6                   |
-| Reader contract | Architecture plan                       | Typed PDF page/zoom and EPUB CFI/font contracts    | #6; engines #10/#12  |
-| File access     | Not implemented                         | Not implemented                                    | #8/#9                |
-| Persistence     | No reading-data persistence             | Theme choice only, localStorage                    | Reading metadata #13 |
+| Layer           | Implemented on main                                                | Remaining owner                        |
+| --------------- | ------------------------------------------------------------------ | -------------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Further shell behavior #43             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | #43 accessibility/status refinement    |
+| State           | Pinia explicit theme; view-local sample selection/sidebar collapse | Library state #9; reading metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
+| File access     | Not implemented                                                    | #8/#9                                  |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence     | #13                                    |
 
-PR #41 merged as b54d41d236fd561d651404e1478e98b3d59328c7. Its source files and tests are now on main. Do not treat this document as a claim that folder selection or document reading works.
+#6/#46/#42/#49 are merged. Shell metadata is clearly labeled demonstration content; no file discovery or reader implementation is claimed.
 
 ## Implemented foundation flow (#6)
 
