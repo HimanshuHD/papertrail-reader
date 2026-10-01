@@ -5,11 +5,19 @@ import {
   requestDirectory,
   selectionFromFiles,
   type BrowserLibrarySelection,
+  type LibraryRefreshAction,
 } from '../../features/library/browser-selection'
 
-defineProps<{ selectionSummary: string }>()
+const props = defineProps<{
+  selectionSummary: string
+  refreshAction: LibraryRefreshAction | null
+  refreshBusy: boolean
+}>()
 
-const emit = defineEmits<{ selected: [selection: BrowserLibrarySelection] }>()
+const emit = defineEmits<{
+  selected: [selection: BrowserLibrarySelection]
+  refresh: []
+}>()
 
 const directoryInput = ref<HTMLInputElement | null>(null)
 const fileInput = ref<HTMLInputElement | null>(null)
@@ -20,6 +28,19 @@ const feedbackIsError = ref(false)
 const folderMethod = computed(() =>
   preferNativeDirectoryPicker.value ? 'Browser folder permission' : 'Folder input fallback',
 )
+
+const refreshLabel = computed(() => {
+  switch (props.refreshAction) {
+    case 'refresh-directory':
+      return 'Refresh folder'
+    case 'reselect-directory':
+      return 'Reselect folder'
+    case 'reselect-files':
+      return 'Reselect files'
+    default:
+      return ''
+  }
+})
 
 async function chooseFolder() {
   feedback.value = ''
@@ -52,6 +73,23 @@ function chooseFiles() {
   feedback.value = ''
   feedbackIsError.value = false
   fileInput.value?.click()
+}
+
+function refreshCurrentSource() {
+  feedback.value = ''
+  feedbackIsError.value = false
+
+  switch (props.refreshAction) {
+    case 'refresh-directory':
+      emit('refresh')
+      break
+    case 'reselect-directory':
+      directoryInput.value?.click()
+      break
+    case 'reselect-files':
+      fileInput.value?.click()
+      break
+  }
 }
 
 function handleInputSelection(event: Event, source: 'directory-input' | 'file-input') {
@@ -90,6 +128,15 @@ function handleInputSelection(event: Event, source: 'directory-input' | 'file-in
         @click="chooseFiles"
       >
         Choose PDF / EPUB files
+      </button>
+      <button
+        v-if="refreshAction"
+        type="button"
+        class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm font-medium"
+        :disabled="refreshBusy"
+        @click="refreshCurrentSource"
+      >
+        {{ refreshBusy && refreshAction === 'refresh-directory' ? 'Refreshing…' : refreshLabel }}
       </button>
     </div>
 
