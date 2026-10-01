@@ -1,64 +1,45 @@
 # Deployment, previews and releases
 
-## Hosting decision and prerequisites
+GitHub Pages is enabled with Source: GitHub Actions. Production is https://himanshuhd.github.io/papertrail-reader/. The repository is currently public, and the website is public; this audit verified the GitHub repository visibility. Do not infer site privacy from repository settings.
 
-GitHub Pages was selected. The repository stays private; the built website is normally public. Pages for a private repository requires an eligible GitHub plan. Enable Settings -> Pages -> Build and deployment -> Source: GitHub Actions. Keep the github-pages environment restricted to main: publishing runs from main even for PR artifacts. The connected tools do not expose Pages settings, so enablement/live URL verification remains pending in #31.
-
-Expected default URL after successful deployment: https://himanshuhd.github.io/papertrail-reader/
+Detailed implementation and trust boundaries: [deployment-architecture.md](deployment-architecture.md). Validation evidence: [deployment-verification.md](deployment-verification.md).
 
 ## One hostname, separate paths
 
-| Channel            | Path                                        | Updates                                            |
-| ------------------ | ------------------------------------------- | -------------------------------------------------- |
-| Main website       | /papertrail-reader/                         | Every successful website-affecting main build      |
-| PR preview         | /papertrail-reader/preview/pr-N/            | On-demand successful build of an open same-repo PR |
-| Closed preview     | Same PR path                                | Retired page linking to main, avoiding a 404       |
-| Versioned releases | Planned /papertrail-reader/releases/vX.Y.Z/ | Separate release implementation #32                |
+| Channel           | Path                             | Updates                                      |
+| ----------------- | -------------------------------- | -------------------------------------------- |
+| Production        | /papertrail-reader/              | Successful website-affecting main builds     |
+| PR preview        | /papertrail-reader/preview/pr-N/ | Manual current-green-PR deployment           |
+| Closed preview    | Same PR path                     | Styled retirement page linking to production |
+| Versioned release | Planned releases/vX.Y.Z/         | Future #32 implementation                    |
 
-PR updates run CI without changing the preview. No shared develop branch is required. Open a draft PR early; its URL stays stable; manually redeploy when a review checkpoint is ready. A feature branch with no PR gets no preview. PRs into an integration feature branch are not published by default: use a PR to main for this workflow.
+## Deploy a preview
 
-## Workflow design
+1. Open Actions -> Publish website.
+2. Choose Run workflow and select main.
+3. Enter the open PR number in pr_number, then run.
+4. Wait for success and inspect /preview/pr-N/ and its footer/build.json.
 
-Frontend CI installs from the lockfile, runs strict type/build validation and pipeline tests, builds with the correct production/preview base path, and uploads web-build with source/run identity. It has read-only repository permissions.
+The workflow uses the PR number to select the PR's current successful source head. The main branch selection refers to the trusted publisher, not the source being previewed. Open same-repository PRs targeting main are eligible. A feature branch without a PR has no preview.
 
-Publish website runs from main on successful Frontend CI workflow completion. It downloads the artifact, verifies identity, rejects fork/unrelated builds and stale PR heads, then combines it with pages-state. Main builds preserve previews; preview builds preserve main and other previews. A serialized publisher prevents cross-channel updates from racing. Older production runs cannot replace newer production state. The state branch is generated output, not source for development.
+New PR commits run CI without changing an existing preview. Repeat the manual request after the current head passes CI to update it. If the seven-day artifact has expired, rerun CI first. Blank pr_number republishes main.
 
-Closed PRs trigger a lightweight CI retirement marker; its successful workflow completion retires the preview from the trusted main publisher. Manual Publish website accepts pr_number for an open same-repo PR with current green CI; blank uses the latest successful main CI build, useful after Pages is first enabled. Do not run artifacts as scripts in the publisher; it executes only the assembly script from main.
+The footer links the PR, deployed source branch and commit. A PR build also includes preview-closed.html to review the closed-page design before merging. Closing or merging retires the preview; do not expect manual publishing of a closed PR to work.
 
-Actions-generated pages-state commits do not recursively start CI. Custom workflow deployment uses official upload-pages-artifact/deploy-pages actions; it does not rely on Pages rebuilding bot branch commits.
+## Production and docs-only changes
 
-The first live preview becomes available after these publisher workflows land on main and Pages is enabled. The pipeline PR itself can validate builds and aggregation before that, but cannot claim a live preview yet.
+Merge reviewed website changes with green CI into main. The automatic publisher replaces production while preserving previews. Documentation-only main changes still validate but record publish=false and skip automatic deployment. The final live check of this behavior is the documentation audit PR under #35.
 
-## Release policy
+A failed build is not deployed. After merging, verify CI, publisher conclusion, production build.json/deployment.json and preview retirement. Account for Pages propagation and use the deployed SHA, not appearance alone.
 
-While the app is being built, main is the continuously deployed website. Merge only reviewed changes with green CI. A failed CI build is never published; a publishing failure leaves the previous live site available.
+## Releases and recovery
 
-For a release: finish acceptance criteria, update package version and release notes in a PR, merge, then tag the reviewed commit (v0.1.0, v0.1.1, etc.). #32 will implement tag checks, artifacts/checksums, immutable version URLs and explicit stable-release promotion/rollback. Tags currently do not overwrite the main website; do not claim release automation is implemented yet.
+#32 remains open for tag validation, immutable version URLs, artifacts/checksums and explicit promotion/rollback. Tags currently do not overwrite the main website. Until that implementation is accepted, rollback is a reviewed revert on main with successful CI and deployment.
 
-Until version promotion exists, rollback is a reviewed revert on main followed by green CI and automatic deployment. Do not force-push main to roll back.
+GitHub may cancel a pending publisher during overlapping cleanup/production events even with cancel-in-progress:false. #44 tracks durable reconciliation. Check the live source SHA after a burst; retry the relevant CI job if needed. See deployment-architecture.md for observed recovery evidence.
 
-## Base paths, router and storage
+## Base paths and storage
 
-Default Vite base is supplied at build time. If a custom root domain is configured later, set repository variable PAGES_BASE_PATH to /. Include trailing slash. SPA routes should use hash history on Pages unless a tested routing fallback is implemented.
+CI supplies Vite base paths with trailing slash. A later custom-domain setup can use PAGES_BASE_PATH=/. Hash routing is implemented in PR #41 merged.
 
-Production and previews share an origin. Namespace future IndexedDB/localStorage by import.meta.env.BASE_URL so previews cannot overwrite production reading metadata (#6/#13). Do not publish private sample documents into builds.
-
-## Validation and status
-
-Tests cover coexistence, preserved previews after main updates, stale-production protection, retirement pages and invalid PR paths. Actual Pages activation, production URL, two preview URLs and retirement must be checked after enablement; #31 remains open until that evidence is recorded.
-
-## On-demand preview instructions (#35)
-
-Actions -> Publish website -> Run workflow -> select main -> enter pr_number -> Run workflow. Blank PR number republishes main. Deploy only the PR's current successful CI SHA; no fallback to older green commits. Failed/stale/closed/fork requests do not publish. If the 7-day build artifact has expired, rerun CI on the current commit, then deploy.
-
-Read /preview/pr-N/build.json to verify the exact deployed SHA. Subsequent PR pushes keep the preview unchanged until another manual request. Documentation-only main commits still run validation but mark their build publish=false; automatic publishing skips them. Explicit manual main republish remains available. Paths outside the documentation allowlist are treated as website-affecting.
-
-Closed-unmerged PR correction: commit association can omit these PRs, so the publisher falls back to all PRs for the exact same-repo source branch and SHA. Issue #35 includes live retirement revalidation.
-
-## Preview presentation polish (#39)
-
-Separate branch: `feat/39-preview-status`. Retirement uses a self-contained responsive PaperTrail status page with PR identity, a production action and a pull-request link. It has no dependency on removed preview assets. Existing retired URLs retain their old design until retirement is rerun after this renderer reaches main.
-
-PR artifacts include `preview-closed.html` only for PR builds, generated by the same renderer with an explicit Design preview badge. After manually publishing this PR, append `/preview-closed.html` to its preview URL to inspect the design before merging. The normal preview app remains active. The trusted publisher continues to load its retirement renderer from main.
-
-The app footer now shows a linked source branch for previews and production. CI supplies the PR head branch or main at build time; links preserve branch slashes and encode individual URL segments. #6 is paused until this increment is reviewed.
+Production and previews share an origin. Theme preference is intentionally shared in PR #41. Future reading positions, bookmarks and document identity must be namespaced by base path so preview experiments cannot overwrite production reading metadata. Do not publish private document fixtures.
