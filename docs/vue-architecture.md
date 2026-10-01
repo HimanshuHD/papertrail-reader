@@ -78,3 +78,10 @@ Discovery cancellation stops PaperTrail's application-level traversal and return
 `src/features/library/library-tree.ts` reconstructs presentation hierarchy only from normalized `DiscoveredDocument.parentPath`; it never invents absolute paths. Directory-backed and directory-input selections can render nested folders, while individual-file fallback remains flat. `LibraryTree.vue` and recursive `LibraryTreeNode.vue` own presentation/expansion; `ReaderView` owns selected local document identity and restores it after a live-handle refresh by exact session ID or a unique relative-path match.
 
 Refresh semantics follow the browser source boundary. A live `FileSystemDirectoryHandle` can be rescanned in the current session. Directory-input and individual-file snapshots expose explicit reselection controls instead of implying live filesystem access. Selecting a local document only establishes the library handoff; PDF/EPUB reader opening remains #10/#12.
+
+
+## PDF reader increment (#10)
+
+`src/features/pdf/pdf-session.ts` owns PDF.js loading, the bundled worker URL, document lifetime and cancellation of an obsolete `RenderTask`. It accepts only an explicitly selected local `File`; no network URL or unrestricted filesystem path enters the reader. `PdfReaderWorkspace.vue` owns current-page, zoom and fit presentation while `ReaderView` decides when a discovered PDF becomes active. Changing sources, refreshing a live directory or selecting a sample/EPUB unmounts the PDF workspace so the session can release render/document resources.
+
+The first #10 slice renders the active page lazily on demand and provides current/total page navigation, slider, zoom, fit-width and fit-page controls. Text-layer rendering, continuous lazy-page presentation and full invalid/password acceptance remain within #10. PDF outlines/search/text-selection/fullscreen/shortcut help remain #11.
