@@ -11,7 +11,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   frontend:
-    name: Type check and production build
+    name: Validate and build website
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -23,4 +23,24 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
-      - run: npm run build
+      - run: node --test scripts/assemble-pages.test.mjs
+      - name: Build for production or PR path
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: |
+          if [ -n "$PR_NUMBER" ]; then
+            npm run build -- --base "${BASE_PATH}preview/pr-${PR_NUMBER}/"
+          else
+            npm run build -- --base "$BASE_PATH"
+          fi
+      - name: Record artifact identity
+        env:
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          node --input-type=module -e "import fs from 'node:fs'; fs.writeFileSync('dist/build.json', JSON.stringify({sha:process.env.SOURCE_SHA,runId:process.env.GITHUB_RUN_ID}))"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: web-build
+          path: dist/
+          retention-days: 7

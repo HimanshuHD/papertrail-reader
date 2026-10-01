@@ -37,7 +37,7 @@ Folders: src/components/{layout,library,viewer}; src/features/{library,pdf,epub,
 ## 3. Milestones M0-M2
 
 M0 - Engineering foundation (#2, #3, #5; children #21, #22)
-Repository docs #2 are completed. Frontend bootstrap #3 is in review in PR #29. Establish committed lockfile, strict types and production build. Expand quality checks/tests #22. Merge tracking #21 requires a real-merge verification. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
+Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Expand quality checks/tests #22. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
 
 M1 - UI and state (#6, #7)
 Add tokens, themes, Pinia/Router, format capability contracts, accessible split layout, sidebar, toolbar and status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
@@ -86,7 +86,7 @@ GitHub-first development continues: issue -> branch from main -> issue-linked co
 
 Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 adds lint, formatting and meaningful unit/component tests. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
-Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification is pending; do not declare this automation complete until it writes successfully. Keep partial and deferred issues open.
+Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification passed in run 36887472079. Keep partial and deferred issues open.
 
 Status lifecycle: Backlog -> In progress -> In review -> Completed. Also use Blocked or Deferred with explicit reasons. PRs use Closes only for completed scope and Refs for partial work. Completed history is retained.
 
@@ -130,7 +130,7 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#25 [M2] Directory tree and browser library refresh UI](https://github.com/HimanshuHD/papertrail-reader/issues/25)
 - [ ] [#24 [M2] Incremental browser indexing and cancellation](https://github.com/HimanshuHD/papertrail-reader/issues/24)
 - [ ] [#22 [M0] Frontend quality checks and test coverage](https://github.com/HimanshuHD/papertrail-reader/issues/22)
-- [ ] [#21 [M0] Automate post-merge issue and progress reconciliation](https://github.com/HimanshuHD/papertrail-reader/issues/21)
+- [x] [#21 [M0] Automate post-merge issue and progress reconciliation](https://github.com/HimanshuHD/papertrail-reader/issues/21)
 - [ ] [#19 [M7] Web release readiness and delivery](https://github.com/HimanshuHD/papertrail-reader/issues/19)
 - [ ] [#18 [M7] Optional split view and annotation export](https://github.com/HimanshuHD/papertrail-reader/issues/18)
 - [ ] [#17 [M7] Document tabs and session restoration](https://github.com/HimanshuHD/papertrail-reader/issues/17)
@@ -154,3 +154,8 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#4 [Desktop later] Integrate Tauri 2 desktop shell](https://github.com/HimanshuHD/papertrail-reader/issues/4)
 - [ ] [#23 [Desktop later] Rust formatting, lint and native test pipeline](https://github.com/HimanshuHD/papertrail-reader/issues/23)
 - [ ] [#27 [Desktop later] Desktop signing and notarization](https://github.com/HimanshuHD/papertrail-reader/issues/27)
+
+
+## Continuous deployment increment
+
+GitHub Pages is selected. Main deploys to root after successful CI; open PR commits deploy to preview/pr-N; closed previews link back to main. See [deployment.md](deployment.md). #31 tracks pipeline activation; #32 tracks versioned release promotion. GitHub Pages settings must be enabled before live deployment. No live URL is claimed until verified.
