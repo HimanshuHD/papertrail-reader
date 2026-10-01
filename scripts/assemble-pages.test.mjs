@@ -27,6 +27,11 @@ test('production and PR previews coexist, stale production cannot overwrite, and
         'href="../../"',
       ),
     )
+    const retired = await readFile(path.join(site, 'preview/pr-7/index.html'), 'utf8')
+    assert.ok(retired.includes('Pull request #7'))
+    assert.ok(retired.includes('/pull/7'))
+    assert.ok(retired.includes('<style>'))
+    assert.ok(!retired.includes('<script'))
     assert.equal(await readFile(path.join(site, 'preview/pr-8/index.html'), 'utf8'), 'preview')
     await assert.rejects(assemble({ site, kind: 'preview', artifact: preview, pr: '../escape' }))
     await mkdir(path.join(preview, '.git'))

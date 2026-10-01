@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { affectsWebsite } from './deploy-policy.mjs'
+import { retiredPreviewHtml } from './retired-preview.mjs'
 let publish = true
 if (
   process.env.BUILD_EVENT === 'push' &&
@@ -21,3 +22,10 @@ fs.writeFileSync(
   'dist/build.json',
   JSON.stringify({ sha: process.env.SOURCE_SHA, runId: process.env.GITHUB_RUN_ID, publish }),
 )
+
+if (process.env.PR_NUMBER) {
+  fs.writeFileSync(
+    'dist/preview-closed.html',
+    retiredPreviewHtml({ pr: process.env.PR_NUMBER, demo: true }),
+  )
+}

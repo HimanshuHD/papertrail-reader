@@ -37,6 +37,7 @@ jobs:
       - name: Build for production or PR path
         env:
           VITE_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          VITE_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
           VITE_PR_NUMBER: ${{ github.event.pull_request.number }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
@@ -48,6 +49,7 @@ jobs:
           fi
       - name: Record artifact identity
         env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           BUILD_EVENT: ${{ github.event_name }}
           BEFORE_SHA: ${{ github.event.before }}

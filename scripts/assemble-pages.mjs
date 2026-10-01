@@ -1,5 +1,6 @@
 import { cp, mkdir, readdir, rm, writeFile, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { retiredPreviewHtml } from './retired-preview.mjs'
 
 async function validateArtifact(folder) {
   for (const item of await readdir(folder, { withFileTypes: true })) {
@@ -42,10 +43,7 @@ export async function assemble({ site, artifact, kind, pr, sha, runId }) {
       await cp(artifact, target, { recursive: true })
       state.previews[pr] = { sha, runId, status: 'active' }
     } else {
-      await writeFile(
-        path.join(target, 'index.html'),
-        '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Preview retired</title><h1>This preview has closed</h1><p>Check the latest application on main.</p><a href="../../">Open PaperTrail</a></html>',
-      )
+      await writeFile(path.join(target, 'index.html'), retiredPreviewHtml({ pr }))
       state.previews[pr] = { status: 'retired' }
     }
   }
