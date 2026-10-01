@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref } from 'vue'
+import { computed, nextTick, ref, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
 import ThemePicker from '../components/ThemePicker.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
@@ -7,6 +7,10 @@ import LibrarySidebar from '../components/library/LibrarySidebar.vue'
 import ReaderToolbar from '../components/viewer/ReaderToolbar.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
 import ShellStatus from '../components/viewer/ShellStatus.vue'
+import {
+  describeLibrarySelection,
+  type BrowserLibrarySelection,
+} from '../features/library/browser-selection'
 import type { ShellDocument, ShellViewState } from '../types/shell'
 
 const documents: readonly ShellDocument[] = [
@@ -37,6 +41,12 @@ const sidebarOpen = ref(true)
 const sidebarToggle = ref<HTMLButtonElement | null>(null)
 const viewState = ref<ShellViewState>('demo')
 const announcement = ref('Demonstration workspace ready.')
+const librarySelection = shallowRef<BrowserLibrarySelection | null>(null)
+const librarySelectionSummary = computed(() =>
+  librarySelection.value
+    ? describeLibrarySelection(librarySelection.value)
+    : 'No folder or files selected yet.',
+)
 const selectedDocument = computed(
   () => documents.find((document) => document.id === selectedId.value) ?? documents[0]!,
 )
@@ -46,6 +56,11 @@ function selectDocument(id: string) {
   if (!document) return
   selectedId.value = id
   announcement.value = `Selected sample: ${document.title}.`
+}
+
+function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  librarySelection.value = selection
+  announcement.value = describeLibrarySelection(selection)
 }
 
 function toggleSidebar() {
@@ -100,7 +115,9 @@ async function closeSidebarAndRestoreFocus() {
         <LibrarySidebar
           :documents="documents"
           :selected-id="selectedId"
+          :selection-summary="librarySelectionSummary"
           @select="selectDocument"
+          @library-selection="acceptLibrarySelection"
           @close="closeSidebarAndRestoreFocus"
         />
       </template>
