@@ -62,3 +62,7 @@ Update this document and architecture.md when ownership or public contracts chan
 ## Appearance refinement (#46)
 
 The sun/moon button uses native button keyboard activation, aria-pressed for Dark mode, a visible focus ring and decorative SVG icons. Pinia contains Light/Dark only; theme-runtime watches explicit state with no matchMedia listener. Existing Light/Dark preferences persist; legacy System resolves to Light. This supersedes the original #6 System behavior.
+
+## Reader shell and entry (#42/#49)
+
+HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 remains the next accessibility/status increment; #37 remains browser E2E infrastructure.

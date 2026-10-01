@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
 import ThemePicker from '../components/ThemePicker.vue'
 const plannedFormats: readonly string[] = ['PDF', 'EPUB']
 </script>
@@ -11,7 +12,7 @@ const plannedFormats: readonly string[] = ['PDF', 'EPUB']
       </p>
       <ThemePicker />
     </div>
-    <h1 id="app-title" class="text-5xl leading-tight font-bold tracking-tight sm:text-6xl">
+    <h1 id="app-title" class="text-4xl leading-tight font-bold tracking-tight sm:text-6xl">
       PaperTrail
     </h1>
     <p class="mt-4 text-lg text-muted">Your documents. Your space. A better way to read.</p>
@@ -25,6 +26,11 @@ const plannedFormats: readonly string[] = ['PDF', 'EPUB']
       </p>
       <p class="mt-3">Planned formats: {{ plannedFormats.join(' and ') }}.</p>
       <p class="mt-4 text-sm text-muted">This screen does not scan or open files yet.</p>
+      <RouterLink
+        to="/app"
+        class="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 font-semibold text-canvas sm:w-auto"
+        >Go to app <span aria-hidden="true">→</span></RouterLink
+      >
     </section>
   </main>
 </template>

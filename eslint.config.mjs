@@ -6,7 +6,15 @@ import globals from 'globals'
 import prettier from 'eslint-config-prettier'
 
 export default defineConfig([
-  globalIgnores(['dist/**', 'coverage/**', 'node_modules/**', '_site/**', 'incoming/**']),
+  globalIgnores([
+    'dist/**',
+    'coverage/**',
+    'node_modules/**',
+    '_site/**',
+    'incoming/**',
+    'playwright-report/**',
+    'test-results/**',
+  ]),
   {
     files: ['**/*.{js,mjs,ts,vue}'],
     extends: [
