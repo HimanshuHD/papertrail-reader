@@ -1,21 +1,37 @@
-# Production and preview verification
+# Deployment verification
 
-Date: 1 October 2026. Related issue: #31; deployed pipeline PR #33; temporary preview PR #34.
+Updated: 1 October 2026. Owners: #31/#35/#39.
 
-| Channel            | URL                                                           | Result                                                                                           |
-| ------------------ | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| Production         | https://himanshuhd.github.io/papertrail-reader/               | HTTP 200; browser renders The foundation is ready                                                |
-| Active PR preview  | https://himanshuhd.github.io/papertrail-reader/preview/pr-34/ | Originally active and separately verified; after closure, serves retirement page linking to main |
-| Retired PR preview | https://himanshuhd.github.io/papertrail-reader/preview/pr-33/ | HTTP 200; retirement page links to main                                                          |
+## Verified behavior
 
-Production manifest source: 16e854621c419341b730bfa81d97ff222c93a2df, CI 36890356694. Preview source: 9711a556de02aba121ba01739ab59c6444dd1444, CI 36891363513. Preview publisher run: https://github.com/HimanshuHD/papertrail-reader/actions/runs/36891403655 (success).
+| Check                        | Evidence                                                                                                                    |
+| ---------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| Main website publishing      | Main CI 36899758338 and publisher 36899823762 passed; production metadata SHA 26eb4ff7e4a9364d477111d1374594a7f512acb5      |
+| Manual current-PR preview    | Publishers 36896874008 / 36897640978 succeeded for PR #38; latest deployed PR SHA de5f922 verified                          |
+| No automatic preview updates | Preview stayed at 33004681 after footer commits until manually redeployed; open-PR publisher 36895910760 skipped deployment |
+| Production/preview isolation | Separate assets/base paths; preview publishing preserved production SHA                                                     |
+| Closed preview               | #38/#40 retired; #40 HTTP 200 includes styled card, PR identity and ../../ production link                                  |
+| Footer identity              | Production and preview builds embed deployed source SHA; PR #40 adds linked branch names                                    |
+| Merge tracking               | PR #38/#40 reconciliation passed; issue/progress writes verified                                                            |
 
-The preview's HTML references assets under its own preview path. Publishing the preview preserved production's source SHA and screen content. An initial preview request returned 404 during propagation; subsequent requests at the normal URL and browser reload succeeded.
+Production: https://himanshuhd.github.io/papertrail-reader/. Retired PR #40: https://himanshuhd.github.io/papertrail-reader/preview/pr-40/.
 
-PR #34 is a draft with a one-heading verification change. It was closed without merging. PR #36 fixes lookup for closed unmerged PRs. Publisher run 36895110066 retired #34 successfully; live HTML and deployment.json report retirement. PR #36 also merged and retired. Main remains the production source. This is pipeline verification, not complete PDF/EPUB functionality or cross-browser acceptance (#28). Versioned releases/promotion remain #32.
+PR #41 is still open with CI 36901032233 passed. It is owner review scope, not a merged production change.
 
-## Policy verification after PR #36
+## Final check for #35
 
-Merge tracking run 36894959027 succeeded. Retirement passed. #35 remains open for live manual current-head publishing and unchanged preview after a subsequent push, plus docs-only main filtering. A queued production run was cancelled during overlapping cleanup; production CI was retried. Automated policy/assembly tests remain necessary but do not replace these live checks.
+Merge the docs-only audit PR. Before merging, record current production SHA from build.json/deployment.json. After merge:
 
-Production retry publisher 36895563022 succeeded. Live deployment.json reports production SHA `6302efc316501a89f69431e1e838316c3ae5f1d9`, CI 36894958802, and retired previews #33/#34/#36. Tooling PR #38 CI 36895851991 passed; the open-PR publisher skips publication as intended.
+1. Identify the successful main push CI run for the audit merge commit.
+2. Confirm its artifact build.json records publish=false.
+3. Confirm automatic Publish website succeeds with deployment/upload/state-write steps skipped.
+4. Confirm live production SHA stays unchanged.
+5. Record run/commit evidence here and in #35, then close #35 and update parent #5.
+
+Unit policy tests passed, but the above live main-branch check has not happened yet. Do not close #35 before the evidence is recorded.
+
+## Known delivery caveat
+
+Pending publisher 36894992262 was cancelled during overlapping cleanup/production events; retry publisher 36895563022 recovered production. #44 now tracks durable reconciliation. Current concurrency should not be described as a lossless deployment queue.
+
+PDF/EPUB functionality, supported-browser acceptance (#28) and versioned release promotion (#32) remain outside these deployment checks.

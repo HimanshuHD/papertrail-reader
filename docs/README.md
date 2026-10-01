@@ -1,12 +1,16 @@
 # Documentation
 
-| Document                                                  | Purpose                                                        |
-| --------------------------------------------------------- | -------------------------------------------------------------- |
-| [Web-first roadmap PDF](PaperTrail-Web-First-Roadmap.pdf) | Current complete roadmap, revision 2                           |
-| [Roadmap](roadmap.md)                                     | Browser milestones and later desktop scope                     |
-| [Progress](progress.md)                                   | Issue states, dependencies and merge evidence                  |
-| [Architecture](architecture.md)                           | Browser library provider and reusable reader boundaries        |
-| [Deployment](deployment.md)                               | Main/PR preview workflows, Pages activation and release policy |
-| [Development](development.md)                             | GitHub-first CI and tracking process                           |
+| Document                                              | Purpose                                                                |
+| ----------------------------------------------------- | ---------------------------------------------------------------------- |
+| [Roadmap PDF](PaperTrail-Web-First-Roadmap.pdf)       | Web-first planning snapshot, revision 2                                |
+| [Roadmap](roadmap.md)                                 | Browser milestones and deferred desktop scope                          |
+| [Progress](progress.md)                               | Cross-issue status and merge evidence                                  |
+| [Status audit](status-audit.md)                       | Reconciled states, children and pending acceptance                     |
+| [Architecture overview](architecture.md)              | Browser provider and reader boundaries                                 |
+| [Vue architecture](vue-architecture.md)               | Current/pending module ownership, theme/state/routing and UI children  |
+| [Deployment guide](deployment.md)                     | How to publish previews and validate production                        |
+| [Deployment architecture](deployment-architecture.md) | Artifact trust, pages-state, trigger policy, recovery and release gaps |
+| [Deployment verification](deployment-verification.md) | Recorded live evidence and final docs-only check                       |
+| [Development](development.md)                         | GitHub-first quality and contribution workflow                         |
 
-The web-first roadmap supersedes the original desktop-first PDF, which remains available in Git history. Add future docs here and link them from this index. Current progress is held in issues/progress.md; plans do not imply implemented features.
+Add new documentation here and update this index. Live issues and docs/progress.md track delivery; plans and the roadmap PDF do not imply implemented features. Keep architecture changes and issue references together in the implementation PR.

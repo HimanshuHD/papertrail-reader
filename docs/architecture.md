@@ -1,12 +1,12 @@
 # Browser-first architecture
 
-UI: Vue 3 + TypeScript. Build: Vite. Styling/state/routing: Tailwind, Pinia and Vue Router as their issues are delivered.
+UI: Vue 3 + TypeScript. Build: Vite. Styling/state/routing: Tailwind, Pinia and Vue Router are implemented in PR #41 under review, and are not yet merged on main.
 
-Components call application services and Pinia actions. A LibraryProvider abstracts file selection, indexing, read access, capability checks and refresh. BrowserLibraryProvider uses File/Blob objects and optional directory handles. A future TauriLibraryProvider will implement native access behind the same boundary.
+Components call application services and Pinia actions. A planned LibraryProvider will abstract file selection, indexing, read access, capability checks and refresh. The planned BrowserLibraryProvider will use File/Blob objects and optional directory handles. A future TauriLibraryProvider will implement native access behind the same boundary.
 
-PDF and EPUB readers remain separate adapters behind a shared reader contract: open, close, navigation, progress, contents and supported controls. PDF.js uses a worker and lazy visible-page rendering. epub.js handles reflow and CFI navigation.
+PDF and EPUB readers remain separate adapters behind a shared reader contract: open, close, navigation, progress, contents and supported controls. Planned PDF.js integration (#10) uses a worker and lazy visible-page rendering; planned epub.js integration (#12) handles reflow and CFI navigation. Neither engine is implemented yet.
 
-Versioned IndexedDB stores document identity, reading positions, bookmarks and preferences. Use generated IDs and lazy fingerprints to reconcile reselected/moved files; handle ambiguous matches explicitly. Avoid whole-library eager hashing. Handle unavailable/cleared storage and quota errors.
+Planned versioned IndexedDB (#13) will store document identity, reading positions, bookmarks and preferences. Use generated IDs and lazy fingerprints to reconcile reselected/moved files; handle ambiguous matches explicitly. Avoid whole-library eager hashing. Handle unavailable/cleared storage and quota errors.
 
 Revoke Blob URLs and dispose readers on switching. Bound EPUB archive processing; disable book scripting and restrict remote resources. Validate malformed/password PDFs and unsupported EPUB content.
 
@@ -19,6 +19,10 @@ LibraryProvider abstracts capabilities, selection, enumeration, reads, refresh a
 ## Later desktop integration
 
 Issue #4 implements TauriLibraryProvider after web release. Readers, state and UI remain shared. No Rust package or Tauri runtime is required for the browser app.
+
+## Architecture documentation
+
+See [Vue application architecture](vue-architecture.md) for module/state ownership and PR #41 boundaries. See [Deployment architecture](deployment-architecture.md) for CI artifacts, trusted publishing and pages-state. UI shell children #42/#43 remain backlog under #7; implementation is paused during PR #41 review.
 
 ## Sources
 
