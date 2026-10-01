@@ -127,4 +127,4 @@ Branch: feat/6-theme-state-foundation. Tailwind semantic tokens, Pinia theme pre
 
 ## Browser CI increment (#37)
 
-PR #50 also adds built-site Chromium/WebKit checks and review artifacts to Frontend CI. #37 is In progress; shell navigation/responsiveness coverage is delivered here, while #43 focus/status and #8 selection/fallback/error behavior remain. See browser-testing.md for the matrix and artifact review.
+PR #50 also adds built-site Chromium checks with optional WebKit coverage and review artifacts to Frontend CI. #37 is In progress; shell navigation/responsiveness coverage is delivered here, while #43 focus/status and #8 selection/fallback/error behavior remain. See browser-testing.md for the matrix and artifact review.

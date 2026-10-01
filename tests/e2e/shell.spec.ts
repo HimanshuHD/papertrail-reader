@@ -32,6 +32,7 @@ test('home and app respond in both themes without overflow', async ({ page }, in
     const title = await page.locator('#reader-title').boundingBox()
     expect(sidebar).not.toBeNull()
     expect(title).not.toBeNull()
+    expect(title!.width).toBeGreaterThan(200)
     if (page.viewportSize()!.width >= 1024)
       expect(title!.x).toBeGreaterThan(sidebar!.x + sidebar!.width)
     else expect(title!.y).toBeGreaterThan(sidebar!.y + sidebar!.height)

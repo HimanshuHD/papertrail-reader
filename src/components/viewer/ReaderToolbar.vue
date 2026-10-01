@@ -7,7 +7,7 @@ defineProps<{ document: ShellDocument }>()
   <header
     class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-4 sm:px-8"
   >
-    <div class="min-w-0 flex-1">
+    <div class="min-w-0 flex-1 basis-full sm:basis-auto">
       <p class="text-xs font-semibold tracking-wider text-brand uppercase">
         {{ document.format }} · sample workspace
       </p>
