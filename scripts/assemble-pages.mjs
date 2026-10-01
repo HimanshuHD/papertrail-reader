@@ -1,6 +1,13 @@
 import { cp, mkdir, readdir, rm, writeFile, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+async function validateArtifact(folder) {
+  for (const item of await readdir(folder, { withFileTypes: true })) {
+    if (item.isSymbolicLink() || ['.git', '.deployment-state.json', 'preview', 'CNAME'].includes(item.name)) throw new Error('Reserved or linked artifact path')
+    if (item.isDirectory()) await validateArtifact(path.join(folder, item.name))
+  }
+}
+
 export async function assemble({ site, artifact, kind, pr, sha, runId }) {
   await mkdir(site, { recursive: true })
   const statePath = path.join(site, '.deployment-state.json')
@@ -10,6 +17,7 @@ export async function assemble({ site, artifact, kind, pr, sha, runId }) {
   }
   if (!['production', 'preview', 'retire'].includes(kind)) throw new Error('Invalid deployment kind')
   if (kind !== 'production' && !/^[1-9]\d*$/.test(String(pr))) throw new Error('Invalid PR number')
+  if (kind !== 'retire') await validateArtifact(artifact)
   if (kind === 'production' && state.production && Number(runId) < Number(state.production.runId)) return
   if (kind === 'production') {
     for (const item of await readdir(site)) {
