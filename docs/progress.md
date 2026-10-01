@@ -4,14 +4,14 @@ Updated: 1 October 2026. Parent tracker: [#1](https://github.com/HimanshuHD/pape
 
 ## Current increment
 
-Repository documentation and issue tracking (#2) is in review on `chore/2-repository-setup`. Application code and CI are not implemented. The initial README commit on main is `1d5b93dfe9f2e1bb85204fa8773300352f9a4b4d` and references #2. Setup PR: [#20](https://github.com/HimanshuHD/papertrail-reader/pull/20). Setup commit: [586c280](https://github.com/HimanshuHD/papertrail-reader/commit/586c280e2be572eaed723aa903fd32ed92e262b1). Its acceptance criteria are verified; merge to main is pending.
+Repository setup (#2) completed via merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is now In progress on `chore/3-vue-vite-bootstrap`; native/runtime and document rendering remain planned.
 
 ## Backlog and dependencies
 
 | Issue | Milestone | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | M0 | Repository documentation and issue tracking | In review | None |
-| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | Backlog | #2 |
+| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | M0 | Repository documentation and issue tracking | Completed | None |
+| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | In progress | #2 |
 | [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4) | M0 | Integrate Tauri 2 desktop shell | Backlog | #3 |
 | [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5) | M0 | Configure code quality, tests and GitHub Actions | Backlog | #3; native checks after #4 |
 | [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6) | M1 | Design tokens, themes and application state | Backlog | #3 |
@@ -31,8 +31,8 @@ Repository documentation and issue tracking (#2) is in review on `chore/2-reposi
 
 ## Evidence and completion
 
-- #2: Initial README and setup commits above; PR #20 contains the requested files and tracking templates. All relative Markdown links resolved; PDF parsed as eight pages and uploaded blob matched source bytes. App CI does not exist yet.
-- No product implementation issue is completed yet.
+- #2: Initial README and setup commits above; PR #20 contains the requested files and tracking templates. All relative Markdown links resolved; PDF parsed as eight pages and uploaded blob matched source bytes. Frontend CI is under development in the next PR.
+- #2 is completed. Merge evidence: PR #20, commit `abe39ff95435861258d7f37fb2a0249066ee733f`.
 - Next: #3 frontend bootstrap, followed by #4 native shell and #5 CI/tooling.
 
 ## Maintenance
