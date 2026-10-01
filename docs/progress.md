@@ -47,8 +47,7 @@ Latest merged increment: PR #50, commit `3a1a82d5ceb6e518cefcbafe43dedacef372380
 | [#46](https://github.com/HimanshuHD/papertrail-reader/issues/46) | Web           | Replace appearance dropdown with light/dark icon toggle               | Completed                |
 | [#47](https://github.com/HimanshuHD/papertrail-reader/issues/47) | Web           | Display initial application version in production footer              | Completed                |
 | [#49](https://github.com/HimanshuHD/papertrail-reader/issues/49) | Web           | Preserve responsive home page and add Go to app navigation            | Completed                |
-
-| [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web | Restore fast automatic CI; browser tests explicit only | In review |
+| [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web           | Restore fast automatic CI; browser tests explicit only                | In review                |
 
 ## Current application
 
