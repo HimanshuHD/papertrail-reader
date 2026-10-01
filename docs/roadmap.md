@@ -43,7 +43,7 @@ M1 - UI and state (#6, #7)
 Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. Keyboard/focus and explicit empty/loading/error/demo status states #43 are completed in PR #53. Parent #7 is completed after explicit Chromium acceptance in run 36924070741. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
-#8 source selection is completed in PR #54. #24 incremental discovery is completed in PR #55: selected sources normalize into PDF/EPUB documents with preserved relative paths, recursive handle traversal, progress, yielding, cancellation and recoverable partial results. #25 is the next increment for hierarchy rendering and refresh/reselection UI. Explain handle refresh versus snapshot reselection.
+#8 source selection is completed in PR #54. #24 incremental discovery is completed in PR #55: selected sources normalize into PDF/EPUB documents with preserved relative paths, recursive handle traversal, progress, yielding, cancellation and recoverable partial results. #25 is active on `feat/25-library-tree-ui` for hierarchy rendering, local-document selection, live-handle refresh and explicit snapshot reselection. Explain handle refresh versus snapshot reselection.
 
 Exit: nested files, empty selections, permission denial, picker dismissal, unsupported APIs, Unicode paths and large selected libraries handled. Browser selection boundaries are respected. Individual-file fallback never invents directory paths.
 
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #55: M0 #5 and M1 #7 are completed; #8 and #24 are completed in M2. #25 directory tree/list plus refresh/reselection UI is the next product increment. Tauri remains deferred.
+Current after merged PR #55: M0 #5 and M1 #7 are completed; #8 and #24 are completed in M2. #25 directory tree/list plus refresh/reselection UI is the active product increment. Tauri remains deferred.
 
 ## 7. Release acceptance and sources
 
