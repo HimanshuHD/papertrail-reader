@@ -9,22 +9,26 @@ const content = computed(() => {
     case 'empty':
       return {
         title: 'No documents selected',
-        detail: 'Choose a folder or files when library access becomes available. No files are accessed automatically.',
+        detail:
+          'Choose a folder or files when library access becomes available. No files are accessed automatically.',
       }
     case 'loading':
       return {
         title: 'Preparing your library',
-        detail: 'PaperTrail is preparing document information. Reader controls remain unavailable until this finishes.',
+        detail:
+          'PaperTrail is preparing document information. Reader controls remain unavailable until this finishes.',
       }
     case 'error':
       return {
         title: 'PaperTrail could not prepare the library',
-        detail: 'Your documents were not changed. Retry or choose files again when browser selection is implemented.',
+        detail:
+          'Your documents were not changed. Retry or choose files again when browser selection is implemented.',
       }
     case 'demo':
       return {
         title: 'Demonstration workspace',
-        detail: 'Sample titles are available for layout exploration only. File access and real reading are not active yet.',
+        detail:
+          'Sample titles are available for layout exploration only. File access and real reading are not active yet.',
       }
     default:
       return {
