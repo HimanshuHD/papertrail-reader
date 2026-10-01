@@ -29,12 +29,13 @@ describe('library tree', () => {
       document('Notes/2026/βeta.pdf'),
     ])
 
-    expect(nodes.map((node) => [node.kind, node.kind === 'folder' ? node.name : node.document.name]))
-      .toEqual([
-        ['folder', 'Books'],
-        ['folder', 'Notes'],
-        ['document', 'root.pdf'],
-      ])
+    expect(
+      nodes.map((node) => [node.kind, node.kind === 'folder' ? node.name : node.document.name]),
+    ).toEqual([
+      ['folder', 'Books'],
+      ['folder', 'Notes'],
+      ['document', 'root.pdf'],
+    ])
 
     const books = nodes[0]
     expect(books.kind).toBe('folder')
@@ -42,9 +43,7 @@ describe('library tree', () => {
 
     expect(books.documentCount).toBe(2)
     expect(
-      books.children.map((node) =>
-        node.kind === 'folder' ? node.name : node.document.name,
-      ),
+      books.children.map((node) => (node.kind === 'folder' ? node.name : node.document.name)),
     ).toEqual(['Alpha.pdf', 'zeta.epub'])
 
     const notes = nodes[1]
