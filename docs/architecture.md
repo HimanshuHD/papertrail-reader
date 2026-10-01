@@ -34,7 +34,7 @@ See [Vue application architecture](vue-architecture.md) for module/state ownersh
 
 Tailwind's Vite plugin compiles semantic canvas, panel, ink, muted, brand and line utilities from CSS custom properties in src/assets/main.css. Light and dark palettes share spacing/radius tokens. The deployment footer consumes the same palette.
 
-Pinia owns theme preference and resolved appearance; theme-preferences.ts validates the versioned localStorage key papertrail.theme.v1 and tolerates unavailable storage. theme-runtime.ts applies the resolved theme before mounting, listens for OS changes in System mode and returns cleanup for listeners/watchers. Explicit Light/Dark overrides OS appearance. Preferences are local to the browser origin, so production and previews share the theme choice.
+Pinia owns the explicit Light/Dark preference and resolved appearance. theme-preferences.ts validates papertrail.theme.v1; absent, invalid and legacy System values resolve to Light. Storage errors do not prevent session changes. theme-runtime.ts applies the theme before mounting and returns watcher cleanup; it does not subscribe to OS appearance. The accessible sun/moon toggle (#46) replaces the original #6 dropdown. Production and previews share theme choice on their browser origin.
 
 Router uses hash history with Vite BASE_URL, avoiding static-host rewrite requirements at production and preview paths. The foundation view is separated from the root/router/footer. The interactive split shell is #7.
 

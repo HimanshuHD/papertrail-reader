@@ -9,7 +9,7 @@ import { connectTheme } from '../../src/services/theme-runtime'
 import { THEME_STORAGE_KEY } from '../../src/services/theme-preferences'
 
 describe('application routing and appearance', () => {
-  it('renders the home view and persists changes from the labeled selector', async () => {
+  it('renders the home view and persists changes from the accessible toggle', async () => {
     localStorage.clear()
     const pinia = createPinia()
     const router = createAppRouter(createMemoryHistory())
@@ -19,10 +19,14 @@ describe('application routing and appearance', () => {
     const stop = connectTheme(useThemeStore(pinia), root)
     const wrapper = mount(App, { global: { plugins: [pinia, router] } })
     expect(wrapper.get('h1').text()).toBe('PaperTrail')
-    expect(wrapper.get('label[for="theme-preference"]').text()).toContain('Appearance')
-    await wrapper.get('#theme-preference').setValue('dark')
+    expect(wrapper.get('button[aria-label="Dark mode"]').attributes('aria-pressed')).toBe('false')
+    await wrapper.get('button[aria-label="Dark mode"]').trigger('click')
+    expect(wrapper.get('button').attributes('aria-pressed')).toBe('true')
     expect(root.dataset.theme).toBe('dark')
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
+    await wrapper.get('button[aria-label="Dark mode"]').trigger('click')
+    expect(root.dataset.theme).toBe('light')
+    expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
     await router.push('/unknown')
     expect(router.currentRoute.value.name).toBe('home')
     wrapper.unmount()

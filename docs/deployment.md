@@ -43,3 +43,7 @@ GitHub may cancel a pending publisher during overlapping cleanup/production even
 CI supplies Vite base paths with trailing slash. A later custom-domain setup can use PAGES_BASE_PATH=/. Hash routing is implemented in PR #41 merged.
 
 Production and previews share an origin. Theme preference is intentionally shared in PR #41. Future reading positions, bookmarks and document identity must be namespaced by base path so preview experiments cannot overwrite production reading metadata. Do not publish private document fixtures.
+
+## Application version (#47)
+
+package.json is the version source of truth. Vite embeds it at build time; production displays Production · v0.1.0, followed by existing branch/SHA identity. Preview identity retains the linked PR number. Version bumps use reviewed changes and keep package-lock.json synchronized; version labels do not create Git tags or immutable release URLs. Initial foundation changes are recorded in CHANGELOG.md. Tag/promotion automation remains #32.

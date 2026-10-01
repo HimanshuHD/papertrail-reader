@@ -1,16 +1,16 @@
-export type ThemePreference = 'system' | 'light' | 'dark'
+export type ThemePreference = 'light' | 'dark'
 export const THEME_STORAGE_KEY = 'papertrail.theme.v1'
 
 export function isThemePreference(value: unknown): value is ThemePreference {
-  return value === 'system' || value === 'light' || value === 'dark'
+  return value === 'light' || value === 'dark'
 }
 
 export function readThemePreference(): { preference: ThemePreference; storageAvailable: boolean } {
   try {
     const saved = window.localStorage.getItem(THEME_STORAGE_KEY)
-    return { preference: isThemePreference(saved) ? saved : 'system', storageAvailable: true }
+    return { preference: isThemePreference(saved) ? saved : 'light', storageAvailable: true }
   } catch {
-    return { preference: 'system', storageAvailable: false }
+    return { preference: 'light', storageAvailable: false }
   }
 }
 

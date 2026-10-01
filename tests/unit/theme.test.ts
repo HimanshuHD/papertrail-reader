@@ -19,9 +19,9 @@ describe('theme preferences', () => {
     expect(useThemeStore().preference).toBe('dark')
   })
 
-  it('falls back to system for invalid saved data', () => {
+  it('falls back to light for invalid saved data', () => {
     localStorage.setItem(THEME_STORAGE_KEY, 'sepia')
-    expect(useThemeStore().preference).toBe('system')
+    expect(useThemeStore().preference).toBe('light')
   })
 
   it('still changes the session theme when browser storage throws', () => {
@@ -32,35 +32,27 @@ describe('theme preferences', () => {
       throw Error('quota')
     })
     const store = useThemeStore()
-    expect(store.preference).toBe('system')
+    expect(store.preference).toBe('light')
     expect(store.storageAvailable).toBe(false)
     store.setPreference('dark')
     expect(store.resolvedTheme).toBe('dark')
     expect(store.storageAvailable).toBe(false)
   })
 
-  it('follows system changes only in system mode and cleans up its listener', () => {
+  it('migrates a legacy system preference to light', () => {
+    localStorage.setItem(THEME_STORAGE_KEY, 'system')
+    expect(useThemeStore().preference).toBe('light')
+  })
+
+  it('applies explicit appearance and stops watching on cleanup', () => {
     const store = useThemeStore()
     const root = document.createElement('div')
-    let onChange: ((event: MediaQueryListEvent) => void) | undefined
-    const removeEventListener = vi.fn()
-    const media = {
-      matches: true,
-      addEventListener: vi.fn((_type, callback) => {
-        onChange = callback
-      }),
-      removeEventListener,
-    }
-    const stop = connectTheme(store, root, media)
-    expect(root.dataset.theme).toBe('dark')
-    onChange?.({ matches: false } as MediaQueryListEvent)
+    const stop = connectTheme(store, root)
     expect(root.dataset.theme).toBe('light')
-    store.setPreference('light')
-    onChange?.({ matches: true } as MediaQueryListEvent)
-    expect(root.dataset.theme).toBe('light')
-    store.setPreference('system')
+    store.setPreference('dark')
     expect(root.dataset.theme).toBe('dark')
     stop()
-    expect(removeEventListener).toHaveBeenCalledWith('change', onChange)
+    store.setPreference('light')
+    expect(root.dataset.theme).toBe('dark')
   })
 })

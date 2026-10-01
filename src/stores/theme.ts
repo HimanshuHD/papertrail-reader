@@ -7,15 +7,12 @@ export const useThemeStore = defineStore('theme', () => {
   const saved = readThemePreference()
   const preference = ref<ThemePreference>(saved.preference)
   const storageAvailable = ref(saved.storageAvailable)
-  const systemDark = ref(false)
-  const resolvedTheme = computed(() =>
-    preference.value === 'system' ? (systemDark.value ? 'dark' : 'light') : preference.value,
-  )
+  const resolvedTheme = computed(() => preference.value)
 
   function setPreference(value: ThemePreference) {
     preference.value = value
     storageAvailable.value = saveThemePreference(value)
   }
 
-  return { preference, storageAvailable, systemDark, resolvedTheme, setPreference }
+  return { preference, storageAvailable, resolvedTheme, setPreference }
 })
