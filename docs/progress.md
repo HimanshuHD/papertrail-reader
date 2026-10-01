@@ -6,7 +6,7 @@ Latest verified merge: [#33](https://github.com/HimanshuHD/papertrail-reader/pul
 
 ## Current increment
 
-PR #29 completed #3/#30. Merge tracking #21 was verified by successful run 36887472079 and is completed. GitHub Pages pipeline #31 is in progress; live activation is pending repository Pages settings. Release tags/promotion remain #32.
+PR #29 completed #3/#30. Merge tracking #21 was verified by successful run 36887472079 and is completed. GitHub Pages pipeline #31 is completed and live; production and active/retired preview paths were independently verified. Release tags/promotion remain #32.
 
 ## Issue tracker
 
@@ -50,9 +50,17 @@ Post-merge automation reconciles closed completed issues and docs on main. It do
 
 | Issue | Phase | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
-| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web | Main deployment and PR previews | In review | #26; Pages enablement; eligible plan |
+| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web | Main deployment and PR previews | Completed | #26; Pages enablement; eligible plan |
 | [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32) | Web | Versioned releases and promotion | Backlog | #31; release acceptance |
 
 Deployment design: [deployment.md](deployment.md). Main root plus preview/pr-N paths use one hostname. Live URLs are not verified yet.
 
-Pipeline review: PR #33. Live Pages verification remains pending; no deployment issue is completed by build-only validation.
+Pipeline review: PR #33. Live production and preview verification completed in #31; release promotion remains #32.
+
+## Verified deployment channels
+
+- Production: https://himanshuhd.github.io/papertrail-reader/
+- Temporary active preview: https://himanshuhd.github.io/papertrail-reader/preview/pr-34/
+- Retired preview: https://himanshuhd.github.io/papertrail-reader/preview/pr-33/
+- Evidence: [deployment-verification.md](deployment-verification.md).
+- Draft PR #34 is verification-only; close rather than merge when inspection is complete. Issue #31 is completed; #26/#32 release scope remains open.
