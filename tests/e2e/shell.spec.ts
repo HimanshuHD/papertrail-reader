@@ -63,11 +63,23 @@ test('sample selection survives sidebar collapse; unavailable actions stay disab
   await noOverflow(page)
 })
 
-test('keyboard entry, theme persistence and browser history work', async ({ page }) => {
+test('keyboard entry, sidebar focus restoration, theme persistence and browser history work', async ({
+  page,
+}) => {
   await page.goto('./')
   await page.getByRole('link', { name: 'Go to app' }).focus()
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/#\/app$/)
+
+  const sample = page.getByRole('button', { name: /Welcome to PaperTrail/ })
+  await sample.focus()
+  await page.keyboard.press('Escape')
+  const libraryToggle = page.getByRole('button', { name: 'Show library' })
+  await expect(libraryToggle).toBeFocused()
+  await expect(page.getByRole('complementary')).toHaveCount(0)
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('complementary')).toBeVisible()
+
   const toggle = page.getByRole('button', { name: 'Dark mode' })
   await toggle.focus()
   await page.keyboard.press('Space')
