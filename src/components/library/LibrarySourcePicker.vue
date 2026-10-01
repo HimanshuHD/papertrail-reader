@@ -37,7 +37,8 @@ async function chooseFolder() {
   }
 
   if (result.reason === 'dismissed-or-denied') {
-    feedback.value = 'Folder selection was cancelled or permission was not granted. No files were accessed.'
+    feedback.value =
+      'Folder selection was cancelled or permission was not granted. No files were accessed.'
     return
   }
 
@@ -53,10 +54,7 @@ function chooseFiles() {
   fileInput.value?.click()
 }
 
-function handleInputSelection(
-  event: Event,
-  source: 'directory-input' | 'file-input',
-) {
+function handleInputSelection(event: Event, source: 'directory-input' | 'file-input') {
   const input = event.currentTarget as HTMLInputElement
   const selection = selectionFromFiles(input.files ?? [], source)
 
