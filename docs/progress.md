@@ -4,14 +4,14 @@ Updated: 1 October 2026. Parent tracker: [#1](https://github.com/HimanshuHD/pape
 
 ## Current increment
 
-#2 is completed by merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is In progress on `chore/3-vue-vite-bootstrap`. The frontend foundation and post-merge tracking workflow (#21) are under validation. Native runtime and document reading are pending.
+#2 is completed by merged PR #20; merge commit `abe39ff95435861258d7f37fb2a0249066ee733f`. #3 is In review on `chore/3-vue-vite-bootstrap`. The frontend foundation passed clean npm ci, type checking and production build in [GitHub run 36884610560](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36884610560). Post-merge workflow #21 passed representative reconciliation checks; real-merge verification is pending. Native runtime and document reading are pending.
 
 ## Backlog and dependencies
 
 | Issue | Milestone | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
 | [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | M0 | Repository documentation and issue tracking | Completed | None |
-| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | In progress | #2 |
+| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | M0 | Bootstrap Vue 3, Vite and TypeScript | In review | #2 |
 | [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4) | M0 | Integrate Tauri 2 desktop shell | Backlog | #3 |
 | [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5) | M0 | Configure code quality, tests and GitHub Actions | Backlog | #3; native checks after #4 |
 | [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6) | M1 | Design tokens, themes and application state | Backlog | #3 |
