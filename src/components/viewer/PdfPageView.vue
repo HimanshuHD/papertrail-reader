@@ -121,8 +121,8 @@ onBeforeUnmount(() => {
 
 <template>
   <article
-    ref="root"
     :id="`pdf-page-${pageNumber}`"
+    ref="root"
     class="pdf-page-shell flex min-h-[65vh] w-full scroll-mt-4 items-start justify-center"
     :aria-label="`PDF page ${pageNumber}`"
   >
