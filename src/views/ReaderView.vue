@@ -92,6 +92,8 @@ const discoverySummary = computed(() => {
           : ''
       return `${count} supported ${noun} found.${problemSuffix}`
     }
+    default:
+      return 'Document discovery state is unavailable.'
   }
 })
 
