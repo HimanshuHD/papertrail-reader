@@ -9,9 +9,7 @@
       "status": "active"
     },
     "36": {
-      "sha": "27684c409a8837b0e48c636adfa93a1cf631d7de",
-      "runId": "36894380314",
-      "status": "active"
+      "status": "retired"
     }
   },
   "production": {
