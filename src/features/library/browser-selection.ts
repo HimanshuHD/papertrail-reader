@@ -12,10 +12,7 @@ export type BrowserLibrarySelection =
 
 export type DirectoryPickerFailure = 'dismissed-or-denied' | 'blocked' | 'unavailable' | 'failed'
 
-export type LibraryRefreshAction =
-  | 'refresh-directory'
-  | 'reselect-directory'
-  | 'reselect-files'
+export type LibraryRefreshAction = 'refresh-directory' | 'reselect-directory' | 'reselect-files'
 
 export type DirectoryPickerResult =
   { ok: true; selection: BrowserLibrarySelection } | { ok: false; reason: DirectoryPickerFailure }
