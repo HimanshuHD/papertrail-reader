@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #57: M0 #5, M1 #7 and M2 #8/#9 are completed. #10 PDF.js reader/navigation/zoom is the next product increment; #11 follows for PDF search/contents/shortcuts. Tauri remains deferred.
+Current after merged PR #58: M0 #5, M1 #7 and M2 #8/#9 are completed. #10 is active on `feat/10-pdf-reader-core` with bundled PDF.js worker/session lifetime and the first local PDF navigation/zoom/fit slice; #11 follows for PDF search/contents/shortcuts. Tauri remains deferred.
 
 ## 7. Release acceptance and sources
 
