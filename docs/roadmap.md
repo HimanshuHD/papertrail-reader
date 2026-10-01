@@ -146,7 +146,7 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#7 [M1] Split reader layout and accessible app shell](https://github.com/HimanshuHD/papertrail-reader/issues/7)
 - [ ] [#6 [M1] Design tokens, themes and application state](https://github.com/HimanshuHD/papertrail-reader/issues/6)
 - [ ] [#5 [M0] Configure web code quality, tests and GitHub Actions](https://github.com/HimanshuHD/papertrail-reader/issues/5)
-- [ ] [#3 [M0] Bootstrap Vue 3, Vite and TypeScript](https://github.com/HimanshuHD/papertrail-reader/issues/3)
+- [x] [#3 [M0] Bootstrap Vue 3, Vite and TypeScript](https://github.com/HimanshuHD/papertrail-reader/issues/3)
 - [x] [#2 [M0] Repository documentation and issue tracking](https://github.com/HimanshuHD/papertrail-reader/issues/2)
 
 ## Deferred desktop phase
