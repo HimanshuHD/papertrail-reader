@@ -31,6 +31,7 @@ jobs:
               let body = issue.body || '';
               body = body.replace(/Status: (?:Backlog|In progress|In review|Blocked)/g, 'Status: Completed');
               if (!body.includes(evidence)) body += '\n\n## Merge evidence\n' + evidence + '\n';
+              body = body.replace('- [ ] PR merged to main.', '- [x] PR merged to main.');
               if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: n, body });
             }
             for (const issue of byNumber.values()) {
@@ -41,6 +42,7 @@ jobs:
                 return child ? '- [' + (child.state === 'closed' && (!child.state_reason || child.state_reason === 'completed') ? 'x' : ' ') + '] #' + n : line;
               });
               if (issue.number === 1) {
+                body = body.replace(/## Current work\n[\s\S]*?(?=\n## |$)/, '## Current work\nMerged PR #' + pr.number + ' reconciled at ' + pr.merged_at + '. See the milestone checklist and live issue statuses for remaining work.\n');
                 const section = '## Latest merge\nPR #' + pr.number + ' merged at ' + pr.merged_at + '. Commit: \`' + pr.merge_commit_sha + '\`.\n\n';
                 body = body.replace(/## Latest merge\n[\s\S]*?(?=\n## |$)/, '').trim() + '\n\n' + section;
               }
