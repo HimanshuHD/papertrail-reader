@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import App from '../../src/App.vue'
 import ShellStatus from '../../src/components/viewer/ShellStatus.vue'
 import ReaderView from '../../src/views/ReaderView.vue'
@@ -103,13 +103,53 @@ describe('home and product shell', () => {
     },
   )
 
-  it('identifies demonstration content and prevents unavailable file/reader actions', async () => {
+  it('offers browser selection while keeping unavailable reader actions disabled', async () => {
     const { wrapper } = await mountApp('/app')
-    expect(wrapper.text()).toContain('No folders or files have been accessed')
+    expect(wrapper.text()).toContain('PaperTrail only receives files you explicitly choose')
     expect(wrapper.text()).toContain('does not open a document')
     expect(wrapper.text()).toContain('Demonstration workspace')
-    expect(wrapper.find('input[type="file"]').exists()).toBe(false)
-    expect(wrapper.findAll('button:disabled')).toHaveLength(3)
+    expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
+    const folderButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Choose folder')
+    expect(folderButton).toBeTruthy()
+    expect(folderButton!.attributes('disabled')).toBeUndefined()
+    expect(wrapper.findAll('button:disabled')).toHaveLength(2)
+    wrapper.unmount()
+  })
+
+  it('uses the directory input fallback when the native directory picker is unavailable', async () => {
+    const { wrapper } = await mountApp('/app')
+    const directoryInput = wrapper.get('input[webkitdirectory]')
+    const click = vi.spyOn(directoryInput.element as HTMLInputElement, 'click')
+    const folderButton = wrapper
+      .findAll('button')
+      .find((button) => button.text() === 'Choose folder')!
+
+    await folderButton.trigger('click')
+
+    expect(click).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('retains explicitly selected files without opening them as reader documents', async () => {
+    const { wrapper } = await mountApp('/app')
+    const fileInput = wrapper.get('input[accept*=".pdf"]')
+    const files = [
+      new File(['pdf'], 'guide.pdf', { type: 'application/pdf' }),
+      new File(['epub'], 'book.epub', { type: 'application/epub+zip' }),
+    ]
+
+    Object.defineProperty(fileInput.element, 'files', {
+      configurable: true,
+      value: files,
+    })
+    await fileInput.trigger('change')
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('2 items selected from the file picker')
+    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.findAll('button:disabled')).toHaveLength(2)
     wrapper.unmount()
   })
 })

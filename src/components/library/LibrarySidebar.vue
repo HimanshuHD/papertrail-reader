@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import LibrarySourcePicker from './LibrarySourcePicker.vue'
+import type { BrowserLibrarySelection } from '../../features/library/browser-selection'
 import type { ShellDocument } from '../../types/shell'
-const props = defineProps<{ documents: readonly ShellDocument[]; selectedId: string }>()
-defineEmits<{ select: [id: string]; close: [] }>()
+
+const props = defineProps<{
+  documents: readonly ShellDocument[]
+  selectedId: string
+  selectionSummary: string
+}>()
+
+defineEmits<{
+  select: [id: string]
+  close: []
+  librarySelection: [selection: BrowserLibrarySelection]
+}>()
+
 const collections = computed(() => [
   ...new Set(props.documents.map((document) => document.collection)),
 ])
@@ -12,18 +25,20 @@ const collections = computed(() => [
   <div class="p-5" @keydown.esc.stop="$emit('close')">
     <div class="flex items-center justify-between gap-3">
       <h2 class="font-semibold">Your library</h2>
-      <span class="rounded-full border border-line px-2 py-1 text-xs text-muted">Sample</span>
+      <span class="rounded-full border border-line px-2 py-1 text-xs text-muted">Local</span>
     </div>
     <p class="mt-2 text-sm leading-relaxed text-muted">
-      Explore the layout with demonstration titles. Press Escape from the library to close it.
+      Choose local documents explicitly, or explore the demonstration titles below. Press Escape
+      from the library to close it.
     </p>
-    <button
-      type="button"
-      disabled
-      class="mt-5 min-h-11 w-full rounded-lg border border-dashed border-line px-3 py-2 text-sm text-muted"
-    >
-      Choose folder · coming soon
-    </button>
+
+    <div class="mt-5">
+      <LibrarySourcePicker
+        :selection-summary="selectionSummary"
+        @selected="$emit('librarySelection', $event)"
+      />
+    </div>
+
     <nav class="mt-6 space-y-5" aria-label="Demonstration documents">
       <section v-for="collection in collections" :key="collection">
         <h3 class="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
@@ -59,7 +74,8 @@ const collections = computed(() => [
       </section>
     </nav>
     <p class="mt-8 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-      No folders or files have been accessed. Selection will be added in a later milestone.
+      PaperTrail only receives files you explicitly choose. Library discovery and the directory tree
+      are implemented separately in the next milestone.
     </p>
   </div>
 </template>
