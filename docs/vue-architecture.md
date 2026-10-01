@@ -11,7 +11,7 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 | State           | Theme plus view-local sample/sidebar/browser source selection  | Library state #9; reading metadata #13 |
 | Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed       |
 | Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                        |
-| File access     | Source selection #8 plus discovery/indexing #24               | Tree/refresh UI #25                     |
+| File access     | Source selection #8 plus discovery/indexing #24                | Tree/refresh UI #25                    |
 | Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                    |
 
 #6/#46/#42/#49/#43 are merged. Shell metadata is clearly labeled demonstration content. #8 adds explicit browser source selection only; file discovery and reader implementation are still separate.
@@ -66,7 +66,6 @@ The sun/moon button uses native button keyboard activation, aria-pressed for Dar
 ## Reader shell and entry (#42/#49)
 
 HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 completed the accessibility/status increment in merged PR #53; #37 remains the explicit browser-acceptance owner. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.
-
 
 ## Browser discovery increment (#24)
 
