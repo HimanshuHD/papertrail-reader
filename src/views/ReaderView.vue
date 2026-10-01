@@ -9,6 +9,8 @@ import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
 import ShellStatus from '../components/viewer/ShellStatus.vue'
 import {
   describeLibrarySelection,
+  librarySelectionLabel,
+  refreshActionForSelection,
   type BrowserLibrarySelection,
 } from '../features/library/browser-selection'
 import {
@@ -46,6 +48,7 @@ const documents: readonly ShellDocument[] = [
 ]
 
 const selectedId = ref('welcome')
+const selectedLibraryDocumentId = ref<string | null>(null)
 const sidebarOpen = ref(true)
 const sidebarToggle = ref<HTMLButtonElement | null>(null)
 const viewState = ref<ShellViewState>('demo')
@@ -66,6 +69,18 @@ const librarySelectionSummary = computed(() =>
   librarySelection.value
     ? describeLibrarySelection(librarySelection.value)
     : 'No folder or files selected yet.',
+)
+
+const libraryLabel = computed(() =>
+  librarySelection.value ? librarySelectionLabel(librarySelection.value) : 'Local documents',
+)
+
+const refreshAction = computed(() =>
+  librarySelection.value ? refreshActionForSelection(librarySelection.value) : null,
+)
+
+const showLibraryResults = computed(
+  () => discoveryPhase.value === 'ready' || discoveryPhase.value === 'cancelled',
 )
 
 const discoverySummary = computed(() => {
@@ -101,6 +116,13 @@ const selectedDocument = computed(
   () => documents.find((document) => document.id === selectedId.value) ?? documents[0]!,
 )
 
+const selectedLibraryDocument = computed(
+  () =>
+    discoveredDocuments.value.find(
+      (document) => document.id === selectedLibraryDocumentId.value,
+    ) ?? null,
+)
+
 function selectDocument(id: string) {
   const document = documents.find((item) => item.id === id)
   if (!document) return
@@ -108,9 +130,33 @@ function selectDocument(id: string) {
   announcement.value = `Selected sample: ${document.title}.`
 }
 
-async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
-  librarySelection.value = selection
-  announcement.value = describeLibrarySelection(selection)
+function selectLibraryDocument(id: string) {
+  const document = discoveredDocuments.value.find((item) => item.id === id)
+  if (!document) return
+  selectedLibraryDocumentId.value = id
+  announcement.value = `Selected local document: ${document.name}. Reader integration is not active yet.`
+}
+
+function restoreLibrarySelection(
+  previous: DiscoveredDocument | null,
+  documents: readonly DiscoveredDocument[],
+): string | null {
+  if (!previous) return null
+
+  const exact = documents.find((document) => document.id === previous.id)
+  if (exact) return exact.id
+
+  const samePath = documents.filter(
+    (document) => document.relativePath === previous.relativePath,
+  )
+  return samePath.length === 1 ? samePath[0]!.id : null
+}
+
+async function runDiscovery(
+  selection: BrowserLibrarySelection,
+  preserveSelection: boolean,
+): Promise<void> {
+  const previous = preserveSelection ? selectedLibraryDocument.value : null
 
   discoveryController?.abort()
   const controller = new AbortController()
@@ -132,6 +178,7 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
 
     discoveredDocuments.value = result.documents
     discoveryProblems.value = result.problems
+    selectedLibraryDocumentId.value = restoreLibrarySelection(previous, result.documents)
     discoveryPhase.value = result.status === 'cancelled' ? 'cancelled' : 'ready'
     announcement.value =
       result.status === 'cancelled'
@@ -139,9 +186,25 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
         : `${result.documents.length} supported documents discovered.`
   } catch {
     if (discoveryController !== controller) return
+    selectedLibraryDocumentId.value = null
     discoveryPhase.value = 'error'
     announcement.value = 'Document discovery failed.'
   }
+}
+
+async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  librarySelection.value = selection
+  selectedLibraryDocumentId.value = null
+  announcement.value = describeLibrarySelection(selection)
+  await runDiscovery(selection, false)
+}
+
+async function refreshLibrary() {
+  const selection = librarySelection.value
+  if (!selection || selection.kind !== 'directory') return
+
+  announcement.value = `Refreshing folder ${selection.handle.name}.`
+  await runDiscovery(selection, true)
 }
 
 function cancelDiscovery() {
@@ -150,13 +213,13 @@ function cancelDiscovery() {
 
 function toggleSidebar() {
   sidebarOpen.value = !sidebarOpen.value
-  announcement.value = sidebarOpen.value ? 'Sample library shown.' : 'Sample library hidden.'
+  announcement.value = sidebarOpen.value ? 'Library shown.' : 'Library hidden.'
 }
 
 async function closeSidebarAndRestoreFocus() {
   if (!sidebarOpen.value) return
   sidebarOpen.value = false
-  announcement.value = 'Sample library hidden.'
+  announcement.value = 'Library hidden.'
   await nextTick()
   sidebarToggle.value?.focus()
 }
@@ -200,12 +263,19 @@ async function closeSidebarAndRestoreFocus() {
         <LibrarySidebar
           :documents="documents"
           :selected-id="selectedId"
+          :library-documents="discoveredDocuments"
+          :selected-library-document-id="selectedLibraryDocumentId"
+          :library-label="libraryLabel"
+          :show-library-results="showLibraryResults"
+          :refresh-action="refreshAction"
           :selection-summary="librarySelectionSummary"
           :discovery-summary="discoverySummary"
           :discovery-busy="discoveryPhase === 'indexing'"
           :discovery-problem-count="discoveryProblems.length"
           @select="selectDocument"
+          @select-library-document="selectLibraryDocument"
           @library-selection="acceptLibrarySelection"
+          @refresh-library="refreshLibrary"
           @cancel-discovery="cancelDiscovery"
           @close="closeSidebarAndRestoreFocus"
         />
