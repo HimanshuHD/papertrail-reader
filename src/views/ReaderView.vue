@@ -118,9 +118,8 @@ const selectedDocument = computed(
 
 const selectedLibraryDocument = computed(
   () =>
-    discoveredDocuments.value.find(
-      (document) => document.id === selectedLibraryDocumentId.value,
-    ) ?? null,
+    discoveredDocuments.value.find((document) => document.id === selectedLibraryDocumentId.value) ??
+    null,
 )
 
 function selectDocument(id: string) {
@@ -146,9 +145,7 @@ function restoreLibrarySelection(
   const exact = documents.find((document) => document.id === previous.id)
   if (exact) return exact.id
 
-  const samePath = documents.filter(
-    (document) => document.relativePath === previous.relativePath,
-  )
+  const samePath = documents.filter((document) => document.relativePath === previous.relativePath)
   return samePath.length === 1 ? samePath[0]!.id : null
 }
 
