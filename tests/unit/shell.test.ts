@@ -18,6 +18,22 @@ async function mountApp(path = '/') {
   return { wrapper, router }
 }
 
+function inputFiles(input: Element, files: readonly File[]) {
+  Object.defineProperty(input, 'files', {
+    configurable: true,
+    value: files,
+  })
+}
+
+function folderFile(name: string, relativePath: string) {
+  const file = new File([relativePath], name)
+  Object.defineProperty(file, 'webkitRelativePath', {
+    configurable: true,
+    value: relativePath,
+  })
+  return file
+}
+
 describe('home and product shell', () => {
   it('retains home content and navigates from the card to the separate app and back', async () => {
     const { wrapper, router } = await mountApp()
@@ -73,7 +89,7 @@ describe('home and product shell', () => {
     const toggle = wrapper.get('button[aria-controls="document-sidebar"]')
     expect(wrapper.find('aside').exists()).toBe(false)
     expect(document.activeElement).toBe(toggle.element)
-    expect(wrapper.get('[aria-live="polite"]').text()).toBe('Sample library hidden.')
+    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe('Library hidden.')
     wrapper.unmount()
   })
 
@@ -85,7 +101,9 @@ describe('home and product shell', () => {
     ;(epub.element as HTMLButtonElement).focus()
     await epub.trigger('click')
     expect(document.activeElement).toBe(epub.element)
-    expect(wrapper.get('[aria-live="polite"]').text()).toBe('Selected sample: The next chapter.')
+    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe(
+      'Selected sample: The next chapter.',
+    )
     wrapper.unmount()
   })
 
@@ -132,25 +150,144 @@ describe('home and product shell', () => {
     wrapper.unmount()
   })
 
-  it('retains explicitly selected files without opening them as reader documents', async () => {
+  it('renders individual file selections flat, selects them locally and offers reselection', async () => {
     const { wrapper } = await mountApp('/app')
     const fileInput = wrapper.get('input[accept*=".pdf"]')
+    const click = vi.spyOn(fileInput.element as HTMLInputElement, 'click')
     const files = [
       new File(['pdf'], 'guide.pdf', { type: 'application/pdf' }),
       new File(['epub'], 'book.epub', { type: 'application/epub+zip' }),
     ]
 
-    Object.defineProperty(fileInput.element, 'files', {
-      configurable: true,
-      value: files,
-    })
+    inputFiles(fileInput.element, files)
     await fileInput.trigger('change')
     await flushPromises()
 
     expect(wrapper.text()).toContain('2 items selected from the file picker')
     expect(wrapper.text()).toContain('2 supported documents found.')
+
+    const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+    expect(localLibrary.text()).toContain('Selected files')
+    expect(localLibrary.text()).toContain('guide.pdf')
+    expect(localLibrary.text()).toContain('book.epub')
+    expect(localLibrary.findAll('button[aria-expanded]')).toHaveLength(0)
+
+    const guide = localLibrary
+      .findAll('button')
+      .find((button) => button.text().includes('guide.pdf'))!
+    await guide.trigger('click')
+
+    expect(guide.attributes('aria-pressed')).toBe('true')
+    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toContain(
+      'Selected local document: guide.pdf',
+    )
     expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
-    expect(wrapper.findAll('button:disabled')).toHaveLength(2)
+
+    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
+    await reselect.trigger('click')
+    expect(click).toHaveBeenCalledOnce()
     wrapper.unmount()
+  })
+
+  it('reconstructs directory-input hierarchy from relative paths', async () => {
+    const { wrapper } = await mountApp('/app')
+    const directoryInput = wrapper.get('input[webkitdirectory]')
+    const files = [
+      folderFile('guide.pdf', 'Reading/guide.pdf'),
+      folderFile('book.epub', 'Reading/Books/book.epub'),
+    ]
+
+    inputFiles(directoryInput.element, files)
+    await directoryInput.trigger('change')
+    await flushPromises()
+
+    const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+    expect(localLibrary.text()).toContain('Reading')
+    expect(localLibrary.text()).toContain('Books')
+    expect(localLibrary.text()).toContain('guide.pdf')
+    expect(localLibrary.text()).toContain('book.epub')
+
+    const folderButtons = localLibrary.findAll('button[aria-expanded]')
+    expect(folderButtons.map((button) => button.text())).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Reading'),
+        expect.stringContaining('Books'),
+      ]),
+    )
+
+    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect folder')
+    expect(reselect).toBeTruthy()
+    wrapper.unmount()
+  })
+
+  it('refreshes a live directory handle and preserves the selected path', async () => {
+    const pickerWindow = window as Window & {
+      showDirectoryPicker?: () => Promise<FileSystemDirectoryHandle>
+    }
+    const originalSecure = Object.getOwnPropertyDescriptor(window, 'isSecureContext')
+    const originalPicker = Object.getOwnPropertyDescriptor(window, 'showDirectoryPicker')
+    let scan = 0
+    let wrapper: Awaited<ReturnType<typeof mountApp>>['wrapper'] | null = null
+
+    const handle = {
+      kind: 'directory',
+      name: 'Reading',
+      async *entries() {
+        scan += 1
+        const version = scan
+        const file = new File([`version-${version}`], 'guide.pdf', {
+          lastModified: version,
+        })
+        const fileHandle = {
+          kind: 'file',
+          name: 'guide.pdf',
+          getFile: async () => file,
+        } as unknown as FileSystemFileHandle
+        yield ['guide.pdf', fileHandle] as [string, FileSystemHandle]
+      },
+    } as unknown as FileSystemDirectoryHandle
+
+    try {
+      Object.defineProperty(window, 'isSecureContext', {
+        configurable: true,
+        value: true,
+      })
+      Object.defineProperty(pickerWindow, 'showDirectoryPicker', {
+        configurable: true,
+        value: vi.fn().mockResolvedValue(handle),
+      })
+
+      ;({ wrapper } = await mountApp('/app'))
+      const chooseFolder = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Choose folder')!
+      await chooseFolder.trigger('click')
+      await flushPromises()
+
+      let localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+      let guide = localLibrary
+        .findAll('button')
+        .find((button) => button.text().includes('guide.pdf'))!
+      await guide.trigger('click')
+      expect(guide.attributes('aria-pressed')).toBe('true')
+
+      const refresh = wrapper
+        .findAll('button')
+        .find((button) => button.text() === 'Refresh folder')!
+      await refresh.trigger('click')
+      await flushPromises()
+
+      localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+      guide = localLibrary.findAll('button').find((button) => button.text().includes('guide.pdf'))!
+      expect(guide.attributes('aria-pressed')).toBe('true')
+      expect(scan).toBe(2)
+    } finally {
+      wrapper?.unmount()
+      if (originalSecure) Object.defineProperty(window, 'isSecureContext', originalSecure)
+      else Reflect.deleteProperty(window, 'isSecureContext')
+
+      if (originalPicker) Object.defineProperty(window, 'showDirectoryPicker', originalPicker)
+      else delete pickerWindow.showDirectoryPicker
+    }
   })
 })

@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   canUseDirectoryPicker,
   describeLibrarySelection,
+  librarySelectionLabel,
+  refreshActionForSelection,
   requestDirectory,
   selectionFromFiles,
 } from '../../src/features/library/browser-selection'
@@ -71,6 +73,11 @@ describe('browser library selection', () => {
       ok: true,
       selection: { kind: 'directory', source: 'directory-picker', handle },
     })
+
+    if (result.ok) {
+      expect(refreshActionForSelection(result.selection)).toBe('refresh-directory')
+      expect(librarySelectionLabel(result.selection)).toBe('Reading')
+    }
   })
 
   it.each([
@@ -90,7 +97,7 @@ describe('browser library selection', () => {
     await expect(requestDirectory()).resolves.toEqual({ ok: false, reason: 'failed' })
   })
 
-  it('keeps input selections as raw browser files for later discovery', () => {
+  it('keeps individual file selections flat and requires explicit reselection', () => {
     const pdf = new File(['pdf'], 'guide.pdf', { type: 'application/pdf' })
     const epub = new File(['epub'], 'book.epub', { type: 'application/epub+zip' })
 
@@ -102,6 +109,26 @@ describe('browser library selection', () => {
       files: [pdf, epub],
     })
     expect(describeLibrarySelection(selection!)).toContain('2 items selected from the file picker')
+    expect(refreshActionForSelection(selection!)).toBe('reselect-files')
+    expect(librarySelectionLabel(selection!)).toBe('Selected files')
     expect(selectionFromFiles([], 'directory-input')).toBeNull()
+  })
+
+  it('uses the selected folder name for directory-input snapshots', () => {
+    const pdf = new File(['pdf'], 'guide.pdf', { type: 'application/pdf' })
+    const epub = new File(['epub'], 'book.epub', { type: 'application/epub+zip' })
+    Object.defineProperty(pdf, 'webkitRelativePath', {
+      configurable: true,
+      value: 'Reading/guide.pdf',
+    })
+    Object.defineProperty(epub, 'webkitRelativePath', {
+      configurable: true,
+      value: 'Reading/Books/book.epub',
+    })
+
+    const selection = selectionFromFiles([pdf, epub], 'directory-input')!
+
+    expect(refreshActionForSelection(selection)).toBe('reselect-directory')
+    expect(librarySelectionLabel(selection)).toBe('Reading')
   })
 })

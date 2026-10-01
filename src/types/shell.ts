@@ -1,4 +1,4 @@
-/** Demonstration metadata only; real file discovery belongs to #8/#9. */
+/** Demonstration metadata only; real library selection/discovery/tree live under #8/#24/#25. */
 export interface ShellDocument {
   id: string
   title: string

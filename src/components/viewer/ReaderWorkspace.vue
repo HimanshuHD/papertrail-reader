@@ -9,8 +9,9 @@ defineProps<{ document: ShellDocument }>()
       <p
         class="mb-5 rounded-lg border border-line bg-panel px-4 py-3 text-sm leading-relaxed text-muted"
       >
-        <strong class="text-ink">Layout preview.</strong> These titles and pages are samples. File
-        access and {{ document.format }} reading are not available yet.
+        <strong class="text-ink">Layout preview.</strong> These titles and pages are samples. Local
+        PDF/EPUB selection and library discovery are available; {{ document.format }} reading is not
+        active yet.
       </p>
       <article
         class="sample-page rounded-card border border-line bg-panel px-6 py-10 shadow-sm sm:px-12 sm:py-14"

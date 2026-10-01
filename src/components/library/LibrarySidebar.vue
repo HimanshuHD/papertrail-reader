@@ -1,12 +1,22 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
-import type { BrowserLibrarySelection } from '../../features/library/browser-selection'
+import LibraryTree from './LibraryTree.vue'
+import type {
+  BrowserLibrarySelection,
+  LibraryRefreshAction,
+} from '../../features/library/browser-selection'
+import type { DiscoveredDocument } from '../../features/library/discovery'
 import type { ShellDocument } from '../../types/shell'
 
 const props = defineProps<{
   documents: readonly ShellDocument[]
   selectedId: string
+  libraryDocuments: readonly DiscoveredDocument[]
+  selectedLibraryDocumentId: string | null
+  libraryLabel: string
+  showLibraryResults: boolean
+  refreshAction: LibraryRefreshAction | null
   selectionSummary: string
   discoverySummary: string
   discoveryBusy: boolean
@@ -15,14 +25,22 @@ const props = defineProps<{
 
 defineEmits<{
   select: [id: string]
+  selectLibraryDocument: [id: string]
   close: []
   librarySelection: [selection: BrowserLibrarySelection]
+  refreshLibrary: []
   cancelDiscovery: []
 }>()
 
 const collections = computed(() => [
   ...new Set(props.documents.map((document) => document.collection)),
 ])
+
+const selectedLibraryDocument = computed(
+  () =>
+    props.libraryDocuments.find((document) => document.id === props.selectedLibraryDocumentId) ??
+    null,
+)
 </script>
 
 <template>
@@ -32,14 +50,17 @@ const collections = computed(() => [
       <span class="rounded-full border border-line px-2 py-1 text-xs text-muted">Local</span>
     </div>
     <p class="mt-2 text-sm leading-relaxed text-muted">
-      Choose local documents explicitly, or explore the demonstration titles below. Press Escape
-      from the library to close it.
+      Choose local documents explicitly. Discovered files appear as a local tree below; the
+      demonstration workspace stays available until reader integration arrives.
     </p>
 
     <div class="mt-5">
       <LibrarySourcePicker
         :selection-summary="selectionSummary"
+        :refresh-action="refreshAction"
+        :refresh-busy="discoveryBusy"
         @selected="$emit('librarySelection', $event)"
+        @refresh="$emit('refreshLibrary')"
       />
     </div>
 
@@ -62,15 +83,66 @@ const collections = computed(() => [
       </p>
       <p v-if="discoveryProblemCount > 0" class="mt-2 text-xs leading-relaxed text-muted">
         {{ discoveryProblemCount }} recoverable access issue(s) recorded. Other readable documents
-        remain available for the next library step.
+        remain available.
+      </p>
+    </section>
+
+    <section
+      v-if="showLibraryResults"
+      class="mt-5 rounded-lg border border-line p-3"
+      aria-labelledby="local-library-title"
+    >
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <h3
+            id="local-library-title"
+            class="text-xs font-semibold tracking-wider text-muted uppercase"
+          >
+            Local documents
+          </h3>
+          <p class="mt-1 break-words text-sm font-medium">{{ libraryLabel }}</p>
+        </div>
+        <span class="shrink-0 rounded-full border border-line px-2 py-1 text-[11px] text-muted">
+          {{ libraryDocuments.length }}
+        </span>
+      </div>
+
+      <div class="mt-3">
+        <LibraryTree
+          v-if="libraryDocuments.length > 0"
+          :documents="libraryDocuments"
+          :selected-id="selectedLibraryDocumentId"
+          @select="$emit('selectLibraryDocument', $event)"
+        />
+        <p v-else class="text-xs leading-relaxed text-muted">
+          No supported PDF or EPUB documents are available in this selection.
+        </p>
+      </div>
+
+      <p
+        v-if="selectedLibraryDocument"
+        class="mt-3 border-t border-line pt-3 text-xs leading-relaxed text-muted"
+      >
+        Selected for reader handoff:
+        <strong class="font-medium text-ink">{{ selectedLibraryDocument.name }}</strong
+        >. The file is not opened yet; reader integration remains #10/#12.
       </p>
     </section>
 
     <nav class="mt-6 space-y-5" aria-label="Demonstration documents">
-      <section v-for="collection in collections" :key="collection">
-        <h3 class="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
-          {{ collection }}
+      <div>
+        <h3 class="text-xs font-semibold tracking-wider text-muted uppercase">
+          Demonstration workspace
         </h3>
+        <p class="mt-1 text-xs leading-relaxed text-muted">
+          Sample titles only change the preview workspace.
+        </p>
+      </div>
+
+      <section v-for="collection in collections" :key="collection">
+        <h4 class="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
+          {{ collection }}
+        </h4>
         <ul class="space-y-1">
           <li
             v-for="document in documents.filter((item) => item.collection === collection)"
@@ -100,9 +172,10 @@ const collections = computed(() => [
         </ul>
       </section>
     </nav>
+
     <p class="mt-8 border-t border-line pt-4 text-xs leading-relaxed text-muted">
-      PaperTrail only receives files you explicitly choose. Discovery now identifies supported
-      documents; directory-tree presentation and refresh UI remain the next milestone.
+      PaperTrail only receives files you explicitly choose. Live directory handles can be refreshed
+      in-session; folder/file snapshots require explicit reselection.
     </p>
   </div>
 </template>
