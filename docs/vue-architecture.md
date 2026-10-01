@@ -6,15 +6,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 | Layer           | Implemented on main                                                | Remaining owner                        |
 | --------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Further shell behavior #43             |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | #43 accessibility/status refinement    |
-| State           | Pinia explicit theme; view-local sample selection/sidebar collapse | Library state #9; reading metadata #13 |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Browser library flow #8/#9             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | Product-specific reader states         |
+| State           | Theme plus view-local sample/sidebar/browser source selection       | Library state #9; reading metadata #13 |
 | Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
 | Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
-| File access     | Not implemented                                                    | #8/#9                                  |
+| File access     | Explicit browser source selection in #8 branch                     | Discovery/indexing #9/#24              |
 | Persistence     | Light/Dark choice in localStorage; no reading-data persistence     | #13                                    |
 
-#6/#46/#42/#49 are merged. Shell metadata is clearly labeled demonstration content; no file discovery or reader implementation is claimed.
+#6/#46/#42/#49/#43 are merged. Shell metadata is clearly labeled demonstration content. #8 adds explicit browser source selection only; file discovery and reader implementation are still separate.
 
 ## Implemented foundation flow (#6)
 
@@ -45,13 +45,13 @@ Light/Dark are explicit choices; System mode is removed in #46. Missing, invalid
 - #43: keyboard/focus behavior and empty/loading/error/demo state presentation. ReaderView owns transient shell presentation and announcements; ShellStatus renders explicit view-only states. Escape from the library closes it and restores focus to the toggle. These states do not model file selection, indexing or reader services.
 - #37: real-browser E2E infrastructure and acceptance execution, rather than duplicating it in both UI children.
 
-#7 implementation is in progress while #43 is under review. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
+#7 component scope is merged; parent acceptance remains open for explicit browser evidence in #37. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
 
 Components should render state through explicit props and emit user intent. Application services or Pinia actions own workflows. Reader/library services own document work. Do not let the sidebar access the filesystem directly, or couple the root component to PDF.js/epub.js.
 
 ## Planned provider and reader layers
 
-LibraryProvider will isolate user-triggered selection, capabilities, indexing, access, refresh and reselection. Browser handles are optional; directory/file inputs remain fallbacks. No provider implementation is claimed yet.
+Browser source selection starts in #8 with `src/features/library/browser-selection.ts`, which feature-detects the native directory picker, normalizes picker failures and preserves raw directory handles or selected `File` objects without enumerating them. `LibrarySourcePicker.vue` owns user-triggered controls and browser fallbacks; `ReaderView` retains the selected payload for later library discovery. Indexing, filtering, hierarchy reconstruction, refresh and reselection remain #9/#24/#25.
 
 PDF and EPUB engines will share lifecycle/navigation/progress/contents boundaries but expose different controls. PDF uses fixed pages and zoom/fit; EPUB uses CFI locations and typography. Reader adapters must release worker/render tasks and Blob URLs when switching. IndexedDB migrations, identity reconciliation and stored positions belong to #13.
 
@@ -65,4 +65,4 @@ The sun/moon button uses native button keyboard activation, aria-pressed for Dar
 
 ## Reader shell and entry (#42/#49)
 
-HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 implements the accessibility/status increment on its feature branch; #37 remains browser E2E infrastructure. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.
+HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 completed the accessibility/status increment in merged PR #53; #37 remains the explicit browser-acceptance owner. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.
