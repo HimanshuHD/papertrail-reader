@@ -109,7 +109,8 @@ test('browser source selection handles native success, cancellation and file inp
             {
               kind: 'file',
               name: 'guide.pdf',
-              getFile: async () => new File(['pdf fixture'], 'guide.pdf', { type: 'application/pdf' }),
+              getFile: async () =>
+                new File(['pdf fixture'], 'guide.pdf', { type: 'application/pdf' }),
             },
           ]
           yield [
