@@ -1,0 +1,33 @@
+name: Feature or engineering task
+description: Track a scoped increment with acceptance criteria.
+title: "[M?] "
+body:
+  - type: input
+    id: roadmap
+    attributes:
+      label: Milestone and parent issue
+      placeholder: "M0; parent #1"
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope and expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: "- [ ] Expected behavior verified\n- [ ] Validation recorded\n- [ ] PR linked and progress tracker updated"
+    validations:
+      required: true
+  - type: textarea
+    id: dependencies
+    attributes:
+      label: Dependencies and blockers
+  - type: textarea
+    id: tracking
+    attributes:
+      label: Work tracking
+      value: "Status: Backlog\nBranch: pending\nPR: pending\nValidation: pending"

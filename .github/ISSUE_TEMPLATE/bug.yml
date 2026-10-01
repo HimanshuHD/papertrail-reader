@@ -1,0 +1,25 @@
+name: Bug report
+description: Report a reproducible problem.
+body:
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps, expected behavior and actual behavior
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: App version and operating system
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Sanitized evidence
+      description: Do not attach private documents or credentials.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Fix acceptance criteria
+      value: "- [ ] Reproduction resolved\n- [ ] Appropriate regression validation recorded\n- [ ] PR and progress tracker linked"
