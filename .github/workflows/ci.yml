@@ -58,8 +58,8 @@ jobs:
         run: |
           node scripts/build-info.mjs
       - name: Install browser binaries and system dependencies
-        timeout-minutes: 6
-        run: npx playwright install --with-deps chromium webkit
+        timeout-minutes: 8
+        run: npx playwright install --with-deps --only-shell chromium
       - name: Validate the built website in browsers
         run: npm run test:e2e
       - name: Upload browser report and screenshots

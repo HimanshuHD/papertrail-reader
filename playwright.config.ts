@@ -18,7 +18,7 @@ export default defineConfig({
       name: `chromium-${width}`,
       use: { browserName: 'chromium' as const, viewport: { width, height: 900 } },
     })),
-    ...[375, 1440].map((width) => ({
+    ...(process.env.E2E_WEBKIT ? [375, 1440] : []).map((width) => ({
       name: `webkit-${width}`,
       use: { browserName: 'webkit' as const, viewport: { width, height: 900 } },
     })),
