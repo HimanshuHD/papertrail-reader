@@ -52,3 +52,5 @@ Tests cover coexistence, preserved previews after main updates, stale-production
 Actions -> Publish website -> Run workflow -> select main -> enter pr_number -> Run workflow. Blank PR number republishes main. Deploy only the PR's current successful CI SHA; no fallback to older green commits. Failed/stale/closed/fork requests do not publish. If the 7-day build artifact has expired, rerun CI on the current commit, then deploy.
 
 Read /preview/pr-N/build.json to verify the exact deployed SHA. Subsequent PR pushes keep the preview unchanged until another manual request. Documentation-only main commits still run validation but mark their build publish=false; automatic publishing skips them. Explicit manual main republish remains available. Paths outside the documentation allowlist are treated as website-affecting.
+
+Closed-unmerged PR correction: commit association can omit these PRs, so the publisher falls back to all PRs for the exact same-repo source branch and SHA. Issue #35 includes live retirement revalidation.

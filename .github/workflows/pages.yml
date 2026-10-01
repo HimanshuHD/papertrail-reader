@@ -58,6 +58,10 @@ jobs:
                 const candidates = await github.rest.repos.listPullRequestsAssociatedWithCommit({owner,repo,commit_sha:run.head_sha});
                 selectedPR=candidates.data.find(p => p.base.ref==='main' && p.head.repo?.full_name===owner+'/'+repo && p.head.sha===run.head_sha);
               }
+              if (!selectedPR) {
+                const byBranch=await github.rest.pulls.list({owner,repo,state:'all',base:'main',head:owner+':'+run.head_branch,per_page:100});
+                selectedPR=byBranch.data.find(p=>p.head.sha===run.head_sha && p.head.repo?.full_name===owner+'/'+repo);
+              }
               if (!selectedPR) { core.setOutput('skip','true'); return; }
               const fresh=(await github.rest.pulls.get({owner,repo,pull_number:selectedPR.number})).data;
               kind=previewDecision({manual,state:fresh.state,currentSha:fresh.head.sha,buildSha:run.head_sha,sameRepo:fresh.head.repo?.full_name===owner+'/'+repo,target:fresh.base.ref});

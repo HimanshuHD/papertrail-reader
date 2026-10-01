@@ -67,4 +67,4 @@ Pipeline review: PR #33. Live production and preview verification completed in #
 
 ## Pipeline refinement
 
-#35 is in progress: on-demand preview publishing, current-green-SHA selection and docs-only main deployment filtering. PR #34 was closed without merging; retirement verification is being checked. Live behavioral verification of #35 requires its workflow to be merged; retain issue open until checked.
+#35 is In review in PR #36: on-demand preview publishing, current-green-SHA selection and docs-only main deployment filtering. PR #34 was closed without merging, but its preview remained active because commit lookup omitted the closed unmerged PR. PR #36 fixes branch/SHA lookup; retirement needs revalidation after merge. Live behavioral verification of #35 requires its workflow to be merged; retain issue open until checked.
