@@ -94,31 +94,52 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await expect(page.getByRole('link', { name: 'Go to app' })).toBeVisible()
 })
 
-test('browser source selection handles native success, cancellation and file input', async ({
+test('browser library builds a tree, refreshes live handles and keeps file fallback flat', async ({
   page,
 }) => {
   await page.addInitScript(() => {
+    let scan = 0
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
       value: async () => ({
         kind: 'directory',
         name: 'Mock library',
         async *entries() {
+          scan += 1
+          const version = scan
+
           yield [
             'guide.pdf',
             {
               kind: 'file',
               name: 'guide.pdf',
               getFile: async () =>
-                new File(['pdf fixture'], 'guide.pdf', { type: 'application/pdf' }),
+                new File([`pdf fixture ${version}`], 'guide.pdf', {
+                  type: 'application/pdf',
+                  lastModified: version,
+                }),
             },
           ]
+
           yield [
-            'notes.txt',
+            'Books',
             {
-              kind: 'file',
-              name: 'notes.txt',
-              getFile: async () => new File(['text fixture'], 'notes.txt', { type: 'text/plain' }),
+              kind: 'directory',
+              name: 'Books',
+              async *entries() {
+                yield [
+                  'book.epub',
+                  {
+                    kind: 'file',
+                    name: 'book.epub',
+                    getFile: async () =>
+                      new File([`epub fixture ${version}`], 'book.epub', {
+                        type: 'application/epub+zip',
+                        lastModified: version,
+                      }),
+                  },
+                ]
+              },
             },
           ]
         },
@@ -131,9 +152,26 @@ test('browser source selection handles native success, cancellation and file inp
     .locator('section[aria-labelledby="library-source-title"]')
     .getByRole('status')
   const discoveryStatus = page.locator('section[aria-labelledby="scan-title"]').getByRole('status')
+  const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
+
   await page.getByRole('button', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
-  await expect(discoveryStatus).toContainText('1 supported document found.')
+  await expect(discoveryStatus).toContainText('2 supported documents found.')
+  await expect(localLibrary).toContainText('Mock library')
+  await expect(localLibrary.getByRole('button', { name: /Books/ })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  )
+
+  let book = localLibrary.getByRole('button', { name: /book.epub/ })
+  await book.click()
+  await expect(book).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+
+  await page.getByRole('button', { name: 'Refresh folder' }).click()
+  await expect(discoveryStatus).toContainText('2 supported documents found.')
+  book = localLibrary.getByRole('button', { name: /book.epub/ })
+  await expect(book).toHaveAttribute('aria-pressed', 'true')
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -158,7 +196,13 @@ test('browser source selection handles native success, cancellation and file inp
       buffer: Buffer.from('epub fixture'),
     },
   ])
+
   await expect(sourceStatus).toContainText('2 items selected from the file picker')
   await expect(discoveryStatus).toContainText('2 supported documents found.')
+  await expect(localLibrary).toContainText('Selected files')
+  await expect(localLibrary.locator('button[aria-expanded]')).toHaveCount(0)
+  await expect(localLibrary.getByRole('button', { name: /guide.pdf/ })).toBeVisible()
+  await expect(localLibrary.getByRole('button', { name: /book.epub/ })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Reselect files' })).toBeVisible()
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
 })
