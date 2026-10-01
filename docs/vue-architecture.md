@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #50
 
-| Layer           | Implemented on main                                                | Remaining owner                        |
-| --------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Browser library flow #8/#9             |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | Product-specific reader states         |
-| State           | Theme plus view-local sample/sidebar/browser source selection       | Library state #9; reading metadata #13 |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
-| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
-| File access     | Explicit browser source selection in #8 branch                     | Discovery/indexing #9/#24              |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence     | #13                                    |
+| Layer           | Implemented on main                                            | Remaining owner                        |
+| --------------- | -------------------------------------------------------------- | -------------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | Browser library flow #8/#9             |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states         |
+| State           | Theme plus view-local sample/sidebar/browser source selection  | Library state #9; reading metadata #13 |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed       |
+| Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                | Engines #10/#12                        |
+| File access     | Explicit browser source selection in #8 branch                 | Discovery/indexing #9/#24              |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                    |
 
 #6/#46/#42/#49/#43 are merged. Shell metadata is clearly labeled demonstration content. #8 adds explicit browser source selection only; file discovery and reader implementation are still separate.
 
