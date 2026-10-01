@@ -2,17 +2,19 @@
 
 Updated: 1 October 2026. Web-first decision: #30. Parent: #1.
 
+Latest verified merge: [#29](https://github.com/HimanshuHD/papertrail-reader/pull/29) at 2026-10-01T15:51:01Z; commit `bbf4887ae8de4cb8d6f01e4bf018508dc3133fc9`.
+
 ## Current increment
 
-#2 completed via merged PR #20 (`abe39ff95435861258d7f37fb2a0249066ee733f`). #3 is In review in PR #29; its frontend CI previously passed. PR #29 also carries web-first roadmap updates (#30) and merge tracking (#21). It is not merged yet. #21 needs real-merge verification. Next: #22 quality checks and #6 state/UI, then #8 browser selection. Tauri is deferred.
+PR #29 completed #3, #30. See the reconciled issue table below for remaining work.
 
 ## Issue tracker
 
 | Issue | Phase | Work | Status | Depends on |
 | --- | --- | --- | --- | --- |
 | [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2) | Web | Repository documentation and issue tracking | Completed | See issue |
-| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | Web | Bootstrap Vue 3, Vite and TypeScript | In review | #2 |
-| [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4) | Desktop later | Integrate Tauri 2 desktop shell | Deferred | After web release |
+| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3) | Web | Bootstrap Vue 3, Vite and TypeScript | Completed | #2 |
+| [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4) | Desktop later | Integrate Tauri 2 desktop shell | Deferred - desktop phase | After web release |
 | [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5) | Web | Configure web code quality, tests and GitHub Actions | In progress | #3 |
 | [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6) | Web | Design tokens, themes and application state | Backlog | #3 |
 | [#7](https://github.com/HimanshuHD/papertrail-reader/issues/7) | Web | Split reader layout and accessible app shell | Backlog | #6 |
@@ -30,13 +32,13 @@ Updated: 1 October 2026. Web-first decision: #30. Parent: #1.
 | [#19](https://github.com/HimanshuHD/papertrail-reader/issues/19) | Web | Web release readiness and delivery | Backlog | Web M0-M4; #13; #26; #28 |
 | [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | Web | Automate post-merge issue and progress reconciliation | In review | #3; real merge |
 | [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web | Frontend quality checks and test coverage | Backlog | #3 |
-| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline | Deferred | After web release |
+| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline | Deferred - desktop phase | After web release |
 | [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web | Incremental browser indexing and cancellation | Backlog | #8 |
 | [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web | Directory tree and browser library refresh UI | Backlog | #24; #7 |
 | [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web | Web build, HTTPS deployment and release artifacts | Backlog | #3; hosting/audience decision |
-| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization | Deferred | After web release |
+| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization | Deferred - desktop phase | After web release |
 | [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | Web | Supported-browser release validation | Backlog | Web reader scope |
-| [#30](https://github.com/HimanshuHD/papertrail-reader/issues/30) | Web | Adopt web-first scope | In review | #29 merge |
+| [#30](https://github.com/HimanshuHD/papertrail-reader/issues/30) | Web | Adopt web-first scope | Completed | #29 merge |
 
 ## Scope and completion rules
 
