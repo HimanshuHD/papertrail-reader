@@ -6,9 +6,9 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 | Layer           | Implemented on main                                                | Remaining owner                        |
 | --------------- | ------------------------------------------------------------------ | -------------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Further shell behavior #43             |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView          | Shell behavior #43 in review             |
 | Styling         | Tailwind semantic Light/Dark tokens and responsive shell           | #43 accessibility/status refinement    |
-| State           | Pinia explicit theme; view-local sample selection/sidebar collapse | Library state #9; reading metadata #13 |
+| State           | Pinia explicit theme; view-local sample selection/sidebar collapse/status presentation | Library state #9; reading metadata #13 |
 | Routing         | Hash home/app/fallback with Vite BASE_URL                          | Future document routes as needed       |
 | Reader contract | Typed PDF page/zoom and EPUB CFI/font contracts                    | Engines #10/#12                        |
 | File access     | Not implemented                                                    | #8/#9                                  |
@@ -42,7 +42,7 @@ Light/Dark are explicit choices; System mode is removed in #46. Missing, invalid
 ## UI architecture work for #7
 
 - #42: component boundaries, responsive sidebar/workspace/toolbar and clearly labeled demonstration content.
-- #43: keyboard/focus behavior and empty/loading/error state presentation.
+- #43: keyboard/focus behavior and empty/loading/error/demo state presentation. ReaderView owns transient shell presentation and announcements; ShellStatus renders explicit view-only states. Escape from the library closes it and restores focus to the toggle. These states do not model file selection, indexing or reader services.
 - #37: real-browser E2E infrastructure and acceptance execution, rather than duplicating it in both UI children.
 
 #7 implementation remains Backlog during the documentation audit. Each child PR must record component ownership, props/events, state transitions, accessibility evidence and the related docs changes.
@@ -65,4 +65,4 @@ The sun/moon button uses native button keyboard activation, aria-pressed for Dar
 
 ## Reader shell and entry (#42/#49)
 
-HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 remains the next accessibility/status increment; #37 remains browser E2E infrastructure.
+HomeView remains the foundation landing page, with Go to app routing to ReaderView at /app. ReaderView owns sample selection and sidebar visibility; layout/library/viewer children use explicit props/events and slots. See [shell-layout.md](shell-layout.md) for module ownership and responsive rules. #43 implements the accessibility/status increment on its feature branch; #37 remains browser E2E infrastructure. Status state is view-only: future library/reader services expose workflow state through their own contracts rather than mutating shell presentation directly.
