@@ -50,8 +50,8 @@ const selectedLibraryDocument = computed(
       <span class="rounded-full border border-line px-2 py-1 text-xs text-muted">Local</span>
     </div>
     <p class="mt-2 text-sm leading-relaxed text-muted">
-      Choose local documents explicitly. Discovered files appear as a local tree below; the
-      demonstration workspace stays available until reader integration arrives.
+      Choose local documents explicitly. Discovered files appear as a local tree below. PDF files
+      now open in the browser reader; EPUB reading remains planned.
     </p>
 
     <div class="mt-5">
@@ -123,9 +123,16 @@ const selectedLibraryDocument = computed(
         v-if="selectedLibraryDocument"
         class="mt-3 border-t border-line pt-3 text-xs leading-relaxed text-muted"
       >
-        Selected for reader handoff:
-        <strong class="font-medium text-ink">{{ selectedLibraryDocument.name }}</strong
-        >. The file is not opened yet; reader integration remains #10/#12.
+        <template v-if="selectedLibraryDocument.format === 'PDF'">
+          Open in PDF reader:
+          <strong class="font-medium text-ink">{{ selectedLibraryDocument.name }}</strong
+          >.
+        </template>
+        <template v-else>
+          Selected EPUB:
+          <strong class="font-medium text-ink">{{ selectedLibraryDocument.name }}</strong
+          >. EPUB reading remains #12.
+        </template>
       </p>
     </section>
 
