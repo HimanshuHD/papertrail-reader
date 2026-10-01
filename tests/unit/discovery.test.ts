@@ -11,13 +11,16 @@ function inputFile(name: string, relativePath = name, type = '') {
   return file
 }
 
-function fileHandle(name: string, fileOrError: File | Error): FileSystemFileHandle {
+function fileHandle(
+  name: string,
+  fileOrError: File | Error | DOMException,
+): FileSystemFileHandle {
   return {
     kind: 'file',
     name,
     getFile: async () => {
-      if (fileOrError instanceof Error) throw fileOrError
-      return fileOrError
+      if (fileOrError instanceof File) return fileOrError
+      throw fileOrError
     },
   } as FileSystemFileHandle
 }
@@ -50,12 +53,14 @@ describe('browser document discovery', () => {
     expect(result.status).toBe('completed')
     expect(result.scanned).toBe(3)
     expect(result.problems).toEqual([])
-    expect(result.documents.map((document) => ({
-      name: document.name,
-      format: document.format,
-      relativePath: document.relativePath,
-      parentPath: document.parentPath,
-    }))).toEqual([
+    expect(
+      result.documents.map((document) => ({
+        name: document.name,
+        format: document.format,
+        relativePath: document.relativePath,
+        parentPath: document.parentPath,
+      })),
+    ).toEqual([
       {
         name: 'Guide.PDF',
         format: 'PDF',
@@ -136,7 +141,10 @@ describe('browser document discovery', () => {
   it('returns recoverable file-read problems and continues discovery', async () => {
     const good = new File(['ok'], 'good.pdf', { lastModified: 1 })
     const root = directoryHandle('Library', [
-      ['broken.pdf', fileHandle('broken.pdf', new DOMException('permission lost', 'NotAllowedError'))],
+      [
+        'broken.pdf',
+        fileHandle('broken.pdf', new DOMException('permission lost', 'NotAllowedError')),
+      ],
       ['good.pdf', fileHandle('good.pdf', good)],
     ])
 
@@ -161,11 +169,7 @@ describe('browser document discovery', () => {
   it('supports cancellation with partial results and progress', async () => {
     const controller = new AbortController()
     const progress: string[] = []
-    const files = [
-      inputFile('one.pdf'),
-      inputFile('two.pdf'),
-      inputFile('three.epub'),
-    ]
+    const files = [inputFile('one.pdf'), inputFile('two.pdf'), inputFile('three.epub')]
 
     const result = await discoverDocuments(
       {
