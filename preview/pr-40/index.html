@@ -1,14 +1,53 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="PaperTrail local-first document reader." />
-    <title>PaperTrail</title>
-    <script type="module" crossorigin src="/papertrail-reader/preview/pr-40/assets/index-UTCli2cP.js"></script>
-    <link rel="stylesheet" crossorigin href="/papertrail-reader/preview/pr-40/assets/index-B7alZzGv.css">
-  </head>
-  <body>
-    <div id="app"></div>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Preview closed · PR #40 · PaperTrail</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root { font-family: system-ui, sans-serif; color: #173449; background: #f1f5f6; font-synthesis: none; }
+    body { margin: 0; min-width: 280px; }
+    .page { min-height: 100svh; display: flex; flex-direction: column; padding: clamp(20px, 5vw, 56px); background: radial-gradient(ellipse at top right, #dceeea, transparent 60%); }
+    .brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 750; font-size: 1.1rem; }
+    .mark { display: grid; place-items: center; width: 34px; height: 38px; border-radius: 8px 8px 16px 8px; color: white; background: #23686b; }
+    main { width: min(100%, 660px); margin: auto; padding: 48px 0; }
+    .card { padding: clamp(24px, 6vw, 48px); border: 1px solid #c7d7db; border-radius: 24px; background: #fff; box-shadow: 0 20px 60px #1734490c; }
+    .badge { display: inline-flex; align-items: center; gap: 8px; margin: 0 0 24px; padding: 7px 12px; border-radius: 99px; color: #315e59; background: #eaf4ef; font-size: .8rem; font-weight: 650; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #438271; }
+    .eyebrow { margin: 0 0 10px; color: #526473; letter-spacing: .1em; text-transform: uppercase; font-size: .75rem; font-weight: 650; }
+    h1 { margin: 0 0 18px; font-size: clamp(2rem, 6vw, 3rem); line-height: 1.1; letter-spacing: -.04em; }
+    .description { margin: 0; color: #526473; font-size: 1rem; line-height: 1.7; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; }
+    .button { display: inline-flex; justify-content: center; align-items: center; min-height: 46px; padding: 12px 18px; border-radius: 10px; font-weight: 650; font-size: .9rem; text-decoration: none; }
+    .primary { background: #23686b; color: white; }
+    .primary:hover { background: #1b5558; }
+    .secondary { color: #173449; border: 1px solid #c7d7db; background: #fff; }
+    .secondary:hover { background: #f1f5f6; }
+    a:focus-visible { outline: 3px solid #23686b; outline-offset: 4px; }
+    .detail { padding-top: 24px; margin: 28px 0 0; border-top: 1px solid #e0e8ea; color: #526473; font-size: .8rem; line-height: 1.6; }
+    footer { text-align: center; color: #526473; font-size: .8rem; }
+    @media (max-width: 420px) { .actions { flex-direction: column; } .button { width: 100%; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="brand"><span class="mark" aria-hidden="true">P</span>PaperTrail</div>
+    <main>
+      <section class="card" aria-labelledby="status-title">
+        <p class="badge"><span class="dot" aria-hidden="true"></span>Preview archived</p>
+        <p class="eyebrow">Pull request #40</p>
+        <h1 id="status-title">This preview has closed.</h1>
+        <p class="description">This temporary build is no longer active. Continue with the latest PaperTrail application, or visit the pull request to review its changes.</p>
+        <div class="actions">
+          <a class="button primary" href="../../">Open PaperTrail <span aria-hidden="true">&nbsp;↗</span></a>
+          <a class="button secondary" href="https://github.com/HimanshuHD/papertrail-reader/pull/40">View pull request</a>
+        </div>
+        <p class="detail">Preview links are retired when their pull request is closed or merged. Your local documents are not stored on this page.</p>
+      </section>
+    </main>
+    <footer>PaperTrail · Your documents. Your space.</footer>
+  </div>
+</body>
 </html>
