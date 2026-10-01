@@ -30,7 +30,11 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - name: Diagnose PDF.js lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          git diff -- package-lock.json
+          exit 1
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
