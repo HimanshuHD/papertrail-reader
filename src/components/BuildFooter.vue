@@ -35,7 +35,7 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
   padding: 1rem;
   overflow-wrap: anywhere;
   font-size: 0.8rem;
-  color: #526473;
+  color: var(--pt-muted);
 }
 .build-footer a {
   color: inherit;
