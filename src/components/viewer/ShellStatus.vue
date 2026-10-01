@@ -28,7 +28,7 @@ const content = computed(() => {
       return {
         title: 'Demonstration workspace',
         detail:
-          'Sample titles remain available for layout exploration. You can now select local files, but discovery and real reading are not active yet.',
+          'Sample titles remain available for layout exploration. You can select and discover local PDF/EPUB files; the library tree and real reading are not active yet.',
       }
     default:
       return {
