@@ -158,10 +158,9 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
   await expect(discoveryStatus).toContainText('2 supported documents found.')
   await expect(localLibrary).toContainText('Mock library')
-  await expect(localLibrary.getByRole('button', { name: /Books/ })).toHaveAttribute(
-    'aria-expanded',
-    'true',
-  )
+  await expect(
+    localLibrary.locator('button[aria-expanded]').filter({ hasText: 'Books' }),
+  ).toHaveAttribute('aria-expanded', 'true')
 
   let book = localLibrary.getByRole('button', { name: /book.epub/ })
   await book.click()
