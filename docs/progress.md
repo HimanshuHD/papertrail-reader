@@ -63,11 +63,11 @@ Post-merge #50 main CI/deployment evidence is recorded in deployment-verificatio
 
 ## Parent and child mappings
 
-#5 → #21/#22/#35 (completed), #37 (partial). #7 → #42/#49 (completed), #43 (in progress). #26 → #31/#47 (completed), #32/#44 (backlog). #9 → #24/#25. #19 → #26/#28. #4 → #23/#27 (desktop later). #46 is the completed follow-up to #6. Relationships use reciprocal issue links/checklists.
+#5 → #21/#22/#35 (completed), #37 (partial). #7 → #42/#49 (completed), #43 (backlog). #26 → #31/#47 (completed), #32/#44 (backlog). #9 → #24/#25. #19 → #26/#28. #4 → #23/#27 (desktop later). #46 is the completed follow-up to #6. Relationships use reciprocal issue links/checklists.
 
 ## Next work and completion rules
 
-Current product increment: #43 keyboard/focus and loading/empty/error/demo presentation. ReaderView owns transient presentation; Escape from the library restores focus to its toggle; status changes use live regions. Then #8 browser selection and #9 library discovery. #37 expands with those interactions; #5 remains open. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
+Next product increment: #43 keyboard/focus and loading/empty/error presentation. Then #8 browser selection and #9 library discovery. #37 expands with those interactions; #5 remains open. Versioned releases #32 and publisher reconciliation #44 remain tracked delivery work.
 
 Web 0.1 acceptance requires M0–M4 plus #13 and release-relevant reliability/browser delivery checks. Foundation version 0.1.0 does not claim completed reader release acceptance. Deferred desktop scope remains open and does not block web delivery. Close only accepted scope after review/merge and preserve validation evidence.
 
