@@ -89,6 +89,21 @@ function clampScale(scale: number): number {
   return Math.min(4, Math.max(0.25, scale))
 }
 
+export function resolvePdfScale(
+  fitMode: PdfFitMode,
+  zoom: number,
+  pageWidth: number,
+  pageHeight: number,
+  availableWidth: number,
+  availableHeight: number,
+): number {
+  const widthScale = availableWidth > 0 ? availableWidth / pageWidth : zoom
+  const pageScale =
+    availableHeight > 0 ? Math.min(widthScale, availableHeight / pageHeight) : widthScale
+
+  return clampScale(fitMode === 'width' ? widthScale : fitMode === 'page' ? pageScale : zoom)
+}
+
 export class PdfDocumentSession {
   private renderTask: RenderTask | null = null
   private closed = false
@@ -128,19 +143,13 @@ export class PdfDocumentSession {
     const page = await this.getPage(request.pageNumber)
     const baseViewport = page.getViewport({ scale: 1 })
 
-    const widthScale =
-      request.availableWidth > 0 ? request.availableWidth / baseViewport.width : request.zoom
-    const pageScale =
-      request.availableHeight > 0
-        ? Math.min(widthScale, request.availableHeight / baseViewport.height)
-        : widthScale
-
-    const scale = clampScale(
-      request.fitMode === 'width'
-        ? widthScale
-        : request.fitMode === 'page'
-          ? pageScale
-          : request.zoom,
+    const scale = resolvePdfScale(
+      request.fitMode,
+      request.zoom,
+      baseViewport.width,
+      baseViewport.height,
+      request.availableWidth,
+      request.availableHeight,
     )
     const viewport = page.getViewport({ scale })
     const outputScale = Math.max(1, globalThis.devicePixelRatio || 1)
