@@ -28,3 +28,7 @@ Record what was checked and the result. For documentation, verify links and file
 ## Documentation
 
 Update docs/README.md when adding documents. Update docs/progress.md when work status changes. The roadmap PDF is a planning snapshot; record changed decisions in Markdown and a linked issue.
+
+## Web-first scope and deferral
+
+First-release work targets browsers. Defer Tauri/Rust/installer tasks to the desktop phase. Deferred issues stay open with explicit status and are never represented as completed. Test browser selection fallbacks and document-access reselection. Current scope decision: #30.

@@ -1,0 +1,27 @@
+# Browser-first architecture
+
+UI: Vue 3 + TypeScript. Build: Vite. Styling/state/routing: Tailwind, Pinia and Vue Router as their issues are delivered.
+
+Components call application services and Pinia actions. A LibraryProvider abstracts file selection, indexing, read access, capability checks and refresh. BrowserLibraryProvider uses File/Blob objects and optional directory handles. A future TauriLibraryProvider will implement native access behind the same boundary.
+
+PDF and EPUB readers remain separate adapters behind a shared reader contract: open, close, navigation, progress, contents and supported controls. PDF.js uses a worker and lazy visible-page rendering. epub.js handles reflow and CFI navigation.
+
+Versioned IndexedDB stores document identity, reading positions, bookmarks and preferences. Use generated IDs and lazy fingerprints to reconcile reselected/moved files; handle ambiguous matches explicitly. Avoid whole-library eager hashing. Handle unavailable/cleared storage and quota errors.
+
+Revoke Blob URLs and dispose readers on switching. Bound EPUB archive processing; disable book scripting and restrict remote resources. Validate malformed/password PDFs and unsupported EPUB content.
+
+Folders: src/components/{layout,library,viewer}; src/features/{library,pdf,epub,bookmarks}; src/{composables,router,stores,types,views,assets}; tests/{unit,e2e}; docs/; .github/. Add src-tauri only in the later desktop phase.
+
+## Browser access contract
+
+LibraryProvider abstracts capabilities, selection, enumeration, reads, refresh and permission/reselection. FileSystemDirectoryHandle is an optional enhancement. FileList plus webkitRelativePath is the folder-snapshot path. Individual file input is the minimum fallback. Store reading metadata in IndexedDB; do not assume handles grant permanent permission or metadata grants access to file bytes.
+
+## Later desktop integration
+
+Issue #4 implements TauriLibraryProvider after web release. Readers, state and UI remain shared. No Rust package or Tauri runtime is required for the browser app.
+
+## Sources
+
+- https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker
+- https://developer.mozilla.org/en-US/docs/Web/API/HTMLInputElement/webkitdirectory
+- https://developer.mozilla.org/en-US/docs/Web/API/File/webkitRelativePath
