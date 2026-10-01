@@ -10,7 +10,7 @@ const content = computed(() => {
       return {
         title: 'No documents selected',
         detail:
-          'Choose a folder or files when library access becomes available. No files are accessed automatically.',
+          'Choose a folder or PDF/EPUB files to begin. Nothing is accessed until you explicitly select it.',
       }
     case 'loading':
       return {
@@ -22,13 +22,13 @@ const content = computed(() => {
       return {
         title: 'PaperTrail could not prepare the library',
         detail:
-          'Your documents were not changed. Retry or choose files again when browser selection is implemented.',
+          'Your documents were not changed. Retry the selection or use the available browser fallback.',
       }
     case 'demo':
       return {
         title: 'Demonstration workspace',
         detail:
-          'Sample titles are available for layout exploration only. File access and real reading are not active yet.',
+          'Sample titles remain available for layout exploration. You can now select local files, but discovery and real reading are not active yet.',
       }
     default:
       return {
