@@ -40,7 +40,7 @@ M0 - Engineering foundation (#2, #3, #5; children #21, #22)
 Repository docs #2 are completed. Frontend bootstrap #3 is completed in merged PR #29. Establish committed lockfile, strict types and production build. Quality checks/tests #22 are completed. Merge tracking #21 was verified after PR #29. Exit: clean CI install/type/build; tooling evidence recorded. Tauri #4 and Rust #23 are deferred.
 
 M1 - UI and state (#6, #7)
-Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. #43 remains for complete keyboard/focus and status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
+Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. #43 is in progress for complete keyboard/focus and explicit empty/loading/error/demo status states. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
 Add user-triggered folder selection, feature detection, directory-input and individual-file fallbacks. Index selected files incrementally, reconstruct hierarchy from relative paths, filter case-insensitive extensions and support cancellation. Explain handle refresh versus snapshot reselection.
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Next after PR #50: complete shell keyboard/focus/status #43, then browser selection #8 and library discovery #9. Tauri is no longer the next implementation step.
+Current after PR #50: #43 implements shell keyboard/focus/status behavior on its feature branch, then browser selection #8 and library discovery #9. Tauri is no longer the next implementation step.
 
 ## 7. Release acceptance and sources
 
@@ -166,7 +166,7 @@ CI runs on every PR update; previews publish manually at review checkpoints. Mai
 
 ## Frontend tooling increment (#22)
 
-ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6 and layout/home entry #42/#49 are completed. Next is #43, then #8.
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E child #37 follows interactive shell/selection work (#7/#8); parent #5 remains open until accepted. Foundation #6 and layout/home entry #42/#49 are completed. #43 is in progress, then #8.
 
 ## Current milestone snapshot after PR #50
 
