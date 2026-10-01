@@ -20,7 +20,7 @@ jobs:
     if: github.event.action != 'closed'
     name: Validate and build website
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -43,10 +43,12 @@ jobs:
           BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
         run: |
           if [ -n "$PR_NUMBER" ]; then
-            npm run build -- --base "${BASE_PATH}preview/pr-${PR_NUMBER}/"
+            DEPLOY_BASE="${BASE_PATH}preview/pr-${PR_NUMBER}/"
           else
-            npm run build -- --base "$BASE_PATH"
+            DEPLOY_BASE="$BASE_PATH"
           fi
+          npm run build -- --base "$DEPLOY_BASE"
+          echo "E2E_BASE_PATH=$DEPLOY_BASE" >> "$GITHUB_ENV"
       - name: Record artifact identity
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -55,6 +57,20 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           node scripts/build-info.mjs
+      - name: Install browser binaries and system dependencies
+        run: npx playwright install --with-deps chromium webkit
+      - name: Validate the built website in browsers
+        run: npm run test:e2e
+      - name: Upload browser report and screenshots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: browser-review
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: web-build

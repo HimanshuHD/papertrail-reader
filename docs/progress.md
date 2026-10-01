@@ -124,3 +124,7 @@ Branch: feat/6-theme-state-foundation. Tailwind semantic tokens, Pinia theme pre
 ## Home entry and split shell
 
 #49 home/app separation and #42 shell components are In review on feature/42-reader-shell. Original home content remains; Go to app opens /app. Responsive library/workspace/toolbar use shared tokens and explicitly labeled sample content. #7 is In progress and stays open for #43; no reader/file access scope is completed here.
+
+## Browser CI increment (#37)
+
+PR #50 also adds built-site Chromium/WebKit checks and review artifacts to Frontend CI. #37 is In progress; shell navigation/responsiveness coverage is delivered here, while #43 focus/status and #8 selection/fallback/error behavior remain. See browser-testing.md for the matrix and artifact review.

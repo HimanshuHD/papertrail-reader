@@ -45,3 +45,7 @@ Thumbs.db
 
 # Commit package lockfiles, Cargo.lock, documentation PDFs and sanitized fixtures.
 
+
+# Browser test artifacts
+/playwright-report/
+/test-results/

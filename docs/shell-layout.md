@@ -22,3 +22,7 @@ Native links/buttons, landmark names, pressed selection state and expanded sideb
 ## Review checks
 
 Check home and direct #/app entry; Go to app/home/history navigation; widths 320/375/768/1024/1440; both themes; show/hide library; PDF/EPUB sample title changes; disabled unavailable actions and no horizontal overflow. Verify production/preview hash URLs independently. Component tests cover route entry/history, selecting and retaining metadata, collapsing/restoring library and honest unavailable actions.
+
+## CI browser evidence
+
+See [browser-testing.md](browser-testing.md). PR #50 adds real Chromium/WebKit checks against the built preview base path and home/app screenshots at representative widths. CI results and visual review must be recorded separately; a successful screenshot capture is not a pixel-comparison approval.

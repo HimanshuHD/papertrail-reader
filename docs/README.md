@@ -18,3 +18,5 @@ Add new documentation here and update this index. Live issues and docs/progress.
 [Initial version history](../CHANGELOG.md) records the 0.1.0 foundation scope and its limitations.
 
 [Reader shell layout](shell-layout.md) documents home/app navigation, responsive layout and component boundaries (#42/#49).
+
+[Browser validation](browser-testing.md) covers the Playwright matrix, built-site CI and screenshot/report artifacts (#37).
