@@ -11,10 +11,7 @@ function inputFile(name: string, relativePath = name, type = '') {
   return file
 }
 
-function fileHandle(
-  name: string,
-  fileOrError: File | Error | DOMException,
-): FileSystemFileHandle {
+function fileHandle(name: string, fileOrError: File | Error | DOMException): FileSystemFileHandle {
   return {
     kind: 'file',
     name,
