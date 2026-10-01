@@ -43,7 +43,7 @@ M1 - UI and state (#6, #7)
 Tokens, explicit Light/Dark themes, Pinia/Router and format capability contracts (#6/#46) are completed. Responsive split layout/sidebar/toolbar #42 and home/app entry #49 are completed in PR #50. Keyboard/focus and explicit empty/loading/error/demo status states #43 are completed in PR #53. Exit: keyboard access, focus visibility and small-window usability verified; sample content clearly identified.
 
 M2 - Browser library (#8, #9; children #24, #25)
-#8 is in progress on `feat/8-browser-file-selection`. Add user-triggered folder selection, feature detection, directory-input and individual-file fallbacks. Index selected files incrementally, reconstruct hierarchy from relative paths, filter case-insensitive extensions and support cancellation. Explain handle refresh versus snapshot reselection.
+#8 is finishing review on `feat/8-browser-file-selection`. #24 is active on the stacked `feat/24-browser-indexing` branch: it normalizes selected sources into PDF/EPUB documents, preserves relative paths, traverses approved handles incrementally, reports progress, yields during work, supports cancellation and retains partial results after recoverable access failures. #25 follows with hierarchy rendering and refresh/reselection UI. Explain handle refresh versus snapshot reselection.
 
 Exit: nested files, empty selections, permission denial, picker dismissal, unsupported APIs, Unicode paths and large selected libraries handled. Browser selection boundaries are respected. Individual-file fallback never invents directory paths.
 
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #53: #8 browser source selection is the active product increment, followed by library discovery #9. Tauri is no longer the next implementation step.
+Current after merged PR #53: #8 browser source selection is finishing acceptance in PR #54; #24 discovery is implemented on a stacked branch and becomes the next merge once #8 lands. Tauri is no longer the next implementation step.
 
 ## 7. Release acceptance and sources
 
