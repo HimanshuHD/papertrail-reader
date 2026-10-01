@@ -94,8 +94,9 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await expect(page.getByRole('link', { name: 'Go to app' })).toBeVisible()
 })
 
-
-test('browser source selection handles native success, cancellation and file input', async ({ page }) => {
+test('browser source selection handles native success, cancellation and file input', async ({
+  page,
+}) => {
   await page.addInitScript(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
       configurable: true,
