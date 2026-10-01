@@ -4,6 +4,7 @@ export type PdfFitMode = 'width' | 'page' | 'custom'
 
 export interface PdfRenderRequest {
   canvas: HTMLCanvasElement
+  textLayer?: HTMLElement
   pageNumber: number
   fitMode: PdfFitMode
   zoom: number
@@ -31,6 +32,12 @@ export class PdfOpenError extends Error {
 }
 
 type PdfJsModule = typeof import('pdfjs-dist')
+type PdfJsLoader = () => Promise<PdfJsModule>
+type ActiveTextLayer = { cancel?: () => void }
+type ActiveRender = {
+  renderTask: RenderTask | null
+  textLayer: ActiveTextLayer | null
+}
 
 let pdfJsPromise: Promise<PdfJsModule> | null = null
 
@@ -48,7 +55,7 @@ async function loadPdfJs(): Promise<PdfJsModule> {
   return pdfJsPromise
 }
 
-function classifyOpenError(error: unknown): PdfOpenError {
+export function classifyPdfOpenError(error: unknown): PdfOpenError {
   if (error instanceof PdfOpenError) return error
 
   if (error instanceof Error) {
@@ -100,10 +107,11 @@ export function resolvePdfScale(
 }
 
 export class PdfDocumentSession {
-  private renderTask: RenderTask | null = null
+  private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
 
   constructor(
+    private readonly pdfjs: PdfJsModule,
     private readonly loadingTask: PDFDocumentLoadingTask,
     private readonly document: PDFDocumentProxy,
   ) {}
@@ -112,17 +120,25 @@ export class PdfDocumentSession {
     return this.document.numPages
   }
 
-  private async cancelRender(): Promise<void> {
-    const current = this.renderTask
-    this.renderTask = null
+  private async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
+    const current = this.activeRenders.get(canvas)
+    this.activeRenders.delete(canvas)
     if (!current) return
 
-    current.cancel()
+    current.textLayer?.cancel?.()
+    const task = current.renderTask
+    if (!task) return
+
+    task.cancel()
     try {
-      await current.promise
+      await task.promise
     } catch (error) {
       if (!(error instanceof Error) || error.name !== 'RenderingCancelledException') throw error
     }
+  }
+
+  private async cancelAllRenders(): Promise<void> {
+    await Promise.all([...this.activeRenders.keys()].map((canvas) => this.cancelRender(canvas)))
   }
 
   private async getPage(pageNumber: number): Promise<PDFPageProxy> {
@@ -134,7 +150,7 @@ export class PdfDocumentSession {
   }
 
   async render(request: PdfRenderRequest): Promise<PdfRenderResult> {
-    await this.cancelRender()
+    await this.cancelRender(request.canvas)
     const page = await this.getPage(request.pageNumber)
     const baseViewport = page.getViewport({ scale: 1 })
 
@@ -156,25 +172,44 @@ export class PdfDocumentSession {
     request.canvas.style.width = `${Math.floor(viewport.width)}px`
     request.canvas.style.height = `${Math.floor(viewport.height)}px`
 
-    const transform = outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0]
+    if (request.textLayer) {
+      request.textLayer.replaceChildren()
+      request.textLayer.style.width = `${Math.floor(viewport.width)}px`
+      request.textLayer.style.height = `${Math.floor(viewport.height)}px`
+      request.textLayer.style.setProperty('--scale-factor', String(viewport.scale))
+    }
 
+    const transform = outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0]
     const task = page.render({
       canvas: request.canvas,
       canvasContext: context,
       viewport,
       transform,
     })
-    this.renderTask = task
+    const active: ActiveRender = { renderTask: task, textLayer: null }
+    this.activeRenders.set(request.canvas, active)
 
     try {
       await task.promise
-    } catch (error) {
-      if (error instanceof Error && error.name === 'RenderingCancelledException') {
-        throw error
+      active.renderTask = null
+
+      if (request.textLayer) {
+        const textLayer = new this.pdfjs.TextLayer({
+          textContentSource: page.streamTextContent(),
+          container: request.textLayer,
+          viewport,
+        })
+        active.textLayer = textLayer
+        await textLayer.render()
       }
+    } catch (error) {
+      if (error instanceof Error && error.name === 'RenderingCancelledException') throw error
+      if (error instanceof Error && error.message === 'TextLayer task cancelled.') throw error
       throw error
     } finally {
-      if (this.renderTask === task) this.renderTask = null
+      if (this.activeRenders.get(request.canvas) === active) {
+        this.activeRenders.delete(request.canvas)
+      }
       page.cleanup()
     }
 
@@ -188,22 +223,36 @@ export class PdfDocumentSession {
   async close(): Promise<void> {
     if (this.closed) return
     this.closed = true
-    await this.cancelRender()
+    await this.cancelAllRenders()
     await this.document.cleanup()
     await this.loadingTask.destroy()
   }
 }
 
-export async function openPdfDocument(file: File): Promise<PdfDocumentSession> {
-  const pdfjs = await loadPdfJs()
+export async function openPdfDocument(
+  file: File,
+  loader: PdfJsLoader = loadPdfJs,
+): Promise<PdfDocumentSession> {
+  const pdfjs = await loader()
   const data = new Uint8Array(await file.arrayBuffer())
   const loadingTask = pdfjs.getDocument({ data })
 
+  const passwordRequest = new Promise<never>((_resolve, reject) => {
+    loadingTask.onPassword = () => {
+      reject(
+        new PdfOpenError(
+          'password-required',
+          'This PDF is password protected. Password entry is not available yet.',
+        ),
+      )
+    }
+  })
+
   try {
-    const document = await loadingTask.promise
-    return new PdfDocumentSession(loadingTask, document)
+    const document = await Promise.race([loadingTask.promise, passwordRequest])
+    return new PdfDocumentSession(pdfjs, loadingTask, document)
   } catch (error) {
     await loadingTask.destroy()
-    throw classifyOpenError(error)
+    throw classifyPdfOpenError(error)
   }
 }
