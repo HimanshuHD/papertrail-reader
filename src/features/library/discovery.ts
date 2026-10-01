@@ -46,7 +46,10 @@ type TraversableDirectoryHandle = FileSystemDirectoryHandle & {
 const DEFAULT_YIELD_EVERY = 50
 
 function normalizePath(path: string): string {
-  return path.replaceAll('\\', '/').replace(/^\.\//, '').replace(/\/{2,}/g, '/')
+  return path
+    .replaceAll('\\', '/')
+    .replace(/^\.\//, '')
+    .replace(/\/{2,}/g, '/')
 }
 
 function parentPathOf(relativePath: string): string {
@@ -62,7 +65,16 @@ function formatFromName(name: string): DocumentFormat | null {
 }
 
 function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Unknown browser file access error'
+  if (
+    typeof error === 'object' &&
+    error !== null &&
+    'message' in error &&
+    typeof (error as { message?: unknown }).message === 'string'
+  ) {
+    return (error as { message: string }).message
+  }
+
+  return 'Unknown browser file access error'
 }
 
 function makeDocument(
