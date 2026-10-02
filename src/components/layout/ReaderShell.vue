@@ -1,5 +1,6 @@
 <script setup lang="ts">
 defineProps<{ sidebarOpen: boolean }>()
+defineEmits<{ close: [] }>()
 </script>
 
 <template>
@@ -10,6 +11,7 @@ defineProps<{ sidebarOpen: boolean }>()
       class="library-scroll border-line bg-panel"
       aria-label="Document library"
       tabindex="0"
+      @keydown.esc.stop="$emit('close')"
     >
       <slot name="sidebar" />
     </aside>

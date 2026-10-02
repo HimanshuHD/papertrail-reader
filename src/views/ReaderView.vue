@@ -268,7 +268,7 @@ async function closeSidebarAndRestoreFocus() {
 
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
-    <ReaderShell :sidebar-open="sidebarOpen">
+    <ReaderShell :sidebar-open="sidebarOpen" @close="closeSidebarAndRestoreFocus">
       <template #sidebar>
         <LibrarySidebar
           :documents="documents"

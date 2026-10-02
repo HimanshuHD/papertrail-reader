@@ -371,7 +371,10 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   expect(bounds!.height).toBeGreaterThan(0)
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(500)
   await library.focus()
-  await page.keyboard.press('PageDown')
+  await page.keyboard.press('End')
+  await expect
+    .poll(() => library.evaluate((e) => Math.abs(e.scrollTop - (e.scrollHeight - e.clientHeight))))
+    .toBeLessThanOrEqual(1)
   await expect.poll(() => library.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
   expect(await pdf.evaluate((e) => e.scrollTop)).toBe(0)
   const libraryPosition = await library.evaluate((e) => e.scrollTop)
