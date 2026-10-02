@@ -156,3 +156,129 @@ describe('PDF search and contents', () => {
     expect(getPageIndex).toHaveBeenCalled()
   })
 })
+
+describe('PDF render and session lifecycle', () => {
+  function deferred() {
+    let resolve!: () => void
+    let reject!: (error: Error) => void
+    const promise = new Promise<void>((yes, no) => {
+      resolve = yes
+      reject = no
+    })
+    return { promise, resolve, reject }
+  }
+
+  function makeRenderer() {
+    const tasks: {
+      promise: Promise<void>
+      cancel: ReturnType<typeof vi.fn>
+      resolve: () => void
+    }[] = []
+    const layers: { cancel: ReturnType<typeof vi.fn>; resolve: () => void }[] = []
+    const render = vi.fn(() => {
+      const pending = deferred()
+      const cancel = vi.fn(() => {
+        const error = new Error('render cancelled')
+        error.name = 'RenderingCancelledException'
+        pending.reject(error)
+      })
+      const task = { ...pending, cancel }
+      tasks.push(task)
+      return task
+    })
+    const page = {
+      getViewport: ({ scale }: { scale: number }) => ({
+        width: 600 * scale,
+        height: 800 * scale,
+        scale,
+      }),
+      render,
+      getTextContent: vi.fn().mockResolvedValue({ items: [] }),
+      cleanup: vi.fn(),
+    }
+    const documentProxy = {
+      numPages: 2,
+      getPage: vi.fn().mockResolvedValue(page),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    }
+    const loadingTask = { destroy: vi.fn().mockResolvedValue(undefined) }
+    class TextLayer {
+      private pending = deferred()
+      constructor() {
+        layers.push({ cancel: this.cancel, resolve: this.pending.resolve })
+      }
+      render() {
+        return this.pending.promise
+      }
+      cancel = vi.fn(() => this.pending.reject(new Error('TextLayer task cancelled.')))
+    }
+    const session = new PdfDocumentSession(
+      { TextLayer } as unknown as typeof import('pdfjs-dist'),
+      loadingTask as never,
+      documentProxy as never,
+    )
+    const canvas = document.createElement('canvas')
+    vi.spyOn(canvas, 'getContext').mockReturnValue({} as CanvasRenderingContext2D)
+    const request = {
+      canvas,
+      pageNumber: 1,
+      fitMode: 'width' as const,
+      zoom: 1,
+      availableWidth: 600,
+      availableHeight: 800,
+    }
+    return { session, request, tasks, layers, page, documentProxy, loadingTask }
+  }
+
+  it('cancels an obsolete canvas render before starting its replacement', async () => {
+    const { session, request, tasks, page } = makeRenderer()
+    const first = session.render(request)
+    const cancelled = expect(first).rejects.toMatchObject({ name: 'RenderingCancelledException' })
+    await vi.waitFor(() => expect(tasks).toHaveLength(1))
+    const second = session.render({ ...request, zoom: 2, fitMode: 'custom' })
+    await vi.waitFor(() => expect(tasks).toHaveLength(2))
+    await cancelled
+    expect(tasks[0]!.cancel).toHaveBeenCalledOnce()
+    tasks[1]!.resolve()
+    await expect(second).resolves.toMatchObject({ scale: 2 })
+    expect(page.cleanup).toHaveBeenCalledTimes(2)
+    await session.close()
+  })
+
+  it('cancels an active text layer on close and releases resources only once', async () => {
+    const { session, request, tasks, layers, documentProxy, loadingTask } = makeRenderer()
+    const rendering = session.render({ ...request, textLayer: document.createElement('div') })
+    const cancelled = expect(rendering).rejects.toThrow('TextLayer task cancelled.')
+    await vi.waitFor(() => expect(tasks).toHaveLength(1))
+    tasks[0]!.resolve()
+    await vi.waitFor(() => expect(layers).toHaveLength(1))
+    await session.close()
+    await cancelled
+    expect(layers[0]!.cancel).toHaveBeenCalledOnce()
+    expect(documentProxy.cleanup).toHaveBeenCalledOnce()
+    expect(loadingTask.destroy).toHaveBeenCalledOnce()
+    await session.close()
+    expect(loadingTask.destroy).toHaveBeenCalledOnce()
+    await expect(session.render(request)).rejects.toThrow('PDF session is closed.')
+  })
+
+  it('cancels pending canvas work before document teardown', async () => {
+    const { session, request, tasks, documentProxy, loadingTask } = makeRenderer()
+    const rendering = session.render(request)
+    const cancelled = expect(rendering).rejects.toMatchObject({
+      name: 'RenderingCancelledException',
+    })
+    await vi.waitFor(() => expect(tasks).toHaveLength(1))
+    await session.close()
+    await cancelled
+    expect(tasks[0]!.cancel).toHaveBeenCalledOnce()
+    expect(documentProxy.cleanup).toHaveBeenCalledOnce()
+    expect(loadingTask.destroy).toHaveBeenCalledOnce()
+    expect(tasks[0]!.cancel.mock.invocationCallOrder[0]).toBeLessThan(
+      documentProxy.cleanup.mock.invocationCallOrder[0]!,
+    )
+    expect(documentProxy.cleanup.mock.invocationCallOrder[0]).toBeLessThan(
+      loadingTask.destroy.mock.invocationCallOrder[0]!,
+    )
+  })
+})
