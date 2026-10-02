@@ -8,10 +8,7 @@ defineProps<{
 </script>
 
 <template>
-  <section
-    class="reader-welcome min-w-0 px-4 py-6 sm:px-8 sm:py-9"
-    aria-labelledby="reader-title"
-  >
+  <section class="reader-welcome min-w-0 px-4 py-6 sm:px-8 sm:py-9" aria-labelledby="reader-title">
     <div v-if="selectedDocument?.format === 'EPUB'" class="document-stage">
       <article class="welcome-page epub-state rounded-card border border-line bg-panel shadow-xl">
         <div class="flex items-center justify-between gap-4">
@@ -24,12 +21,15 @@ defineProps<{
         <div class="my-7 h-px bg-line"></div>
 
         <p class="text-sm text-muted">Selected from your local library</p>
-        <h2 id="reader-title" class="mt-3 break-words font-serif text-3xl leading-tight sm:text-4xl">
+        <h2
+          id="reader-title"
+          class="mt-3 break-words font-serif text-3xl leading-tight sm:text-4xl"
+        >
           {{ selectedDocument.name }}
         </h2>
         <p class="mt-6 max-w-xl leading-relaxed text-muted">
-          EPUB reading is not available in this release yet. The file stays in your library, and
-          you can open any PDF now without changing your selection source.
+          EPUB reading is not available in this release yet. The file stays in your library, and you
+          can open any PDF now without changing your selection source.
         </p>
 
         <div class="mt-8 rounded-xl border border-line bg-canvas px-4 py-4">
@@ -60,22 +60,28 @@ defineProps<{
           Welcome to PaperTrail
         </h2>
         <p class="mt-6 max-w-2xl text-base leading-relaxed text-muted">
-          Your documents will have room to breathe here. The library sits beside your reading
-          space, with controls close at hand and an appearance you can make your own.
+          Your documents will have room to breathe here. The library sits beside your reading space,
+          with controls close at hand and an appearance you can make your own.
         </p>
 
         <div class="mt-8 grid gap-3 sm:grid-cols-3" aria-label="PaperTrail workspace highlights">
           <div class="feature-card rounded-xl border border-line bg-canvas px-4 py-4">
             <p class="text-xs font-semibold tracking-wider text-brand uppercase">Library</p>
-            <p class="mt-2 text-sm leading-relaxed text-muted">Folders and files stay within reach.</p>
+            <p class="mt-2 text-sm leading-relaxed text-muted">
+              Folders and files stay within reach.
+            </p>
           </div>
           <div class="feature-card rounded-xl border border-line bg-canvas px-4 py-4">
             <p class="text-xs font-semibold tracking-wider text-brand uppercase">Reading space</p>
-            <p class="mt-2 text-sm leading-relaxed text-muted">PDFs open on a focused reader canvas.</p>
+            <p class="mt-2 text-sm leading-relaxed text-muted">
+              PDFs open on a focused reader canvas.
+            </p>
           </div>
           <div class="feature-card rounded-xl border border-line bg-canvas px-4 py-4">
             <p class="text-xs font-semibold tracking-wider text-brand uppercase">Appearance</p>
-            <p class="mt-2 text-sm leading-relaxed text-muted">Choose the theme that feels right.</p>
+            <p class="mt-2 text-sm leading-relaxed text-muted">
+              Choose the theme that feels right.
+            </p>
           </div>
         </div>
 
@@ -89,7 +95,11 @@ defineProps<{
           >
           <div>
             <p class="text-sm font-semibold">
-              {{ hasLibrarySelection ? 'Choose a document from the library' : 'Add your first document' }}
+              {{
+                hasLibrarySelection
+                  ? 'Choose a document from the library'
+                  : 'Add your first document'
+              }}
             </p>
             <p class="mt-1 text-xs leading-relaxed text-muted">
               {{
@@ -130,11 +140,7 @@ defineProps<{
   inset: 0;
   background-image:
     linear-gradient(color-mix(in srgb, var(--pt-line) 38%, transparent) 1px, transparent 1px),
-    linear-gradient(
-      90deg,
-      color-mix(in srgb, var(--pt-line) 38%, transparent) 1px,
-      transparent 1px
-    );
+    linear-gradient(90deg, color-mix(in srgb, var(--pt-line) 38%, transparent) 1px, transparent 1px);
   background-size: 28px 28px;
   content: '';
   mask-image: radial-gradient(circle at center, black, transparent 74%);
