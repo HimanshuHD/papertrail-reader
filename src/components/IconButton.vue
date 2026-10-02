@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import UiIcon from './UiIcon.vue'
-defineProps<{ label: string; icon: 'refresh' | 'plus' | 'close' | 'library'; disabled?: boolean }>()
+defineProps<{
+  label: string
+  icon: 'refresh' | 'plus' | 'close' | 'library'
+  disabled?: boolean
+  tooltipAbove?: boolean
+}>()
 </script>
 <template>
   <button
@@ -13,7 +18,8 @@ defineProps<{ label: string; icon: 'refresh' | 'plus' | 'close' | 'library'; dis
     <UiIcon :name="icon" />
     <span
       aria-hidden="true"
-      class="icon-tooltip pointer-events-none absolute top-full right-0 z-50 mt-1 w-max max-w-48 rounded-md border border-line bg-panel px-2 py-1 text-xs font-medium text-ink shadow-md"
+      class="icon-tooltip pointer-events-none absolute z-50 w-max max-w-48 rounded-md border border-line bg-panel px-2 py-1 text-xs font-medium text-ink shadow-md"
+      :class="tooltipAbove ? 'bottom-full left-0 mb-1' : 'top-full right-0 mt-1'"
       >{{ label }}</span
     >
   </button>
