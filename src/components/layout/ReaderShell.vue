@@ -172,6 +172,11 @@ onBeforeUnmount(() => {
 .opener-visible :deep(.sample-toolbar) {
   padding-left: 76px;
 }
+@media (max-width: 1023px) {
+  .opener-visible :deep(.reader-welcome) {
+    padding-left: 76px;
+  }
+}
 .reader-content {
   flex: 1;
   min-height: 0;
