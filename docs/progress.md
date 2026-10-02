@@ -119,3 +119,7 @@ PR #70 is merged and the owner accepted manual preview and production validation
 ## Compact library acceptance (#63 / PR #71)
 
 Implementation `92e4c46b606996be31a965e28357d1029bfed31a` passed [Frontend CI 36996477628](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996477628) and [Browser E2E 36996568915](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996568915): 40 Chromium checks at 320/375/768/1024/1440px. Tests cover exclusive floating opener, close/open focus, source-menu keyboard and outside/focus dismissal, selection fallbacks, capability-based refresh/reselection, independent scrolling and PDF utilities. #63 is in review in PR #71 and stays open until merge. #64 follows. No publisher ran for the draft CI updates; preview remains manual.
+
+## Preview refinements (#72, child of #63)
+
+PR #71 remains on feat/63-compact-library. Move the opener to the top beside reserved title space, add sliding/grid transitions with reduced-motion support, and widen the default library from 280 to 308px. A bounded pointer-captured separator supports mouse/touch dragging, col-resize hover, Arrow keys (Shift for fine steps), Home/End and accessible width values. Width survives panel toggling; resize observation keeps it within the current viewport. Desktop retains at least 360px for the reader; smaller screens retain the overlay. #72 is in progress until acceptance and merge.

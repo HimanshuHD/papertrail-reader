@@ -270,7 +270,6 @@ async function closeSidebarAndRestoreFocus() {
           ref="sidebarToggle"
           label="Show library"
           icon="library"
-          tooltip-above
           aria-controls="document-sidebar"
           aria-expanded="false"
           class="floating-library border border-line bg-panel text-brand shadow-lg"

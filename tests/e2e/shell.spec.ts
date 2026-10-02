@@ -433,3 +433,51 @@ test('compact library menu dismisses independently and restores panel focus', as
   await expect(page.getByRole('button', { name: 'Hide library' })).toBeFocused()
   await noOverflow(page)
 })
+
+test('library width resizes within bounds and top opener preserves title space', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const library = page.getByRole('complementary', { name: 'Document library' })
+  const rail = page.getByRole('separator', { name: 'Resize library panel' })
+  await expect
+    .poll(async () => (await library.boundingBox())!.width)
+    .toBe(Math.round(Math.min(308, page.viewportSize()!.width * 0.9)))
+  await rail.hover()
+  await expect(rail).toHaveCSS('cursor', 'col-resize')
+  await rail.focus()
+  await page.keyboard.press('ArrowLeft')
+  const before = Number(await rail.getAttribute('aria-valuenow'))
+  const bounds = (await rail.boundingBox())!
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 80)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width / 2 + 30, bounds.y + 80, { steps: 5 })
+  await page.mouse.up()
+  await expect
+    .poll(async () => Number(await rail.getAttribute('aria-valuenow')))
+    .toBeGreaterThan(before)
+  await rail.focus()
+  await page.keyboard.press('End')
+  await expect
+    .poll(async () => await rail.getAttribute('aria-valuenow'))
+    .toBe(await rail.getAttribute('aria-valuemax'))
+  await page.keyboard.press('Home')
+  await expect
+    .poll(async () => await rail.getAttribute('aria-valuenow'))
+    .toBe(await rail.getAttribute('aria-valuemin'))
+  await page.keyboard.press('ArrowRight')
+  const remembered = await rail.getAttribute('aria-valuenow')
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(library).toHaveCount(0)
+  const opener = page.getByRole('button', { name: 'Show library' })
+  await expect(opener).toBeFocused()
+  const openerBounds = (await opener.boundingBox())!
+  const title = (await page.locator('#reader-title').boundingBox())!
+  expect(openerBounds.y).toBeLessThanOrEqual(title.y)
+  expect(openerBounds.x + openerBounds.width + 12).toBeLessThanOrEqual(title.x)
+  await opener.click()
+  await expect(rail).toHaveAttribute('aria-valuenow', remembered!)
+  await noOverflow(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(page.locator('.reader-layout')).toHaveCSS('transition-duration', '0s')
+})
