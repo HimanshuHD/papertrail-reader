@@ -69,14 +69,11 @@ describe('PDF open recovery', () => {
   })
 })
 
-
 describe('PDF search and contents', () => {
   function makeSession(pages: string[], outline: unknown[] = []) {
     const getPage = vi.fn(async (pageNumber: number) => ({
       getTextContent: vi.fn().mockResolvedValue({
-        items: pages[pageNumber - 1]
-          .split(' ')
-          .map((str) => ({ str })),
+        items: pages[pageNumber - 1].split(' ').map((str) => ({ str })),
       }),
     }))
     const getOutline = vi.fn().mockResolvedValue(outline)
@@ -137,13 +134,16 @@ describe('PDF search and contents', () => {
   })
 
   it('resolves named outline destinations to one-based page numbers', async () => {
-    const { session, getDestination, getPageIndex } = makeSession(['one', 'two'], [
-      {
-        title: 'Chapter two',
-        dest: 'chapter-two',
-        items: [],
-      },
-    ])
+    const { session, getDestination, getPageIndex } = makeSession(
+      ['one', 'two'],
+      [
+        {
+          title: 'Chapter two',
+          dest: 'chapter-two',
+          items: [],
+        },
+      ],
+    )
 
     await expect(session.getOutline()).resolves.toEqual([
       {
