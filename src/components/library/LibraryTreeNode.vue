@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { LibraryTreeNode } from '../../features/library/library-tree'
 
 defineOptions({ name: 'LibraryTreeNode' })
 
-defineProps<{
+const props = defineProps<{
   node: LibraryTreeNode
   selectedId: string | null
 }>()
@@ -14,6 +14,11 @@ defineEmits<{
 }>()
 
 const expanded = ref(true)
+const label = computed(() =>
+  props.node.kind === 'document'
+    ? props.node.document.title?.trim() || props.node.document.name
+    : props.node.name,
+)
 </script>
 
 <template>
@@ -28,7 +33,7 @@ const expanded = ref(true)
         <span class="w-4 shrink-0 text-center text-muted" aria-hidden="true">{{
           expanded ? '▾' : '▸'
         }}</span>
-        <span class="min-w-0 flex-1 break-words font-medium">{{ node.name }}</span>
+        <span class="min-w-0 flex-1 truncate font-medium" :title="node.name">{{ node.name }}</span>
         <span class="shrink-0 text-[11px] text-muted">{{ node.documentCount }}</span>
       </button>
 
@@ -47,8 +52,10 @@ const expanded = ref(true)
       v-else
       type="button"
       :aria-pressed="selectedId === node.document.id"
+      :title="label"
+      :aria-label="`${node.document.format}: ${label}`"
       :class="[
-        'flex min-h-11 w-full items-start gap-2 rounded-md border px-2 py-2 text-left',
+        'flex min-h-11 w-full items-center gap-2 rounded-md border px-2 py-2 text-left',
         selectedId === node.document.id
           ? 'border-brand bg-canvas'
           : 'border-transparent hover:bg-canvas',
@@ -59,14 +66,7 @@ const expanded = ref(true)
         class="mt-0.5 shrink-0 rounded border border-line px-1 py-0.5 text-[10px] font-bold text-brand"
         >{{ node.document.format }}</span
       >
-      <span class="min-w-0">
-        <span class="block break-words text-sm font-medium">{{ node.document.name }}</span>
-        <span
-          v-if="node.document.parentPath"
-          class="mt-0.5 block break-words text-[11px] text-muted"
-          >{{ node.document.relativePath }}</span
-        >
-      </span>
+      <span class="min-w-0 flex-1 truncate text-sm font-medium">{{ label }}</span>
     </button>
   </li>
 </template>

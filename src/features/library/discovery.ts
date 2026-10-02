@@ -6,6 +6,8 @@ export interface DiscoveredDocument {
   /** Session-local identity only. Persistent identity belongs to #13. */
   id: string
   name: string
+  /** Optional locally read PDF metadata; never replaces file identity. */
+  title?: string
   format: DocumentFormat
   relativePath: string
   parentPath: string

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   classifyPdfOpenError,
   openPdfDocument,
+  readPdfTitle,
   PdfDocumentSession,
   PdfOpenError,
   resolvePdfScale,
@@ -341,5 +342,45 @@ describe('demand-driven PDF preparation', () => {
     await session.close()
     expect(previews.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true)
     context.mockRestore()
+  })
+})
+
+describe('local PDF title metadata', () => {
+  it.each([
+    ['  A\nquiet chapter  ', 'File title', 'A quiet chapter'],
+    ['Untitled', '  Embedded title  ', 'Embedded title'],
+    [null, '', null],
+    [null, 'Untitled', null],
+  ])('chooses a usable metadata title (%s, %s)', async (xmp, info, expected) => {
+    const proxy = {
+      getMetadata: vi
+        .fn()
+        .mockResolvedValue({ info: { Title: info }, metadata: { get: () => xmp } }),
+      getPage: vi.fn(),
+    }
+    const task = { promise: Promise.resolve(proxy), destroy: vi.fn().mockResolvedValue(undefined) }
+    const loader = async () =>
+      ({ getDocument: () => task }) as unknown as typeof import('pdfjs-dist')
+    expect(await readPdfTitle(new File(['fixture'], 'file.pdf'), undefined, loader)).toBe(expected)
+    expect(proxy.getPage).not.toHaveBeenCalled()
+    expect(task.destroy).toHaveBeenCalledOnce()
+  })
+  it('falls back safely on invalid files and stops before reading cancelled selections', async () => {
+    const task = {
+      promise: Promise.resolve(null),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    }
+    const loader = vi.fn(
+      async () =>
+        ({
+          getDocument: () => ({ ...task, promise: Promise.reject(new Error('Invalid PDF')) }),
+        }) as unknown as typeof import('pdfjs-dist'),
+    )
+    expect(await readPdfTitle(new File(['bad'], 'bad.pdf'), undefined, loader)).toBeNull()
+    expect(task.destroy).toHaveBeenCalledOnce()
+    const controller = new AbortController()
+    controller.abort()
+    expect(await readPdfTitle(new File(['bad'], 'bad.pdf'), controller.signal, loader)).toBeNull()
+    expect(loader).toHaveBeenCalledOnce()
   })
 })
