@@ -6,7 +6,7 @@ Responsive browser PDF reading with local folder/file selection, discovery/refre
 
 First-release fixes include buffered rendering, reading-point anchors, scrollbar page tracking, bounded preview caching and fast opening of 1,000+ page PDFs; single title/fallback labels, independent scrolling, centered loading feedback, accessible controls/popovers and a compact version/identity footer.
 
-PDF-only. EPUB, OCR, password-entry UI, persistent positions/bookmarks, annotations, tabs, broader browser certification and Tauri remain outside this release. Documentation-only publisher trigger refinement is deferred as #100 under Roadmap 2 #78. See [release record](docs/releases/v1.0.0.md) and [acceptance audit](docs/releases/v1.0.0-acceptance-audit.md). PR #103 is merged and production v1.0.0 is verified at b2eb932 (main CI 37054802868, publisher 37054875000). Version tag/GitHub release publication remains pending; that date will be recorded separately.
+PDF-only. EPUB, OCR, password-entry UI, persistent positions/bookmarks, annotations, tabs, broader browser certification and Tauri remain outside this release. Documentation-only publisher trigger refinement is deferred as #100 under Roadmap 2 #78. See [release record](docs/releases/v1.0.0.md) and [acceptance audit](docs/releases/v1.0.0-acceptance-audit.md). PR #103 is merged and production v1.0.0 is verified at b2eb932 (main CI 37054802868, publisher 37054875000). Stable [v1.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v1.0.0) was published on 3 October 2026 (Asia/Kolkata), at 2026-10-02T19:55:40Z, with the lightweight tag targeting that exact merge.
 
 ## 0.1.0 — Initial foundation
 

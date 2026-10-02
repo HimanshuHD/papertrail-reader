@@ -2,9 +2,9 @@
 
 Keep one record per version here. Each record identifies the reviewed application commit, exact tag target, CI/browser evidence, support/limitations, deployment identity and post-release verification. Preserve released records and tags; add subsequent versions as new files and rows. Use [TEMPLATE.md](TEMPLATE.md).
 
-| Version | Status                                                                  | Record                                                                                                          | Tag / production source                                         |
-| ------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| 1.0.0   | Deployed — version tag/GitHub release pending                           | [Release document](v1.0.0.md), [release notes](v1.0.0-notes.md), [acceptance audit](v1.0.0-acceptance-audit.md) | Tag pending; reviewed merge/production b2eb932 / CI 37054802868 |
-| 0.1.0   | Historical foundation version; no tag/GitHub release found during audit | [Foundation changelog](../../CHANGELOG.md#010--initial-foundation)                                              | Historical production 77b8f31 / CI 37050685881                  |
+| Version | Status                                                                  | Record                                                                                                          | Tag / production source                                                                                 |
+| ------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| 1.0.0   | Released — 3 October 2026 (Asia/Kolkata)                                | [Release document](v1.0.0.md), [release notes](v1.0.0-notes.md), [acceptance audit](v1.0.0-acceptance-audit.md) | [v1.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v1.0.0); b2eb932 / CI 37054802868 |
+| 0.1.0   | Historical foundation version; no tag/GitHub release found during audit | [Foundation changelog](../../CHANGELOG.md#010--initial-foundation)                                              | Historical production 77b8f31 / CI 37050685881                                                          |
 
-Roadmap #1 → bug gate #79 → release gate #80 → Roadmap 2 #78. Close #80/#1 after tagging/release and production verification.
+Roadmap #1 → bug gate #79 → release gate #80 → Roadmap 2 #78. #79/#80/#1 are completed after tag/release and production verification. Roadmap 2 #78 is ready; #13 is next.

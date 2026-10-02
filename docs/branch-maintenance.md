@@ -35,3 +35,9 @@ The earlier 11-branch pending-cleanup record is historical. Fresh inventory cont
 ## Release branch cleanup — 3 October 2026
 
 PR #103 merged release/1.0.0 (reviewed head ff159b5) as b2eb9328be5147346926e9bbce0960fa777b9e00. The branch is safe to delete after merge; a fresh branch listing already shows it removed and contains only main/pages-state. No deletion by the assistant is claimed. Removing a merged branch does not remove the reviewed commit; the v1.0.0 tag must target that exact merge SHA once created. New release reconciliation uses a separate docs branch, leaving the removed release branch closed. Keep main and generated pages-state.
+
+## Final release reconciliation — 3 October 2026
+
+Published stable [v1.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v1.0.0) at 2026-10-02T19:55:40Z (3 October 2026, 01:25:40 Asia/Kolkata). GitHub API verifies the lightweight tag directly targets reviewed/deployed merge b2eb9328be5147346926e9bbce0960fa777b9e00. Main CI 37054802868 and publisher 37054875000 passed; owner confirmed production v1.0.0/SHA b2eb932. #79, #80 and first-release roadmap #1 are completed. Roadmap 2 #78 is open and ready; PDF saved positions/bookmarks #13 is the next feature, with #100 publishing maintenance retained as unfinished scope. Historical pending-tag and deferred-handoff entries are superseded by this verification.
+
+Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056086941. Publisher 37056172706 succeeded with upload/deploy/URL steps skipped for docs-only input. Production remains b2eb932/source CI 37054802868. Tag/release publication created no additional Actions run in the reviewed latest-run listing. #100 retains event-level docs-only publisher filtering for Roadmap 2.
