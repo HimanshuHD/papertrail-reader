@@ -123,3 +123,7 @@ PR #71 merged at 2026-10-02T11:02:59Z as 9e5db87a38673651214989053c495270ed9b73d
 ## Current work: PDF utilities (#64)
 
 Issue #64 remains In progress in draft PR #73 on feat/64-reader-utilities. Latest fast CI 37000766352 passed. The first explicit Browser E2E run 37000813353 passed 40 checks and failed the search workflow at five configured viewport widths: the open search popover intercepted clicks on results in the right panel. The fix closes the search popover on completion, restores focus to its toolbar trigger, and leaves results/status in the right panel. PR #73 returned to draft for this interaction fix; run fast CI, then mark ready for another Browser E2E pass. #13 follows #64; EPUB #12 remains next-version scope.
+
+## PR #73 preview feedback follow-ups
+
+The search-overlap fix passed all 45 Chromium checks in Browser E2E 37001588269, following clean Frontend CI 37001493878. PR #73 is back in draft for linked feedback: #74 toolbar tooltips/icons/cursors/page input, #75 search result timing and animated popovers (children of #64), and #76 removal of the PDF progress slider (child of #10, related #11/#64). Search opens only the popover; the results panel opens after successful completion, with a busy submit control during execution. Viewer scrolling and numeric/previous/next navigation replace the slider. Zoom SVGs use Lucide's Feather-derived designs with licenses in docs/licenses/lucide.txt; no runtime icon dependency is added. Popovers respect reduced motion. Fresh CI/browser evidence will supersede the previous validation before review.

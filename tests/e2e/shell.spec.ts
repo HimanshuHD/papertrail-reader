@@ -272,8 +272,13 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(page.getByLabel('Selectable text for PDF page 1')).toContainText('First page')
 
   const nextPage = page.getByRole('button', { name: 'Next page' })
+  await expect(nextPage).not.toHaveAttribute('title')
+  await expect(page.getByLabel('PDF page progress')).toHaveCount(0)
   await nextPage.hover()
   await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  const buttonBox = await nextPage.boundingBox()
+  const tooltipBox = await nextPage.locator('.icon-tooltip').boundingBox()
+  expect(tooltipBox!.y).toBeGreaterThanOrEqual(buttonBox!.y + buttonBox!.height)
   await nextPage.focus()
   await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
   await nextPage.click()

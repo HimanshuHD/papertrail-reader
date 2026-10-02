@@ -55,6 +55,7 @@ const searchTextPageCount = ref(0)
 const searchTruncated = ref(false)
 const searchBusy = ref(false)
 const searchCompleted = ref(false)
+const searchError = ref('')
 const fullscreen = ref(false)
 const visibility = new Map<number, number>()
 let openSequence = 0
@@ -85,6 +86,8 @@ const flatOutline = computed<readonly FlatOutlineItem[]>(() => {
 })
 
 const searchSummary = computed(() => {
+  if (searchError.value) return searchError.value
+  if (searchBusy.value) return 'Searching PDF text…'
   if (!searchCompleted.value) return 'Search this PDF’s text layer.'
   if (searchTextPageCount.value === 0) {
     return 'No searchable text was found. Scanned or image-only PDFs require OCR, which is outside PaperTrail 0.1.'
@@ -138,6 +141,7 @@ function resetUtilities() {
   searchTruncated.value = false
   searchBusy.value = false
   searchCompleted.value = false
+  searchError.value = ''
 }
 
 async function closeCurrentSession() {
@@ -251,11 +255,6 @@ function handlePageInput(event: Event) {
   void goToPage(Number(input.value))
 }
 
-function handleSlider(event: Event) {
-  const input = event.currentTarget as HTMLInputElement
-  void goToPage(Number(input.value))
-}
-
 async function loadOutline() {
   const current = session.value
   if (!current || outlineLoaded.value || outlineBusy.value) return
@@ -277,7 +276,6 @@ function toggleRightPanel(next: Exclude<UtilityPanel, null>) {
 }
 
 async function openPopover(next: Exclude<UtilityPopover, null>) {
-  if (next === 'search') rightPanel.value = 'search'
   popover.value = popover.value === next ? null : next
   if (popover.value === 'search') {
     await nextTick()
@@ -311,13 +309,14 @@ function handlePopoverKeydown(event: KeyboardEvent) {
 async function performSearch() {
   const current = session.value
   const query = searchQuery.value.trim()
-  if (!current || !query) return
+  if (!current || !query || searchBusy.value) return
 
   searchController?.abort()
   const controller = new AbortController()
   searchController = controller
   searchBusy.value = true
   searchCompleted.value = false
+  searchError.value = ''
 
   try {
     const result = await current.searchText(query, { signal: controller.signal })
@@ -342,9 +341,8 @@ async function performSearch() {
     searchMatches.value = []
     searchTextPageCount.value = 0
     searchTruncated.value = false
-    searchCompleted.value = true
-    emit('status', 'PDF search could not be completed.')
-    closePopover(true)
+    searchError.value = 'PDF search could not be completed. Please try again.'
+    emit('status', searchError.value)
   } finally {
     if (searchController === controller) searchBusy.value = false
   }
@@ -490,7 +488,6 @@ onBeforeUnmount(() => {
         <IconButton
           label="Previous page"
           icon="previous"
-          tooltip-above
           :disabled="currentPage <= 1"
           @click="goToPage(currentPage - 1)"
         />
@@ -499,23 +496,21 @@ onBeforeUnmount(() => {
           type="number"
           min="1"
           :max="totalPages"
-          class="h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
+          class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
           @change="handlePageInput"
         />
         <IconButton
           label="Next page"
           icon="next"
-          tooltip-above
           :disabled="currentPage >= totalPages"
           @click="goToPage(currentPage + 1)"
         />
-        <IconButton label="Zoom out" icon="zoom-out" tooltip-above @click="changeZoom(-0.25)" />
-        <IconButton label="Zoom in" icon="zoom-in" tooltip-above @click="changeZoom(0.25)" />
+        <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
+        <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
         <IconButton
           label="Fit width"
           icon="fit-width"
-          tooltip-above
           :active="fitMode === 'width'"
           :aria-pressed="fitMode === 'width'"
           @click="setFit('width')"
@@ -523,24 +518,14 @@ onBeforeUnmount(() => {
         <IconButton
           label="Fit page"
           icon="fit-page"
-          tooltip-above
           :active="fitMode === 'page'"
           :aria-pressed="fitMode === 'page'"
           @click="setFit('page')"
         />
         <IconButton
-          label="Contents"
-          icon="contents"
-          tooltip-above
-          :active="rightPanel === 'contents'"
-          :aria-pressed="rightPanel === 'contents'"
-          @click="toggleRightPanel('contents')"
-        />
-        <IconButton
           data-reader-action="search"
           label="Search PDF"
           icon="search"
-          tooltip-above
           :active="popover === 'search'"
           :aria-pressed="popover === 'search'"
           @click="openPopover('search')"
@@ -548,7 +533,6 @@ onBeforeUnmount(() => {
         <IconButton
           :label="fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
           :icon="fullscreen ? 'fullscreen-exit' : 'fullscreen'"
-          tooltip-above
           :aria-pressed="fullscreen"
           @click="toggleFullscreen"
         />
@@ -556,72 +540,103 @@ onBeforeUnmount(() => {
           data-reader-action="help"
           label="Keyboard help"
           icon="help"
-          tooltip-above
           :active="popover === 'help'"
           :aria-pressed="popover === 'help'"
           @click="openPopover('help')"
         />
+        <IconButton
+          label="Contents"
+          icon="contents"
+          :active="rightPanel === 'contents'"
+          :aria-pressed="rightPanel === 'contents'"
+          @click="toggleRightPanel('contents')"
+        />
       </div>
 
-      <div
-        v-if="phase === 'ready' && popover"
-        ref="popoverRoot"
-        class="absolute top-full right-3 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-line bg-panel p-4 shadow-xl"
-        :aria-label="popover === 'search' ? 'PDF search' : 'Keyboard help'"
-      >
-        <section v-if="popover === 'search'" aria-labelledby="pdf-search-title">
-          <div class="flex items-center justify-between gap-3">
-            <h3 id="pdf-search-title" class="font-semibold">Search PDF</h3>
-            <IconButton label="Close search" icon="close" @click="closePopover(true)" />
-          </div>
-          <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
-            <input
-              ref="searchInput"
-              v-model="searchQuery"
-              type="search"
-              class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
-              placeholder="Search PDF text"
-              aria-label="Search PDF text"
-            />
-            <button
-              type="submit"
-              class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm font-medium"
-              :disabled="searchBusy || !searchQuery.trim()"
-            >
-              {{ searchBusy ? 'Searching…' : 'Search' }}
-            </button>
-          </form>
-          <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
-            {{ searchSummary }}
-          </p>
-          <p v-if="searchCompleted" class="mt-1 text-xs text-muted">
-            Results are shown in the Search results panel.
-          </p>
-        </section>
+      <Transition name="utility-popover">
+        <div
+          v-if="phase === 'ready' && popover"
+          ref="popoverRoot"
+          class="absolute top-full right-3 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-4 shadow-2xl ring-1 ring-line/30"
+          :aria-label="popover === 'search' ? 'PDF search' : 'Keyboard help'"
+        >
+          <section v-if="popover === 'search'" aria-labelledby="pdf-search-title">
+            <div class="flex items-center justify-between gap-3">
+              <h3 id="pdf-search-title" class="font-semibold">Search PDF</h3>
+              <IconButton label="Close search" icon="close" @click="closePopover(true)" />
+            </div>
+            <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
+              <input
+                ref="searchInput"
+                v-model="searchQuery"
+                type="search"
+                class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+                placeholder="Search PDF text"
+                aria-label="Search PDF text"
+              />
+              <button
+                type="submit"
+                class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
+                :aria-busy="searchBusy"
+                :disabled="searchBusy || !searchQuery.trim()"
+              >
+                <svg
+                  v-if="searchBusy"
+                  class="search-spinner h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    opacity="0.3"
+                  />
+                  <path
+                    d="M12 3a9 9 0 0 1 9 9"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                {{ searchBusy ? 'Searching…' : 'Search' }}
+              </button>
+            </form>
+            <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
+              {{ searchSummary }}
+            </p>
+            <p v-if="searchCompleted" class="mt-1 text-xs text-muted">
+              Results are shown in the Search results panel.
+            </p>
+          </section>
 
-        <section v-else aria-labelledby="pdf-help-title">
-          <div class="flex items-center justify-between gap-3">
-            <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
-            <IconButton label="Close keyboard help" icon="close" @click="closePopover(true)" />
-          </div>
-          <dl class="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-            <dt class="font-medium">Ctrl/⌘ + F or /</dt>
-            <dd class="text-muted">Focus PDF search.</dd>
-            <dt class="font-medium">C</dt>
-            <dd class="text-muted">Toggle contents.</dd>
-            <dt class="font-medium">F</dt>
-            <dd class="text-muted">Toggle fullscreen.</dd>
-            <dt class="font-medium">← / Page Up</dt>
-            <dd class="text-muted">Previous page.</dd>
-            <dt class="font-medium">→ / Page Down</dt>
-            <dd class="text-muted">Next page.</dd>
-            <dt class="font-medium">?</dt>
-            <dd class="text-muted">Toggle this help.</dd>
-            <dt class="font-medium">Mouse / touch selection</dt>
-            <dd class="text-muted">Select text from text-based PDFs for normal browser copy.</dd>
-          </dl>
-        </section>
-      </div>
+          <section v-else aria-labelledby="pdf-help-title">
+            <div class="flex items-center justify-between gap-3">
+              <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
+              <IconButton label="Close keyboard help" icon="close" @click="closePopover(true)" />
+            </div>
+            <dl class="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+              <dt class="font-medium">Ctrl/⌘ + F or /</dt>
+              <dd class="text-muted">Focus PDF search.</dd>
+              <dt class="font-medium">C</dt>
+              <dd class="text-muted">Toggle contents.</dd>
+              <dt class="font-medium">F</dt>
+              <dd class="text-muted">Toggle fullscreen.</dd>
+              <dt class="font-medium">← / Page Up</dt>
+              <dd class="text-muted">Previous page.</dd>
+              <dt class="font-medium">→ / Page Down</dt>
+              <dd class="text-muted">Next page.</dd>
+              <dt class="font-medium">?</dt>
+              <dd class="text-muted">Toggle this help.</dd>
+              <dt class="font-medium">Mouse / touch selection</dt>
+              <dd class="text-muted">Select text from text-based PDFs for normal browser copy.</dd>
+            </dl>
+          </section>
+        </div>
+      </Transition>
     </header>
 
     <div class="pdf-body relative flex min-h-0 flex-1">
@@ -651,18 +666,6 @@ onBeforeUnmount(() => {
         </div>
 
         <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
-          <input
-            v-if="totalPages > 1"
-            :value="currentPage"
-            type="range"
-            min="1"
-            :max="totalPages"
-            step="1"
-            class="sticky top-0 z-10 w-full max-w-2xl bg-canvas py-2"
-            aria-label="PDF page progress"
-            @input="handleSlider"
-          />
-
           <PdfPageView
             v-for="pageNumber in pages"
             :key="pageNumber"
@@ -810,6 +813,47 @@ onBeforeUnmount(() => {
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+[aria-label='PDF reader controls'] :deep(.icon-button:nth-child(-n + 3) .icon-tooltip) {
+  left: 0;
+  right: auto;
+}
+.pdf-page-input {
+  appearance: textfield;
+}
+.pdf-page-input::-webkit-inner-spin-button,
+.pdf-page-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.utility-popover-enter-active,
+.utility-popover-leave-active {
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
+  transform-origin: top right;
+}
+.utility-popover-enter-from,
+.utility-popover-leave-to {
+  opacity: 0;
+  transform: translateY(-0.5rem) scale(0.97);
+}
+.search-spinner {
+  animation: search-spin 800ms linear infinite;
+}
+@keyframes search-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .utility-popover-enter-active,
+  .utility-popover-leave-active {
+    transition: none;
+  }
+  .search-spinner {
+    animation: none;
   }
 }
 </style>

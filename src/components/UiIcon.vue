@@ -24,8 +24,9 @@ const paths = {
   library: 'M4 5h5v14H4zM9 5h5v14H9zM16 5l4-1 3 14-4 1z',
   previous: 'm15 18-6-6 6-6',
   next: 'm9 18 6-6-6-6',
-  'zoom-out': 'M5 12h14M21 21l-4.5-4.5M10.5 17a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z',
-  'zoom-in': 'M12 5v14M5 12h14M21 21l-4.5-4.5M10.5 17a6.5 6.5 0 1 1 0-13 6.5 6.5 0 0 1 0 13Z',
+  // Lucide zoom icons (Feather-derived); licenses in docs/licenses/lucide.txt.
+  'zoom-out': 'M21 21 16.65 16.65M8 11h6',
+  'zoom-in': 'M21 21 16.65 16.65M8 11h6M11 8v6',
   'fit-width': 'M4 7h16M4 12h16M4 17h16M2 7l2-2 2 2M22 17l-2 2-2-2',
   'fit-page': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
   contents: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
@@ -48,6 +49,7 @@ const paths = {
     focusable="false"
     class="h-5 w-5"
   >
+    <circle v-if="name === 'zoom-in' || name === 'zoom-out'" cx="11" cy="11" r="8" />
     <path :d="paths[name]" />
   </svg>
 </template>
