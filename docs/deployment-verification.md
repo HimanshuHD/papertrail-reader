@@ -58,3 +58,9 @@ PR #50 merged at 3a1a82d5ceb6e518cefcbafe43dedacef3723808. Final PR CI 369125954
 - Production publisher [36998900442](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998900442) succeeded after the main build.
 - Pages deployment metadata records production source `9e5db87a38673651214989053c495270ed9b73df` and CI run `36998853805`; preview #71 is marked retired.
 - Issues #63 and #72 are completed. This records deployment identity and workflow success; interactive PDF behavior is covered by the pre-merge Browser E2E evidence above.
+
+## Post-merge and lifecycle acceptance — PR #73 / #77
+
+PR #73 merged at 2026-10-02T12:11:18Z as 058195008dca9fc6797f035c272801fdd5f0d0f9. Main CI 37005211269, tracker reconciliation 37005211500 and production publisher 37005270079 passed. Deployment metadata identifies that source and CI run; preview #73 is retired. #64/#74/#75/#76 are completed. This is workflow/metadata evidence, not a new live interactive browser audit.
+
+PR #77 adds the remaining direct lifecycle tests for reopened #10 on test/10-pdf-lifecycle. Frontend CI 37005502235 passed on 13647f6, including new canvas replacement, text-layer cancellation, teardown order and repeated-close tests, plus existing document-switching/viewport disposal coverage. No application behavior changed. #10 remains open until this acceptance PR merges. Next product work is PDF saved positions/bookmarks #13; EPUB #12 stays next-version scope.
