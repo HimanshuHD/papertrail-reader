@@ -787,7 +787,7 @@ test('library and document loaders are centered, responsive and respect reduced 
     await page.goto('./#/app')
     const library = page.getByRole('region', { name: 'Library documents', exact: true })
     await page.getByRole('button', { name: 'Add local documents' }).click()
-    await page.getByRole('button', { name: 'Choose folder', exact: true }).click()
+    await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     await expect(library).toHaveAttribute('aria-busy', 'true')
     const libraryCard = library.locator('.loading-card')
     await expect(libraryCard).toBeVisible()
