@@ -5,6 +5,7 @@ defineEmits<{ close: [] }>()
 
 <template>
   <div :class="['reader-layout', { 'sidebar-visible': sidebarOpen }]">
+    <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
     <aside
       v-if="sidebarOpen"
       id="document-sidebar"
@@ -30,6 +31,12 @@ defineEmits<{ close: [] }>()
   min-height: 0;
   overflow: hidden;
   grid-template-columns: minmax(0, 1fr);
+}
+.library-opener {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 30;
 }
 .library-scroll {
   position: absolute;

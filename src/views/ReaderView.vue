@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
 import BrandMark from '../components/BrandMark.vue'
+import IconButton from '../components/IconButton.vue'
 import ThemePicker from '../components/ThemePicker.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
@@ -53,7 +54,7 @@ const selectedId = ref('welcome')
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
-const sidebarToggle = ref<HTMLButtonElement | null>(null)
+const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
 const viewState = ref<ShellViewState>('demo')
 const announcement = ref('Demonstration workspace ready.')
 
@@ -222,9 +223,13 @@ function cancelDiscovery() {
   discoveryController?.abort()
 }
 
-function toggleSidebar() {
-  sidebarOpen.value = !sidebarOpen.value
-  announcement.value = sidebarOpen.value ? 'Library shown.' : 'Library hidden.'
+async function openSidebar() {
+  sidebarOpen.value = true
+  announcement.value = 'Library shown.'
+  await nextTick()
+  document
+    .querySelector<HTMLButtonElement>('#document-sidebar button[aria-label="Hide library"]')
+    ?.focus()
 }
 
 async function closeSidebarAndRestoreFocus() {
@@ -232,7 +237,8 @@ async function closeSidebarAndRestoreFocus() {
   sidebarOpen.value = false
   announcement.value = 'Library hidden.'
   await nextTick()
-  sidebarToggle.value?.focus()
+  const opener = sidebarToggle.value?.$el as HTMLButtonElement | undefined
+  opener?.focus()
 }
 </script>
 
@@ -256,25 +262,20 @@ async function closeSidebarAndRestoreFocus() {
       </div>
       <ThemePicker />
     </header>
-    <div
-      class="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-2 sm:px-8"
-    >
-      <button
-        ref="sidebarToggle"
-        type="button"
-        aria-controls="document-sidebar"
-        :aria-expanded="sidebarOpen"
-        class="min-h-11 rounded-lg border border-line bg-panel px-4 py-2 text-sm font-medium"
-        @click="toggleSidebar"
-      >
-        {{ sidebarOpen ? 'Hide library' : 'Show library' }}
-      </button>
-      <p class="text-xs text-muted">Local-first reading · PDF &amp; EPUB</p>
-    </div>
-
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
     <ReaderShell :sidebar-open="sidebarOpen" @close="closeSidebarAndRestoreFocus">
+      <template v-if="!sidebarOpen" #opener>
+        <IconButton
+          ref="sidebarToggle"
+          label="Show library"
+          icon="library"
+          aria-controls="document-sidebar"
+          aria-expanded="false"
+          class="floating-library border border-line bg-panel text-brand shadow-lg"
+          @click="openSidebar"
+        />
+      </template>
       <template #sidebar>
         <LibrarySidebar
           :documents="documents"

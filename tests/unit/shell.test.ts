@@ -117,9 +117,10 @@ describe('home and product shell', () => {
     expect(wrapper.text()).toContain('Font size')
     const toggle = wrapper.get('button[aria-controls="document-sidebar"]')
     await toggle.trigger('click')
-    expect(toggle.attributes('aria-expanded')).toBe('false')
+    const opener = wrapper.get('button[aria-label="Show library"]')
+    expect(opener.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('aside').exists()).toBe(false)
-    await toggle.trigger('click')
+    await opener.trigger('click')
     expect(wrapper.find('aside').exists()).toBe(true)
     expect(wrapper.get('#reader-title').text()).toBe('The next chapter')
     wrapper.unmount()
@@ -169,16 +170,17 @@ describe('home and product shell', () => {
 
   it('offers browser selection while keeping unavailable reader actions disabled', async () => {
     const { wrapper } = await mountApp('/app')
-    expect(wrapper.text()).toContain('PaperTrail only receives files you explicitly choose')
+    expect(wrapper.text()).toContain('Use + to add a folder or files.')
     expect(wrapper.text()).toContain('does not open a document')
     expect(wrapper.text()).toContain('Demonstration workspace')
     expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
+    await wrapper.get('button[aria-label="Add local documents"]').trigger('click')
     const folderButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Choose folder')
     expect(folderButton).toBeTruthy()
     expect(folderButton!.attributes('disabled')).toBeUndefined()
-    expect(wrapper.findAll('button:disabled')).toHaveLength(2)
+    expect(wrapper.get('button[aria-label="Refresh library"]').attributes('disabled')).toBeDefined()
     wrapper.unmount()
   })
 
@@ -186,6 +188,7 @@ describe('home and product shell', () => {
     const { wrapper } = await mountApp('/app')
     const directoryInput = wrapper.get('input[webkitdirectory]')
     const click = vi.spyOn(directoryInput.element as HTMLInputElement, 'click')
+    await wrapper.get('button[aria-label="Add local documents"]').trigger('click')
     const folderButton = wrapper
       .findAll('button')
       .find((button) => button.text() === 'Choose folder')!
@@ -372,6 +375,7 @@ describe('home and product shell', () => {
       })
 
       ;({ wrapper } = await mountApp('/app'))
+      await wrapper.get('button[aria-label="Add local documents"]').trigger('click')
       const chooseFolder = wrapper
         .findAll('button')
         .find((button) => button.text() === 'Choose folder')!
@@ -403,5 +407,40 @@ describe('home and product shell', () => {
       if (originalPicker) Object.defineProperty(window, 'showDirectoryPicker', originalPicker)
       else delete pickerWindow.showDirectoryPicker
     }
+  })
+})
+
+describe('compact library actions', () => {
+  it('keeps the floating opener exclusive and moves focus through close and open', async () => {
+    const { wrapper } = await mountApp('/app')
+    expect(wrapper.find('button[aria-label="Show library"]').exists()).toBe(false)
+    await wrapper.get('button[aria-label="Hide library"]').trigger('click')
+    await flushPromises()
+    const opener = wrapper.get('button[aria-label="Show library"]')
+    expect(document.activeElement).toBe(opener.element)
+    await opener.trigger('click')
+    await flushPromises()
+    expect(wrapper.find('button[aria-label="Show library"]').exists()).toBe(false)
+    expect(document.activeElement).toBe(wrapper.get('button[aria-label="Hide library"]').element)
+    wrapper.unmount()
+  })
+  it('dismisses the source menu with Escape without closing the library and dismisses outside clicks', async () => {
+    const { wrapper } = await mountApp('/app')
+    const plus = wrapper.get('button[aria-label="Add local documents"]')
+    await plus.trigger('click')
+    await flushPromises()
+    const items = wrapper.findAll('[role="menuitem"]')
+    expect(document.activeElement).toBe(items[0]!.element)
+    await items[0]!.trigger('keydown', { key: 'ArrowDown' })
+    expect(document.activeElement).toBe(items[1]!.element)
+    await items[1]!.trigger('keydown', { key: 'Escape' })
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    expect(wrapper.find('aside').exists()).toBe(true)
+    expect(document.activeElement).toBe(plus.element)
+    await plus.trigger('click')
+    document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    await flushPromises()
+    expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+    wrapper.unmount()
   })
 })
