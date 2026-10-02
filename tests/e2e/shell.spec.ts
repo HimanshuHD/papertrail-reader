@@ -284,3 +284,51 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await localLibrary.getByRole('button', { name: /broken\.pdf/ }).click()
   await expect(page.getByRole('alert')).toContainText('This file is not a valid or supported PDF.')
 })
+
+
+test('PDF search, keyboard utilities and fullscreen work on a real text PDF', async ({ page }) => {
+  await page.goto('./#/app')
+  const fileInput = page.locator('input[accept*=".pdf"]')
+  const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
+
+  await fileInput.setInputFiles({
+    name: 'searchable.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(),
+  })
+  await localLibrary.getByRole('button', { name: /searchable\.pdf/ }).click()
+  await expect(page.locator('#reader-title')).toHaveText('searchable.pdf')
+
+  await page.keyboard.press('Control+f')
+  const searchInput = page.getByRole('searchbox', { name: 'Search PDF text' })
+  await expect(searchInput).toBeFocused()
+  await searchInput.fill('Second')
+  await page.getByRole('search').getByRole('button', { name: 'Search' }).click()
+  await expect(page.getByRole('status')).toContainText('1 match across searchable text.')
+  await expect(page.getByRole('button', { name: /Page 2.*Second page/ })).toBeVisible()
+  await page.getByRole('button', { name: /Page 2.*Second page/ }).click()
+  await expect(page.getByText(/Page 2 of 2/)).toBeVisible()
+
+  await searchInput.focus()
+  await page.keyboard.type('c')
+  await expect(page.getByRole('heading', { name: 'Contents' })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await page.keyboard.press('?')
+  await expect(page.getByRole('heading', { name: 'Keyboard help' })).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+
+  await page.keyboard.press('c')
+  await expect(page.getByRole('heading', { name: 'Contents' })).toBeVisible()
+  await expect(page.getByText('This PDF does not provide an outline.')).toBeVisible()
+  await page.getByRole('button', { name: 'Close' }).click()
+
+  await page.keyboard.press('ArrowLeft')
+  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
+
+  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true)
+  await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible()
+  await page.getByRole('button', { name: 'Exit fullscreen' }).click()
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false)
+})
