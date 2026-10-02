@@ -231,9 +231,9 @@ describe('home and product shell', () => {
     expect(pdfSessionMocks.open).toHaveBeenCalledWith(files[0])
     expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
     expect(wrapper.text()).toContain('Page 1 of 3')
-    expect(wrapper.findAll('button').some((button) => button.text() === 'Next')).toBe(true)
+    expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
 
-    const next = wrapper.findAll('button').find((button) => button.text() === 'Next')!
+    const next = wrapper.get('button[aria-label="Next page"]')
     await next.trigger('click')
     await flushPromises()
     expect(pdfSessionMocks.render).toHaveBeenCalledWith(
@@ -275,7 +275,7 @@ describe('home and product shell', () => {
     await guide.trigger('click')
     await flushPromises()
 
-    const contents = wrapper.findAll('button').find((button) => button.text() === 'Contents')!
+    const contents = wrapper.get('button[aria-label="Contents"]')
     await contents.trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('Chapter one')

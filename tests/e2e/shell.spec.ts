@@ -271,7 +271,17 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(page.getByLabel('Rendered PDF page 1')).toBeVisible()
   await expect(page.getByLabel('Selectable text for PDF page 1')).toContainText('First page')
 
-  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  const nextPage = page.getByRole('button', { name: 'Next page' })
+  await expect(nextPage).not.toHaveAttribute('title')
+  await expect(page.getByLabel('PDF page progress')).toHaveCount(0)
+  await nextPage.hover()
+  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  const buttonBox = await nextPage.boundingBox()
+  const tooltipBox = await nextPage.locator('.icon-tooltip').boundingBox()
+  expect(tooltipBox!.y).toBeGreaterThanOrEqual(buttonBox!.y + buttonBox!.height)
+  await nextPage.focus()
+  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  await nextPage.click()
   await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
   await page.getByLabel('Rendered PDF page 2').scrollIntoViewIfNeeded()
   await expect(page.getByLabel('Rendered PDF page 2')).toBeVisible()
@@ -300,13 +310,18 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
 
   await fileInput.setInputFiles({
-    name: 'searchable.pdf',
+    name: 'searchable-document-name-that-is-much-longer-than-toolbar-space.pdf',
     mimeType: 'application/pdf',
     buffer: createPdfFixture(),
   })
-  await localLibrary.getByRole('button', { name: /searchable\.pdf/ }).click()
+  const longName = 'searchable-document-name-that-is-much-longer-than-toolbar-space.pdf'
+  await localLibrary.getByRole('button', { name: new RegExp(longName) }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.locator('#reader-title')).toHaveText('searchable.pdf')
+  const title = page.locator('#reader-title')
+  await expect(title).toHaveText(longName)
+  await expect(title).toHaveAttribute('title', longName)
+  await expect(title).toHaveAttribute('aria-label', longName)
+  await expect(title).toHaveCSS('text-overflow', 'ellipsis')
   await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
 
   await page.keyboard.press('Control+f')
@@ -315,29 +330,41 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   await searchInput.fill('Second')
   const searchPanel = page.locator('section[aria-labelledby="pdf-search-title"]')
   await searchPanel.getByRole('search').getByRole('button', { name: 'Search' }).click()
-  await expect(searchPanel.getByRole('status')).toContainText('1 match across searchable text.')
-  await expect(page.getByRole('button', { name: /Page 2.*Second page/ })).toBeVisible()
-  await page.getByRole('button', { name: /Page 2.*Second page/ }).click()
+  const resultsPanel = page.locator('[aria-label="PDF search results panel"]')
+  await expect(resultsPanel.getByRole('status')).toContainText('1 match across searchable text.')
+  await expect(searchPanel.getByRole('button', { name: /Page 2.*Second page/ })).toHaveCount(0)
+  await expect(resultsPanel.getByRole('button', { name: /Page 2.*Second page/ })).toBeVisible()
+  await resultsPanel.getByRole('button', { name: /Page 2.*Second page/ }).click()
   await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
 
-  await searchInput.focus()
+  await page.getByRole('button', { name: 'Search PDF' }).click()
+  const reopenedSearchInput = page.getByRole('searchbox', { name: 'Search PDF text' })
+  await expect(reopenedSearchInput).toBeFocused()
+  await reopenedSearchInput.focus()
   await page.keyboard.type('c')
-  await expect(page.getByRole('heading', { name: 'Contents' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'PDF contents' })).toHaveCount(0)
   await page.keyboard.press('Escape')
 
   await page.keyboard.press('?')
   await expect(page.getByRole('heading', { name: 'Keyboard help' })).toBeVisible()
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close keyboard help' }).click()
 
   await page.keyboard.press('c')
-  await expect(page.getByRole('heading', { name: 'Contents' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'PDF contents' })).toBeVisible()
   await expect(page.getByText('This PDF does not provide an outline.')).toBeVisible()
-  await page.getByRole('button', { name: 'Close' }).click()
+  await page.getByRole('button', { name: 'Close utility panel' }).click()
+
+  await page.setViewportSize({ width: 375, height: 800 })
+  await page.getByRole('button', { name: 'Contents' }).click()
+  const narrowContents = page.locator('[aria-label="PDF contents panel"]')
+  await expect(narrowContents).toBeVisible()
+  await expect(narrowContents).toHaveCSS('position', 'absolute')
+  await page.getByRole('button', { name: 'Close utility panel' }).click()
 
   await page.keyboard.press('ArrowLeft')
   await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
 
-  await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
+  await page.getByRole('button', { name: 'Enter fullscreen' }).click()
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true)
   await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit fullscreen' }).click()

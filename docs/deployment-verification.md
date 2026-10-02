@@ -49,3 +49,12 @@ PR #50 merged at 3a1a82d5ceb6e518cefcbafe43dedacef3723808. Final PR CI 369125954
 - Production HTML, JS/CSS and `assets/pdf.worker.min-Dswkl-cV.mjs` returned HTTP 200; worker Content-Type is text/javascript.
 - `/preview/pr-60/` returned HTTP 200 with the Preview closed page; manifest marks #60 retired.
 - This verifies delivery, not full interactive browser acceptance. Browser E2E 36963474599 failed on an earlier PR head; #61 fixes the remaining navigation selector and records new acceptance.
+
+## PR #71 production verification — 2 October 2026
+
+- PR #71 merged at 2026-10-02T11:02:59Z; merge commit: `9e5db87a38673651214989053c495270ed9b73df`.
+- Main Frontend CI [36998853805](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998853805) passed.
+- Post-merge tracking reconciliation [36998854286](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998854286) succeeded.
+- Production publisher [36998900442](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998900442) succeeded after the main build.
+- Pages deployment metadata records production source `9e5db87a38673651214989053c495270ed9b73df` and CI run `36998853805`; preview #71 is marked retired.
+- Issues #63 and #72 are completed. This records deployment identity and workflow success; interactive PDF behavior is covered by the pre-merge Browser E2E evidence above.
