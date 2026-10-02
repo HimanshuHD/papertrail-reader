@@ -794,6 +794,7 @@ onBeforeUnmount(() => {
         <aside
           v-if="phase === 'ready' && rightPanel"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
+          @keydown.esc.stop.prevent="closeRightPanel"
           :aria-label="
             rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'
           "
