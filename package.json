@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "format:check": "prettier --write src/components/viewer/PdfReaderWorkspace.vue && git diff -- src/components/viewer/PdfReaderWorkspace.vue && prettier --check .",
+    "format:check": "prettier --check .",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:pipeline": "node --test scripts/*.test.mjs",
