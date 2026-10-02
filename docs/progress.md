@@ -79,12 +79,12 @@ Automatic browser installation/execution is removed in PR #51. Frontend CI retai
 
 ## PDF follow-up tracker
 
-| Issue | Parent | Scope                                                            | Status      |
-| ----- | ------ | ---------------------------------------------------------------- | ----------- |
-| #61   | #11    | Browser acceptance, workflow audit and release reconciliation    | Completed   |
-| #62   | #10    | Viewport sizing and independent pane scrolling                   | In progress |
-| #63   | #10    | Floating library toggle, compact header and source dropdown      | Backlog     |
-| #64   | #11    | Right utility panel, icon toolbar, filename tooltip and popovers | Backlog     |
+| Issue | Parent | Scope                                                            | Status    |
+| ----- | ------ | ---------------------------------------------------------------- | --------- |
+| #61   | #11    | Browser acceptance, workflow audit and release reconciliation    | Completed |
+| #62   | #10    | Viewport sizing and independent pane scrolling                   | In review |
+| #63   | #10    | Floating library toggle, compact header and source dropdown      | Backlog   |
+| #64   | #11    | Right utility panel, icon toolbar, filename tooltip and popovers | Backlog   |
 
 Relationships use reciprocal links/checklists; native GitHub sub-issue mutations are not exposed by the connector. PRs stay draft until fast CI is green; marking Ready for review triggers explicit Browser E2E. See [workflow audit](workflow-audit.md) and [deployment evidence](deployment-verification.md).
 
@@ -93,3 +93,9 @@ Relationships use reciprocal links/checklists; native GitHub sub-issue mutations
 PR #65 is merged (`3a893344`) and #61 is completed with 30 Chromium acceptance checks. Main CI 36967881575 and publishers 36967891071/36967920050 passed after merge. The #65 fix branch was deleted by the owner.
 
 #62 bounds /app to 100dvh, keeps footer/header inside the frame, and gives library and PDF their own scroll roots. Mobile library overlays the workspace; desktop retains the split pane. PDF prefetch and actual page visibility use separate observers rooted in the PDF pane. ResizeObserver updates fit dimensions when panels or utilities change size. Home retains document scrolling. #63/#64 remain backlog; no compact icon/popover completion is claimed.
+
+## Viewport acceptance (#62 / PR #66)
+
+Implementation `cb0bc224058f3be2e2b52cf0a36a803fe23dc3fd` passed [Frontend CI 36969595887](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36969595887): 4 pipeline and 55 unit/component tests, lint, formatting, type checks and production build. [Explicit Browser E2E 36969656657](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36969656657) passed 35 Chromium cases at 320/375/768/1024/1440px, including 500px-height viewport bounds, independent pane keyboard scrolling, Escape focus restoration and PDF navigation. [Browser artifact 11211620375](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36969656657/artifacts/11211620375) has seven-day retention.
+
+PR #66 is ready for review; #62 remains open until merge. #63 compact library controls follows, then #64 utility panel and toolbar. This is browser acceptance of the built PR, not evidence of a new production deployment. No workflow files changed.

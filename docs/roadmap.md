@@ -189,3 +189,5 @@ PR lifecycle: create draft → resolve lint/format/unit/type/build errors → ma
 ## Active PDF UI work after merged PR #65
 
 #61 is completed. #62 is now in progress for viewport fit and independent library/PDF scrolling; #63 compact library controls and #64 utility panels/tooltips/popovers follow. This increment keeps Home scrolling separate and adds pane-rooted PDF visibility/lazy rendering acceptance. EPUB remains next-version scope.
+
+#62 viewport foundation is implemented in PR #66 and in review after 35 Chromium acceptance checks. Merge and verify production before #63 compact library controls, then #64 Contents/Search panel and compact toolbar. EPUB remains next-version scope.
