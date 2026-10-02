@@ -39,3 +39,13 @@ PDF/EPUB functionality, supported-browser acceptance (#28) and versioned release
 ## Post-merge #50 checkpoint
 
 PR #50 merged at 3a1a82d5ceb6e518cefcbafe43dedacef3723808. Final PR CI 36912595432 passed 15 Chromium tests and ordinary checks; screenshots were reviewed. Merge tracking 36913102803 and preview-retirement publisher 36913124246 succeeded. Main CI 36913103586 and production publisher 36913855022 passed. Live build.json and deployment.json both report source 3a1a82d5ceb6e518cefcbafe43dedacef3723808 and CI run 36913103586; preview #50 is retired. The retirement deployment preserves the previous production build while replacing preview/pr-50 with the closed page. Do not infer app source identity from the Pages workflow SHA alone.
+
+## PR #60 production verification — 2 October 2026
+
+- Merged PR #60 source: `e159ab14d0a85af58b5e0697163cf688193f6cc0`.
+- Main Frontend CI [36964378879](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36964378879) passed lint, formatting, tests, type/build and artifact identity.
+- Publishers [36964390169](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36964390169) and [36964422783](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36964422783) passed (production publication and preview retirement).
+- Live production build.json/deployment.json identify the same source and CI run. Current main `908cbc08` is a tracking-only successor and should not replace the last website source identifier.
+- Production HTML, JS/CSS and `assets/pdf.worker.min-Dswkl-cV.mjs` returned HTTP 200; worker Content-Type is text/javascript.
+- `/preview/pr-60/` returned HTTP 200 with the Preview closed page; manifest marks #60 retired.
+- This verifies delivery, not full interactive browser acceptance. Browser E2E 36963474599 failed on an earlier PR head; #61 fixes the remaining navigation selector and records new acceptance.

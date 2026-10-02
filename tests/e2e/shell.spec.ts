@@ -265,7 +265,7 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(page.getByLabel('Rendered PDF page 1')).toBeVisible()
   await expect(page.getByLabel('Selectable text for PDF page 1')).toContainText('First page')
 
-  await page.getByRole('button', { name: 'Next' }).click()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
   await expect(page.getByText(/Page 2 of 2/)).toBeVisible()
   await expect(page.getByLabel('Rendered PDF page 2')).toBeVisible()
   await expect(page.getByLabel('Selectable text for PDF page 2')).toContainText('Second page')

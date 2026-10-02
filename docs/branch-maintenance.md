@@ -27,3 +27,7 @@ Deletion is pending: the connected GitHub toolset has no branch-delete operation
 For #34, comparison shows one verification-only change in src/App.vue: heading The foundation is ready → Preview verification build. Its preview was retired and the branch is not an active feature.
 
 After cleanup, normal work is issue → new branch from main → PR/CI → review/merge → status reconciliation → delete merged work branch. Keep generated deployment state out of development.
+
+## Fresh branch inventory — 2 October 2026
+
+The earlier 11-branch pending-cleanup record is historical. Fresh inventory contains main, pages-state and the merged `feat/11-pdf-search-contents-shortcuts` at `3363ee512a6c4001200d7615eb6855b5ae928d98` (PR #60). The feature head matches the merged PR and can be deleted. Keep main/pages-state. #61 creates a new active fix branch which must remain until reviewed/merged. No branch deletion is performed by this reconciliation.
