@@ -1,6 +1,12 @@
 # Deployment verification
 
-Updated: 1 October 2026. Owners: #31/#35/#39.
+Updated: 2 October 2026. Owners: #31/#35/#39.
+
+## Current production evidence after #97
+
+Merge f44d67517ba17053d15e4b420372526a5002a10c passed main CI 37041483607 and issue reconciliation 37041484160. Publisher 37041555992 succeeded; pages-state/deployment.json records production source f44d675/source CI 37041483607 and preview #97 status retired. This is workflow/source metadata verification; no new interactive live-site audit is claimed. PR #98 holds the current #86/#87 increment and preserved #85 screenshots. Its preview is published manually after browser acceptance.
+
+Earlier verification records below are historical.
 
 ## Verified behavior
 
@@ -85,3 +91,11 @@ Main CI [37036588000](https://github.com/HimanshuHD/papertrail-reader/actions/ru
 ## Current reconciliation — merged #97
 
 PR #97 merged as f44d67517ba17053d15e4b420372526a5002a10c. Final Frontend CI 37040435175 passed 83 unit and 6 pipeline tests plus lint/format/types/build. Browser E2E 37040700001 passed 71 checks without retries (four intentional duplicate long-document skips). Main CI 37041483607, reconciliation 37041484160 and production publisher 37041555992 passed; production metadata records f44d675 and source CI 37041483607. Screenshot documentation is being preserved with the combined #86/#87 PR. #85 is completed; #79/#1/#80 remain open. #86 and #87 are the current combined increment; #89 and final regression remain before release.
+
+## #86/#87 combined validation — PR #98
+
+Application/test 14cd505 passed Frontend CI 37044894101 (83 unit and 6 pipeline tests, lint/format/types/build) and Browser E2E 37045007961 (76 passed without retries; four intentionally skipped duplicate long-document checks). New focus/active-mode/transition/reduced-motion/short-height footer checks passed at all five widths. Details and actual UI captures are preserved in [reader-polish.md](reader-polish.md). Keep #86/#87 open for manual preview acceptance and merge. Run Publish website on main with pr_number 98. No automatic PR publication ran. Next #89, then final regression/release #80. #79/#1 remain open.
+
+## Current reconciliation — merged #98
+
+PR #98 merged as 376323ce2171eb17f45ecded2f266cf431baa07e. #86/#87 are completed. Main CI 37045669575, issue reconciliation 37045671003 and publisher 37045732211 passed; pages-state metadata identifies production 376323c/source CI 37045669575 and preview #98 is retired. This verifies pipeline/source metadata, not a new interactive production audit. Final application/browser evidence is 14cd505 / Frontend CI 37044894101 / Browser E2E 37045007961 (83 unit, 6 pipeline, 76 browser checks without retries; four intentional duplicate long-document skips). Final screenshots and current documentation are preserved in a docs-only follow-up because #98 was merged during documentation recording. This supersedes historical pending preview/merge statements above. Next #89, then final regression/release #80. #79/#1 remain open; version remains 0.1.0.
