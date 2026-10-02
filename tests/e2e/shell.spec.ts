@@ -74,7 +74,10 @@ test('home and app respond in both themes without overflow', async ({ page }, in
     expect(title!.width).toBeGreaterThan(200)
     if (page.viewportSize()!.width >= 1024)
       expect(title!.x).toBeGreaterThan(sidebar!.x + sidebar!.width)
-    else expect(title!.y).toBeGreaterThan(sidebar!.y + sidebar!.height)
+    else {
+      expect(sidebar!.height).toBeGreaterThan(0)
+      expect(sidebar!.y + sidebar!.height).toBeLessThanOrEqual(page.viewportSize()!.height)
+    }
     await capture(page, info, `app-${theme}`)
     await page.getByRole('link', { name: 'PaperTrail home' }).click()
   }
@@ -260,6 +263,7 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(localLibrary.getByRole('button', { name: /reader\.pdf/ })).toBeVisible()
   await localLibrary.getByRole('button', { name: /reader\.pdf/ }).click()
 
+  await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.locator('#reader-title')).toHaveText('reader.pdf')
   await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
   await page.getByLabel('Rendered PDF page 1').scrollIntoViewIfNeeded()
@@ -283,7 +287,9 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
     mimeType: 'application/pdf',
     buffer: Buffer.from('not a valid PDF'),
   })
+  await page.getByRole('button', { name: 'Show library' }).click()
   await localLibrary.getByRole('button', { name: /broken\.pdf/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('alert')).toContainText('This file is not a valid or supported PDF.')
 })
 
@@ -298,6 +304,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
     buffer: createPdfFixture(),
   })
   await localLibrary.getByRole('button', { name: /searchable\.pdf/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.locator('#reader-title')).toHaveText('searchable.pdf')
   await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
 
@@ -334,4 +341,53 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   await expect(page.getByRole('button', { name: 'Exit fullscreen' })).toBeVisible()
   await page.getByRole('button', { name: 'Exit fullscreen' }).click()
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false)
+})
+
+test('app bounds and library/PDF scrolling stay independent at short heights', async ({ page }) => {
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
+  await page.goto('./#/app')
+  const library = page.getByRole('complementary', { name: 'Document library' })
+  const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
+  await page.locator('input[accept*=".pdf"]').setInputFiles(
+    Array.from({ length: 30 }, (_, i) => ({
+      name: `document-${String(i).padStart(2, '0')}.pdf`,
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(),
+    })),
+  )
+  await localLibrary.getByRole('button', { name: /document-00.pdf/ }).click()
+  const pdf = page.getByRole('region', { name: 'PDF pages', exact: true })
+  await expect(pdf).toBeVisible()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          document.documentElement.scrollHeight <= window.innerHeight &&
+          document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true)
+  const bounds = await pdf.boundingBox()
+  expect(bounds!.height).toBeGreaterThan(0)
+  expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(500)
+  await library.focus()
+  await page.keyboard.press('PageDown')
+  await expect.poll(() => library.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
+  expect(await pdf.evaluate((e) => e.scrollTop)).toBe(0)
+  const libraryPosition = await library.evaluate((e) => e.scrollTop)
+  if (page.viewportSize()!.width < 1024) {
+    await library.press('Escape')
+    await expect(page.getByRole('button', { name: 'Show library' })).toBeFocused()
+  }
+  await pdf.focus()
+  await page.keyboard.press('PageDown')
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('2')
+  await expect.poll(() => pdf.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
+  if (page.viewportSize()!.width >= 1024)
+    expect(await library.evaluate((e) => e.scrollTop)).toBe(libraryPosition)
+  expect(await page.evaluate(() => window.scrollY)).toBe(0)
+  await page.getByRole('link', { name: 'PaperTrail home' }).click()
+  await expect
+    .poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight))
+    .toBe(true)
 })
