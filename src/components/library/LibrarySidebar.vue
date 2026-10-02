@@ -1,17 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
+import UiIcon from '../UiIcon.vue'
 import type {
   BrowserLibrarySelection,
   LibraryRefreshAction,
 } from '../../features/library/browser-selection'
 import type { DiscoveredDocument } from '../../features/library/discovery'
-import type { ShellDocument } from '../../types/shell'
 
-const props = defineProps<{
-  documents: readonly ShellDocument[]
-  selectedId: string
+defineProps<{
   libraryDocuments: readonly DiscoveredDocument[]
   selectedLibraryDocumentId: string | null
   libraryLabel: string
@@ -24,17 +21,12 @@ const props = defineProps<{
 }>()
 
 defineEmits<{
-  select: [id: string]
   selectLibraryDocument: [id: string]
   close: []
   librarySelection: [selection: BrowserLibrarySelection]
   refreshLibrary: []
   cancelDiscovery: []
 }>()
-
-const collections = computed(() => [
-  ...new Set(props.documents.map((document) => document.collection)),
-])
 </script>
 
 <template>
@@ -52,10 +44,12 @@ const collections = computed(() => [
         @close="$emit('close')"
       />
     </header>
+
     <div class="px-3 py-3">
       <p id="discovery-status" class="sr-only" role="status" aria-live="polite">
         {{ discoverySummary }}
       </p>
+
       <div
         v-if="discoveryBusy"
         class="mb-3 flex items-center justify-between gap-2 text-xs text-muted"
@@ -69,12 +63,34 @@ const collections = computed(() => [
           Cancel scan
         </button>
       </div>
+
       <p v-if="discoveryProblemCount > 0" class="mb-3 text-xs text-muted">
         {{ discoveryProblemCount }} access issue(s); readable files remain available.
       </p>
-      <p v-if="!showLibraryResults" class="mb-4 text-xs text-muted">
-        Use + to add a folder or files.
-      </p>
+
+      <section
+        v-if="!showLibraryResults && !discoveryBusy"
+        class="library-empty-state mt-2 rounded-2xl border border-dashed border-line px-4 py-7 text-center"
+        aria-labelledby="library-empty-title"
+      >
+        <div
+          class="mx-auto flex h-11 w-11 items-center justify-center rounded-xl border border-line bg-panel text-brand shadow-sm"
+          aria-hidden="true"
+        >
+          <UiIcon name="plus" />
+        </div>
+        <h3 id="library-empty-title" class="mt-4 text-sm font-semibold">
+          No documents selected yet
+        </h3>
+        <p class="mt-2 text-xs leading-relaxed text-muted">
+          Use the <span class="font-semibold text-brand">+</span> button above to add a folder or
+          choose PDF / EPUB files.
+        </p>
+        <p class="mt-3 text-[11px] leading-relaxed text-muted">
+          PaperTrail only reads files you explicitly choose.
+        </p>
+      </section>
+
       <section v-if="showLibraryResults" class="space-y-3" aria-labelledby="local-library-title">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
@@ -98,52 +114,29 @@ const collections = computed(() => [
             :selected-id="selectedLibraryDocumentId"
             @select="$emit('selectLibraryDocument', $event)"
           />
-          <p v-else class="text-xs leading-relaxed text-muted">
-            No supported PDF or EPUB documents are available in this selection.
-          </p>
+          <div
+            v-else
+            class="rounded-xl border border-dashed border-line bg-canvas px-4 py-5 text-center"
+          >
+            <p class="text-sm font-medium">No supported documents found</p>
+            <p class="mt-1 text-xs leading-relaxed text-muted">
+              Choose another source with PDF or EPUB files.
+            </p>
+          </div>
         </div>
       </section>
-
-      <nav v-if="!showLibraryResults" class="space-y-4" aria-label="Demonstration documents">
-        <div>
-          <h3 class="text-xs font-semibold tracking-wider text-muted uppercase">
-            Demonstration workspace
-          </h3>
-        </div>
-
-        <section v-for="collection in collections" :key="collection">
-          <h4 class="mb-2 text-xs font-semibold tracking-wider text-muted uppercase">
-            {{ collection }}
-          </h4>
-          <ul class="space-y-1">
-            <li
-              v-for="document in documents.filter((item) => item.collection === collection)"
-              :key="document.id"
-            >
-              <button
-                type="button"
-                :aria-pressed="selectedId === document.id"
-                :class="[
-                  'flex min-h-14 w-full items-start gap-3 rounded-lg border p-3 text-left',
-                  selectedId === document.id
-                    ? 'border-brand bg-canvas'
-                    : 'border-transparent hover:bg-canvas',
-                ]"
-                @click="$emit('select', document.id)"
-              >
-                <span
-                  class="mt-0.5 rounded border border-line px-1 py-0.5 text-[10px] font-bold text-brand"
-                  >{{ document.format }}</span
-                >
-                <span class="min-w-0 break-words text-sm"
-                  ><span class="block font-medium">{{ document.title }}</span
-                  ><span class="mt-1 block text-xs text-muted">{{ document.detail }}</span></span
-                >
-              </button>
-            </li>
-          </ul>
-        </section>
-      </nav>
     </div>
   </div>
 </template>
+
+<style scoped>
+.library-empty-state {
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--pt-brand) 10%, transparent),
+      transparent 46%
+    ),
+    color-mix(in srgb, var(--pt-canvas) 72%, var(--pt-panel));
+}
+</style>

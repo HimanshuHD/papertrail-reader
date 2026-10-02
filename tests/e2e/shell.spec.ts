@@ -84,26 +84,29 @@ test('home and app respond in both themes without overflow', async ({ page }, in
   expect(errors).toEqual([])
 })
 
-test('sample selection survives sidebar collapse; unavailable actions stay disabled', async ({
+test('empty reader survives sidebar collapse and source actions remain available', async ({
   page,
 }) => {
   await page.goto('./#/app')
-  await page.getByRole('button', { name: /The next chapter/ }).click()
-  await expect(page.locator('#reader-title')).toHaveText('The next chapter')
-  await expect(page.getByRole('button', { name: /Font size/ })).toBeDisabled()
-  await expect(page.getByRole('button', { name: 'Contents' })).toBeDisabled()
+  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+  await expect(page.getByRole('heading', { name: 'No documents selected yet' })).toBeVisible()
+  await expect(page.getByText('A quiet space for your next chapter')).toBeVisible()
+  await expect(page.getByText('Getting started')).toHaveCount(0)
+  await expect(page.getByText('Demonstration workspace')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Contents' })).toHaveCount(0)
+
   await page.getByRole('button', { name: 'Add local documents' }).click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder' })).toBeEnabled()
   await expect(page.getByRole('menuitem', { name: 'Choose PDF / EPUB files' })).toBeEnabled()
+  await page.keyboard.press('Escape')
+
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('complementary')).toHaveCount(0)
+  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
   await noOverflow(page)
+
   await page.getByRole('button', { name: 'Show library' }).click()
-  await expect(page.locator('#reader-title')).toHaveText('The next chapter')
-  await expect(page.getByRole('button', { name: /The next chapter/ })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
+  await expect(page.getByRole('heading', { name: 'No documents selected yet' })).toBeVisible()
   await noOverflow(page)
 })
 
@@ -115,8 +118,8 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/#\/app$/)
 
-  const sample = page.getByRole('button', { name: /Welcome to PaperTrail/ })
-  await sample.focus()
+  const addDocuments = page.getByRole('button', { name: 'Add local documents' })
+  await addDocuments.focus()
   await page.keyboard.press('Escape')
   const libraryToggle = page.getByRole('button', { name: 'Show library' })
   await expect(libraryToggle).toBeFocused()
@@ -207,7 +210,8 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   let book = localLibrary.getByRole('button', { name: /book.epub/ })
   await book.click()
   await expect(book).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+  await expect(page.locator('#reader-title')).toHaveText('book.epub')
+  await expect(page.getByText('EPUB reading is not available in this release yet.')).toBeVisible()
 
   await page.getByRole('button', { name: 'Refresh folder' }).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')

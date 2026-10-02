@@ -19,7 +19,6 @@ vi.mock('../../src/features/pdf/pdf-session', () => {
   }
 })
 import App from '../../src/App.vue'
-import ShellStatus from '../../src/components/viewer/ShellStatus.vue'
 import ReaderView from '../../src/views/ReaderView.vue'
 import { createAppRouter } from '../../src/router'
 
@@ -106,32 +105,32 @@ describe('home and product shell', () => {
     wrapper.unmount()
   })
 
-  it('collapses and restores the sidebar without losing selected sample metadata', async () => {
+  it('keeps the production empty state while the sidebar collapses and restores', async () => {
     const { wrapper } = await mountApp('/app')
-    const epub = wrapper
-      .findAll('nav button')
-      .find((button) => button.text().includes('The next chapter'))!
-    await epub.trigger('click')
-    expect(epub.attributes('aria-pressed')).toBe('true')
-    expect(wrapper.get('#reader-title').text()).toBe('The next chapter')
-    expect(wrapper.text()).toContain('Font size')
-    const toggle = wrapper.get('button[aria-controls="document-sidebar"]')
+    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.text()).toContain('No documents selected yet')
+    expect(wrapper.text()).not.toContain('The next chapter')
+    expect(wrapper.text()).not.toContain('Demonstration workspace')
+
+    const toggle = wrapper.get('button[aria-label="Hide library"]')
     await toggle.trigger('click')
     const opener = wrapper.get('button[aria-label="Show library"]')
     expect(opener.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('aside').exists()).toBe(false)
+    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+
     await opener.trigger('click')
     expect(wrapper.find('aside').exists()).toBe(true)
-    expect(wrapper.get('#reader-title').text()).toBe('The next chapter')
+    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
     wrapper.unmount()
   })
 
   it('closes the library with Escape and restores focus to its toggle', async () => {
     const { wrapper } = await mountApp('/app')
-    const documentButton = wrapper.get('nav button')
-    ;(documentButton.element as HTMLButtonElement).focus()
-    expect(document.activeElement).toBe(documentButton.element)
-    await documentButton.trigger('keydown', { key: 'Escape' })
+    const addButton = wrapper.get('button[aria-label="Add local documents"]')
+    ;(addButton.element as HTMLButtonElement).focus()
+    expect(document.activeElement).toBe(addButton.element)
+    await addButton.trigger('keydown', { key: 'Escape' })
     await flushPromises()
     const toggle = wrapper.get('button[aria-controls="document-sidebar"]')
     expect(wrapper.find('aside').exists()).toBe(false)
@@ -140,40 +139,43 @@ describe('home and product shell', () => {
     wrapper.unmount()
   })
 
-  it('announces sample selection changes without moving focus', async () => {
+  it('shows selected EPUB metadata without falling back to sample content', async () => {
     const { wrapper } = await mountApp('/app')
-    const epub = wrapper
-      .findAll('nav button')
-      .find((button) => button.text().includes('The next chapter'))!
-    ;(epub.element as HTMLButtonElement).focus()
-    await epub.trigger('click')
-    expect(document.activeElement).toBe(epub.element)
+    const fileInput = wrapper.get('input[accept*=".pdf"]')
+    const epubFile = new File(['epub'], 'book.epub', { type: 'application/epub+zip' })
+
+    inputFiles(fileInput.element, [epubFile])
+    await fileInput.trigger('change')
+    await flushPromises()
+
+    const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+    const book = localLibrary
+      .findAll('button')
+      .find((button) => button.text().includes('book.epub'))!
+    ;(book.element as HTMLButtonElement).focus()
+    await book.trigger('click')
+
+    expect(document.activeElement).toBe(book.element)
+    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(wrapper.text()).toContain('EPUB reading is not available in this release yet.')
+    expect(wrapper.text()).not.toContain('Demonstration workspace')
     expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe(
-      'Selected sample: The next chapter.',
+      'Selected local EPUB: book.epub. EPUB reading is planned for Roadmap 2.',
     )
     wrapper.unmount()
   })
 
-  it.each([
-    ['empty', 'No documents selected', 'status'],
-    ['loading', 'Preparing your library', 'status'],
-    ['error', 'PaperTrail could not prepare the library', 'alert'],
-    ['demo', 'Demonstration workspace', 'status'],
-  ] as const)(
-    'presents the %s shell state with an accessible announcement',
-    (state, text, role) => {
-      const wrapper = mount(ShellStatus, { props: { state } })
-      expect(wrapper.get(`[role="${role}"]`).text()).toContain(text)
-      wrapper.unmount()
-    },
-  )
-
-  it('offers browser selection while keeping unavailable reader actions disabled', async () => {
+  it('offers browser selection from the production empty state', async () => {
     const { wrapper } = await mountApp('/app')
-    expect(wrapper.text()).toContain('Use + to add a folder or files.')
-    expect(wrapper.text()).toContain('does not open a document')
-    expect(wrapper.text()).toContain('Demonstration workspace')
+    expect(wrapper.text()).toContain('No documents selected yet')
+    expect(wrapper.text()).toContain('Use the + button above to add a folder')
+    expect(wrapper.text()).toContain('A quiet space for your next chapter')
+    expect(wrapper.text()).toContain('Your documents will have room to breathe here.')
+    expect(wrapper.text()).not.toContain('Getting started')
+    expect(wrapper.text()).not.toContain('Demonstration workspace')
+    expect(wrapper.text()).not.toContain('sample workspace')
     expect(wrapper.findAll('input[type="file"]')).toHaveLength(2)
+
     await wrapper.get('button[aria-label="Add local documents"]').trigger('click')
     const folderButton = wrapper
       .findAll('button')
@@ -251,7 +253,8 @@ describe('home and product shell', () => {
     await flushPromises()
     expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
     expect(pdfSessionMocks.close).toHaveBeenCalled()
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(wrapper.text()).toContain('EPUB reading is not available in this release yet.')
 
     const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
     await reselect.trigger('click')

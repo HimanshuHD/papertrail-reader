@@ -6,10 +6,8 @@ import IconButton from '../components/IconButton.vue'
 import ThemePicker from '../components/ThemePicker.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
-import ReaderToolbar from '../components/viewer/ReaderToolbar.vue'
 import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
-import ShellStatus from '../components/viewer/ShellStatus.vue'
 import {
   describeLibrarySelection,
   librarySelectionLabel,
@@ -22,41 +20,14 @@ import {
   type DiscoveryProblem,
   type DiscoveryProgress,
 } from '../features/library/discovery'
-import type { ShellDocument, ShellViewState } from '../types/shell'
 
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
-const documents: readonly ShellDocument[] = [
-  {
-    id: 'welcome',
-    title: 'Welcome to PaperTrail',
-    format: 'PDF',
-    collection: 'Getting started',
-    detail: 'A sample reading space',
-  },
-  {
-    id: 'field-notes',
-    title: 'Notes from the trail',
-    format: 'PDF',
-    collection: 'Getting started',
-    detail: 'An illustrative document',
-  },
-  {
-    id: 'chapter',
-    title: 'The next chapter',
-    format: 'EPUB',
-    collection: 'Books',
-    detail: 'A sample book',
-  },
-]
-
-const selectedId = ref('welcome')
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
-const viewState = ref<ShellViewState>('demo')
-const announcement = ref('Demonstration workspace ready.')
+const announcement = ref('PaperTrail workspace ready. No documents selected yet.')
 
 const librarySelection = shallowRef<BrowserLibrarySelection | null>(null)
 const discoveryPhase = ref<DiscoveryPhase>('idle')
@@ -116,23 +87,11 @@ const discoverySummary = computed(() => {
   }
 })
 
-const selectedDocument = computed(
-  () => documents.find((document) => document.id === selectedId.value) ?? documents[0]!,
-)
-
 const selectedLibraryDocument = computed(
   () =>
     discoveredDocuments.value.find((document) => document.id === selectedLibraryDocumentId.value) ??
     null,
 )
-
-function selectDocument(id: string) {
-  const document = documents.find((item) => item.id === id)
-  if (!document) return
-  selectedId.value = id
-  activePdfDocument.value = null
-  announcement.value = `Selected sample: ${document.title}.`
-}
 
 function selectLibraryDocument(id: string) {
   const document = discoveredDocuments.value.find((item) => item.id === id)
@@ -146,7 +105,7 @@ function selectLibraryDocument(id: string) {
   }
 
   activePdfDocument.value = null
-  announcement.value = `Selected local EPUB: ${document.name}. EPUB reading remains planned in #12.`
+  announcement.value = `Selected local EPUB: ${document.name}. EPUB reading is planned for Roadmap 2.`
 }
 
 function restoreLibrarySelection(
@@ -257,7 +216,11 @@ async function closeSidebarAndRestoreFocus() {
           ></RouterLink
         >
         <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">{{
-          activePdfDocument ? 'PDF reader' : 'Layout preview'
+          activePdfDocument
+            ? 'PDF reader'
+            : selectedLibraryDocument?.format === 'EPUB'
+              ? 'EPUB · planned'
+              : 'Reader workspace'
         }}</span>
       </div>
       <ThemePicker />
@@ -278,8 +241,6 @@ async function closeSidebarAndRestoreFocus() {
       </template>
       <template #sidebar>
         <LibrarySidebar
-          :documents="documents"
-          :selected-id="selectedId"
           :library-documents="discoveredDocuments"
           :selected-library-document-id="selectedLibraryDocumentId"
           :library-label="libraryLabel"
@@ -289,7 +250,6 @@ async function closeSidebarAndRestoreFocus() {
           :discovery-summary="discoverySummary"
           :discovery-busy="discoveryPhase === 'indexing'"
           :discovery-problem-count="discoveryProblems.length"
-          @select="selectDocument"
           @select-library-document="selectLibraryDocument"
           @library-selection="acceptLibrarySelection"
           @refresh-library="refreshLibrary"
@@ -297,18 +257,16 @@ async function closeSidebarAndRestoreFocus() {
           @close="closeSidebarAndRestoreFocus"
         />
       </template>
-      <template v-if="!activePdfDocument" #toolbar>
-        <ReaderToolbar :document="selectedDocument" />
-      </template>
       <PdfReaderWorkspace
         v-if="activePdfDocument"
         :document="activePdfDocument"
         @status="announcement = $event"
       />
-      <template v-else>
-        <ShellStatus :state="viewState" />
-        <ReaderWorkspace v-if="viewState === 'demo'" :document="selectedDocument" />
-      </template>
+      <ReaderWorkspace
+        v-else
+        :selected-document="selectedLibraryDocument"
+        :has-library-selection="Boolean(librarySelection)"
+      />
     </ReaderShell>
   </main>
 </template>
