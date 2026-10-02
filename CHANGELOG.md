@@ -1,12 +1,12 @@
 # Changelog
 
-## 1.0.0 — First browser PDF release (candidate)
+## 1.0.0 — First browser PDF release — deployed 3 October 2026
 
 Responsive browser PDF reading with local folder/file selection, discovery/refresh, a resizable library, continuous selectable pages, navigation, zoom/fit, contents, fullscreen, keyboard help and light/dark themes. Search excerpts are bounded and highlighted; result clicks select exact PDF occurrences.
 
 First-release fixes include buffered rendering, reading-point anchors, scrollbar page tracking, bounded preview caching and fast opening of 1,000+ page PDFs; single title/fallback labels, independent scrolling, centered loading feedback, accessible controls/popovers and a compact version/identity footer.
 
-PDF-only. EPUB, OCR, password-entry UI, persistent positions/bookmarks, annotations, tabs, broader browser certification and Tauri remain outside this release. Documentation-only publisher trigger refinement is deferred as #100 under Roadmap 2 #78. See [release record](docs/releases/v1.0.0.md) and [acceptance audit](docs/releases/v1.0.0-acceptance-audit.md). Tag/date/production v1.0.0 remain pending until the candidate is reviewed and merged.
+PDF-only. EPUB, OCR, password-entry UI, persistent positions/bookmarks, annotations, tabs, broader browser certification and Tauri remain outside this release. Documentation-only publisher trigger refinement is deferred as #100 under Roadmap 2 #78. See [release record](docs/releases/v1.0.0.md) and [acceptance audit](docs/releases/v1.0.0-acceptance-audit.md). PR #103 is merged and production v1.0.0 is verified at b2eb932 (main CI 37054802868, publisher 37054875000). Version tag/GitHub release publication remains pending; that date will be recorded separately.
 
 ## 0.1.0 — Initial foundation
 

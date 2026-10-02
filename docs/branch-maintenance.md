@@ -31,3 +31,7 @@ After cleanup, normal work is issue → new branch from main → PR/CI → revie
 ## Fresh branch inventory — 2 October 2026
 
 The earlier 11-branch pending-cleanup record is historical. Fresh inventory contains main, pages-state and the merged `feat/11-pdf-search-contents-shortcuts` at `3363ee512a6c4001200d7615eb6855b5ae928d98` (PR #60). The feature head matches the merged PR and can be deleted. Keep main/pages-state. #61 creates a new active fix branch which must remain until reviewed/merged. No branch deletion is performed by this reconciliation.
+
+## Release branch cleanup — 3 October 2026
+
+PR #103 merged release/1.0.0 (reviewed head ff159b5) as b2eb9328be5147346926e9bbce0960fa777b9e00. The branch is safe to delete after merge; a fresh branch listing already shows it removed and contains only main/pages-state. No deletion by the assistant is claimed. Removing a merged branch does not remove the reviewed commit; the v1.0.0 tag must target that exact merge SHA once created. New release reconciliation uses a separate docs branch, leaving the removed release branch closed. Keep main and generated pages-state.
