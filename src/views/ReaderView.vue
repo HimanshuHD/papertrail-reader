@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
+import BrandMark from '../components/BrandMark.vue'
 import ThemePicker from '../components/ThemePicker.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
@@ -241,8 +242,13 @@ async function closeSidebarAndRestoreFocus() {
       class="app-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-3 sm:px-8"
     >
       <div class="flex flex-wrap items-center gap-4">
-        <RouterLink to="/" class="text-xl font-bold tracking-tight" aria-label="PaperTrail home"
-          >PaperTrail<span class="ml-2 text-xs font-normal text-muted">Home ↗</span></RouterLink
+        <RouterLink
+          to="/"
+          class="inline-flex items-center gap-2 text-xl font-bold tracking-tight"
+          aria-label="PaperTrail home"
+          ><BrandMark class="h-8 w-8" />PaperTrail<span class="ml-2 text-xs font-normal text-muted"
+            >Home ↗</span
+          ></RouterLink
         >
         <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">{{
           activePdfDocument ? 'PDF reader' : 'Layout preview'
