@@ -297,6 +297,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   })
   await localLibrary.getByRole('button', { name: /searchable\.pdf/ }).click()
   await expect(page.locator('#reader-title')).toHaveText('searchable.pdf')
+  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
 
   await page.keyboard.press('Control+f')
   const searchInput = page.getByRole('searchbox', { name: 'Search PDF text' })
