@@ -747,3 +747,59 @@ test('library labels use embedded title or filename and the opener tooltip stays
   expect(focusedBox!.x).toBeGreaterThanOrEqual(0)
   expect(focusedBox!.x + focusedBox!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
 })
+
+test('library and document loaders are centered, responsive and respect reduced motion', async ({
+  page,
+}, info) => {
+  let releaseWorker!: () => void
+  const workerGate = new Promise<void>((resolve) => {
+    releaseWorker = resolve
+  })
+  await page.context().route('**/pdf.worker*.mjs', async (route) => {
+    await workerGate
+    await route.continue()
+  })
+  try {
+    await page.goto('./#/app')
+    const library = page.getByRole('region', { name: 'Library documents', exact: true })
+    await page.locator('input[accept*=".pdf"]').setInputFiles({
+      name: 'loading-preview.pdf',
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(),
+    })
+    await expect(library).toHaveAttribute('aria-busy', 'true')
+    const libraryCard = library.locator('.loading-card')
+    await expect(libraryCard).toBeVisible()
+    await expect(library.getByRole('button', { name: 'Cancel scan' })).toBeEnabled()
+    await expect(page.getByRole('button', { name: 'Add local documents' })).toBeEnabled()
+    const area = await library.boundingBox()
+    const card = await libraryCard.boundingBox()
+    expect(Math.abs(card!.y + card!.height / 2 - area!.y - area!.height / 2)).toBeLessThan(3)
+    await capture(page, info, 'library-centered-loading')
+    await expect(libraryCard).toContainText('Thanks for your patience')
+    await expect(library).toHaveAttribute('aria-busy', 'false')
+    await library.getByRole('button', { name: 'PDF: loading-preview.pdf', exact: true }).click()
+    const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+    const pdfCard = pane.locator('.loading-card')
+    await expect(pdfCard).toBeVisible()
+    await expect(pdfCard).toContainText('Opening document')
+    const pdfArea = await pane.boundingBox()
+    const pdfBox = await pdfCard.boundingBox()
+    expect(
+      Math.abs(pdfBox!.y + pdfBox!.height / 2 - pdfArea!.y - pdfArea!.height / 2),
+    ).toBeLessThan(3)
+    if (page.viewportSize()!.width < 1024) {
+      await page.getByRole('button', { name: 'Hide library' }).click()
+      await expect(page.getByRole('complementary', { name: 'Document library' })).not.toBeVisible()
+    }
+    await page.emulateMedia({ reducedMotion: 'reduce' })
+    await expect(pdfCard.locator('.loading-orbit')).toHaveCSS('animation-name', 'none')
+    await capture(page, info, 'pdf-centered-opening')
+    releaseWorker()
+    await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+    await expect(pane).toHaveAttribute('aria-busy', 'false')
+    await noOverflow(page)
+  } finally {
+    releaseWorker()
+  }
+})

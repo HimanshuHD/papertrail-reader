@@ -21,6 +21,7 @@ import {
   type DiscoveryProgress,
 } from '../features/library/discovery'
 
+import { waitForMinimumLoading } from '../features/library/loading-duration'
 import { enrichPdfTitles } from '../features/library/pdf-titles'
 
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
@@ -137,6 +138,7 @@ async function runDiscovery(
   discoveryController?.abort()
   metadataController?.abort()
   const controller = new AbortController()
+  const startedAt = Date.now()
   discoveryController = controller
   discoveryPhase.value = 'indexing'
   discoveryProgress.value = { scanned: 0, supported: 0, currentPath: '' }
@@ -156,7 +158,11 @@ async function runDiscovery(
     discoveredDocuments.value = result.documents
     discoveryProblems.value = result.problems
     selectedLibraryDocumentId.value = restoreLibrarySelection(previous, result.documents)
-    if (result.status === 'completed') {
+    if (result.status === 'completed' && result.problems.length === 0)
+      await waitForMinimumLoading(startedAt, controller.signal)
+    if (discoveryController !== controller) return
+    const cancelled = result.status === 'cancelled' || controller.signal.aborted
+    if (!cancelled) {
       const metadata = new AbortController()
       metadataController = metadata
       void enrichPdfTitles(result.documents, metadata.signal, (id, title) => {
@@ -166,11 +172,10 @@ async function runDiscovery(
         )
       })
     }
-    discoveryPhase.value = result.status === 'cancelled' ? 'cancelled' : 'ready'
-    announcement.value =
-      result.status === 'cancelled'
-        ? `Document discovery cancelled after ${result.scanned} files.`
-        : `${result.documents.length} supported documents discovered.`
+    discoveryPhase.value = cancelled ? 'cancelled' : 'ready'
+    announcement.value = cancelled
+      ? `Document discovery cancelled after ${result.scanned} files.`
+      : `${result.documents.length} supported documents discovered.`
   } catch {
     if (discoveryController !== controller) return
     selectedLibraryDocumentId.value = null
@@ -198,6 +203,8 @@ async function refreshLibrary() {
 
 function cancelDiscovery() {
   discoveryController?.abort()
+  discoveryPhase.value = 'cancelled'
+  announcement.value = 'Document discovery cancelled.'
 }
 
 async function openSidebar() {

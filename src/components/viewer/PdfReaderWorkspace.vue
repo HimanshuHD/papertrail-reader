@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import LoadingState from '../LoadingState.vue'
 import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
@@ -742,16 +743,10 @@ onBeforeUnmount(() => {
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
+        :aria-busy="phase === 'loading'"
         @scroll.passive="handleViewerScroll"
       >
-        <div
-          v-if="phase === 'loading'"
-          class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5 text-sm text-muted"
-          role="status"
-          aria-live="polite"
-        >
-          Opening {{ document.name }}…
-        </div>
+        <LoadingState v-if="phase === 'loading'" label="Opening document" :detail="document.name" />
 
         <div
           v-else-if="phase === 'error'"
