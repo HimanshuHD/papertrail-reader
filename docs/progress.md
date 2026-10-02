@@ -123,3 +123,7 @@ Implementation `92e4c46b606996be31a965e28357d1029bfed31a` passed [Frontend CI 36
 ## Preview refinements (#72, child of #63)
 
 PR #71 remains on feat/63-compact-library. Move the opener to the top beside reserved title space, add sliding/grid transitions with reduced-motion support, and widen the default library from 280 to 308px. A bounded pointer-captured separator supports mouse/touch dragging, col-resize hover, Arrow keys (Shift for fine steps), Home/End and accessible width values. Width survives panel toggling; resize observation keeps it within the current viewport. Desktop retains at least 360px for the reader; smaller screens retain the overlay. #72 is in progress until acceptance and merge.
+
+## Preview refinement acceptance (#72)
+
+Implementation `f59cfc5df76c811c6a9a421dd93da392f333d3a5` passed [Frontend CI 36998040249](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998040249) and [Browser E2E 36998109332](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998109332): 45 Chromium checks at 320/375/768/1024/1440px. New acceptance covers mouse drag, separator cursor/keyboard bounds, remembered width, top opener/title gap and reduced-motion behavior. #72 (child #63) is in review in existing PR #71. The owner must republish preview #71 to review the revised source before merge. #64 remains next.
