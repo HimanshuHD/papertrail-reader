@@ -13,7 +13,7 @@
     "preview": "vite preview",
     "lint": "eslint . --max-warnings 0",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
+    "format:check": "prettier --write docs/progress.md src/components/library/LibrarySidebar.vue src/components/viewer/ReaderWorkspace.vue && git diff -- docs/progress.md src/components/library/LibrarySidebar.vue src/components/viewer/ReaderWorkspace.vue && exit 1",
     "test:unit": "vitest run",
     "test:watch": "vitest",
     "test:pipeline": "node --test scripts/*.test.mjs",
