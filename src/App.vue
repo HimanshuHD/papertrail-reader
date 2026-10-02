@@ -25,6 +25,5 @@ import BuildFooter from './components/BuildFooter.vue'
   flex-shrink: 0;
   max-height: 20dvh;
   overflow: auto;
-  padding: 0.4rem 1rem;
 }
 </style>

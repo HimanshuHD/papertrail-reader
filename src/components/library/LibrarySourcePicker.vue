@@ -186,32 +186,38 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         @click="$emit('close')"
       />
     </div>
-    <div
-      v-if="menuOpen"
-      id="library-source-menu"
-      ref="menu"
-      role="menu"
-      aria-label="Add local documents"
-      class="absolute top-full right-0 z-40 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel p-1 shadow-lg"
-      @keydown="menuKeydown"
+    <Transition
+      name="source-menu"
+      @before-enter="(element: Element) => element.removeAttribute('inert')"
+      @before-leave="(element: Element) => element.setAttribute('inert', '')"
     >
-      <button
-        type="button"
-        role="menuitem"
-        class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
-        @click="chooseFolder"
+      <div
+        v-if="menuOpen"
+        id="library-source-menu"
+        ref="menu"
+        role="menu"
+        aria-label="Add local documents"
+        class="absolute top-full right-0 z-40 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel p-1 shadow-lg"
+        @keydown="menuKeydown"
       >
-        Choose folder
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
-        @click="chooseFiles"
-      >
-        Choose PDF / EPUB files
-      </button>
-    </div>
+        <button
+          type="button"
+          role="menuitem"
+          class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
+          @click="chooseFolder"
+        >
+          Choose folder
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
+          @click="chooseFiles"
+        >
+          Choose PDF / EPUB files
+        </button>
+      </div>
+    </Transition>
     <input
       ref="directoryInput"
       type="file"
@@ -245,3 +251,24 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
     </p>
   </div>
 </template>
+
+<style scoped>
+.source-menu-enter-active,
+.source-menu-leave-active {
+  transition:
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: top right;
+}
+.source-menu-enter-from,
+.source-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-0.5rem) scale(0.97);
+}
+@media (prefers-reduced-motion: reduce) {
+  .source-menu-enter-active,
+  .source-menu-leave-active {
+    transition: none;
+  }
+}
+</style>

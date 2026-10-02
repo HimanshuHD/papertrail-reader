@@ -839,3 +839,160 @@ test('library and document loaders are centered, responsive and respect reduced 
     releaseWorker()
   }
 })
+
+test('reader polish keeps tabs distinct, focus clear and motion accessible in both themes', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'reader-polish.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(),
+  })
+  await page.getByRole('button', { name: 'reader-polish.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(page.getByLabel('Current page')).toHaveValue('1')
+  await expect(page.locator('.app-header').getByText('Appearance', { exact: true })).toHaveCount(0)
+
+  const input = page.getByLabel('Current page')
+  const next = page.getByRole('button', { name: 'Next page', exact: true })
+  await next.focus()
+  await page.keyboard.press('Shift+Tab')
+  await expect(input).toBeFocused()
+  const inputBox = (await input.boundingBox())!
+  const nextBox = (await next.boundingBox())!
+  const previousBox = (await page
+    .getByRole('button', { name: 'Previous page', exact: true })
+    .boundingBox())!
+  const clearance = await input.evaluate((element) => {
+    const style = getComputedStyle(element)
+    return parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset)
+  })
+  // Wrapping onto different rows is allowed; surfaces must clear the input's focus outline.
+  for (const box of [previousBox, nextBox]) {
+    expect(
+      box.x + box.width <= inputBox.x - clearance ||
+        box.x >= inputBox.x + inputBox.width + clearance ||
+        box.y + box.height <= inputBox.y - clearance ||
+        box.y >= inputBox.y + inputBox.height + clearance,
+    ).toBe(true)
+  }
+
+  const contents = page.getByRole('button', { name: 'Contents', exact: true }).first()
+  for (const theme of ['light', 'dark']) {
+    const toggle = page.getByRole('button', { name: 'Dark mode' })
+    if ((await toggle.getAttribute('aria-pressed')) !== String(theme === 'dark'))
+      await toggle.click()
+    await contents.click()
+    const panel = page.locator('.pdf-side-panel')
+    await expect(panel).toHaveCSS('opacity', '1')
+    const active = panel.getByRole('button', { name: 'Contents', exact: true })
+    const inactive = panel.getByRole('button', { name: 'Search results', exact: true })
+    await expect(active).toHaveAttribute('aria-pressed', 'true')
+    const activeColor = await active.evaluate((el) => getComputedStyle(el).backgroundColor)
+    expect(activeColor).not.toBe(
+      await inactive.evaluate((el) => getComputedStyle(el).backgroundColor),
+    )
+    await inactive.click()
+    await expect(inactive).toHaveAttribute('aria-pressed', 'true')
+    await expect(active).toHaveAttribute('aria-pressed', 'false')
+    await expect(inactive).toHaveCSS('font-weight', '700')
+    await capture(page, info, `reader-polish-${theme}`)
+    await page.keyboard.press('Escape')
+    await expect(contents).toBeFocused()
+    await expect(page.locator('.pdf-side-panel')).toHaveCount(0)
+    await noOverflow(page)
+  }
+
+  // Sample immediately after state changes, without timing-sensitive sleeps.
+  const motion = await contents.evaluate(async (button) => {
+    button.click()
+    await Promise.resolve()
+    const panel = document.querySelector<HTMLElement>('.pdf-side-panel')!
+    const entering = panel.classList.contains('utility-panel-enter-active')
+    const duration = getComputedStyle(panel).transitionDuration
+    panel.querySelector<HTMLButtonElement>('[aria-label="Close utility panel"]')!.click()
+    await Promise.resolve()
+    return {
+      entering,
+      duration,
+      leaving: panel.classList.contains('utility-panel-leave-active'),
+      inert: panel.inert,
+    }
+  })
+  expect(motion).toEqual({ entering: true, duration: '0.32s, 0.32s', leaving: true, inert: true })
+  await expect(page.locator('.pdf-side-panel')).toHaveCount(0)
+
+  const search = page.getByRole('button', { name: 'Search PDF', exact: true })
+  const popoverDuration = await search.evaluate(async (button) => {
+    button.click()
+    await Promise.resolve()
+    return getComputedStyle(document.querySelector('[aria-label="PDF search"]')!).transitionDuration
+  })
+  expect(popoverDuration).toBe('0.24s, 0.24s')
+  await expect(page.getByRole('searchbox')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(search).toBeFocused()
+  await expect(page.getByRole('searchbox')).toHaveCount(0)
+
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await contents.click()
+  await expect(page.locator('.pdf-side-panel')).toHaveCSS('transition-duration', '0s')
+  await page.getByRole('button', { name: 'Close utility panel' }).click()
+  await expect(contents).toBeFocused()
+  await search.click()
+  await expect(page.getByRole('searchbox')).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(search).toBeFocused()
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await expect(page.getByRole('button', { name: 'Hide library' })).toBeFocused()
+  const add = page.getByRole('button', { name: 'Add local documents' })
+  await add.click()
+  await expect(page.getByRole('menuitem', { name: 'Choose folder', exact: true })).toBeFocused()
+  await expect(page.getByRole('menu')).toHaveCSS('transition-duration', '0s')
+  await page.keyboard.press('Escape')
+  await expect(add).toBeFocused()
+
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
+  const footer = page.getByRole('contentinfo', { name: 'Deployment information' })
+  await expect(footer).toHaveCSS('padding-top', '4px')
+  await expect(footer).toHaveCSS(
+    'background-color',
+    await page.locator('.app-header').evaluate((el) => getComputedStyle(el).backgroundColor),
+  )
+  // The CI build has no deployment metadata. Stress its real footer CSS with representative
+  // preview links and a long branch token; component tests verify the actual metadata template.
+  await footer.evaluate((element) => {
+    const nodes = [
+      'Preview · PR #98',
+      'Branch fix/reader-polish-with-a-very-long-branch-name-that-wraps-on-a-small-screen',
+      'SHA f44d675',
+    ].map((text, index) => {
+      const span = document.createElement('span')
+      const link = document.createElement('a')
+      link.textContent = text
+      link.href =
+        index === 0
+          ? 'https://github.com/HimanshuHD/papertrail-reader/pull/98'
+          : index === 1
+            ? 'https://github.com/HimanshuHD/papertrail-reader/tree/fix/reader-polish'
+            : 'https://github.com/HimanshuHD/papertrail-reader/commit/f44d67517ba17053d15e4b420372526a5002a10c'
+      span.append(link)
+      return span
+    })
+    element.replaceChildren(...nodes)
+  })
+  for (const link of await footer.getByRole('link').all()) {
+    const box = (await link.boundingBox())!
+    expect(box.x).toBeGreaterThanOrEqual(0)
+    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+    expect(box.height).toBeGreaterThanOrEqual(24)
+    await link.focus()
+    await expect(link).toBeFocused()
+  }
+  await noOverflow(page)
+  expect(
+    await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
+  ).toBe(true)
+  await capture(page, info, 'reader-polish-short-height')
+})

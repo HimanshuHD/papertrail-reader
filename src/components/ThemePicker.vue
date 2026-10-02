@@ -9,7 +9,6 @@ function toggleTheme() {
 <template>
   <div class="space-y-2">
     <div class="flex items-center gap-3 text-sm text-muted">
-      <span>Appearance</span>
       <button
         type="button"
         aria-label="Dark mode"

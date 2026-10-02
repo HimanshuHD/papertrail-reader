@@ -64,7 +64,11 @@ onBeforeUnmount(() => {
     :style="{ '--library-width': `${width}px` }"
   >
     <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
-    <Transition name="library-slide">
+    <Transition
+      name="library-slide"
+      @before-enter="(element: Element) => element.removeAttribute('inert')"
+      @before-leave="(element: Element) => element.setAttribute('inert', '')"
+    >
       <aside
         v-if="sidebarOpen"
         id="document-sidebar"
@@ -108,7 +112,7 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
   grid-template-columns: 0 minmax(0, 1fr);
-  transition: grid-template-columns 220ms ease;
+  transition: grid-template-columns 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .library-opener {
   position: absolute;
@@ -185,8 +189,8 @@ onBeforeUnmount(() => {
 .library-slide-enter-active,
 .library-slide-leave-active {
   transition:
-    transform 220ms ease,
-    opacity 220ms ease;
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 .library-slide-enter-from,
 .library-slide-leave-to {
