@@ -92,8 +92,9 @@ test('sample selection survives sidebar collapse; unavailable actions stay disab
   await expect(page.locator('#reader-title')).toHaveText('The next chapter')
   await expect(page.getByRole('button', { name: /Font size/ })).toBeDisabled()
   await expect(page.getByRole('button', { name: 'Contents' })).toBeDisabled()
-  await expect(page.getByRole('button', { name: 'Choose folder' })).toBeEnabled()
-  await expect(page.getByRole('button', { name: 'Choose PDF / EPUB files' })).toBeEnabled()
+  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await expect(page.getByRole('menuitem', { name: 'Choose folder' })).toBeEnabled()
+  await expect(page.getByRole('menuitem', { name: 'Choose PDF / EPUB files' })).toBeEnabled()
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('complementary')).toHaveCount(0)
   await noOverflow(page)
@@ -190,13 +191,12 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   })
 
   await page.goto('./#/app')
-  const sourceStatus = page
-    .locator('section[aria-labelledby="library-source-title"]')
-    .getByRole('status')
-  const discoveryStatus = page.locator('section[aria-labelledby="scan-title"]').getByRole('status')
+  const sourceStatus = page.locator('#library-source-status')
+  const discoveryStatus = page.locator('#discovery-status')
   const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
 
-  await page.getByRole('button', { name: 'Choose folder' }).click()
+  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
   await expect(discoveryStatus).toContainText('2 supported documents found.')
   await expect(localLibrary).toContainText('Mock library')
@@ -222,7 +222,8 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
       },
     })
   })
-  await page.getByRole('button', { name: 'Choose folder' }).click()
+  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('cancelled or permission was not granted')
 
   await page.locator('input[accept*=".pdf"]').setInputFiles([
@@ -401,4 +402,82 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   await expect
     .poll(() => page.evaluate(() => document.documentElement.scrollHeight > window.innerHeight))
     .toBe(true)
+})
+
+test('compact library menu dismisses independently and restores panel focus', async ({ page }) => {
+  await page.goto('./#/app')
+  const plus = page.getByRole('button', { name: 'Add local documents' })
+  await expect(page.getByRole('button', { name: 'Show library' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Refresh library' })).toBeDisabled()
+  await plus.focus()
+  await page.keyboard.press('Enter')
+  const folder = page.getByRole('menuitem', { name: 'Choose folder' })
+  await expect(folder).toBeFocused()
+  await page.keyboard.press('ArrowDown')
+  await expect(page.getByRole('menuitem', { name: 'Choose PDF / EPUB files' })).toBeFocused()
+  await page.keyboard.press('Escape')
+  await expect(plus).toBeFocused()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await expect(page.getByRole('complementary', { name: 'Document library' })).toBeVisible()
+  await plus.click()
+  await page.getByRole('link', { name: 'PaperTrail home' }).focus()
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await plus.click()
+  await page.locator('.app-header').click({ position: { x: 1, y: 1 } })
+  await expect(page.getByRole('menu')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const opener = page.getByRole('button', { name: 'Show library' })
+  await expect(opener).toBeFocused()
+  await opener.press('Enter')
+  await expect(opener).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Hide library' })).toBeFocused()
+  await noOverflow(page)
+})
+
+test('library width resizes within bounds and top opener preserves title space', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const library = page.getByRole('complementary', { name: 'Document library' })
+  const rail = page.getByRole('separator', { name: 'Resize library panel' })
+  await expect
+    .poll(async () => (await library.boundingBox())!.width)
+    .toBe(Math.round(Math.min(308, page.viewportSize()!.width * 0.9)))
+  await rail.hover()
+  await expect(rail).toHaveCSS('cursor', 'col-resize')
+  await rail.focus()
+  await page.keyboard.press('ArrowLeft')
+  const before = Number(await rail.getAttribute('aria-valuenow'))
+  const bounds = (await rail.boundingBox())!
+  await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + 80)
+  await page.mouse.down()
+  await page.mouse.move(bounds.x + bounds.width / 2 + 30, bounds.y + 80, { steps: 5 })
+  await page.mouse.up()
+  await expect
+    .poll(async () => Number(await rail.getAttribute('aria-valuenow')))
+    .toBeGreaterThan(before)
+  await rail.focus()
+  await page.keyboard.press('End')
+  await expect
+    .poll(async () => await rail.getAttribute('aria-valuenow'))
+    .toBe(await rail.getAttribute('aria-valuemax'))
+  await page.keyboard.press('Home')
+  await expect
+    .poll(async () => await rail.getAttribute('aria-valuenow'))
+    .toBe(await rail.getAttribute('aria-valuemin'))
+  await page.keyboard.press('ArrowRight')
+  const remembered = await rail.getAttribute('aria-valuenow')
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(library).toHaveCount(0)
+  const opener = page.getByRole('button', { name: 'Show library' })
+  await expect(opener).toBeFocused()
+  const openerBounds = (await opener.boundingBox())!
+  const title = (await page.locator('#reader-title').boundingBox())!
+  expect(openerBounds.y).toBeLessThanOrEqual(title.y)
+  expect(openerBounds.x + openerBounds.width + 12).toBeLessThanOrEqual(title.x)
+  await opener.click()
+  await expect(rail).toHaveAttribute('aria-valuenow', remembered!)
+  await noOverflow(page)
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await expect(page.locator('.reader-layout')).toHaveCSS('transition-duration', '0s')
 })
