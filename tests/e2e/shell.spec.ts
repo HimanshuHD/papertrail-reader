@@ -89,7 +89,7 @@ test('empty reader survives sidebar collapse and source actions remain available
 }) => {
   await page.goto('./#/app')
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
-  await expect(page.getByText('No documents selected yet')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No documents selected yet' })).toBeVisible()
   await expect(page.getByText('A quiet space for your next chapter')).toBeVisible()
   await expect(page.getByText('Getting started')).toHaveCount(0)
   await expect(page.getByText('Demonstration workspace')).toHaveCount(0)
@@ -106,7 +106,7 @@ test('empty reader survives sidebar collapse and source actions remain available
   await noOverflow(page)
 
   await page.getByRole('button', { name: 'Show library' }).click()
-  await expect(page.getByText('No documents selected yet')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'No documents selected yet' })).toBeVisible()
   await noOverflow(page)
 })
 
