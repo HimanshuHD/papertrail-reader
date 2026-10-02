@@ -1,9 +1,17 @@
 import { mount, flushPromises } from '@vue/test-utils'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PdfPageView from '../../src/components/viewer/PdfPageView.vue'
 import type { PdfDocumentSession } from '../../src/features/pdf/pdf-session'
 
-afterEach(() => vi.unstubAllGlobals())
+beforeEach(() =>
+  vi
+    .spyOn(HTMLCanvasElement.prototype, 'getContext')
+    .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D),
+)
+afterEach(() => {
+  vi.unstubAllGlobals()
+  vi.restoreAllMocks()
+})
 
 describe('PDF viewport ownership', () => {
   it('prefetches inside the PDF pane without reporting offscreen pages as current and releases observers', async () => {
@@ -107,5 +115,46 @@ it('reserves measured geometry while drawing and serializes invalidated renders'
   expect(render).toHaveBeenCalledTimes(2)
   expect(wrapper.emitted('rendered')).toEqual([[1, 0.75]])
   expect(wrapper.get('canvas').attributes('style')).toContain('visible')
+  wrapper.unmount()
+})
+
+it('keeps the completed bitmap visible while the next zoom render is pending', async () => {
+  vi.stubGlobal('IntersectionObserver', undefined)
+  let finish!: (value: { width: number; height: number; scale: number }) => void
+  const render = vi
+    .fn()
+    .mockResolvedValueOnce({ width: 400, height: 600, scale: 1 })
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+  const wrapper = mount(PdfPageView, {
+    props: {
+      session: {
+        render,
+        getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
+      } as unknown as PdfDocumentSession,
+      pageNumber: 1,
+      fitMode: 'width',
+      zoom: 1,
+      availableWidth: 400,
+      availableHeight: 600,
+      scrollRoot: null,
+    },
+  })
+  await flushPromises()
+  const displayed = wrapper.get('canvas').element
+  expect(render.mock.calls[0]![0].canvas).not.toBe(displayed)
+  await wrapper.setProps({ fitMode: 'custom', zoom: 1.5 })
+  expect(wrapper.get('canvas').attributes('style')).toContain('visible')
+  expect(wrapper.text()).not.toContain('Rendering page')
+  finish({ width: 600, height: 900, scale: 1.5 })
+  await flushPromises()
+  expect(wrapper.emitted('rendered')).toEqual([
+    [1, 1],
+    [1, 1.5],
+  ])
   wrapper.unmount()
 })

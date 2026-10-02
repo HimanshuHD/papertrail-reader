@@ -46,6 +46,7 @@ let renderSequence = 0
 let nearViewport = false
 let dirty = true
 let disposed = false
+let scrollFrame = 0
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || !dimensions.value || disposed) return
@@ -53,14 +54,16 @@ async function renderPage() {
   const currentTextLayer = textLayer.value
   if (!currentCanvas || !currentTextLayer) return
 
+  const pendingCanvas = document.createElement('canvas')
+  const pendingText = document.createElement('div')
   const sequence = ++renderSequence
   rendering.value = true
   dirty = false
 
   try {
     const result = await props.session.render({
-      canvas: currentCanvas,
-      textLayer: currentTextLayer,
+      canvas: pendingCanvas,
+      textLayer: pendingText,
       pageNumber: props.pageNumber,
       fitMode: props.fitMode,
       zoom: props.zoom,
@@ -69,6 +72,13 @@ async function renderPage() {
     })
     if (sequence !== renderSequence) return
 
+    const context = currentCanvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('Canvas rendering is unavailable in this browser.')
+    currentCanvas.width = pendingCanvas.width
+    currentCanvas.height = pendingCanvas.height
+    context.drawImage(pendingCanvas, 0, 0)
+    currentTextLayer.style.cssText = pendingText.style.cssText
+    currentTextLayer.replaceChildren(...pendingText.childNodes)
     rendered.value = true
     emit('rendered', props.pageNumber, result.scale)
   } catch (error) {
@@ -91,6 +101,20 @@ async function renderPage() {
     rendering.value = false
     if (dirty && nearViewport && !disposed) void renderPage()
   }
+}
+
+function checkScrollPosition() {
+  if (!dirty || disposed) return
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(() => {
+    const element = root.value
+    const pane = props.scrollRoot
+    if (!element || !pane) return
+    const box = element.getBoundingClientRect()
+    const bounds = pane.getBoundingClientRect()
+    nearViewport = box.bottom >= bounds.top - 700 && box.top <= bounds.bottom + 700
+    if (nearViewport) void renderPage()
+  })
 }
 
 function observePage() {
@@ -133,20 +157,23 @@ watch(
   () => {
     renderSequence += 1
     dirty = true
-    rendered.value = false
     void renderPage()
+    checkScrollPosition()
   },
 )
 
 watch(
   () => props.scrollRoot,
-  () => {
+  (next, previous) => {
+    previous?.removeEventListener('scroll', checkScrollPosition)
+    next?.addEventListener('scroll', checkScrollPosition, { passive: true })
     observer?.disconnect()
     visibilityObserver?.disconnect()
     observePage()
   },
 )
 onMounted(async () => {
+  props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
   observePage()
   try {
     const size = await props.session.getPageDimensions(props.pageNumber)
@@ -161,6 +188,8 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   disposed = true
+  cancelAnimationFrame(scrollFrame)
+  props.scrollRoot?.removeEventListener('scroll', checkScrollPosition)
   renderSequence += 1
   observer?.disconnect()
   observer = null
@@ -177,7 +206,7 @@ onBeforeUnmount(() => {
     :aria-label="`PDF page ${pageNumber}`"
   >
     <div
-      class="pdf-page relative bg-white shadow-sm"
+      class="pdf-page relative shrink-0 bg-white shadow-sm"
       :style="{
         width: `${layout.width}px`,
         height: `${layout.height}px`,
@@ -186,7 +215,11 @@ onBeforeUnmount(() => {
       <canvas
         ref="canvas"
         class="block max-w-none bg-white"
-        :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
+        :style="{
+          visibility: rendered ? 'visible' : 'hidden',
+          width: `${layout.width}px`,
+          height: `${layout.height}px`,
+        }"
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
       <div
@@ -196,8 +229,8 @@ onBeforeUnmount(() => {
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
       ></div>
       <div
-        v-if="!rendered && rendering"
-        class="absolute inset-0 grid place-items-center text-sm text-muted"
+        v-if="!rendered"
+        class="absolute inset-0 grid place-items-center bg-white text-sm text-muted"
         role="status"
       >
         Rendering page {{ pageNumber }}…

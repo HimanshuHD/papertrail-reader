@@ -4,6 +4,7 @@ import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
   openPdfDocument,
+  resolvePdfScale,
   PdfOpenError,
   type PdfDocumentSession,
   type PdfFitMode,
@@ -258,14 +259,55 @@ function handleRenderError(message: string) {
   emit('status', message)
 }
 
-function changeZoom(delta: number) {
+function captureReadingPoint() {
+  const pane = viewport.value
+  const page = pane?.querySelector<HTMLElement>(`#pdf-page-${currentPage.value} .pdf-page`)
+  if (!pane || !page) return null
+  const bounds = pane.getBoundingClientRect()
+  const box = page.getBoundingClientRect()
+  return {
+    pane,
+    page,
+    x: (bounds.left + pane.clientWidth / 2 - box.left) / Math.max(1, box.width),
+    y: (bounds.top + pane.clientHeight / 2 - box.top) / Math.max(1, box.height),
+  }
+}
+
+async function restoreReadingPoint(point: ReturnType<typeof captureReadingPoint>) {
+  await nextTick()
+  if (!point || !point.page.isConnected || viewport.value !== point.pane) return
+  const bounds = point.pane.getBoundingClientRect()
+  const box = point.page.getBoundingClientRect()
+  point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
+  point.pane.scrollLeft += box.left + point.x * box.width - bounds.left - point.pane.clientWidth / 2
+}
+
+async function changeZoom(delta: number) {
+  const current = session.value
+  if (!current) return
+  const page = currentPage.value
+  const dimensions = await current.getPageDimensions(page)
+  if (session.value !== current || currentPage.value !== page) return
+  const point = captureReadingPoint()
+  const baseline = resolvePdfScale(
+    fitMode.value,
+    zoom.value,
+    dimensions.width,
+    dimensions.height,
+    availableWidth.value,
+    availableHeight.value,
+  )
+  zoom.value = Math.min(4, Math.max(0.25, baseline + delta))
   fitMode.value = 'custom'
-  zoom.value = Math.min(4, Math.max(0.25, renderedScale.value + delta))
+  renderedScale.value = zoom.value
+  await restoreReadingPoint(point)
   emit('status', `PDF zoom set to ${Math.round(zoom.value * 100)}%.`)
 }
 
-function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+  const point = captureReadingPoint()
   fitMode.value = mode
+  await restoreReadingPoint(point)
   emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
 }
 
@@ -812,6 +854,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .pdf-scroll {
+  overflow-anchor: none;
   min-height: 0;
   overscroll-behavior: contain;
 }

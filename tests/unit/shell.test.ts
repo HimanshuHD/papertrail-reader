@@ -24,6 +24,9 @@ import ReaderView from '../../src/views/ReaderView.vue'
 import { createAppRouter } from '../../src/router'
 
 beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    drawImage: vi.fn(),
+  } as unknown as CanvasRenderingContext2D)
   vi.clearAllMocks()
   pdfSessionMocks.render.mockResolvedValue({ scale: 1.25, width: 765, height: 990 })
   pdfSessionMocks.getOutline.mockResolvedValue([
