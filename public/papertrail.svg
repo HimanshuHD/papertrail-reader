@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-labelledby="logo-title">
+  <title id="logo-title">PaperTrail</title>
+  <style>:root { color: #277566; } @media (prefers-color-scheme: dark) { :root { color: #79cdb5; } rect { fill: #172822; } }</style>
+  <rect width="48" height="48" rx="10" fill="#f8faf8" />
+  <g transform="translate(4 4) scale(.833333)">
+
+    <path
+      d="M24 12C18 8 10 8 5 11v26c6-3 13-3 19 1 6-4 13-4 19-1V11c-5-3-13-3-19 1Z"
+      stroke="currentColor"
+      stroke-width="2.5"
+      stroke-linejoin="round"
+    /  </g>
+</svg>

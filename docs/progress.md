@@ -109,3 +109,5 @@ Refinement acceptance: Frontend CI [36974909774](https://github.com/HimanshuHD/p
 ## SVG identity and live trigger validation (#69)
 
 PR #68 is merged. #69 adds an SVG book/trail mark to home and app, with a second favicon/sizing polish commit. Validate draft open/update CI without publisher or browser runs, then Ready-for-review Browser E2E. The owner will manually publish and merge; those checkpoints remain pending. #63 follows this small UI validation.
+
+Draft PR #70 checkpoint 1: Frontend CI [36975882279](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36975882279) passed at `e98e6c22`. Repository-wide run inspection after CI found no newer publisher or Browser E2E run; latest publisher remained 36975404618 from merged #68. Checkpoint 2 adds a browser-theme-aware SVG favicon and prevents the inline mark from shrinking on narrow layouts. Manual publication/merge remain owner checkpoints.
