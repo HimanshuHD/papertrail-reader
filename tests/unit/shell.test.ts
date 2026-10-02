@@ -1,7 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createMemoryHistory } from 'vue-router'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const pdfSessionMocks = vi.hoisted(() => ({
   open: vi.fn(),
@@ -20,10 +20,12 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
   }
 })
 import App from '../../src/App.vue'
+import * as discovery from '../../src/features/library/discovery'
 import ReaderView from '../../src/views/ReaderView.vue'
 import { createAppRouter } from '../../src/router'
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
     drawImage: vi.fn(),
   } as unknown as CanvasRenderingContext2D)
@@ -56,6 +58,13 @@ beforeEach(() => {
     searchText: pdfSessionMocks.searchText,
   }))
 })
+
+afterEach(() => vi.useRealTimers())
+async function finishDiscovery() {
+  await flushPromises()
+  await vi.advanceTimersByTimeAsync(3000)
+  await flushPromises()
+}
 
 async function mountApp(path = '/') {
   const router = createAppRouter(createMemoryHistory())
@@ -151,7 +160,7 @@ describe('home and product shell', () => {
 
     inputFiles(fileInput.element, [epubFile])
     await fileInput.trigger('change')
-    await flushPromises()
+    await finishDiscovery()
 
     const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
     const book = localLibrary
@@ -217,7 +226,7 @@ describe('home and product shell', () => {
 
     inputFiles(fileInput.element, files)
     await fileInput.trigger('change')
-    await flushPromises()
+    await finishDiscovery()
 
     expect(wrapper.text()).toContain('2 items selected from the file picker')
     expect(wrapper.text()).toContain('2 supported documents found.')
@@ -274,7 +283,7 @@ describe('home and product shell', () => {
 
     inputFiles(fileInput.element, [file])
     await fileInput.trigger('change')
-    await flushPromises()
+    await finishDiscovery()
 
     const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
     const guide = localLibrary
@@ -324,7 +333,7 @@ describe('home and product shell', () => {
 
     inputFiles(directoryInput.element, files)
     await directoryInput.trigger('change')
-    await flushPromises()
+    await finishDiscovery()
 
     const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
     expect(localLibrary.text()).toContain('Reading')
@@ -388,7 +397,7 @@ describe('home and product shell', () => {
         .findAll('button')
         .find((button) => button.text() === 'Choose folder')!
       await chooseFolder.trigger('click')
-      await flushPromises()
+      await finishDiscovery()
 
       let localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
       let guide = localLibrary
@@ -401,7 +410,7 @@ describe('home and product shell', () => {
         .findAll('button')
         .find((button) => button.text() === 'Refresh folder')!
       await refresh.trigger('click')
-      await flushPromises()
+      await finishDiscovery()
 
       localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
       guide = localLibrary.findAll('button').find((button) => button.text().includes('guide.pdf'))!
@@ -451,4 +460,42 @@ describe('compact library actions', () => {
     expect(wrapper.find('[role="menu"]').exists()).toBe(false)
     wrapper.unmount()
   })
+})
+
+it('allows cancellation during the minimum loading display without waiting three seconds', async () => {
+  const { wrapper } = await mountApp('/app')
+  const input = wrapper.get('input[accept*=".pdf"]')
+  inputFiles(input.element, [new File(['file'], 'cancel.pdf')])
+  await input.trigger('change')
+  await flushPromises()
+  expect(wrapper.get('.library-list').attributes('aria-busy')).toBe('true')
+  expect(wrapper.text()).toContain('Loading your library')
+  await wrapper.get('.library-list button').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('.library-list').attributes('aria-busy')).toBe('false')
+  expect(wrapper.text()).not.toContain('Loading your library')
+  expect(wrapper.text()).toContain('cancel.pdf')
+  wrapper.unmount()
+})
+
+it('publishes access problems immediately rather than hiding them behind the minimum delay', async () => {
+  const discover = vi.spyOn(discovery, 'discoverDocuments').mockResolvedValue({
+    status: 'completed',
+    documents: [],
+    problems: [{ path: 'locked.pdf', code: 'read-failed', message: 'Unavailable' }],
+    scanned: 1,
+  })
+  const { wrapper } = await mountApp('/app')
+  try {
+    const input = wrapper.get('input[accept*=".pdf"]')
+    inputFiles(input.element, [new File(['file'], 'locked.pdf')])
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.get('.library-list').attributes('aria-busy')).toBe('false')
+    expect(wrapper.text()).toContain('1 access issue(s)')
+    expect(wrapper.text()).not.toContain('Loading your library')
+  } finally {
+    wrapper.unmount()
+    discover.mockRestore()
+  }
 })

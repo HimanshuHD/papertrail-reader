@@ -8,15 +8,15 @@ Capture reproducible defects in the delivered browser PDF product. Agree the rel
 
 ## Current bug groups
 
-| Issue   | Points / scope                                                                 | Status                         |
-| ------- | ------------------------------------------------------------------------------ | ------------------------------ |
-| #84     | 1–4: library tooltip, title/fallback labels, truncation, list-only scrolling   | In review in PR #96            |
-| #85     | 5–6: centered library/PDF loading feedback                                     | Queued next                    |
-| #86     | 7–10: toolbar spacing, theme label, active tabs, motion                        | Queued                         |
-| #87     | 11: compact footer and cohesive pane colors                                    | Queued after interaction fixes |
-| #88     | 12: PDF rendering/scroll stability                                             | Completed in merged PR #90     |
-| #89     | 13–16: search excerpts and match highlighting                                  | Queued                         |
-| #91–#95 | Zoom/fit anchors, fast scrolling, page tracking and large-document performance | Completed in merged PR #90     |
+| Issue   | Points / scope                                                                 | Status                                          |
+| ------- | ------------------------------------------------------------------------------ | ----------------------------------------------- |
+| #84     | 1–4: library tooltip, title/fallback labels, truncation, list-only scrolling   | Completed in merged PR #96                      |
+| #85     | 5–6: centered library/PDF loading feedback                                     | In progress on fix/85-centered-loading-feedback |
+| #86     | 7–10: toolbar spacing, theme label, active tabs, motion                        | Queued                                          |
+| #87     | 11: compact footer and cohesive pane colors                                    | Queued after interaction fixes                  |
+| #88     | 12: PDF rendering/scroll stability                                             | Completed in merged PR #90                      |
+| #89     | 13–16: search excerpts and match highlighting                                  | Queued                                          |
+| #91–#95 | Zoom/fit anchors, fast scrolling, page tracking and large-document performance | Completed in merged PR #90                      |
 
 PR #90 merged as c191353b17391c8f1e5a3e9a820e5d863a06498b. Main CI 37033803318, issue reconciliation 37033803232 and publisher 37033885573 succeeded. Production metadata identifies the merge and CI; preview #90 is retired. Pre-merge browser validation passed 61 checks, including a 1,001-page document. This is workflow/deployment metadata evidence, not a new interactive production audit. #79/#1/#80 remain open; the version stays 0.1.0.
 
@@ -40,3 +40,5 @@ Never include private document content in evidence. Track one defect per indepen
 #79 closes after all agreed release-blocking children are fixed, validated and merged, and final PDF smoke/regression results plus known limitations are recorded. Non-blocking deferrals must link #78 with a reason. Then #80 prepares v1.0.0. #1 closes only after that release is verified.
 
 #84 validation: PR #96 head 501ed6a4bfe8b46480838d4e9d0e5e4fd1a59654 passed Frontend CI [37035717706](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37035717706) (76 unit tests, 6 pipeline tests, lint, formatting, types and build) and Browser E2E [37035868237](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37035868237) (66 passed without retries; four intentional duplicate long-document skips). Embedded title/fallback labels, hover and real keyboard tooltip bounds passed at 320/375/768/1024/1440 widths; independent library scrolling/header geometry and existing PDF regressions passed. First browser run 37035363007 failed only the new tooltip test's programmatic-focus setup; corrected tests exercise real hover and Shift+Tab/Tab without weakening bounds assertions. PR #96 is ready for review. No automatic PR publisher ran. Owner preview acceptance remains: Publish website on main with pr_number 96, then review and merge. #84/#79/#1 remain open; #85 is next after this increment is accepted/merged.
+
+PR #96 merged as a35e2c5af7dbd0b04dc8e29a5d13854af7a90274. #84 is completed. Main CI 37036588000, issue reconciliation 37036588403 and publisher 37036656072 passed; production metadata records the merge/CI and preview #96 is retired. This is pipeline/source metadata verification, not a fresh interactive production audit. #85 is active, followed by #86/#89/#87; #79/#1/#80 remain open.

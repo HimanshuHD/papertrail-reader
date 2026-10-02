@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
+import LoadingState from '../LoadingState.vue'
 import UiIcon from '../UiIcon.vue'
 import type {
   BrowserLibrarySelection,
@@ -45,29 +46,30 @@ defineEmits<{
       />
     </header>
 
+    <p id="discovery-status" class="sr-only" role="status" aria-live="polite">
+      {{ discoverySummary }}
+    </p>
     <div
       class="library-list min-h-0 flex-1 overflow-auto px-3 py-3"
       role="region"
       aria-label="Library documents"
       tabindex="0"
+      :aria-busy="discoveryBusy"
     >
-      <p id="discovery-status" class="sr-only" role="status" aria-live="polite">
-        {{ discoverySummary }}
-      </p>
-
-      <div
+      <LoadingState
         v-if="discoveryBusy"
-        class="mb-3 flex items-center justify-between gap-2 text-xs text-muted"
+        label="Loading your library"
+        :rotate-messages="true"
+        :announce="false"
       >
-        <span>Scanning documents…</span>
         <button
           type="button"
-          class="min-h-9 rounded-md border border-line px-2"
+          class="min-h-10 rounded-lg border border-line bg-canvas px-4 text-xs font-medium text-ink shadow-sm hover:border-brand hover:text-brand"
           @click="$emit('cancelDiscovery')"
         >
           Cancel scan
         </button>
-      </div>
+      </LoadingState>
 
       <p v-if="discoveryProblemCount > 0" class="mb-3 text-xs text-muted">
         {{ discoveryProblemCount }} access issue(s); readable files remain available.

@@ -2,9 +2,9 @@
 
 ## Current plan — first release and Roadmap 2
 
-PR #90 is merged as c191353b17391c8f1e5a3e9a820e5d863a06498b. #88/#91/#92/#93/#94/#95 are closed as completed. Main CI 37033803318, merge reconciliation 37033803232 and publisher 37033885573 passed. Production metadata identifies that merge/CI; preview #90 is retired. Pre-merge browser regression passed 61 checks, including a 1,001-page PDF. This records pipeline/metadata evidence, not a fresh interactive production audit.
+PR #96 is merged as a35e2c5af7dbd0b04dc8e29a5d13854af7a90274. #84 is completed, alongside rendering group #88/#91–#95 from #90. Main CI 37036588000, issue reconciliation 37036588403 and publisher 37036656072 passed; production metadata records #96's merge source and CI. Preview #96 is retired. This records pipeline/source metadata, not a new live UI audit.
 
-Current task: #84 library tooltip/title labels/truncation/list-only scroll is in review in PR #96 on fix/84-library-labels-and-scroll. Next: #85, #86, #89, #87, final regression and #80. #79 and #1 remain open. Earlier current/next-task statements below are historical.
+Current task: #85 centered library and PDF loading feedback on fix/85-centered-loading-feedback. Next: #86, #89, #87, final regression and #80. #79 and #1 stay open. Earlier active/pending states below are historical.
 Roadmap #1 is now first-release v1.0.0 only. #79 collects reproducible bug children and finishes agreed release blockers; #80 prepares and verifies the release. All other open feature/infrastructure scope moves to Roadmap 2 #78 without being marked complete. #13 follows the first release, not this planning update. Package/footer version remains unchanged. See roadmap.md and first-release-bugs.md.
 
 All earlier sequence/status entries below are historical; this current-plan section supersedes their next-task statements.
@@ -18,46 +18,46 @@ Latest merged increment: PR #65, merge commit `3a893344c7e166a7e7f647414412f3032
 | Issue                                                            | Phase         | Work                                                                  | Status                                          |
 | ---------------------------------------------------------------- | ------------- | --------------------------------------------------------------------- | ----------------------------------------------- |
 | [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1)   | Web           | Product roadmap: web-first PaperTrail and later desktop expansion     | In progress — bug acceptance and release remain |
-| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2)   | Web           | Repository documentation and issue tracking                           | Completed |
-| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3)   | Web           | Bootstrap Vue 3, Vite and TypeScript                                  | Completed |
-| [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4)   | Desktop later | Integrate Tauri 2 desktop shell                                       | Deferred — Roadmap 2 (after v1.0.0) |
-| [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5)   | Web           | Configure web code quality, tests and GitHub Actions                  | Completed |
-| [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6)   | Web           | Design tokens, themes and application state                           | Completed |
-| [#7](https://github.com/HimanshuHD/papertrail-reader/issues/7)   | Web           | Split reader layout and accessible app shell                          | Completed |
-| [#8](https://github.com/HimanshuHD/papertrail-reader/issues/8)   | Web           | Browser folder/file selection and permission handling                 | Completed |
-| [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | Completed |
-| [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | Completed |
-| [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Completed |
-| [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | Deferred — Roadmap 2 (after v1.0.0) |
-| [#13](https://github.com/HimanshuHD/papertrail-reader/issues/13) | Web           | Browser document identity, saved positions and bookmarks              | Deferred — Roadmap 2 (after v1.0.0) |
-| [#14](https://github.com/HimanshuHD/papertrail-reader/issues/14) | Web           | Recent documents and library search                                   | Deferred — Roadmap 2 (after v1.0.0) |
-| [#15](https://github.com/HimanshuHD/papertrail-reader/issues/15) | Web           | Annotations, highlights and reading statistics                        | Deferred — Roadmap 2 (after v1.0.0) |
-| [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) | Web           | Browser performance, reliability and document safety                  | Deferred — Roadmap 2 (after v1.0.0) |
-| [#17](https://github.com/HimanshuHD/papertrail-reader/issues/17) | Web           | Document tabs and session restoration                                 | Deferred — Roadmap 2 (after v1.0.0) |
-| [#18](https://github.com/HimanshuHD/papertrail-reader/issues/18) | Web           | Optional split view and annotation export                             | Deferred — Roadmap 2 (after v1.0.0) |
-| [#19](https://github.com/HimanshuHD/papertrail-reader/issues/19) | Web           | Web release readiness and delivery                                    | Deferred — Roadmap 2 (after v1.0.0) |
-| [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | Web           | Automate post-merge issue and progress reconciliation                 | Completed |
-| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web           | Frontend quality checks and test coverage                             | Completed |
-| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline                        | Deferred — Roadmap 2 (after v1.0.0) |
-| [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web           | Incremental browser indexing and cancellation                         | Completed |
-| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web           | Directory tree and browser library refresh UI                         | Completed |
-| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web           | Web build, HTTPS deployment and release artifacts                     | Deferred — Roadmap 2 (after v1.0.0) |
-| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization                                      | Deferred — Roadmap 2 (after v1.0.0) |
-| [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | Web           | Supported-browser release validation                                  | Deferred — Roadmap 2 (after v1.0.0) |
-| [#30](https://github.com/HimanshuHD/papertrail-reader/issues/30) | Web           | Adopt web-first scope and defer desktop integration                   | Completed |
-| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web           | GitHub Pages production and PR preview pipeline                       | Completed |
-| [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32) | Web           | Versioned web releases and promotion policy                           | Deferred — Roadmap 2 (after v1.0.0) |
-| [#35](https://github.com/HimanshuHD/papertrail-reader/issues/35) | Web           | Deploy PR previews on demand and filter documentation-only publishing | Completed |
-| [#37](https://github.com/HimanshuHD/papertrail-reader/issues/37) | Web           | Browser E2E foundation and selection smoke tests                      | Completed |
-| [#39](https://github.com/HimanshuHD/papertrail-reader/issues/39) | Web           | Improve closed-preview page and link deployed branch in footer        | Completed |
-| [#42](https://github.com/HimanshuHD/papertrail-reader/issues/42) | Web           | Reader shell components and responsive layout                         | Completed |
-| [#43](https://github.com/HimanshuHD/papertrail-reader/issues/43) | Web           | Shell keyboard navigation and status-state presentation               | Completed |
-| [#44](https://github.com/HimanshuHD/papertrail-reader/issues/44) | Web           | Reconcile publishing when GitHub cancels a queued deployment          | Deferred — Roadmap 2 (after v1.0.0) |
-| [#46](https://github.com/HimanshuHD/papertrail-reader/issues/46) | Web           | Replace appearance dropdown with light/dark icon toggle               | Completed |
-| [#47](https://github.com/HimanshuHD/papertrail-reader/issues/47) | Web           | Display initial application version in production footer              | Completed |
-| [#49](https://github.com/HimanshuHD/papertrail-reader/issues/49) | Web           | Preserve responsive home page and add Go to app navigation            | Completed |
-| [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web           | Restore fast automatic CI; browser tests explicit only                | Completed |
-| [#82](https://github.com/HimanshuHD/papertrail-reader/issues/82) | Web           | Reader empty-state and library UI polish                              | Completed |
+| [#2](https://github.com/HimanshuHD/papertrail-reader/issues/2)   | Web           | Repository documentation and issue tracking                           | Completed                                       |
+| [#3](https://github.com/HimanshuHD/papertrail-reader/issues/3)   | Web           | Bootstrap Vue 3, Vite and TypeScript                                  | Completed                                       |
+| [#4](https://github.com/HimanshuHD/papertrail-reader/issues/4)   | Desktop later | Integrate Tauri 2 desktop shell                                       | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#5](https://github.com/HimanshuHD/papertrail-reader/issues/5)   | Web           | Configure web code quality, tests and GitHub Actions                  | Completed                                       |
+| [#6](https://github.com/HimanshuHD/papertrail-reader/issues/6)   | Web           | Design tokens, themes and application state                           | Completed                                       |
+| [#7](https://github.com/HimanshuHD/papertrail-reader/issues/7)   | Web           | Split reader layout and accessible app shell                          | Completed                                       |
+| [#8](https://github.com/HimanshuHD/papertrail-reader/issues/8)   | Web           | Browser folder/file selection and permission handling                 | Completed                                       |
+| [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | Completed                                       |
+| [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | Completed                                       |
+| [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Completed                                       |
+| [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#13](https://github.com/HimanshuHD/papertrail-reader/issues/13) | Web           | Browser document identity, saved positions and bookmarks              | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#14](https://github.com/HimanshuHD/papertrail-reader/issues/14) | Web           | Recent documents and library search                                   | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#15](https://github.com/HimanshuHD/papertrail-reader/issues/15) | Web           | Annotations, highlights and reading statistics                        | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) | Web           | Browser performance, reliability and document safety                  | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#17](https://github.com/HimanshuHD/papertrail-reader/issues/17) | Web           | Document tabs and session restoration                                 | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#18](https://github.com/HimanshuHD/papertrail-reader/issues/18) | Web           | Optional split view and annotation export                             | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#19](https://github.com/HimanshuHD/papertrail-reader/issues/19) | Web           | Web release readiness and delivery                                    | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#21](https://github.com/HimanshuHD/papertrail-reader/issues/21) | Web           | Automate post-merge issue and progress reconciliation                 | Completed                                       |
+| [#22](https://github.com/HimanshuHD/papertrail-reader/issues/22) | Web           | Frontend quality checks and test coverage                             | Completed                                       |
+| [#23](https://github.com/HimanshuHD/papertrail-reader/issues/23) | Desktop later | Rust formatting, lint and native test pipeline                        | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#24](https://github.com/HimanshuHD/papertrail-reader/issues/24) | Web           | Incremental browser indexing and cancellation                         | Completed                                       |
+| [#25](https://github.com/HimanshuHD/papertrail-reader/issues/25) | Web           | Directory tree and browser library refresh UI                         | Completed                                       |
+| [#26](https://github.com/HimanshuHD/papertrail-reader/issues/26) | Web           | Web build, HTTPS deployment and release artifacts                     | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#27](https://github.com/HimanshuHD/papertrail-reader/issues/27) | Desktop later | Desktop signing and notarization                                      | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#28](https://github.com/HimanshuHD/papertrail-reader/issues/28) | Web           | Supported-browser release validation                                  | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#30](https://github.com/HimanshuHD/papertrail-reader/issues/30) | Web           | Adopt web-first scope and defer desktop integration                   | Completed                                       |
+| [#31](https://github.com/HimanshuHD/papertrail-reader/issues/31) | Web           | GitHub Pages production and PR preview pipeline                       | Completed                                       |
+| [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32) | Web           | Versioned web releases and promotion policy                           | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#35](https://github.com/HimanshuHD/papertrail-reader/issues/35) | Web           | Deploy PR previews on demand and filter documentation-only publishing | Completed                                       |
+| [#37](https://github.com/HimanshuHD/papertrail-reader/issues/37) | Web           | Browser E2E foundation and selection smoke tests                      | Completed                                       |
+| [#39](https://github.com/HimanshuHD/papertrail-reader/issues/39) | Web           | Improve closed-preview page and link deployed branch in footer        | Completed                                       |
+| [#42](https://github.com/HimanshuHD/papertrail-reader/issues/42) | Web           | Reader shell components and responsive layout                         | Completed                                       |
+| [#43](https://github.com/HimanshuHD/papertrail-reader/issues/43) | Web           | Shell keyboard navigation and status-state presentation               | Completed                                       |
+| [#44](https://github.com/HimanshuHD/papertrail-reader/issues/44) | Web           | Reconcile publishing when GitHub cancels a queued deployment          | Deferred — Roadmap 2 (after v1.0.0)             |
+| [#46](https://github.com/HimanshuHD/papertrail-reader/issues/46) | Web           | Replace appearance dropdown with light/dark icon toggle               | Completed                                       |
+| [#47](https://github.com/HimanshuHD/papertrail-reader/issues/47) | Web           | Display initial application version in production footer              | Completed                                       |
+| [#49](https://github.com/HimanshuHD/papertrail-reader/issues/49) | Web           | Preserve responsive home page and add Go to app navigation            | Completed                                       |
+| [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web           | Restore fast automatic CI; browser tests explicit only                | Completed                                       |
+| [#82](https://github.com/HimanshuHD/papertrail-reader/issues/82) | Web           | Reader empty-state and library UI polish                              | Completed                                       |
 
 ## Current application
 
@@ -189,3 +189,11 @@ The opener uses a left-aligned tooltip below its button, preserving its accessib
 PDF titles are read locally from XMP dc:title with document-info Title fallback, normalized for whitespace/control characters; empty/Untitled/Unknown values use the filename. Metadata enrichment runs sequentially after the discovered file list is published, never measures/renders pages and releases PDF.js loading tasks. Source changes/unmount abort background work and discard late results. EPUB titles are not parsed. New checks cover metadata fallback/cleanup, cancellation ownership, real titled PDFs, viewport-safe opener tooltips and fixed library header at short heights. Draft/fast/browser evidence is pending; preview review and merge remain before closure.
 
 #84 validation: PR #96 head 501ed6a4bfe8b46480838d4e9d0e5e4fd1a59654 passed Frontend CI [37035717706](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37035717706) (76 unit tests, 6 pipeline tests, lint, formatting, types and build) and Browser E2E [37035868237](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37035868237) (66 passed without retries; four intentional duplicate long-document skips). Embedded title/fallback labels, hover and real keyboard tooltip bounds passed at 320/375/768/1024/1440 widths; independent library scrolling/header geometry and existing PDF regressions passed. First browser run 37035363007 failed only the new tooltip test's programmatic-focus setup; corrected tests exercise real hover and Shift+Tab/Tab without weakening bounds assertions. PR #96 is ready for review. No automatic PR publisher ran. Owner preview acceptance remains: Publish website on main with pr_number 96, then review and merge. #84/#79/#1 remain open; #85 is next after this increment is accepted/merged.
+
+## #85 centered loading feedback
+
+A shared LoadingState card fills the available library/PDF region and centers its document icon, soft halo, orbit indicator and concise text. Library messages rotate every 2.5 seconds (“Loading your documents…”, “Thanks for your patience”, “Almost there”). They are decorative/aria-hidden; discovery's live status remains outside the busy list region. Library header controls stay usable and Cancel scan remains in the loading card.
+
+Successful fast discovery keeps library feedback visible for a minimum of three seconds from scan start. Slow scans get no extra three-second delay. Cancellation immediately leaves the busy state and clears the pending delay; new sources/unmount abort old waits. Errors are shown immediately. Partial/completed discovery results can remain available after cancellation. Metadata enrichment begins once successful discovery feedback finishes. PDF opening uses the same centered design with a static document filename and no artificial minimum duration. Reduced-motion preferences disable loader animations; message intervals are cleared on unmount.
+
+Focused timing/lifecycle tests passed locally. Fresh CI/browser/screenshot evidence is pending; #85 stays open for preview acceptance/merge. Workflow triggers remain unchanged and preview deployment stays manual.

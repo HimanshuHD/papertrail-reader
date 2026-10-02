@@ -77,3 +77,7 @@ PR #77 merged as b41d3799bd41f278b50e1a39435dc41e7e9b41bc. Main Frontend CI 3700
 - Production publisher: [37033885573](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37033885573), succeeded. Publisher workflow SHA 213be458 is the later tracker commit; deployment.json correctly records application source c191353 and CI 37033803318.
 - pages-state/deployment.json marks preview #90 retired.
 - Pre-merge Browser E2E 37032676748 passed 61 checks. Verification here is workflow/source metadata, not a fresh live UI audit.
+
+## PR #96 merge verification — 2 October 2026
+
+Main CI [37036588000](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37036588000), reconciliation [37036588403](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37036588403) and production publisher [37036656072](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37036656072) succeeded. Production metadata identifies a35e2c5af7dbd0b04dc8e29a5d13854af7a90274 and CI 37036588000; preview #96 is retired. Publisher source efa1925 is the later tracking commit, not the application source recorded by deployment.json. #84 is closed completed. Pre-merge Browser E2E 37035868237 passed 66 checks. This is workflow/source metadata verification, not a new interactive live audit.
