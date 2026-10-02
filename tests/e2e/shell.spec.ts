@@ -282,12 +282,12 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
     'false',
   )
 
+  await page.getByRole('button', { name: 'Show library' }).click()
   await fileInput.setInputFiles({
     name: 'broken.pdf',
     mimeType: 'application/pdf',
     buffer: Buffer.from('not a valid PDF'),
   })
-  await page.getByRole('button', { name: 'Show library' }).click()
   await localLibrary.getByRole('button', { name: /broken\.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('alert')).toContainText('This file is not a valid or supported PDF.')
