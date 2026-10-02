@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
+import LibraryTree from './LibraryTree.vue'
 import UiIcon from '../UiIcon.vue'
 import type {
   BrowserLibrarySelection,
