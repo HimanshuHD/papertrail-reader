@@ -802,6 +802,7 @@ test('library and document loaders are centered, responsive and respect reduced 
         }),
       )
       .toBeLessThan(3)
+    await expect(library.locator('.loading-view')).toHaveCSS('opacity', '1')
     await capture(page, info, 'library-centered-loading')
     await expect(libraryCard).toContainText('Thanks for your patience')
     await page.evaluate(() =>
@@ -828,6 +829,7 @@ test('library and document loaders are centered, responsive and respect reduced 
     }
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await expect(pdfCard.locator('.loading-orbit')).toHaveCSS('animation-name', 'none')
+    await expect(pane.locator('.loading-view')).toHaveCSS('opacity', '1')
     await capture(page, info, 'pdf-centered-opening')
     releaseWorker()
     await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
