@@ -261,12 +261,14 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await localLibrary.getByRole('button', { name: /reader\.pdf/ }).click()
 
   await expect(page.locator('#reader-title')).toHaveText('reader.pdf')
-  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
+  await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
+  await page.getByLabel('Rendered PDF page 1').scrollIntoViewIfNeeded()
   await expect(page.getByLabel('Rendered PDF page 1')).toBeVisible()
   await expect(page.getByLabel('Selectable text for PDF page 1')).toContainText('First page')
 
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText(/Page 2 of 2/)).toBeVisible()
+  await page.getByRole('button', { name: 'Next', exact: true }).click()
+  await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
+  await page.getByLabel('Rendered PDF page 2').scrollIntoViewIfNeeded()
   await expect(page.getByLabel('Rendered PDF page 2')).toBeVisible()
   await expect(page.getByLabel('Selectable text for PDF page 2')).toContainText('Second page')
 
@@ -297,7 +299,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   })
   await localLibrary.getByRole('button', { name: /searchable\.pdf/ }).click()
   await expect(page.locator('#reader-title')).toHaveText('searchable.pdf')
-  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
+  await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
 
   await page.keyboard.press('Control+f')
   const searchInput = page.getByRole('searchbox', { name: 'Search PDF text' })
@@ -308,7 +310,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   await expect(searchPanel.getByRole('status')).toContainText('1 match across searchable text.')
   await expect(page.getByRole('button', { name: /Page 2.*Second page/ })).toBeVisible()
   await page.getByRole('button', { name: /Page 2.*Second page/ }).click()
-  await expect(page.getByText(/Page 2 of 2/)).toBeVisible()
+  await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
 
   await searchInput.focus()
   await page.keyboard.type('c')
@@ -325,7 +327,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   await page.getByRole('button', { name: 'Close' }).click()
 
   await page.keyboard.press('ArrowLeft')
-  await expect(page.getByText(/Page 1 of 2/)).toBeVisible()
+  await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
 
   await page.getByRole('button', { name: 'Fullscreen', exact: true }).click()
   await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true)

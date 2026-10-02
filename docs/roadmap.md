@@ -1,6 +1,6 @@
 # PaperTrail web-first roadmap
 
-Revision 3 - 2 October 2026. Decision: #30. Parent: #1. Supersedes the desktop-first plan.
+Revision 4 - 2 October 2026. Current release: PDF-only; EPUB follows in the next version. Decision: #30. Parent: #1. Supersedes the desktop-first plan.
 
 [Complete PDF](PaperTrail-Web-First-Roadmap.pdf)
 
@@ -12,7 +12,7 @@ Browser selection is a permission boundary, not unrestricted hard-drive access. 
 
 Saved metadata does not guarantee future file access. Reuse persisted handles only where supported and after checking permissions; otherwise restore reading state once the user reselects matching files. Do not store full documents by default.
 
-P0: folder/file selection, incremental indexing, tree, single reader, loading/error/empty states, PDF page navigation/progress/zoom/fit/scroll, EPUB chapters/contents/font controls.
+P0: folder/file selection, incremental indexing, tree, single reader, loading/error/empty states, PDF page navigation/progress/zoom/fit/scroll/search/contents. EPUB chapters/contents/font controls are deferred to the next version.
 
 P1: positions, bookmarks, search, text selection, outlines, fullscreen, keyboard controls and themes.
 
@@ -52,18 +52,18 @@ Dependencies: #8 follows #3/#6; #24 follows #8; #25 follows #24/#7. #9 is comple
 ## 4. Milestones M3-M5
 
 M3 - PDF reader (#10, #11)
-#10 is completed with PDF.js worker assets, lazy pages/text layer, current/total pages, jump/slider, continuous scrolling, zoom/fit and resource cleanup. #11 is active for outlines/contents, text search, selection guidance, fullscreen and keyboard shortcuts.
+#10 is completed with PDF.js worker assets, lazy pages/text layer, current/total pages, jump/slider, continuous scrolling, zoom/fit and resource cleanup. #11 outlines/contents, text search, selection guidance, fullscreen and shortcuts are merged in PR #60. #61 verifies browser acceptance; #62–#64 refine PDF UI.
 Exit: navigation stays synchronized; obsolete render tasks cancel; password/corrupt files recover; text search limitation for scanned pages is explicit; resources released.
 
-M4 - EPUB reader (#12)
+M4 - EPUB reader (#12) — deferred to next version
 Integrate epub.js behind the reader contract. Add chapters/contents, fonts, reading themes and CFI progress. Restrict scripts/remote resources and handle malformed archives.
 Exit: reading position survives font/window changes; location generation does not freeze UI; contents navigation works.
 
 M5 - Productivity (#13, #14, #15)
-For 0.1 ship IndexedDB reading positions/bookmarks #13. Match reselected files before restoration; handle cleared storage and unavailable permissions. Follow with recents/library search #14 and annotations/statistics #15.
+For the PDF release ship IndexedDB PDF reading positions/bookmarks #13. Match reselected files before restoration; handle cleared storage and unavailable permissions. Follow with recents/library search #14 and annotations/statistics #15.
 Exit: bookmarks and positions restore after reopening/reselection; migrations and ambiguous identity are tested. Library search is distinguished from document search. Annotation selectors and migration behavior are tested before notes ship.
 
-Dependencies: #10 follows #7/#9; #11 follows #10; #12 follows #7/#9; #13 follows #9/#10/#12. M5 expansion must not silently become a first-release blocker.
+Dependencies: #10 follows #7/#9; #11 follows #10; #12 follows #7/#9; #13 PDF persistence follows #9/#10; EPUB persistence follows #12 in the next version. M5 expansion must not silently become a first-release blocker.
 
 ## 5. Milestones M6-M7 and desktop later
 
@@ -94,15 +94,15 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #59: M0-M2 and #10 PDF core are completed. #11 is active for PDF search/contents/fullscreen/shortcuts on `feat/11-pdf-search-contents-shortcuts`; #12 follows for EPUB. Tauri remains deferred.
+Current after merged PR #60: M0–M3 implementation is complete. #61 verifies PDF browser acceptance; #62 → #63 → #64 refines PDF UX, then PDF persistence #13. EPUB #12 is deferred to the next version. Tauri remains deferred.
 
 ## 7. Release acceptance and sources
 
-Web 0.1 checklist
+Current PDF release checklist
 
 - Explicit folder or file selection yields the correct supported-document list/tree.
 - Folder capability fallback and permission/dismissal states work.
-- PDF navigation/progress/zoom and EPUB chapters/CFI/font controls work.
+- PDF navigation/progress/zoom/search/contents work. EPUB chapters/CFI/font controls are next-version acceptance.
 - Search/contents and basic accessibility are verified.
 - Positions/bookmarks restore after permission checks or file reselection.
 - Corrupt, password, missing and unsupported files have recoverable states.
@@ -166,14 +166,22 @@ CI runs on every PR update; previews publish manually at review checkpoints. Mai
 
 ## Frontend tooling increment (#22)
 
-ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E #37 is completed with explicit Chromium evidence. Parent #5 is completed. Foundation #6, layout/home entry #42/#49, focus/status #43, source selection #8, discovery #24 and library tree/refresh #25 are completed. Parent #9 is complete; #10 is next.
+ESLint, Prettier, Vitest/Vue Test Utils and type-checked component tests join the single frontend workflow. Preserve Node deployment tests. Browser E2E #37 is completed with explicit Chromium evidence. Parent #5 is completed. Foundation #6, layout/home entry #42/#49, focus/status #43, source selection #8, discovery #24 and library tree/refresh #25 are completed. Parent #9 and PDF #10/#11 are complete; follow-ups #61–#64 are next.
 
 ## Current milestone snapshot after PR #50
 
-Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 and M1 parent #7 are completed. M2 #8/#9/#24/#25 is completed; M3 starts with #10 PDF.js reader/navigation/zoom. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
+Engineering/bootstrap #2/#3/#21/#22/#30, deployment foundation #31/#35/#39, theme/routing foundation #6/#46, initial version footer #47 and responsive shell/home entry #42/#49 are completed. M0 parent #5 and M1 parent #7 are completed. M2 #8/#9/#24/#25 is completed; M3 #10/#11 are merged; PDF acceptance/UI follow-ups #61–#64 remain. #26/#19 remain partial: release promotion #32, queue reconciliation #44, PDF worker delivery and supported-browser release acceptance are still open.
 
 Version 0.1.0 records the initial foundation; the existing PDF is a planning snapshot. This Markdown roadmap and live issues carry current completion status. See [progress.md](progress.md), [browser-testing.md](browser-testing.md) and [branch-maintenance.md](branch-maintenance.md). Tauri remains deferred.
 
 ## Automatic CI policy (#52)
 
 Browser/OS installation and Playwright execution no longer run on each PR/main build. Ordinary checks/build remain automatic. Use the retained browser suite explicitly at review milestones. The Browser E2E workflow runs only by manual dispatch or when a draft PR is marked Ready for review. Run 36924070741 is recorded acceptance evidence for focus, selection and discovery; automatic CI remains browser-free.
+
+## PDF UI increment and revised release scope
+
+Current release excludes EPUB #12; defer EPUB engine and CFI acceptance to the next version. PDF-only saved pages/bookmarks #13, reliability #16, delivery #26/#32/#44 and browser acceptance #28 remain release work.
+
+Implement #62 viewport sizing/independent scrolling, then #63 compact library controls, then #64 right Contents/Search panel, icon toolbar and closable search/help popovers. #61 owns the current verification and post-#60 reconciliation. Keep unknown viewer bugs pending reproducible reports.
+
+PR lifecycle: create draft → resolve lint/format/unit/type/build errors → mark Ready for review once → explicit Browser E2E → review/merge. Ordinary frontend CI stays browser-free. The PDF roadmap document remains a historical planning snapshot; this Markdown and live issues carry the revised scope.
