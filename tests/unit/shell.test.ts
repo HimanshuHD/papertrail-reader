@@ -11,9 +11,10 @@ const pdfSessionMocks = vi.hoisted(() => ({
   searchText: vi.fn(),
 }))
 
-vi.mock('../../src/features/pdf/pdf-session', () => {
+vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
   class PdfOpenError extends Error {}
   return {
+    ...(await importOriginal<typeof import('../../src/features/pdf/pdf-session')>()),
     PdfOpenError,
     openPdfDocument: pdfSessionMocks.open,
   }
