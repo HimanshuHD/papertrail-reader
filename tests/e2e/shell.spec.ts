@@ -906,7 +906,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
 
   // Sample immediately after state changes, without timing-sensitive sleeps.
   const motion = await contents.evaluate(async (button) => {
-    button.click()
+    ;(button as HTMLButtonElement).click()
     await Promise.resolve()
     const panel = document.querySelector<HTMLElement>('.pdf-side-panel')!
     const entering = panel.classList.contains('utility-panel-enter-active')
@@ -925,7 +925,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
 
   const search = page.getByRole('button', { name: 'Search PDF', exact: true })
   const popoverDuration = await search.evaluate(async (button) => {
-    button.click()
+    ;(button as HTMLButtonElement).click()
     await Promise.resolve()
     return getComputedStyle(document.querySelector('[aria-label="PDF search"]')!).transitionDuration
   })
