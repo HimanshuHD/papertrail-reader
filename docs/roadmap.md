@@ -52,7 +52,7 @@ Dependencies: #8 follows #3/#6; #24 follows #8; #25 follows #24/#7. #9 is comple
 ## 4. Milestones M3-M5
 
 M3 - PDF reader (#10, #11)
-Integrate PDF.js with worker assets, lazy pages and text layer. Add current/total pages, page jump/slider, continuous scrolling, zoom and fit modes. Add outlines, text search, selection and shortcuts.
+#10 is completed with PDF.js worker assets, lazy pages/text layer, current/total pages, jump/slider, continuous scrolling, zoom/fit and resource cleanup. #11 is active for outlines/contents, text search, selection guidance, fullscreen and keyboard shortcuts.
 Exit: navigation stays synchronized; obsolete render tasks cancel; password/corrupt files recover; text search limitation for scanned pages is explicit; resources released.
 
 M4 - EPUB reader (#12)
@@ -94,7 +94,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #7 -> #42/#43/#49; #26 -> #31/#32/#
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Current after merged PR #58: M0 #5, M1 #7 and M2 #8/#9 are completed. #10 is implemented in PR #59 with bundled PDF.js worker/session lifetime, lazy continuous page rendering, selectable text layers, synchronized page navigation/progress, zoom/fit, obsolete-render cancellation and recoverable malformed/password-required states. Final CI/browser acceptance remains before merge; #11 follows for PDF search/contents/shortcuts. Tauri remains deferred.
+Current after merged PR #59: M0-M2 and #10 PDF core are completed. #11 is active for PDF search/contents/fullscreen/shortcuts on `feat/11-pdf-search-contents-shortcuts`; #12 follows for EPUB. Tauri remains deferred.
 
 ## 7. Release acceptance and sources
 

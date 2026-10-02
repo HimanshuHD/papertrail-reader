@@ -18,6 +18,24 @@ export interface PdfRenderResult {
   height: number
 }
 
+export interface PdfOutlineItem {
+  title: string
+  pageNumber: number | null
+  children: readonly PdfOutlineItem[]
+}
+
+export interface PdfSearchMatch {
+  pageNumber: number
+  excerpt: string
+  occurrence: number
+}
+
+export interface PdfSearchResult {
+  matches: readonly PdfSearchMatch[]
+  textPageCount: number
+  truncated: boolean
+}
+
 export type PdfOpenErrorCode = 'password-required' | 'invalid' | 'missing' | 'unknown'
 
 export class PdfOpenError extends Error {
@@ -149,6 +167,116 @@ export class PdfDocumentSession {
     return this.document.getPage(pageNumber)
   }
 
+  private async resolveDestinationPage(
+    destination: string | unknown[] | null | undefined,
+  ): Promise<number | null> {
+    if (!destination) return null
+
+    try {
+      const resolved =
+        typeof destination === 'string'
+          ? await this.document.getDestination(destination)
+          : destination
+      if (!resolved?.length) return null
+
+      const target = resolved[0]
+      if (typeof target === 'number') return target + 1
+      if (target && typeof target === 'object') {
+        return (
+          (await this.document.getPageIndex(
+            target as Parameters<PDFDocumentProxy['getPageIndex']>[0],
+          )) + 1
+        )
+      }
+    } catch {
+      return null
+    }
+
+    return null
+  }
+
+  async getOutline(): Promise<readonly PdfOutlineItem[]> {
+    if (this.closed) throw new Error('PDF session is closed.')
+    const outline = await this.document.getOutline()
+    if (!outline) return []
+
+    const convert = async (
+      items: Awaited<ReturnType<PDFDocumentProxy['getOutline']>>,
+    ): Promise<readonly PdfOutlineItem[]> => {
+      if (!items) return []
+
+      return Promise.all(
+        items.map(async (item) => ({
+          title: item.title || 'Untitled section',
+          pageNumber: await this.resolveDestinationPage(item.dest),
+          children: await convert(item.items),
+        })),
+      )
+    }
+
+    return convert(outline)
+  }
+
+  async searchText(
+    query: string,
+    options: { signal?: AbortSignal; maxMatches?: number } = {},
+  ): Promise<PdfSearchResult> {
+    if (this.closed) throw new Error('PDF session is closed.')
+
+    const needle = query.trim().toLocaleLowerCase()
+    if (!needle) return { matches: [], textPageCount: 0, truncated: false }
+
+    const maxMatches = Math.max(1, options.maxMatches ?? 200)
+    const matches: PdfSearchMatch[] = []
+    let textPageCount = 0
+    let truncated = false
+
+    for (let pageNumber = 1; pageNumber <= this.totalPages; pageNumber += 1) {
+      if (options.signal?.aborted) throw new DOMException('Search cancelled.', 'AbortError')
+
+      const page = await this.getPage(pageNumber)
+      const content = await page.getTextContent()
+      const text = content.items
+        .map((item) => ('str' in item ? item.str : ''))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+
+      if (!text) continue
+      textPageCount += 1
+
+      const haystack = text.toLocaleLowerCase()
+      let offset = 0
+      let occurrence = 0
+
+      while (offset <= haystack.length - needle.length) {
+        const index = haystack.indexOf(needle, offset)
+        if (index < 0) break
+
+        occurrence += 1
+        const excerptStart = Math.max(0, index - 55)
+        const excerptEnd = Math.min(text.length, index + needle.length + 75)
+        const prefix = excerptStart > 0 ? '…' : ''
+        const suffix = excerptEnd < text.length ? '…' : ''
+
+        matches.push({
+          pageNumber,
+          occurrence,
+          excerpt: `${prefix}${text.slice(excerptStart, excerptEnd)}${suffix}`,
+        })
+
+        if (matches.length >= maxMatches) {
+          truncated = true
+          return { matches, textPageCount, truncated }
+        }
+
+        offset = index + Math.max(needle.length, 1)
+      }
+    }
+
+    return { matches, textPageCount, truncated }
+  }
+
   async render(request: PdfRenderRequest): Promise<PdfRenderResult> {
     await this.cancelRender(request.canvas)
     const page = await this.getPage(request.pageNumber)
@@ -177,6 +305,7 @@ export class PdfDocumentSession {
       request.textLayer.style.width = `${Math.floor(viewport.width)}px`
       request.textLayer.style.height = `${Math.floor(viewport.height)}px`
       request.textLayer.style.setProperty('--scale-factor', String(viewport.scale))
+      request.textLayer.style.setProperty('--total-scale-factor', String(viewport.scale))
     }
 
     const transform = outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0]
@@ -194,8 +323,9 @@ export class PdfDocumentSession {
       active.renderTask = null
 
       if (request.textLayer) {
+        const textContent = await page.getTextContent()
         const textLayer = new this.pdfjs.TextLayer({
-          textContentSource: page.streamTextContent(),
+          textContentSource: textContent,
           container: request.textLayer,
           viewport,
         })

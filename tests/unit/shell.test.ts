@@ -7,6 +7,8 @@ const pdfSessionMocks = vi.hoisted(() => ({
   open: vi.fn(),
   render: vi.fn(),
   close: vi.fn(),
+  getOutline: vi.fn(),
+  searchText: vi.fn(),
 }))
 
 vi.mock('../../src/features/pdf/pdf-session', () => {
@@ -24,10 +26,30 @@ import { createAppRouter } from '../../src/router'
 beforeEach(() => {
   vi.clearAllMocks()
   pdfSessionMocks.render.mockResolvedValue({ scale: 1.25, width: 765, height: 990 })
+  pdfSessionMocks.getOutline.mockResolvedValue([
+    {
+      title: 'Chapter one',
+      pageNumber: 2,
+      children: [],
+    },
+  ])
+  pdfSessionMocks.searchText.mockResolvedValue({
+    matches: [
+      {
+        pageNumber: 2,
+        occurrence: 1,
+        excerpt: 'PaperTrail searchable text',
+      },
+    ],
+    textPageCount: 3,
+    truncated: false,
+  })
   pdfSessionMocks.open.mockImplementation(async () => ({
     totalPages: 3,
     render: pdfSessionMocks.render,
     close: pdfSessionMocks.close,
+    getOutline: pdfSessionMocks.getOutline,
+    searchText: pdfSessionMocks.searchText,
   }))
 })
 
@@ -231,6 +253,53 @@ describe('home and product shell', () => {
     const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
     await reselect.trigger('click')
     expect(click).toHaveBeenCalledOnce()
+    wrapper.unmount()
+  })
+
+  it('supports PDF contents, search and keyboard help without hijacking text inputs', async () => {
+    const { wrapper } = await mountApp('/app')
+    const fileInput = wrapper.get('input[accept*=".pdf"]')
+    const file = new File(['pdf'], 'guide.pdf', { type: 'application/pdf' })
+
+    inputFiles(fileInput.element, [file])
+    await fileInput.trigger('change')
+    await flushPromises()
+
+    const localLibrary = wrapper.get('section[aria-labelledby="local-library-title"]')
+    const guide = localLibrary
+      .findAll('button')
+      .find((button) => button.text().includes('guide.pdf'))!
+    await guide.trigger('click')
+    await flushPromises()
+
+    const contents = wrapper.findAll('button').find((button) => button.text() === 'Contents')!
+    await contents.trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Chapter one')
+
+    await wrapper.trigger('keydown', { key: '/' })
+    await flushPromises()
+    const searchInput = wrapper.get('input[aria-label="Search PDF text"]')
+    expect(document.activeElement).toBe(searchInput.element)
+    await searchInput.setValue('PaperTrail')
+    await wrapper.get('form[role="search"]').trigger('submit')
+    await flushPromises()
+
+    expect(pdfSessionMocks.searchText).toHaveBeenCalledWith(
+      'PaperTrail',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(wrapper.text()).toContain('1 match across searchable text.')
+    expect(wrapper.text()).toContain('PaperTrail searchable text')
+
+    await searchInput.trigger('keydown', { key: 'c' })
+    expect(wrapper.find('#pdf-contents-title').exists()).toBe(false)
+
+    await searchInput.trigger('keydown', { key: 'Escape' })
+    await wrapper.trigger('keydown', { key: '?' })
+    await flushPromises()
+    expect(wrapper.text()).toContain('Keyboard help')
+    expect(wrapper.text()).toContain('Select text from text-based PDFs')
     wrapper.unmount()
   })
 
