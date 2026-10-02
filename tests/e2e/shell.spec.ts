@@ -1062,6 +1062,33 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
         }),
       )
       .toBeLessThan(2)
+    // Check painted canvas ink independently of the selectable DOM text.
+    // The fixture's second "needle" starts at PDF coordinates (72, 160).
+    await expect
+      .poll(() =>
+        highlight.evaluate((el) => {
+          const canvas = document.querySelector<HTMLCanvasElement>('#pdf-page-2 canvas')!
+          const bounds = canvas.getBoundingClientRect(),
+            box = el.getBoundingClientRect()
+          const scale = bounds.width / 612
+          const left = Math.floor((72 * canvas.width) / 612)
+          const top = Math.floor(((792 - 165) * canvas.height) / 792)
+          const width = Math.max(1, Math.ceil((18 * canvas.width) / 612))
+          const height = Math.max(1, Math.ceil((6 * canvas.height) / 792))
+          const pixels = canvas.getContext('2d')!.getImageData(left, top, width, height).data
+          let ink = 0
+          for (let i = 0; i < pixels.length; i += 4) {
+            if (pixels[i]! < 200 && pixels[i + 1]! < 200 && pixels[i + 2]! < 200) ink++
+          }
+          return (
+            ink > 0 &&
+            Math.abs(box.left - bounds.left - 72 * scale) < 2 &&
+            box.top <= bounds.top + (792 - 160) * scale &&
+            box.bottom >= bounds.top + (792 - 164) * scale
+          )
+        }),
+      )
+      .toBe(true)
     const h = (await highlight.boundingBox())!,
       pane = (await page.locator('.pdf-scroll').boundingBox())!
     expect(h.y).toBeGreaterThanOrEqual(pane.y - 1)
@@ -1086,6 +1113,7 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await expect
     .poll(() => page.locator('#pdf-page-2 .pdf-match.selected').count())
     .toBeGreaterThanOrEqual(2)
+  await expect(page.getByRole('search')).toHaveCount(0)
   await capture(page, info, 'wrapped-search-occurrence-dark')
   await noOverflow(page)
 })

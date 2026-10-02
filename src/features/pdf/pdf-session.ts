@@ -337,6 +337,8 @@ export class PdfDocumentSession {
       request.textLayer.replaceChildren()
       request.textLayer.style.width = `${Math.floor(viewport.width)}px`
       request.textLayer.style.height = `${Math.floor(viewport.height)}px`
+      request.textLayer.style.setProperty('--scale-round-x', '1px')
+      request.textLayer.style.setProperty('--scale-round-y', '1px')
       request.textLayer.style.setProperty('--scale-factor', String(viewport.scale))
       request.textLayer.style.setProperty('--total-scale-factor', String(viewport.scale))
     }

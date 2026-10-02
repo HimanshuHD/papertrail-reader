@@ -45,7 +45,7 @@ function updateHighlights() {
   const layer = textLayer.value
   const element = root.value
   if (!layer || !element || !rendered.value || rendering.value || !props.searchQuery) return
-  const origin = layer.getBoundingClientRect()
+  const origin = canvas.value?.getBoundingClientRect() ?? layer.getBoundingClientRect()
   const highlights: typeof highlightRects.value = []
   let selectedRect: DOMRect | null = null
   for (const { range, occurrence } of textLayerMatchRanges(layer, props.searchQuery)) {
@@ -159,6 +159,7 @@ async function renderPage() {
     currentCanvas.height = pendingCanvas.height
     context.drawImage(pendingCanvas, 0, 0)
     currentTextLayer.style.cssText = pendingText.style.cssText
+    currentTextLayer.dataset.mainRotation = pendingText.dataset.mainRotation ?? '0'
     currentTextLayer.replaceChildren(...pendingText.childNodes)
     rendered.value = true
     previewed.value = false
@@ -387,13 +388,22 @@ onBeforeUnmount(() => {
   background: rgb(251 146 60 / 55%);
   outline: 1px solid #b45309;
 }
+/* PDF.js text-layer layout contract (Mozilla Foundation, Apache-2.0):
+   https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.css */
 .textLayer {
   z-index: 2;
+  color-scheme: only light;
+  text-align: initial;
   line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
   text-size-adjust: none;
+  forced-color-adjust: none;
   transform-origin: 0 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
-
 .textLayer :deep(span),
 .textLayer :deep(br) {
   position: absolute;
@@ -401,16 +411,30 @@ onBeforeUnmount(() => {
   white-space: pre;
   cursor: text;
   transform-origin: 0 0;
+  user-select: text;
 }
-
+.textLayer :deep(> :not(.markedContent)),
+.textLayer :deep(.markedContent span:not(.markedContent)) {
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
 .textLayer :deep(span::selection) {
   background: Highlight;
   color: transparent;
 }
-
 .textLayer :deep(.markedContent) {
-  position: absolute;
-  top: 0;
-  left: 0;
+  display: contents;
+}
+.textLayer[data-main-rotation='90'] {
+  transform: rotate(90deg) translateY(-100%);
+}
+.textLayer[data-main-rotation='180'] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+.textLayer[data-main-rotation='270'] {
+  transform: rotate(270deg) translateX(-100%);
 }
 </style>
