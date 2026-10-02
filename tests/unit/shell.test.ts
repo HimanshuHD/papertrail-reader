@@ -479,14 +479,12 @@ it('allows cancellation during the minimum loading display without waiting three
 })
 
 it('publishes access problems immediately rather than hiding them behind the minimum delay', async () => {
-  const discover = vi
-    .spyOn(discovery, 'discoverDocuments')
-    .mockResolvedValue({
-      status: 'completed',
-      documents: [],
-      problems: [{ path: 'locked.pdf', code: 'read-failed', message: 'Unavailable' }],
-      scanned: 1,
-    })
+  const discover = vi.spyOn(discovery, 'discoverDocuments').mockResolvedValue({
+    status: 'completed',
+    documents: [],
+    problems: [{ path: 'locked.pdf', code: 'read-failed', message: 'Unavailable' }],
+    scanned: 1,
+  })
   const { wrapper } = await mountApp('/app')
   try {
     const input = wrapper.get('input[accept*=".pdf"]')
