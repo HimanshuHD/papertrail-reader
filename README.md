@@ -12,7 +12,7 @@ PaperTrail is a local-first PDF reader that runs in your browser, built with Vue
 - Fullscreen reading, keyboard shortcuts and accessible loading/error states.
 - Local document processing; files are not sent to a server.
 
-The PDF utility and library refinements are complete. The first major release v1.0.0 now follows a bug-fix and release-validation pass in #79/#80. The current deployed version stays 0.1.0 until release preparation.
+First-release PDF fixes are implemented and merged. Version 1.0.0 is being prepared under #80 after final #79 regression acceptance. Production remains 0.1.0 until the reviewed release PR merges and publishes. [Release records](docs/releases/README.md) track successive versions and validation.
 
 ## Run and verify
 
