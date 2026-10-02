@@ -22,3 +22,7 @@ Add new documentation here and update this index. Live issues and docs/progress.
 [Browser validation](browser-testing.md) covers the Playwright matrix, explicit browser checks and historical screenshot/report evidence (#37).
 
 [Branch maintenance](branch-maintenance.md) records verified stale work branches and the retained main/pages-state infrastructure.
+
+## Current release planning
+
+[Roadmap](roadmap.md) separates first release (#1, bug gate #79, release gate #80) from post-release Roadmap 2 (#78). [First-release bug tracking](first-release-bugs.md) defines intake and linked child evidence. The existing roadmap PDF is historical; Markdown and live issues carry the revised plan.
