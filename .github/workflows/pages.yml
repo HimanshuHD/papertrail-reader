@@ -38,7 +38,7 @@ jobs:
         with:
           script: |
             const { owner, repo } = context.repo;
-            const { previewDecision } = await import(require('node:url').pathToFileURL(process.cwd() + '/scripts/deploy-policy.mjs').href);
+            const { previewDecision, eligibleMainBuild } = await import(require('node:url').pathToFileURL(process.cwd() + '/scripts/deploy-policy.mjs').href);
             const manual = context.eventName === 'workflow_dispatch';
             const requested = context.payload.inputs?.pr_number?.trim() || '';
             let run = context.payload.workflow_run, selectedPR;
@@ -63,7 +63,8 @@ jobs:
               prNumber=fresh.number;
             } else {
               const main=(await github.rest.repos.getBranch({owner,repo,branch:'main'})).data;
-              if (run.head_branch!=='main' || run.head_sha!==main.commit.sha) { skip('Build is not the current main commit'); return; }
+              const comparison=run.head_sha===main.commit.sha ? null : (await github.rest.repos.compareCommits({owner,repo,base:run.head_sha,head:main.commit.sha})).data;
+              if (run.head_branch!=='main' || !eligibleMainBuild({buildSha:run.head_sha,mainSha:main.commit.sha,status:comparison?.status,files:comparison?.files})) { skip('Main build is superseded by website changes or cannot be verified'); return; }
             }
             core.setOutput('kind',kind);
             core.setOutput('pr',prNumber);

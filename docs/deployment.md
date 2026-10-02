@@ -53,3 +53,5 @@ package.json is the version source of truth. Vite embeds it at build time; produ
 Publisher starts only manually or after main-branch Frontend CI completion. Automatic publication requires successful push CI and the current main SHA; feature-branch PR builds do not wake it. CI no longer subscribes to PR closure. A failed main build can produce a skipped publisher entry; docs-only main builds verify identity and summarize their skip without deploying.
 
 Each actual publication checks active previews and retires closed PRs. A closed-without-merge preview can remain live until the next publication; docs-only skipped publication does not retire previews. Every started publish job records a clear outcome; successful deployments include URLs, source SHA, PR and build run. Manual republish supports recovery even when generated state is unchanged. See [workflow-audit.md](workflow-audit.md).
+
+Main artifact freshness permits documentation-only descendants such as merge-tracker commits, so tracker updates cannot suppress a valid website merge deployment. Newer website changes, divergent history or a truncated comparison reject the older artifact.

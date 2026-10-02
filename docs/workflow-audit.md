@@ -20,3 +20,5 @@ Published active previews are checked against live PR state at each actual publi
 Manual artifact selection preserves same-repository/open-PR/current-head checks, artifact SHA/run identity and pinned actions. Automatic stale main builds skip. Every started publisher job summarizes deployed/skipped/failed status; deployed summaries include URLs, source SHA, PR and selected CI. Explicit republishing still uploads/deploys unchanged assembled state so it can recover a previous Pages failure after pages-state was committed. Durable queue recovery remains #44.
 
 Post-merge verification: PR fix CI creates no publisher; merge creates main CI then production publisher; manual PR preview publishes latest green head; closed previews retire on publication; docs-only main changes explain the skip. PRs remain draft until fast CI passes. Browser acceptance stays manual or ready-for-review.
+
+Main artifact freshness permits documentation-only descendants such as merge-tracker commits, so tracker updates cannot suppress a valid website merge deployment. Newer website changes, divergent history or a truncated comparison reject the older artifact.

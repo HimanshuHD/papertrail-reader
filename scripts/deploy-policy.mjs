@@ -16,3 +16,17 @@ export function previewDecision({ manual, state, currentSha, buildSha, sameRepo,
   if (state !== 'open') return 'retire'
   return manual ? 'preview' : 'skip'
 }
+
+export function eligibleMainBuild({ buildSha, mainSha, status, files = [] }) {
+  return (
+    buildSha === mainSha ||
+    (status === 'ahead' &&
+      files.length < 300 &&
+      !affectsWebsite(
+        files.flatMap((file) => [
+          file.filename,
+          ...(file.previous_filename ? [file.previous_filename] : []),
+        ]),
+      ))
+  )
+}
