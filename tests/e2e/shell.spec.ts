@@ -516,13 +516,11 @@ test('PDF geometry and canvas stay stable after large scroll jumps and panel res
   page,
 }, info) => {
   await page.goto('./#/app')
-  await page
-    .locator('input[accept*=".pdf"]')
-    .setInputFiles({
-      name: 'scroll-regression.pdf',
-      mimeType: 'application/pdf',
-      buffer: createPdfFixture(8),
-    })
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'scroll-regression.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(8),
+  })
   await page.getByRole('button', { name: /scroll-regression.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })

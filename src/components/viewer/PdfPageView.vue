@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import { resolvePdfScale, type PdfDocumentSession, type PdfFitMode } from '../../features/pdf/pdf-session'
+import {
+  resolvePdfScale,
+  type PdfDocumentSession,
+  type PdfFitMode,
+} from '../../features/pdf/pdf-session'
 
 const props = defineProps<{
   session: PdfDocumentSession
@@ -26,7 +30,14 @@ const rendering = ref(false)
 const dimensions = ref<{ width: number; height: number } | null>(null)
 const layout = computed(() => {
   const size = dimensions.value ?? { width: 612, height: 792 }
-  const scale = resolvePdfScale(props.fitMode, props.zoom, size.width, size.height, props.availableWidth, props.availableHeight)
+  const scale = resolvePdfScale(
+    props.fitMode,
+    props.zoom,
+    size.width,
+    size.height,
+    props.availableWidth,
+    props.availableHeight,
+  )
   return { width: size.width * scale, height: size.height * scale }
 })
 let observer: IntersectionObserver | null = null
@@ -143,7 +154,8 @@ onMounted(async () => {
     dimensions.value = size
     void renderPage()
   } catch (error) {
-    if (!disposed) emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
+    if (!disposed)
+      emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
   }
 })
 
