@@ -578,13 +578,11 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
   page,
 }) => {
   await page.goto('./#/app')
-  await page
-    .locator('input[accept*=".pdf"]')
-    .setInputFiles({
-      name: 'zoom-anchor.pdf',
-      mimeType: 'application/pdf',
-      buffer: createPdfFixture(8),
-    })
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'zoom-anchor.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(8),
+  })
   await page.getByRole('button', { name: /zoom-anchor.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
