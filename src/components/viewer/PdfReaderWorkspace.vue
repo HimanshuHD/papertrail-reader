@@ -647,7 +647,7 @@ onBeforeUnmount(() => {
       class="pdf-scroll min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
       aria-label="PDF pages"
       tabindex="0"
-      aria-labelledby="reader-title"
+      aria-describedby="reader-title"
     >
       <div
         v-if="phase === 'loading'"
