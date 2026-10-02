@@ -19,6 +19,7 @@ defineProps<{
     | 'fullscreen-exit'
     | 'help'
   disabled?: boolean
+  tooltipAlign?: 'start' | 'end'
   active?: boolean
 }>()
 </script>
@@ -33,7 +34,8 @@ defineProps<{
     <UiIcon :name="icon" />
     <span
       aria-hidden="true"
-      class="icon-tooltip pointer-events-none absolute z-50 w-max max-w-48 rounded-md border border-line bg-panel px-2 py-1 text-xs font-medium text-ink shadow-lg top-full right-0 mt-2"
+      class="icon-tooltip pointer-events-none absolute z-50 w-max max-w-48 rounded-md border border-line bg-panel px-2 py-1 text-xs font-medium text-ink shadow-lg top-full mt-2"
+      :class="tooltipAlign === 'start' ? 'left-0' : 'right-0'"
       >{{ label }}</span
     >
   </button>

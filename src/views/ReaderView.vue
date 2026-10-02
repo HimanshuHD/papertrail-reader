@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, shallowRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
 import BrandMark from '../components/BrandMark.vue'
 import IconButton from '../components/IconButton.vue'
@@ -21,6 +21,8 @@ import {
   type DiscoveryProgress,
 } from '../features/library/discovery'
 
+import { enrichPdfTitles } from '../features/library/pdf-titles'
+
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
 const selectedLibraryDocumentId = ref<string | null>(null)
@@ -39,6 +41,11 @@ const discoveryProgress = ref<DiscoveryProgress>({
 const discoveredDocuments = shallowRef<readonly DiscoveredDocument[]>([])
 const discoveryProblems = shallowRef<readonly DiscoveryProblem[]>([])
 let discoveryController: AbortController | null = null
+let metadataController: AbortController | null = null
+onBeforeUnmount(() => {
+  discoveryController?.abort()
+  metadataController?.abort()
+})
 
 const librarySelectionSummary = computed(() =>
   librarySelection.value
@@ -128,6 +135,7 @@ async function runDiscovery(
   const previous = preserveSelection ? selectedLibraryDocument.value : null
 
   discoveryController?.abort()
+  metadataController?.abort()
   const controller = new AbortController()
   discoveryController = controller
   discoveryPhase.value = 'indexing'
@@ -148,6 +156,16 @@ async function runDiscovery(
     discoveredDocuments.value = result.documents
     discoveryProblems.value = result.problems
     selectedLibraryDocumentId.value = restoreLibrarySelection(previous, result.documents)
+    if (result.status === 'completed') {
+      const metadata = new AbortController()
+      metadataController = metadata
+      void enrichPdfTitles(result.documents, metadata.signal, (id, title) => {
+        if (metadataController !== metadata || metadata.signal.aborted) return
+        discoveredDocuments.value = discoveredDocuments.value.map((document) =>
+          document.id === id ? { ...document, title } : document,
+        )
+      })
+    }
     discoveryPhase.value = result.status === 'cancelled' ? 'cancelled' : 'ready'
     announcement.value =
       result.status === 'cancelled'
@@ -233,6 +251,7 @@ async function closeSidebarAndRestoreFocus() {
           ref="sidebarToggle"
           label="Show library"
           icon="library"
+          tooltip-align="start"
           aria-controls="document-sidebar"
           aria-expanded="false"
           class="floating-library border border-line bg-panel text-brand shadow-lg"

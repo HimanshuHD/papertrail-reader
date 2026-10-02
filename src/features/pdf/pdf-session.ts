@@ -461,3 +461,42 @@ export async function openPdfDocument(
     throw classifyPdfOpenError(error)
   }
 }
+
+/** Read local PDF metadata without measuring or rendering pages. Invalid/locked files keep their filename. */
+export async function readPdfTitle(
+  file: File,
+  signal?: AbortSignal,
+  loader: PdfJsLoader = loadPdfJs,
+): Promise<string | null> {
+  let task: PDFDocumentLoadingTask | null = null
+  const abort = () => {
+    void task?.destroy().catch(() => undefined)
+  }
+  try {
+    if (signal?.aborted) return null
+    const pdfjs = await loader()
+    const data = new Uint8Array(await file.arrayBuffer())
+    if (signal?.aborted) return null
+    task = pdfjs.getDocument({ data })
+    task.onPassword = abort
+    signal?.addEventListener('abort', abort, { once: true })
+    const document = await task.promise
+    const { info, metadata } = await document.getMetadata()
+    if (signal?.aborted) return null
+    const infoTitle = info && typeof info === 'object' && 'Title' in info ? info.Title : null
+    for (const candidate of [metadata?.get('dc:title'), infoTitle]) {
+      if (typeof candidate !== 'string') continue
+      const title = candidate
+        .replace(/\p{Cc}/gu, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+      if (title && !/^(untitled|unknown)$/i.test(title)) return title
+    }
+    return null
+  } catch {
+    return null
+  } finally {
+    signal?.removeEventListener('abort', abort)
+    await task?.destroy().catch(() => undefined)
+  }
+}

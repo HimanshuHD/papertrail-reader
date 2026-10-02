@@ -12,7 +12,7 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
-function createPdfFixture(pageCount = 2): Buffer {
+function createPdfFixture(pageCount = 2, title?: string): Buffer {
   const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -30,6 +30,7 @@ function createPdfFixture(pageCount = 2): Buffer {
     )
   }
 
+  const infoId = title ? objects.push(`<< /Title (${title}) >>`) : null
   let pdf = '%PDF-1.4\n'
   const offsets = [0]
 
@@ -44,7 +45,7 @@ function createPdfFixture(pageCount = 2): Buffer {
   for (const offset of offsets.slice(1)) {
     pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
   }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\n`
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R ${infoId ? `/Info ${infoId} 0 R` : ''} >>\n`
   pdf += `startxref\n${xrefOffset}\n%%EOF\n`
 
   return Buffer.from(pdf, 'ascii')
@@ -379,6 +380,8 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   await page.goto('./#/app')
   const library = page.getByRole('complementary', { name: 'Document library' })
   const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
+  const libraryList = page.getByRole('region', { name: 'Library documents', exact: true })
+  const libraryHeader = await library.locator('header').boundingBox()
   await page.locator('input[accept*=".pdf"]').setInputFiles(
     Array.from({ length: 30 }, (_, i) => ({
       name: `document-${String(i).padStart(2, '0')}.pdf`,
@@ -401,14 +404,17 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   const bounds = await pdf.boundingBox()
   expect(bounds!.height).toBeGreaterThan(0)
   expect(bounds!.y + bounds!.height).toBeLessThanOrEqual(500)
-  await library.focus()
+  await libraryList.focus()
   await page.keyboard.press('End')
   await expect
-    .poll(() => library.evaluate((e) => Math.abs(e.scrollTop - (e.scrollHeight - e.clientHeight))))
+    .poll(() =>
+      libraryList.evaluate((e) => Math.abs(e.scrollTop - (e.scrollHeight - e.clientHeight))),
+    )
     .toBeLessThanOrEqual(1)
-  await expect.poll(() => library.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
+  await expect.poll(() => libraryList.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
+  expect(await library.locator('header').boundingBox()).toEqual(libraryHeader)
   expect(await pdf.evaluate((e) => e.scrollTop)).toBe(0)
-  const libraryPosition = await library.evaluate((e) => e.scrollTop)
+  const libraryPosition = await libraryList.evaluate((e) => e.scrollTop)
   if (page.viewportSize()!.width < 1024) {
     await library.press('Escape')
     await expect(page.getByRole('button', { name: 'Show library' })).toBeFocused()
@@ -426,7 +432,7 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('2')
   await expect.poll(() => pdf.evaluate((e) => e.scrollTop)).toBeGreaterThan(0)
   if (page.viewportSize()!.width >= 1024)
-    expect(await library.evaluate((e) => e.scrollTop)).toBe(libraryPosition)
+    expect(await libraryList.evaluate((e) => e.scrollTop)).toBe(libraryPosition)
   expect(await page.evaluate(() => window.scrollY)).toBe(0)
   await page.getByRole('link', { name: 'PaperTrail home' }).click()
   await expect
@@ -693,4 +699,42 @@ test('a 1,001-page PDF opens without all-page rendering and supports a distant j
     node.scrollTop = 0
   })
   await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+})
+
+test('library labels use embedded title or filename and the opener tooltip stays onscreen', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const title =
+    'A quiet chapter with a very long embedded PDF title that must stay on one line in the library'
+  await page.locator('input[accept*=".pdf"]').setInputFiles([
+    { name: 'metadata-file.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(2, title) },
+    { name: 'filename-fallback.pdf', mimeType: 'application/pdf', buffer: createPdfFixture() },
+  ])
+  const row = page.getByRole('button', { name: `PDF: ${title}`, exact: true })
+  await expect(row).toBeVisible()
+  await expect(row).toHaveAttribute('title', title)
+  await expect(row).not.toContainText('metadata-file.pdf')
+  await expect(
+    page.getByRole('button', { name: 'PDF: filename-fallback.pdf', exact: true }),
+  ).toBeVisible()
+  expect(
+    await row
+      .locator('span')
+      .last()
+      .evaluate((node) => ({
+        whiteSpace: getComputedStyle(node).whiteSpace,
+        textOverflow: getComputedStyle(node).textOverflow,
+      })),
+  ).toEqual({ whiteSpace: 'nowrap', textOverflow: 'ellipsis' })
+  await row.click()
+  await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const opener = page.getByRole('button', { name: 'Show library' })
+  await opener.focus()
+  const tooltip = opener.locator('.icon-tooltip')
+  await expect(tooltip).toBeVisible()
+  const box = await tooltip.boundingBox()
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
 })

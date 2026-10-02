@@ -135,8 +135,7 @@ onBeforeUnmount(() => {
   z-index: 30;
   width: var(--library-width);
   min-height: 0;
-  overflow: auto;
-  overscroll-behavior: contain;
+  overflow: hidden;
   border-right: 1px solid var(--pt-line);
   box-shadow: 12px 0 24px rgb(0 0 0 / 12%);
 }

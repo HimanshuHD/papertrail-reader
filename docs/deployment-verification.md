@@ -68,3 +68,12 @@ PR #77 adds the remaining direct lifecycle tests for reopened #10 on test/10-pdf
 ## PR #77 merge and first-release planning
 
 PR #77 merged as b41d3799bd41f278b50e1a39435dc41e7e9b41bc. Main Frontend CI 37006040941, tracking reconciliation 37006041258 and production publisher 37006094713 passed. Pages metadata identifies that source and CI run. This is workflow/metadata evidence, not a new interactive production audit. Roadmap #1 now targets v1.0.0 after bug acceptance #79 and release preparation #80. No release tag, version bump or publication is performed by the planning change; advanced version promotion #32 remains in Roadmap 2 #78.
+
+## PR #90 merge verification — 2 October 2026
+
+- Merge source: c191353b17391c8f1e5a3e9a820e5d863a06498b.
+- Main Frontend CI: [37033803318](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37033803318), succeeded.
+- Issue reconciliation: [37033803232](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37033803232), succeeded; #88/#91–#95 closed.
+- Production publisher: [37033885573](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37033885573), succeeded. Publisher workflow SHA 213be458 is the later tracker commit; deployment.json correctly records application source c191353 and CI 37033803318.
+- pages-state/deployment.json marks preview #90 retired.
+- Pre-merge Browser E2E 37032676748 passed 61 checks. Verification here is workflow/source metadata, not a fresh live UI audit.
