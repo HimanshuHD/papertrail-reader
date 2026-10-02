@@ -4,7 +4,7 @@ Updated: 2 October 2026 (Asia/Kolkata).
 
 #84 is completed in merged #96; #85 is completed in merged #97. Rendering children #88/#91–#95 are completed in #90. #86 and #87 are completed together in merged PR #98. #89 remains queued, followed by final regression and release gate #80. #79/#1 remain open; version remains 0.1.0. EPUB and broader deferred scope remain Roadmap 2 #78.
 
-Main CI 37041483607, reconciliation 37041484160 and publisher 37041555992 passed for #97. Production metadata identifies f44d675/source CI 37041483607 and preview #97 is retired. See [progress](progress.md), [bug tracker](first-release-bugs.md), [loading screenshots](loading-feedback.md) and [reader polish](reader-polish.md) for current evidence.
+Main CI 37045669575, reconciliation 37045671003 and publisher 37045732211 passed for #98. Production metadata identifies 376323c/source CI 37045669575 and preview #98 is retired. See [progress](progress.md), [bug tracker](first-release-bugs.md), [loading screenshots](loading-feedback.md) and [reader polish](reader-polish.md) for current evidence.
 
 The audit below is retained as historical evidence; its partial/next-task statements are superseded.
 

@@ -2,7 +2,11 @@
 
 Updated: 2 October 2026. Owners: #31/#35/#39.
 
-## Current production evidence after #97
+## Current production evidence after #98
+
+Merge 376323ce2171eb17f45ecded2f266cf431baa07e passed main CI 37045669575 and issue reconciliation 37045671003. Publisher 37045732211 succeeded; pages-state/deployment.json records production source 376323c/source CI 37045669575 and preview #98 retired. #86/#87 are completed. This is workflow/source metadata verification, not a new interactive live-site audit. Final screenshots and current documentation are preserved in docs-only PR #99. Next #89, then final regression and release #80.
+
+## Historical production evidence after #97
 
 Merge f44d67517ba17053d15e4b420372526a5002a10c passed main CI 37041483607 and issue reconciliation 37041484160. Publisher 37041555992 succeeded; pages-state/deployment.json records production source f44d675/source CI 37041483607 and preview #97 status retired. This is workflow/source metadata verification; no new interactive live-site audit is claimed. PR #98 holds the current #86/#87 increment and preserved #85 screenshots. Its preview is published manually after browser acceptance.
 
