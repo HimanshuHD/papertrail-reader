@@ -2,11 +2,11 @@
 
 ## First release — v1.0.0
 
-[Roadmap #1](https://github.com/HimanshuHD/papertrail-reader/issues/1) now covers the first major release of the delivered browser PDF reader. It stays open until bug acceptance and release verification complete.
+[Roadmap #1](https://github.com/HimanshuHD/papertrail-reader/issues/1) now covers the first major release of the delivered browser PDF reader. It is completed after bug acceptance, production verification and stable v1.0.0 publication.
 
 Delivered scope includes local folder/file selection, directory tree, responsive independently scrolling panes, selectable PDF text, page navigation, zoom/fit, contents, search, fullscreen, keyboard shortcuts, themes and compact accessible controls. PDF documents remain on the device. Password-protected files show an unsupported message; password entry is not implemented.
 
-The deployed version is still 0.1.0. Planning v1.0.0 does not change package/footer metadata or create a release.
+The deployed version is 1.0.0 at b2eb932; the published v1.0.0 tag targets the same reviewed merge. #79/#80/#1 are completed.
 
 | Gate                                     | Issue           | Completion evidence                                                     |
 | ---------------------------------------- | --------------- | ----------------------------------------------------------------------- |
@@ -22,7 +22,7 @@ A reported defect may be promoted from deferred scope if it breaks the agreed fi
 
 ## Product Roadmap 2
 
-[Roadmap #78](https://github.com/HimanshuHD/papertrail-reader/issues/78) starts after v1.0.0. Moving unfinished scope does not complete or cancel it.
+[Roadmap #78](https://github.com/HimanshuHD/papertrail-reader/issues/78) is ready after verified v1.0.0. Moving unfinished scope does not complete or cancel it.
 
 | Scope                                                             | Open issues   |
 | ----------------------------------------------------------------- | ------------- |
@@ -93,3 +93,9 @@ All agreed first-release bug groups are merged. The owner confirmed affected-PDF
 ## Current v1.0.0 deployment reconciliation — merged #103
 
 PR #103 merged as b2eb9328be5147346926e9bbce0960fa777b9e00. Main Frontend CI 37054802868 passed 87 unit/six pipeline tests, lint/format/types and the v1.0.0 production build. Reconciliation 37054803201 and publisher 37054875000 succeeded; Pages upload/deployment ran successfully. Deployment state identifies production b2eb932/source CI 37054802868. The owner confirmed the main deployment footer shows v1.0.0 and SHA b2eb932 on 3 October 2026 (Asia/Kolkata). This is owner UI verification plus source/workflow metadata, not a new exhaustive production browser audit. Final explicit candidate Browser E2E 37053754669 passed 81 checks without retries (four deliberate duplicate long-document skips). Branch inventory contains only main and pages-state; the merged release/1.0.0 branch is already removed. No v1.0.0 tag or GitHub release exists yet; #80/#1 remain open only for tagging/release and final ledger reconciliation. #79 is complete; Roadmap 2 #78/#100 remains deferred until that handoff.
+
+## Final release reconciliation — 3 October 2026
+
+Published stable [v1.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v1.0.0) at 2026-10-02T19:55:40Z (3 October 2026, 01:25:40 Asia/Kolkata). GitHub API verifies the lightweight tag directly targets reviewed/deployed merge b2eb9328be5147346926e9bbce0960fa777b9e00. Main CI 37054802868 and publisher 37054875000 passed; owner confirmed production v1.0.0/SHA b2eb932. #79, #80 and first-release roadmap #1 are completed. Roadmap 2 #78 is open and ready; PDF saved positions/bookmarks #13 is the next feature, with #100 publishing maintenance retained as unfinished scope. Historical pending-tag and deferred-handoff entries are superseded by this verification.
+
+Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056086941. Publisher 37056172706 succeeded with upload/deploy/URL steps skipped for docs-only input. Production remains b2eb932/source CI 37054802868. Tag/release publication created no additional Actions run in the reviewed latest-run listing. #100 retains event-level docs-only publisher filtering for Roadmap 2.
