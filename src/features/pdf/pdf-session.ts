@@ -174,13 +174,19 @@ export class PdfDocumentSession {
 
     try {
       const resolved =
-        typeof destination === 'string' ? await this.document.getDestination(destination) : destination
+        typeof destination === 'string'
+          ? await this.document.getDestination(destination)
+          : destination
       if (!resolved?.length) return null
 
       const target = resolved[0]
       if (typeof target === 'number') return target + 1
       if (target && typeof target === 'object') {
-        return (await this.document.getPageIndex(target as Parameters<PDFDocumentProxy['getPageIndex']>[0])) + 1
+        return (
+          (await this.document.getPageIndex(
+            target as Parameters<PDFDocumentProxy['getPageIndex']>[0],
+          )) + 1
+        )
       }
     } catch {
       return null
