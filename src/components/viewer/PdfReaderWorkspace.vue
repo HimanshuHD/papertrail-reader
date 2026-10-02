@@ -111,10 +111,7 @@ function measureViewport() {
   const atEnd =
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
-  const anchor = element.querySelector<HTMLElement>(`#pdf-page-${currentPage.value}`)
-  const anchorOffset = anchor
-    ? anchor.getBoundingClientRect().top - element.getBoundingClientRect().top
-    : null
+  const readingPoint = captureReadingPoint()
   const previousWidth = availableWidth.value
   const previousHeight = availableHeight.value
   const style = getComputedStyle(element)
@@ -134,10 +131,7 @@ function measureViewport() {
     void nextTick(() => {
       if (viewport.value !== element) return
       if (atEnd) element.scrollTop = element.scrollHeight
-      else if (anchor?.isConnected && anchorOffset !== null) {
-        element.scrollTop +=
-          anchor.getBoundingClientRect().top - element.getBoundingClientRect().top - anchorOffset
-      }
+      else void restoreReadingPoint(readingPoint)
     })
   }
 }
@@ -261,9 +255,23 @@ function handleRenderError(message: string) {
 
 function captureReadingPoint() {
   const pane = viewport.value
-  const page = pane?.querySelector<HTMLElement>(`#pdf-page-${currentPage.value} .pdf-page`)
-  if (!pane || !page) return null
+  if (!pane) return null
   const bounds = pane.getBoundingClientRect()
+  const center = bounds.top + pane.clientHeight / 2
+  const candidates = [...pane.querySelectorAll<HTMLElement>('.pdf-page')]
+  const page =
+    candidates.find((element) => {
+      const box = element.getBoundingClientRect()
+      return box.top <= center && box.bottom >= center
+    }) ??
+    candidates.reduce<HTMLElement | null>((best, element) => {
+      const distance = (node: HTMLElement) =>
+        Math.abs(
+          node.getBoundingClientRect().top + node.getBoundingClientRect().height / 2 - center,
+        )
+      return !best || distance(element) < distance(best) ? element : best
+    }, null)
+  if (!page) return null
   const box = page.getBoundingClientRect()
   return {
     pane,
