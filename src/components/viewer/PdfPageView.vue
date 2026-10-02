@@ -9,6 +9,7 @@ const props = defineProps<{
   zoom: number
   availableWidth: number
   availableHeight: number
+  scrollRoot: HTMLElement | null
 }>()
 
 const emit = defineEmits<{
@@ -25,6 +26,7 @@ const rendering = ref(false)
 const pageWidth = ref(0)
 const pageHeight = ref(0)
 let observer: IntersectionObserver | null = null
+let visibilityObserver: IntersectionObserver | null = null
 let renderSequence = 0
 let nearViewport = false
 
@@ -90,16 +92,23 @@ function observePage() {
       if (!entry) return
 
       nearViewport = entry.isIntersecting
-      emit('visibility', props.pageNumber, entry.isIntersecting ? entry.intersectionRatio : 0)
       if (entry.isIntersecting) void renderPage()
     },
     {
-      root: null,
+      root: props.scrollRoot,
       rootMargin: '700px 0px',
       threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
     },
   )
   observer.observe(element)
+  visibilityObserver = new IntersectionObserver(
+    ([entry]) => {
+      if (entry)
+        emit('visibility', props.pageNumber, entry.isIntersecting ? entry.intersectionRatio : 0)
+    },
+    { root: props.scrollRoot, threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
+  )
+  visibilityObserver.observe(element)
 }
 
 watch(
@@ -113,12 +122,22 @@ watch(
   },
 )
 
+watch(
+  () => props.scrollRoot,
+  () => {
+    observer?.disconnect()
+    visibilityObserver?.disconnect()
+    observePage()
+  },
+)
 onMounted(observePage)
 
 onBeforeUnmount(() => {
   renderSequence += 1
   observer?.disconnect()
   observer = null
+  visibilityObserver?.disconnect()
+  visibilityObserver = null
 })
 </script>
 
