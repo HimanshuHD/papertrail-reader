@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
+import BrandMark from '../components/BrandMark.vue'
 import ThemePicker from '../components/ThemePicker.vue'
 const plannedFormats: readonly string[] = ['PDF', 'EPUB']
 </script>
@@ -12,7 +13,11 @@ const plannedFormats: readonly string[] = ['PDF', 'EPUB']
       </p>
       <ThemePicker />
     </div>
-    <h1 id="app-title" class="text-4xl leading-tight font-bold tracking-tight sm:text-6xl">
+    <h1
+      id="app-title"
+      class="flex items-center gap-3 text-4xl leading-tight font-bold tracking-tight sm:text-6xl"
+    >
+      <BrandMark class="h-12 w-12 sm:h-16 sm:w-16" />
       PaperTrail
     </h1>
     <p class="mt-4 text-lg text-muted">Your documents. Your space. A better way to read.</p>
