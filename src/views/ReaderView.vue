@@ -236,9 +236,9 @@ async function closeSidebarAndRestoreFocus() {
 </script>
 
 <template>
-  <main class="mx-auto w-full max-w-[1600px]" aria-label="PaperTrail application">
+  <main class="reader-app w-full" aria-label="PaperTrail application">
     <header
-      class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-4 sm:px-8"
+      class="app-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-3 sm:px-8"
     >
       <div class="flex flex-wrap items-center gap-4">
         <RouterLink to="/" class="text-xl font-bold tracking-tight" aria-label="PaperTrail home"
@@ -251,7 +251,7 @@ async function closeSidebarAndRestoreFocus() {
       <ThemePicker />
     </header>
     <div
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3 sm:px-8"
+      class="shrink-0 flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-2 sm:px-8"
     >
       <button
         ref="sidebarToggle"
@@ -268,7 +268,7 @@ async function closeSidebarAndRestoreFocus() {
 
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
-    <ReaderShell :sidebar-open="sidebarOpen">
+    <ReaderShell :sidebar-open="sidebarOpen" @close="closeSidebarAndRestoreFocus">
       <template #sidebar>
         <LibrarySidebar
           :documents="documents"
@@ -305,3 +305,18 @@ async function closeSidebarAndRestoreFocus() {
     </ReaderShell>
   </main>
 </template>
+
+<style scoped>
+.reader-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-header {
+  flex-shrink: 0;
+  max-height: min(25%, 100px);
+  overflow: auto;
+}
+</style>

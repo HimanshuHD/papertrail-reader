@@ -186,6 +186,12 @@ Implement #62 viewport sizing/independent scrolling, then #63 compact library co
 
 PR lifecycle: create draft → resolve lint/format/unit/type/build errors → mark Ready for review once → explicit Browser E2E → review/merge. Ordinary frontend CI stays browser-free. The PDF roadmap document remains a historical planning snapshot; this Markdown and live issues carry the revised scope.
 
+## Active PDF UI work after merged PR #65
+
+#61 is completed. #62 is now in progress for viewport fit and independent library/PDF scrolling; #63 compact library controls and #64 utility panels/tooltips/popovers follow. This increment keeps Home scrolling separate and adds pane-rooted PDF visibility/lazy rendering acceptance. EPUB remains next-version scope.
+
+#62 viewport foundation is implemented in PR #66 and in review after 35 Chromium acceptance checks. Merge and verify production before #63 compact library controls, then #64 Contents/Search panel and compact toolbar. EPUB remains next-version scope.
+
 ## Publisher trigger refinement (#67)
 
-#67 is in progress before #63: main-only CI subscription, manual previews, no PR-close CI, closed-preview reconciliation during publication and explicit outcomes. Parent #26; related #35/#44/#52. PR #66 remains in review for #62; #61 is completed after merged #65. Next product work remains #63, then #64. Live trigger/deployment evidence must be recorded after refinement merge.
+#67 is in progress in PR #68 before #63: main-only CI subscription, manual previews, no PR-close CI, closed-preview reconciliation during publication and explicit outcomes. Parent #26; related #35/#44/#52. PR #66 is merged; #62 and #61 are completed. Next product work remains #63, then #64. Live trigger/deployment evidence must be recorded after refinement merge.
