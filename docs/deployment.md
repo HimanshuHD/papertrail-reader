@@ -22,9 +22,9 @@ Detailed implementation and trust boundaries: [deployment-architecture.md](deplo
 
 The workflow uses the PR number to select the PR's current successful source head. The main branch selection refers to the trusted publisher, not the source being previewed. Open same-repository PRs targeting main are eligible. A feature branch without a PR has no preview.
 
-New PR commits run CI without changing an existing preview. Repeat the manual request after the current head passes CI to update it. If the seven-day artifact has expired, rerun CI first. Blank pr_number republishes main.
+New PR commits run CI without changing an existing preview. Repeat the manual request after the current head passes CI to update it. If the seven-day artifact has expired, rerun CI first. Blank pr_number republishes the current main commit after its CI succeeds.
 
-The footer links the PR, deployed source branch and commit. A PR build also includes preview-closed.html to review the closed-page design before merging. Closing or merging retires the preview; do not expect manual publishing of a closed PR to work.
+The footer links the PR, deployed source branch and commit. A PR build also includes preview-closed.html to review the closed-page design before merging. Closing or merging retires the preview during the next actual publication; do not expect manual publishing of a closed PR to work.
 
 ## Production and docs-only changes
 
@@ -36,7 +36,7 @@ A failed build is not deployed. After merging, verify CI, publisher conclusion, 
 
 #32 remains open for tag validation, immutable version URLs, artifacts/checksums and explicit promotion/rollback. Tags currently do not overwrite the main website. Until that implementation is accepted, rollback is a reviewed revert on main with successful CI and deployment.
 
-GitHub may cancel a pending publisher during overlapping cleanup/production events even with cancel-in-progress:false. #44 tracks durable reconciliation. Check the live source SHA after a burst; retry the relevant CI job if needed. See deployment-architecture.md for observed recovery evidence.
+GitHub may cancel a pending publisher during overlapping manual/production events even with cancel-in-progress:false. #44 tracks durable reconciliation. Check the live source SHA after a burst; retry the relevant CI job if needed. See deployment-architecture.md for observed recovery evidence.
 
 ## Base paths and storage
 
@@ -47,3 +47,9 @@ Production and previews share an origin. Theme preference is intentionally share
 ## Application version (#47)
 
 package.json is the version source of truth. Vite embeds it at build time; production displays Production · v0.1.0, followed by existing branch/SHA identity. Preview identity retains the linked PR number. Version bumps use reviewed changes and keep package-lock.json synchronized; version labels do not create Git tags or immutable release URLs. Initial foundation changes are recorded in CHANGELOG.md. Tag/promotion automation remains #32.
+
+## Trigger refinement (#67)
+
+Publisher starts only manually or after main-branch Frontend CI completion. Automatic publication requires successful push CI and the current main SHA; feature-branch PR builds do not wake it. CI no longer subscribes to PR closure. A failed main build can produce a skipped publisher entry; docs-only main builds verify identity and summarize their skip without deploying.
+
+Each actual publication checks active previews and retires closed PRs. A closed-without-merge preview can remain live until the next publication; docs-only skipped publication does not retire previews. Every started publish job records a clear outcome; successful deployments include URLs, source SHA, PR and build run. Manual republish supports recovery even when generated state is unchanged. See [workflow-audit.md](workflow-audit.md).

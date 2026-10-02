@@ -185,3 +185,7 @@ Current release excludes EPUB #12; defer EPUB engine and CFI acceptance to the n
 Implement #62 viewport sizing/independent scrolling, then #63 compact library controls, then #64 right Contents/Search panel, icon toolbar and closable search/help popovers. #61 owns the current verification and post-#60 reconciliation. Keep unknown viewer bugs pending reproducible reports.
 
 PR lifecycle: create draft → resolve lint/format/unit/type/build errors → mark Ready for review once → explicit Browser E2E → review/merge. Ordinary frontend CI stays browser-free. The PDF roadmap document remains a historical planning snapshot; this Markdown and live issues carry the revised scope.
+
+## Publisher trigger refinement (#67)
+
+#67 is in progress before #63: main-only CI subscription, manual previews, no PR-close CI, closed-preview reconciliation during publication and explicit outcomes. Parent #26; related #35/#44/#52. PR #66 remains in review for #62; #61 is completed after merged #65. Next product work remains #63, then #64. Live trigger/deployment evidence must be recorded after refinement merge.

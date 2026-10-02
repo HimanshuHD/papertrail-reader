@@ -3,6 +3,7 @@ on:
   workflow_run:
     workflows: [Frontend CI]
     types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       pr_number:
@@ -16,7 +17,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -41,6 +42,7 @@ jobs:
             const manual = context.eventName === 'workflow_dispatch';
             const requested = context.payload.inputs?.pr_number?.trim() || '';
             let run = context.payload.workflow_run, selectedPR;
+            const skip = reason => { core.setOutput('skip','true'); core.setOutput('reason',reason); };
             if (manual) {
               if (requested) {
                 if (!/^[1-9]\d*$/.test(requested)) throw new Error('Enter a positive PR number');
@@ -51,23 +53,18 @@ jobs:
               run = runs.data.workflow_runs.find(r => !selectedPR || r.head_sha === selectedPR.head.sha);
               if (!run) throw new Error('The current commit has no successful CI build; wait for CI or fix it first');
             }
-            if (run.head_repository?.full_name !== owner + '/' + repo || !['push','pull_request'].includes(run.event)) { core.setOutput('skip','true'); return; }
+            if (run.head_repository?.full_name !== owner + '/' + repo || !['push','pull_request'].includes(run.event)) { skip('Build is not eligible for publication'); return; }
             let kind='production', prNumber='';
             if (run.event === 'pull_request') {
-              if (!selectedPR) {
-                const candidates = await github.rest.repos.listPullRequestsAssociatedWithCommit({owner,repo,commit_sha:run.head_sha});
-                selectedPR=candidates.data.find(p => p.base.ref==='main' && p.head.repo?.full_name===owner+'/'+repo && p.head.sha===run.head_sha);
-              }
-              if (!selectedPR) {
-                const byBranch=await github.rest.pulls.list({owner,repo,state:'all',base:'main',head:owner+':'+run.head_branch,per_page:100});
-                selectedPR=byBranch.data.find(p=>p.head.sha===run.head_sha && p.head.repo?.full_name===owner+'/'+repo);
-              }
-              if (!selectedPR) { core.setOutput('skip','true'); return; }
+              if (!manual || !selectedPR) { skip('PR previews require manual dispatch'); return; }
               const fresh=(await github.rest.pulls.get({owner,repo,pull_number:selectedPR.number})).data;
               kind=previewDecision({manual,state:fresh.state,currentSha:fresh.head.sha,buildSha:run.head_sha,sameRepo:fresh.head.repo?.full_name===owner+'/'+repo,target:fresh.base.ref});
-              if (kind==='skip') { if(manual) throw new Error('PR head changed; rebuild and retry'); core.setOutput('skip','true'); return; }
+              if (kind==='skip') throw new Error('PR head changed; rebuild and retry');
               prNumber=fresh.number;
-            } else if(run.head_branch!=='main') { core.setOutput('skip','true'); return; }
+            } else {
+              const main=(await github.rest.repos.getBranch({owner,repo,branch:'main'})).data;
+              if (run.head_branch!=='main' || run.head_sha!==main.commit.sha) { skip('Build is not the current main commit'); return; }
+            }
             core.setOutput('kind',kind);
             core.setOutput('pr',prNumber);
             core.setOutput('run_id',run.id);
@@ -88,8 +85,28 @@ jobs:
           MANUAL: ${{ github.event_name == 'workflow_dispatch' }}
         run: |
           node --input-type=module -e "import fs from 'node:fs'; const b=JSON.parse(fs.readFileSync('incoming/build.json','utf8')); if(b.sha!==process.env.EXPECTED_SHA || String(b.runId)!==process.env.EXPECTED_RUN) throw Error('Artifact identity mismatch'); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'publish='+String(process.env.MANUAL==='true' || b.publish!==false)+'\\n')"
+      - name: Find closed published previews
+        if: steps.select.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            let state = {previews:{}};
+            try {
+              const file=(await github.rest.repos.getContent({owner,repo,path:'.deployment-state.json',ref:'pages-state'})).data;
+              state=JSON.parse(Buffer.from(file.content,'base64').toString('utf8'));
+            } catch(error) { if(error.status!==404) throw error; }
+            const retired=[];
+            for(const [number,preview] of Object.entries(state.previews || {})) {
+              if(preview.status!=='active') continue;
+              const pr=(await github.rest.pulls.get({owner,repo,pull_number:Number(number)})).data;
+              if(pr.state==='closed') retired.push(Number(number));
+            }
+            require('node:fs').writeFileSync('retired-prs.json',JSON.stringify(retired));
+            core.summary.addRaw('Closed previews to retire: '+(retired.join(', ') || 'none')+'\n').write();
       - name: Preserve production and all previews
-        if: steps.select.outputs.skip != 'true' && (steps.select.outputs.kind == 'retire' || steps.verify.outputs.publish == 'true')
+        id: assemble
+        if: steps.select.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
         env:
           KIND: ${{ steps.select.outputs.kind }}
           PR_NUMBER: ${{ steps.select.outputs.pr }}
@@ -106,21 +123,24 @@ jobs:
             git -C _site checkout --orphan pages-state
             git -C _site rm -rf .
           fi
-          node --input-type=module -e "import {assemble} from './scripts/assemble-pages.mjs'; await assemble({site:'_site',artifact:'incoming',kind:process.env.KIND,pr:process.env.PR_NUMBER,sha:process.env.BUILD_SHA,runId:process.env.BUILD_RUN})"
+          node --input-type=module -e "import fs from 'node:fs'; import {assemble} from './scripts/assemble-pages.mjs'; await assemble({site:'_site',artifact:'incoming',kind:process.env.KIND,pr:process.env.PR_NUMBER,sha:process.env.BUILD_SHA,runId:process.env.BUILD_RUN,retirePRs:JSON.parse(fs.readFileSync('retired-prs.json','utf8'))})"
           git -C _site add -A
           if ! git -C _site diff --cached --quiet; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
             git -C _site commit -m "deploy: update ${KIND} website build"
             git -C _site push origin HEAD:pages-state
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
-        if: steps.select.outputs.skip != 'true' && (steps.select.outputs.kind == 'retire' || steps.verify.outputs.publish == 'true')
+        if: steps.select.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
         with:
           path: _site
       - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
         id: deploy
-        if: steps.select.outputs.skip != 'true' && (steps.select.outputs.kind == 'retire' || steps.verify.outputs.publish == 'true')
+        if: steps.select.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
       - name: Record URLs
-        if: steps.select.outputs.skip != 'true' && (steps.select.outputs.kind == 'retire' || steps.verify.outputs.publish == 'true')
+        if: steps.select.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
         env:
           SITE_URL: ${{ steps.deploy.outputs.page_url }}
           KIND: ${{ steps.select.outputs.kind }}
@@ -129,4 +149,29 @@ jobs:
           echo "Production: ${SITE_URL}" >> "$GITHUB_STEP_SUMMARY"
           if [ -n "$PR_NUMBER" ]; then
             echo "PR ${PR_NUMBER}: ${SITE_URL}preview/pr-${PR_NUMBER}/ (${KIND})" >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Record publication outcome
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          SKIP: ${{ steps.select.outputs.skip }}
+          REASON: ${{ steps.select.outputs.reason }}
+          PUBLISH: ${{ steps.verify.outputs.publish }}
+          CHANGED: ${{ steps.assemble.outputs.changed }}
+          DEPLOYED: ${{ steps.deploy.outcome }}
+          KIND: ${{ steps.select.outputs.kind }}
+          SOURCE_SHA: ${{ steps.select.outputs.sha }}
+          BUILD_RUN: ${{ steps.select.outputs.run_id }}
+          PR_NUMBER: ${{ steps.select.outputs.pr }}
+        run: |
+          if [ "$JOB_STATUS" = 'failure' ]; then
+            echo 'Publication failed: inspect the failed step; no successful deployment is claimed.' >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$DEPLOYED" = 'success' ]; then
+            echo "Deployed ${KIND}. PR: ${PR_NUMBER:-none}. Source: ${SOURCE_SHA}. CI run: ${BUILD_RUN}." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$SKIP" = 'true' ]; then
+            echo "Deployment skipped: ${REASON}." >> "$GITHUB_STEP_SUMMARY"
+          elif [ "$PUBLISH" = 'false' ]; then
+            echo 'Deployment skipped: documentation-only main changes; website unchanged.' >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Publication ended with status ${JOB_STATUS}; no successful deployment is claimed." >> "$GITHUB_STEP_SUMMARY"
           fi

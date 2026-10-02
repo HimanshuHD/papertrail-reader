@@ -13,7 +13,7 @@ async function validateArtifact(folder) {
   }
 }
 
-export async function assemble({ site, artifact, kind, pr, sha, runId }) {
+export async function assemble({ site, artifact, kind, pr, sha, runId, retirePRs = [] }) {
   await mkdir(site, { recursive: true })
   const statePath = path.join(site, '.deployment-state.json')
   let state = { previews: {}, production: null }
@@ -52,6 +52,14 @@ export async function assemble({ site, artifact, kind, pr, sha, runId }) {
       path.join(site, 'index.html'),
       '<!doctype html><html lang="en"><title>PaperTrail</title><h1>Production deployment is pending</h1><p>A preview is available at its PR URL. Production will be published by the next successful main build.</p></html>',
     )
+  }
+  for (const number of retirePRs) {
+    if (!/^[1-9]\d*$/.test(String(number))) throw new Error('Invalid retired PR number')
+    const target = path.join(site, 'preview', 'pr-' + number)
+    await rm(target, { recursive: true, force: true })
+    await mkdir(target, { recursive: true })
+    await writeFile(path.join(target, 'index.html'), retiredPreviewHtml({ pr: number }))
+    state.previews[number] = { status: 'retired' }
   }
   await writeFile(statePath, JSON.stringify(state, null, 2))
   await writeFile(path.join(site, '.nojekyll'), '')
