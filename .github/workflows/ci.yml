@@ -2,7 +2,7 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main]
-    types: [opened, synchronize, reopened, closed]
+    types: [opened, synchronize, reopened]
   push:
     branches: [main]
 permissions:
@@ -11,13 +11,7 @@ concurrency:
   group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
-  retire-preview:
-    if: github.event.action == 'closed'
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'Closed PR preview will be retired by the trusted publisher.'
   frontend:
-    if: github.event.action != 'closed'
     name: Validate and build website
     runs-on: ubuntu-latest
     timeout-minutes: 10
