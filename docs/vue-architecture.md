@@ -6,11 +6,11 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 | Layer           | Implemented on main                                            | Remaining owner                     |
 | --------------- | -------------------------------------------------------------- | ----------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF utility UX #11                   |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF utility UX #11                  |
 | Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states      |
 | State           | Theme, library state and active PDF reader state               | PDF utility state #11; metadata #13 |
 | Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed    |
-| Reader contract | PDF.js core reader #10 plus EPUB CFI/font contracts           | PDF utility UX #11; EPUB #12        |
+| Reader contract | PDF.js core reader #10 plus EPUB CFI/font contracts            | PDF utility UX #11; EPUB #12        |
 | File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13             |
 | Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                 |
 
