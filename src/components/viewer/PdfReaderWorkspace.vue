@@ -293,10 +293,11 @@ async function restoreReadingPoint(point: ReturnType<typeof captureReadingPoint>
 async function changeZoom(delta: number) {
   const current = session.value
   if (!current) return
-  const page = currentPage.value
-  const dimensions = await current.getPageDimensions(page)
-  if (session.value !== current || currentPage.value !== page) return
   const point = captureReadingPoint()
+  const page =
+    Number(point?.page.closest('article')?.id.replace('pdf-page-', '')) || currentPage.value
+  const dimensions = await current.getPageDimensions(page)
+  if (session.value !== current) return
   const baseline = resolvePdfScale(
     fitMode.value,
     zoom.value,
