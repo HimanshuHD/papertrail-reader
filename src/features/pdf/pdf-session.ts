@@ -305,6 +305,7 @@ export class PdfDocumentSession {
       request.textLayer.style.width = `${Math.floor(viewport.width)}px`
       request.textLayer.style.height = `${Math.floor(viewport.height)}px`
       request.textLayer.style.setProperty('--scale-factor', String(viewport.scale))
+      request.textLayer.style.setProperty('--total-scale-factor', String(viewport.scale))
     }
 
     const transform = outputScale === 1 ? undefined : [outputScale, 0, 0, outputScale, 0, 0]
@@ -322,8 +323,9 @@ export class PdfDocumentSession {
       active.renderTask = null
 
       if (request.textLayer) {
+        const textContent = await page.getTextContent()
         const textLayer = new this.pdfjs.TextLayer({
-          textContentSource: page.streamTextContent(),
+          textContentSource: textContent,
           container: request.textLayer,
           viewport,
         })
