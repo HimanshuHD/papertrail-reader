@@ -759,35 +759,69 @@ test('library and document loaders are centered, responsive and respect reduced 
     await workerGate
     await route.continue()
   })
+  await page.addInitScript(
+    (bytes) => {
+      let finishScan!: () => void
+      const scanGate = new Promise<void>((resolve) => {
+        finishScan = resolve
+      })
+      const file = new File([new Uint8Array(bytes)], 'loading-preview.pdf', {
+        type: 'application/pdf',
+      })
+      Object.defineProperty(window, 'showDirectoryPicker', {
+        configurable: true,
+        value: async () => ({
+          kind: 'directory',
+          name: 'Loading preview',
+          async *entries() {
+            await scanGate
+            yield ['loading-preview.pdf', { kind: 'file', getFile: async () => file }]
+          },
+        }),
+      })
+      Object.assign(window, { finishLoadingScan: finishScan })
+    },
+    [...createPdfFixture()],
+  )
   try {
     await page.goto('./#/app')
     const library = page.getByRole('region', { name: 'Library documents', exact: true })
-    await page.locator('input[accept*=".pdf"]').setInputFiles({
-      name: 'loading-preview.pdf',
-      mimeType: 'application/pdf',
-      buffer: createPdfFixture(),
-    })
+    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('button', { name: 'Choose folder', exact: true }).click()
     await expect(library).toHaveAttribute('aria-busy', 'true')
     const libraryCard = library.locator('.loading-card')
     await expect(libraryCard).toBeVisible()
     await expect(library.getByRole('button', { name: 'Cancel scan' })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Add local documents' })).toBeEnabled()
-    const area = await library.boundingBox()
-    const card = await libraryCard.boundingBox()
-    expect(Math.abs(card!.y + card!.height / 2 - area!.y - area!.height / 2)).toBeLessThan(3)
+    await expect
+      .poll(() =>
+        libraryCard.evaluate((element) => {
+          const area = element.closest('.library-list')!.getBoundingClientRect()
+          const card = element.getBoundingClientRect()
+          return Math.abs(card.y + card.height / 2 - area.y - area.height / 2)
+        }),
+      )
+      .toBeLessThan(3)
     await capture(page, info, 'library-centered-loading')
     await expect(libraryCard).toContainText('Thanks for your patience')
+    await page.evaluate(() =>
+      (window as unknown as { finishLoadingScan: () => void }).finishLoadingScan(),
+    )
     await expect(library).toHaveAttribute('aria-busy', 'false')
     await library.getByRole('button', { name: 'PDF: loading-preview.pdf', exact: true }).click()
     const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
     const pdfCard = pane.locator('.loading-card')
     await expect(pdfCard).toBeVisible()
     await expect(pdfCard).toContainText('Opening document')
-    const pdfArea = await pane.boundingBox()
-    const pdfBox = await pdfCard.boundingBox()
-    expect(
-      Math.abs(pdfBox!.y + pdfBox!.height / 2 - pdfArea!.y - pdfArea!.height / 2),
-    ).toBeLessThan(3)
+    await expect
+      .poll(() =>
+        pdfCard.evaluate((element) => {
+          const area = element.closest('.pdf-scroll')!.getBoundingClientRect()
+          const card = element.getBoundingClientRect()
+          return Math.abs(card.y + card.height / 2 - area.y - area.height / 2)
+        }),
+      )
+      .toBeLessThan(3)
     if (page.viewportSize()!.width < 1024) {
       await page.getByRole('button', { name: 'Hide library' }).click()
       await expect(page.getByRole('complementary', { name: 'Document library' })).not.toBeVisible()
