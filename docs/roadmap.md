@@ -61,3 +61,7 @@ Large-document performance: #95 follows #94 under #79/#88 in PR #90. Replace blo
 Post-merge #90 reconciliation: #88/#91–#95 are completed; production metadata identifies c191353 and CI 37033803318 after successful publisher 37033885573. #84 is active, followed by #85/#86/#89/#87. #79 and the first-release gate remain open; version 1.0.0 is not yet prepared.
 
 Post-merge #96: #84 completed; main CI 37036588000 and publisher 37036656072 passed with production metadata identifying a35e2c5. #85 centered loading feedback is active, then #86/#89/#87. First release gates remain open; EPUB remains Roadmap 2 scope.
+
+## Current reconciliation — merged #97
+
+PR #97 merged as f44d67517ba17053d15e4b420372526a5002a10c. Final Frontend CI 37040435175 passed 83 unit and 6 pipeline tests plus lint/format/types/build. Browser E2E 37040700001 passed 71 checks without retries (four intentional duplicate long-document skips). Main CI 37041483607, reconciliation 37041484160 and production publisher 37041555992 passed; production metadata records f44d675 and source CI 37041483607. Screenshot documentation is being preserved with the combined #86/#87 PR. #85 is completed; #79/#1/#80 remain open. #86 and #87 are the current combined increment; #89 and final regression remain before release.

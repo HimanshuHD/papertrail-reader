@@ -46,9 +46,9 @@ defineProps<{
   opacity: 0;
   transform: translateY(-0.25rem);
   transition:
-    opacity 120ms ease,
-    transform 120ms ease,
-    visibility 120ms;
+    opacity 180ms ease,
+    transform 180ms ease,
+    visibility 180ms;
 }
 .icon-button:hover .icon-tooltip,
 .icon-button:focus-visible .icon-tooltip {

@@ -33,14 +33,23 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem 1rem;
-  padding: 1rem;
+  gap: 0.125rem 0.75rem;
+  padding: 0.125rem 0.75rem;
+  border-top: 1px solid var(--pt-line);
+  background: var(--pt-panel);
+  line-height: 1.5;
   overflow-wrap: anywhere;
   font-size: 0.8rem;
   color: var(--pt-muted);
+  min-width: 0;
 }
 .build-footer a {
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  min-width: 24px;
+  max-width: 100%;
+  color: var(--pt-brand);
   text-underline-offset: 0.2em;
 }
 .build-footer a:focus-visible {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import LoadingState from '../LoadingState.vue'
 import IconButton from '../IconButton.vue'
@@ -365,6 +366,13 @@ async function loadOutline() {
   }
 }
 
+function closeRightPanel() {
+  rightPanel.value = null
+  void nextTick(() => {
+    readerRoot.value?.querySelector<HTMLButtonElement>('button[aria-label="Contents"]')?.focus()
+  })
+}
+
 function toggleRightPanel(next: Exclude<UtilityPanel, null>) {
   rightPanel.value = rightPanel.value === next ? null : next
   if (rightPanel.value === 'contents') void loadOutline()
@@ -650,7 +658,11 @@ onBeforeUnmount(() => {
         />
       </div>
 
-      <Transition name="utility-popover">
+      <Transition
+        name="utility-popover"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
+      >
         <div
           v-if="phase === 'ready' && popover"
           ref="popoverRoot"
@@ -775,103 +787,112 @@ onBeforeUnmount(() => {
         </div>
       </section>
 
-      <aside
-        v-if="phase === 'ready' && rightPanel"
-        class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
-        :aria-label="rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'"
+      <Transition
+        name="utility-panel"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
       >
-        <div
-          class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
+        <aside
+          v-if="phase === 'ready' && rightPanel"
+          class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
+          :aria-label="
+            rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'
+          "
+          @keydown.esc.stop.prevent="closeRightPanel"
         >
-          <div class="flex min-w-0 items-center gap-1" aria-label="PDF utility panel mode">
-            <button
-              type="button"
-              class="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
-              :aria-pressed="rightPanel === 'contents'"
-              @click="((rightPanel = 'contents'), loadOutline())"
-            >
-              Contents
-            </button>
-            <button
-              type="button"
-              class="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
-              :aria-pressed="rightPanel === 'search'"
-              @click="rightPanel = 'search'"
-            >
-              Search results
-            </button>
-          </div>
-          <IconButton label="Close utility panel" icon="close" @click="rightPanel = null" />
-        </div>
-
-        <section
-          v-if="rightPanel === 'contents'"
-          class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
-          aria-labelledby="pdf-contents-title"
-        >
-          <h3 id="pdf-contents-title" class="sr-only">PDF contents</h3>
-          <p v-if="outlineBusy" class="p-2 text-sm text-muted" role="status">
-            Loading PDF outline…
-          </p>
-          <p v-else-if="outlineLoaded && flatOutline.length === 0" class="p-2 text-sm text-muted">
-            This PDF does not provide an outline.
-          </p>
-          <ul v-else-if="flatOutline.length > 0" class="space-y-1">
-            <li v-for="(item, index) in flatOutline" :key="`${item.title}-${index}`">
-              <button
-                v-if="item.pageNumber"
-                type="button"
-                class="min-h-9 w-full rounded-md px-2 py-1 text-left text-sm hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
-                :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
-                @click="goToPage(item.pageNumber)"
-              >
-                {{ item.title }}
-                <span class="text-xs text-muted">· page {{ item.pageNumber }}</span>
-              </button>
-              <p
-                v-else
-                class="px-2 py-1 text-sm text-muted"
-                :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
-              >
-                {{ item.title }}
-              </p>
-            </li>
-          </ul>
-        </section>
-
-        <section
-          v-else
-          class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
-          aria-labelledby="pdf-search-results-title"
-        >
-          <h3 id="pdf-search-results-title" class="mb-2 text-sm font-semibold">Search results</h3>
-          <p
-            v-if="searchCompleted"
-            class="mb-2 text-xs leading-relaxed text-muted"
-            role="status"
-            aria-live="polite"
+          <div
+            class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
           >
-            {{ searchSummary }}
-          </p>
-          <p v-else class="text-sm text-muted">Open search to find text in this PDF.</p>
-          <ul v-if="searchMatches.length > 0" class="space-y-2">
-            <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
+            <div class="flex min-w-0 items-center gap-1" aria-label="PDF utility panel mode">
               <button
                 type="button"
-                class="w-full rounded-lg border border-line p-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
-                @click="goToPage(match.pageNumber)"
+                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
+                :aria-pressed="rightPanel === 'contents'"
+                @click="((rightPanel = 'contents'), loadOutline())"
               >
-                <span class="block text-xs font-semibold text-brand"
-                  >Page {{ match.pageNumber }}</span
-                >
-                <span class="mt-1 block text-sm leading-relaxed text-muted">{{
-                  match.excerpt
-                }}</span>
+                Contents
               </button>
-            </li>
-          </ul>
-        </section>
-      </aside>
+              <button
+                type="button"
+                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
+                :aria-pressed="rightPanel === 'search'"
+                @click="rightPanel = 'search'"
+              >
+                Search results
+              </button>
+            </div>
+            <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
+          </div>
+
+          <section
+            v-if="rightPanel === 'contents'"
+            class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
+            aria-labelledby="pdf-contents-title"
+          >
+            <h3 id="pdf-contents-title" class="sr-only">PDF contents</h3>
+            <p v-if="outlineBusy" class="p-2 text-sm text-muted" role="status">
+              Loading PDF outline…
+            </p>
+            <p v-else-if="outlineLoaded && flatOutline.length === 0" class="p-2 text-sm text-muted">
+              This PDF does not provide an outline.
+            </p>
+            <ul v-else-if="flatOutline.length > 0" class="space-y-1">
+              <li v-for="(item, index) in flatOutline" :key="`${item.title}-${index}`">
+                <button
+                  v-if="item.pageNumber"
+                  type="button"
+                  class="min-h-9 w-full rounded-md px-2 py-1 text-left text-sm hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+                  :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
+                  @click="goToPage(item.pageNumber)"
+                >
+                  {{ item.title }}
+                  <span class="text-xs text-muted">· page {{ item.pageNumber }}</span>
+                </button>
+                <p
+                  v-else
+                  class="px-2 py-1 text-sm text-muted"
+                  :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
+                >
+                  {{ item.title }}
+                </p>
+              </li>
+            </ul>
+          </section>
+
+          <section
+            v-else
+            class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
+            aria-labelledby="pdf-search-results-title"
+          >
+            <h3 id="pdf-search-results-title" class="mb-2 text-sm font-semibold">Search results</h3>
+            <p
+              v-if="searchCompleted"
+              class="mb-2 text-xs leading-relaxed text-muted"
+              role="status"
+              aria-live="polite"
+            >
+              {{ searchSummary }}
+            </p>
+            <p v-else class="text-sm text-muted">Open search to find text in this PDF.</p>
+            <ul v-if="searchMatches.length > 0" class="space-y-2">
+              <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
+                <button
+                  type="button"
+                  class="w-full rounded-lg border border-line p-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+                  @click="goToPage(match.pageNumber)"
+                >
+                  <span class="block text-xs font-semibold text-brand"
+                    >Page {{ match.pageNumber }}</span
+                  >
+                  <span class="mt-1 block text-sm leading-relaxed text-muted">{{
+                    match.excerpt
+                  }}</span>
+                </button>
+              </li>
+            </ul>
+          </section>
+        </aside>
+      </Transition>
     </div>
   </div>
 </template>
@@ -893,20 +914,40 @@ onBeforeUnmount(() => {
   min-width: 0;
   overscroll-behavior: contain;
 }
-@media (prefers-reduced-motion: no-preference) {
-  .pdf-side-panel {
-    animation: panel-enter 140ms ease-out;
-  }
+/* Keep the departing panel out of flex layout while it slides away. */
+.utility-panel-leave-active {
+  position: absolute;
+  inset: 0 0 0 auto;
+  pointer-events: none;
 }
-@keyframes panel-enter {
-  from {
-    opacity: 0;
-    transform: translateX(0.5rem);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+.utility-panel-enter-active,
+.utility-panel-leave-active {
+  transition:
+    transform 320ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.utility-panel-enter-from,
+.utility-panel-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.utility-tab {
+  color: var(--pt-muted);
+  border: 1px solid transparent;
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    border-color 180ms ease;
+}
+.utility-tab:hover {
+  background: var(--pt-canvas);
+}
+.utility-tab[aria-pressed='true'] {
+  color: var(--pt-ink);
+  background: color-mix(in srgb, var(--pt-brand) 16%, var(--pt-panel));
+  border-color: var(--pt-brand);
+  box-shadow: inset 0 -2px 0 var(--pt-brand);
+  font-weight: 700;
 }
 [aria-label='PDF reader controls'] :deep(.icon-button:nth-child(-n + 3) .icon-tooltip) {
   left: 0;
@@ -914,6 +955,7 @@ onBeforeUnmount(() => {
 }
 .pdf-page-input {
   appearance: textfield;
+  margin-inline: 0.5rem;
 }
 .pdf-page-input::-webkit-inner-spin-button,
 .pdf-page-input::-webkit-outer-spin-button {
@@ -923,8 +965,8 @@ onBeforeUnmount(() => {
 .utility-popover-enter-active,
 .utility-popover-leave-active {
   transition:
-    opacity 160ms ease,
-    transform 160ms ease;
+    opacity 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1);
   transform-origin: top right;
 }
 .utility-popover-enter-from,
@@ -942,7 +984,10 @@ onBeforeUnmount(() => {
 }
 @media (prefers-reduced-motion: reduce) {
   .utility-popover-enter-active,
-  .utility-popover-leave-active {
+  .utility-popover-leave-active,
+  .utility-panel-enter-active,
+  .utility-panel-leave-active,
+  .utility-tab {
     transition: none;
   }
   .search-spinner {
