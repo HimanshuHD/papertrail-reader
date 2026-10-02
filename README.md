@@ -12,7 +12,7 @@ PaperTrail is a local-first PDF reader that runs in your browser, built with Vue
 - Fullscreen reading, keyboard shortcuts and accessible loading/error states.
 - Local document processing; files are not sent to a server.
 
-The PDF utility-panel and compact-toolbar refinement is in progress in [issue #64](https://github.com/HimanshuHD/papertrail-reader/issues/64). The library panel interaction refinement in #63/#72 is complete in [PR #71](https://github.com/HimanshuHD/papertrail-reader/pull/71).
+The PDF utility and library refinements are complete. The first major release v1.0.0 now follows a bug-fix and release-validation pass in #79/#80. The current deployed version stays 0.1.0 until release preparation.
 
 ## Run and verify
 
@@ -32,7 +32,7 @@ Browser E2E uses the Playwright version pinned in package-lock. CI runs the fast
 
 Start at [docs/README.md](docs/README.md). See the [complete roadmap PDF](docs/PaperTrail-Web-First-Roadmap.pdf), [roadmap](docs/roadmap.md), [live progress tracker](docs/progress.md), [Vue architecture](docs/vue-architecture.md), and [deployment guide](docs/deployment.md).
 
-Issue [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1) tracks the product roadmap. PDF reading is the current release; EPUB #12 is deferred to the next version. Persistent positions and bookmarks are tracked in #13.
+Issue [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1) tracks first release v1.0.0. [Roadmap 2 #78](https://github.com/HimanshuHD/papertrail-reader/issues/78) holds unfinished expansion scope after the release, including PDF saved positions/bookmarks #13, EPUB #12 and later Tauri integration.
 
 ## Production and previews
 
