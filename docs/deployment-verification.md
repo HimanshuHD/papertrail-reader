@@ -50,7 +50,6 @@ PR #50 merged at 3a1a82d5ceb6e518cefcbafe43dedacef3723808. Final PR CI 369125954
 - `/preview/pr-60/` returned HTTP 200 with the Preview closed page; manifest marks #60 retired.
 - This verifies delivery, not full interactive browser acceptance. Browser E2E 36963474599 failed on an earlier PR head; #61 fixes the remaining navigation selector and records new acceptance.
 
-
 ## PR #71 production verification — 2 October 2026
 
 - PR #71 merged at 2026-10-02T11:02:59Z; merge commit: `9e5db87a38673651214989053c495270ed9b73df`.
