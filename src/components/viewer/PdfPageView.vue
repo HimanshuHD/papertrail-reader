@@ -204,6 +204,7 @@ onBeforeUnmount(() => {
     ref="root"
     class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
     :aria-label="`PDF page ${pageNumber}`"
+    :data-render-state="rendering ? 'rendering' : rendered ? 'ready' : 'pending'"
   >
     <div
       class="pdf-page relative shrink-0 bg-white shadow-sm"

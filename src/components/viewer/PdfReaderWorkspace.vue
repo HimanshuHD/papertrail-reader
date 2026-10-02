@@ -61,6 +61,7 @@ const fullscreen = ref(false)
 const visibility = new Map<number, number>()
 let openSequence = 0
 let resizeFrame = 0
+let layoutOperation = 0
 let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
 
@@ -112,6 +113,8 @@ function measureViewport() {
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
   const readingPoint = captureReadingPoint()
+  const operation = layoutOperation
+  const scrollBefore = element.scrollTop
   const previousWidth = availableWidth.value
   const previousHeight = availableHeight.value
   const style = getComputedStyle(element)
@@ -129,7 +132,8 @@ function measureViewport() {
   )
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
-      if (viewport.value !== element) return
+      if (viewport.value !== element || operation !== layoutOperation) return
+      if (!atEnd && Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
     })
@@ -205,6 +209,7 @@ async function openDocument() {
 }
 
 async function goToPage(page: number) {
+  layoutOperation += 1
   const next = clampPage(page)
   currentPage.value = next
   await nextTick()
@@ -306,6 +311,7 @@ async function changeZoom(delta: number) {
     availableWidth.value,
     availableHeight.value,
   )
+  layoutOperation += 1
   zoom.value = Math.min(4, Math.max(0.25, baseline + delta))
   fitMode.value = 'custom'
   renderedScale.value = zoom.value
@@ -314,6 +320,7 @@ async function changeZoom(delta: number) {
 }
 
 async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+  layoutOperation += 1
   const point = captureReadingPoint()
   fitMode.value = mode
   await restoreReadingPoint(point)

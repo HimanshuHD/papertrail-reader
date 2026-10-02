@@ -586,10 +586,13 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
   await page.getByRole('button', { name: /zoom-anchor.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
   await page.getByLabel('Current page', { exact: true }).fill('4')
   await page.getByLabel('Current page', { exact: true }).press('Tab')
   const canvas = pane.getByLabel('Rendered PDF page 4', { exact: true })
   await expect(canvas).toBeVisible()
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('4')
+  await expect(pane.locator('#pdf-page-4')).toHaveAttribute('data-render-state', 'ready')
   const readingPoint = () =>
     pane.evaluate((node) => {
       const box = node.querySelector('#pdf-page-4 .pdf-page')!.getBoundingClientRect()
