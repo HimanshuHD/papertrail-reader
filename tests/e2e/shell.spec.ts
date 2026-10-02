@@ -1042,7 +1042,7 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await expect(page.getByLabel('Current page')).toHaveValue('2')
   const highlight = page.locator('#pdf-page-2 .pdf-match.selected[data-occurrence="2"]')
   await expect(highlight).toHaveCount(1)
-  async function alignedAndVisible() {
+  async function alignedAndVisible(requireVisible = true) {
     await expect
       .poll(() =>
         highlight.evaluate((el) => {
@@ -1089,18 +1089,25 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
         }),
       )
       .toBe(true)
-    const h = (await highlight.boundingBox())!,
-      pane = (await page.locator('.pdf-scroll').boundingBox())!
-    expect(h.y).toBeGreaterThanOrEqual(pane.y - 1)
-    expect(h.y + h.height).toBeLessThanOrEqual(pane.y + pane.height + 1)
+    if (requireVisible) {
+      const h = (await highlight.boundingBox())!,
+        pane = (await page.locator('.pdf-scroll').boundingBox())!
+      expect(h.y).toBeGreaterThanOrEqual(pane.y - 1)
+      expect(h.y + h.height).toBeLessThanOrEqual(pane.y + pane.height + 1)
+    }
   }
   await alignedAndVisible()
   await capture(page, info, 'selected-search-occurrence')
   for (const button of ['Zoom in', 'Fit page', 'Fit width']) {
     await page.getByRole('button', { name: button, exact: true }).click()
     await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
-    await alignedAndVisible()
+    // Fit/zoom retains the existing reading point, not a sticky search target.
+    await alignedAndVisible(false)
   }
+  await page.locator('.pdf-scroll').evaluate((el) => {
+    el.scrollTop -= 40
+  })
+  await alignedAndVisible(false)
   await page.getByRole('button', { name: 'Dark mode' }).click()
   await expect(panel.locator('mark').first()).toHaveCSS('color', 'rgb(66, 32, 6)')
   await page.getByRole('button', { name: 'Search PDF', exact: true }).click()
