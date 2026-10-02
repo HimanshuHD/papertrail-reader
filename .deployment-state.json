@@ -64,13 +64,11 @@
       "status": "retired"
     },
     "71": {
-      "sha": "6388a081172be371306c24b6ac23904c56dead21",
-      "runId": "36998328721",
-      "status": "active"
+      "status": "retired"
     }
   },
   "production": {
-    "sha": "bd09de56d14c78887375457a4565d2ed2c58a206",
-    "runId": "36995614326"
+    "sha": "9e5db87a38673651214989053c495270ed9b73df",
+    "runId": "36998853805"
   }
 }
