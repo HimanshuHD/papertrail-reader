@@ -79,7 +79,9 @@ defineEmits<{
         >
           <UiIcon name="plus" />
         </div>
-        <h3 id="library-empty-title" class="mt-4 text-sm font-semibold">No documents selected yet</h3>
+        <h3 id="library-empty-title" class="mt-4 text-sm font-semibold">
+          No documents selected yet
+        </h3>
         <p class="mt-2 text-xs leading-relaxed text-muted">
           Use the <span class="font-semibold text-brand">+</span> button above to add a folder or
           choose PDF / EPUB files.
@@ -130,7 +132,11 @@ defineEmits<{
 <style scoped>
 .library-empty-state {
   background:
-    radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--pt-brand) 10%, transparent), transparent 46%),
+    radial-gradient(
+      circle at 50% 0%,
+      color-mix(in srgb, var(--pt-brand) 10%, transparent),
+      transparent 46%
+    ),
     color-mix(in srgb, var(--pt-canvas) 72%, var(--pt-panel));
 }
 </style>
