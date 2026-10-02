@@ -12,7 +12,7 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
-function createPdfFixture(pageCount = 2, title?: string): Buffer {
+function createPdfFixture(pageCount = 2, title?: string, searchFixture = false): Buffer {
   const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -21,7 +21,10 @@ function createPdfFixture(pageCount = 2, title?: string): Buffer {
   ]
   for (let i = 0; i < pageCount; i++) {
     const label = i === 0 ? 'First page' : i === 1 ? 'Second page' : `Page ${i + 1}`
-    const stream = `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
+    const stream =
+      searchFixture && i === 1
+        ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
+        : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
     objects.push(
       `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
     )
@@ -1009,4 +1012,80 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
   ).toBe(true)
   await capture(page, info, 'reader-polish-short-height')
+})
+
+test('search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'search-occurrences.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(2, undefined, true),
+  })
+  await page.getByRole('button', { name: 'PDF: search-occurrences.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(page.getByLabel('Current page')).toHaveValue('1')
+  await page.getByRole('button', { name: 'Search PDF', exact: true }).click()
+  await page.getByRole('searchbox').fill('NEEDLE')
+  await page.getByRole('search').getByRole('button', { name: 'Search', exact: true }).click()
+  const panel = page.locator('[aria-label="PDF search results panel"]')
+  await expect(panel.getByRole('status')).toContainText('2 matches')
+  await expect(panel.locator('mark')).toHaveCount(2)
+  await expect(panel.locator('mark').first()).toHaveText('Needle')
+  await expect(panel.locator('mark').last()).toHaveText('needle')
+  const firstExcerpt = await panel.locator('.search-excerpt').first().textContent()
+  expect(firstExcerpt!.startsWith('…')).toBe(true)
+  expect(Array.from(firstExcerpt!.slice(1).split('Needle')[0]!)).toHaveLength(50)
+  expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
+  await panel.getByRole('button', { name: /Page 2 · Match 2/ }).click()
+  await expect(page.getByLabel('Current page')).toHaveValue('2')
+  const highlight = page.locator('#pdf-page-2 .pdf-match.selected[data-occurrence="2"]')
+  await expect(highlight).toHaveCount(1)
+  async function alignedAndVisible() {
+    await expect
+      .poll(() =>
+        highlight.evaluate((el) => {
+          const span = [...document.querySelectorAll('#pdf-page-2 .textLayer span')].find(
+            (s) => s.textContent === 'needle',
+          )!
+          const range = document.createRange()
+          range.selectNodeContents(span)
+          const text = range.getBoundingClientRect(),
+            box = el.getBoundingClientRect()
+          return Math.max(
+            Math.abs(text.left - box.left),
+            Math.abs(text.top - box.top),
+            Math.abs(text.width - box.width),
+            Math.abs(text.height - box.height),
+          )
+        }),
+      )
+      .toBeLessThan(2)
+    const h = (await highlight.boundingBox())!,
+      pane = (await page.locator('.pdf-scroll').boundingBox())!
+    expect(h.y).toBeGreaterThanOrEqual(pane.y - 1)
+    expect(h.y + h.height).toBeLessThanOrEqual(pane.y + pane.height + 1)
+  }
+  await alignedAndVisible()
+  await capture(page, info, 'selected-search-occurrence')
+  for (const button of ['Zoom in', 'Fit page', 'Fit width']) {
+    await page.getByRole('button', { name: button, exact: true }).click()
+    await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
+    await alignedAndVisible()
+  }
+  await page.getByRole('button', { name: 'Dark mode' }).click()
+  await expect(panel.locator('mark').first()).toHaveCSS('color', 'rgb(66, 32, 6)')
+  await page.getByRole('button', { name: 'Search PDF', exact: true }).click()
+  await page.getByRole('searchbox').fill('wrapped match')
+  await expect(page.locator('.pdf-match')).toHaveCount(0)
+  await page.getByRole('search').getByRole('button', { name: 'Search', exact: true }).click()
+  await expect(panel.locator('mark')).toHaveText('wrapped match')
+  await panel.getByRole('button', { name: /Page 2 · Match 1/ }).click()
+  await expect(page.locator('#pdf-page-2 .pdf-match.selected').first()).toBeVisible()
+  await expect
+    .poll(() => page.locator('#pdf-page-2 .pdf-match.selected').count())
+    .toBeGreaterThanOrEqual(2)
+  await capture(page, info, 'wrapped-search-occurrence-dark')
+  await noOverflow(page)
 })
