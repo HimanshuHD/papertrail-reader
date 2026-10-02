@@ -140,7 +140,7 @@ The live GitHub roadmap and issue acceptance criteria remain authoritative for c
 - [ ] [#14 [M5] Recent documents and library search](https://github.com/HimanshuHD/papertrail-reader/issues/14)
 - [ ] [#13 [M5] Browser document identity, saved positions and bookmarks](https://github.com/HimanshuHD/papertrail-reader/issues/13)
 - [ ] [#12 [M4] EPUB reader and reflow controls](https://github.com/HimanshuHD/papertrail-reader/issues/12)
-- [ ] [#11 [M3] PDF search, contents and reader shortcuts](https://github.com/HimanshuHD/papertrail-reader/issues/11)
+- [x] [#11 [M3] PDF search, contents and reader shortcuts](https://github.com/HimanshuHD/papertrail-reader/issues/11)
 - [x] [#10 [M3] PDF.js reader, navigation and zoom](https://github.com/HimanshuHD/papertrail-reader/issues/10)
 - [x] [#9 [M2] Browser document discovery and directory tree](https://github.com/HimanshuHD/papertrail-reader/issues/9)
 - [x] [#8 [M2] Browser folder/file selection and permission handling](https://github.com/HimanshuHD/papertrail-reader/issues/8)
