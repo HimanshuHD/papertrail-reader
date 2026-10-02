@@ -102,4 +102,6 @@ PR #66 is ready for review; #62 remains open until merge. #63 compact library co
 
 ## Publisher trigger refinement (#67)
 
-#67 is in progress in PR #68 before #63: main-only CI subscription, manual previews, no PR-close CI, closed-preview reconciliation during publication and explicit outcomes. Parent #26; related #35/#44/#52. PR #66 is merged; #62 and #61 are completed. Next product work remains #63, then #64. Live trigger/deployment evidence must be recorded after refinement merge.
+#67 is in review in PR #68 before #63: main-only CI subscription, manual previews, no PR-close CI, closed-preview reconciliation during publication and explicit outcomes. Parent #26; related #35/#44/#52. PR #66 is merged; #62 and #61 are completed. Next product work remains #63, then #64. Live trigger/deployment evidence must be recorded after refinement merge.
+
+Refinement acceptance: Frontend CI [36974909774](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36974909774) passed lint/format/tests/types/build; 6 pipeline tests cover coexistence, closed-preview reconciliation, manual preview policy and main build freshness. Local YAML, embedded JavaScript and shell syntax checks passed. Actual trigger suppression and deployment remain post-merge verification in #67.
