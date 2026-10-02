@@ -4,15 +4,15 @@ Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 
 
 ## Implementation status after PR #59
 
-| Layer           | Implemented on main                                            | Remaining owner                    |
-| --------------- | -------------------------------------------------------------- | ---------------------------------- |
-| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF utility UX #11                  |
-| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states     |
+| Layer           | Implemented on main                                            | Remaining owner                     |
+| --------------- | -------------------------------------------------------------- | ----------------------------------- |
+| App/root        | Shared footer, HomeView and ReaderView through RouterView      | PDF utility UX #11                   |
+| Styling         | Tailwind semantic Light/Dark tokens and responsive shell       | Product-specific reader states      |
 | State           | Theme, library state and active PDF reader state               | PDF utility state #11; metadata #13 |
-| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed   |
-| Reader contract | PDF.js core reader #10 plus EPUB CFI/font contracts           | PDF utility UX #11; EPUB #12       |
-| File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13            |
-| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                |
+| Routing         | Hash home/app/fallback with Vite BASE_URL                      | Future document routes as needed    |
+| Reader contract | PDF.js core reader #10 plus EPUB CFI/font contracts           | PDF utility UX #11; EPUB #12        |
+| File access     | Source selection #8, discovery #24 and tree/refresh #25        | Persistent identity #13             |
+| Persistence     | Light/Dark choice in localStorage; no reading-data persistence | #13                                 |
 
 #6/#46/#42/#49/#43/#8/#24/#25 are merged. M2 browser selection, discovery, hierarchy and refresh/reselection are complete. Local-document selection now hands a `File` toward the reader boundary; PDF.js implementation remains #10 and EPUB remains #12.
 
@@ -84,7 +84,6 @@ Refresh semantics follow the browser source boundary. A live `FileSystemDirector
 `src/features/pdf/pdf-session.ts` owns PDF.js loading, the bundled worker URL, document lifetime and cancellation of an obsolete `RenderTask`. It accepts only an explicitly selected local `File`; no network URL or unrestricted filesystem path enters the reader. `PdfReaderWorkspace.vue` owns current-page, zoom and fit presentation while `ReaderView` decides when a discovered PDF becomes active. Changing sources, refreshing a live directory or selecting a sample/EPUB unmounts the PDF workspace so the session can release render/document resources.
 
 `PdfReaderWorkspace.vue` renders a continuous page list and keeps current-page/progress synchronized from page visibility. `PdfPageView.vue` uses `IntersectionObserver` with a prefetch margin so canvas/text rendering starts only near the viewport; zoom/fit changes rerender nearby pages. The session tracks render tasks per canvas, so one visible page no longer cancels another and obsolete work for the same page is cancelled before replacement. PDF.js `TextLayer` overlays selectable text using `streamTextContent()`. Password callbacks fail into an explicit recoverable state rather than leaving document loading pending, and malformed PDFs surface an invalid-document state. PDF outlines/search/selection UX/fullscreen/shortcut help remain #11.
-
 
 ## PDF utility increment (#11)
 
