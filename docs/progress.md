@@ -83,7 +83,7 @@ Automatic browser installation/execution is removed in PR #51. Frontend CI retai
 | ----- | ------ | ---------------------------------------------------------------- | --------- |
 | #61   | #11    | Browser acceptance, workflow audit and release reconciliation    | Completed |
 | #62   | #10    | Viewport sizing and independent pane scrolling                   | In review |
-| #63   | #10    | Floating library toggle, compact header and source dropdown      | Backlog   |
+| #63   | #10    | Floating library toggle, compact header and source dropdown      | In review |
 | #64   | #11    | Right utility panel, icon toolbar, filename tooltip and popovers | Backlog   |
 
 Relationships use reciprocal links/checklists; native GitHub sub-issue mutations are not exposed by the connector. PRs stay draft until fast CI is green; marking Ready for review triggers explicit Browser E2E. See [workflow audit](workflow-audit.md) and [deployment evidence](deployment-verification.md).
@@ -115,3 +115,7 @@ Draft PR #70 checkpoint 1: Frontend CI [36975882279](https://github.com/Himanshu
 ## Compact library controls (#63)
 
 PR #70 is merged and the owner accepted manual preview and production validation. Main CI 36995614326 and publisher 36995672425 passed; manual preview publisher 36995317258 passed. #69 is completed. #63 is now active: floating closed-panel opener, in-panel refresh/add/close icons and keyboard-accessible source menu. Directory tree space takes priority; scan/selection feedback remains accessible. #64 right utility panel and toolbar is the next separate increment.
+
+## Compact library acceptance (#63 / PR #71)
+
+Implementation `92e4c46b606996be31a965e28357d1029bfed31a` passed [Frontend CI 36996477628](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996477628) and [Browser E2E 36996568915](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996568915): 40 Chromium checks at 320/375/768/1024/1440px. Tests cover exclusive floating opener, close/open focus, source-menu keyboard and outside/focus dismissal, selection fallbacks, capability-based refresh/reselection, independent scrolling and PDF utilities. #63 is in review in PR #71 and stays open until merge. #64 follows. No publisher ran for the draft CI updates; preview remains manual.
