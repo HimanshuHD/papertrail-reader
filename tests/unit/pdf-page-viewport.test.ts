@@ -158,3 +158,41 @@ it('keeps the completed bitmap visible while the next zoom render is pending', a
   ])
   wrapper.unmount()
 })
+
+it('starts a dirty visible page on scrollbar movement before an observer callback', async () => {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe = vi.fn()
+      disconnect = vi.fn()
+    },
+  )
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    callback(0)
+    return 1
+  })
+  vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  const pane = document.createElement('section')
+  const render = vi.fn().mockResolvedValue({ width: 400, height: 600, scale: 1 })
+  const wrapper = mount(PdfPageView, {
+    props: {
+      session: {
+        render,
+        getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
+      } as unknown as PdfDocumentSession,
+      pageNumber: 1,
+      fitMode: 'width',
+      zoom: 1,
+      availableWidth: 400,
+      availableHeight: 600,
+      scrollRoot: pane,
+    },
+  })
+  await flushPromises()
+  expect(render).not.toHaveBeenCalled()
+  expect(wrapper.text()).toContain('Rendering page 1')
+  pane.dispatchEvent(new Event('scroll'))
+  await flushPromises()
+  expect(render).toHaveBeenCalledOnce()
+  wrapper.unmount()
+})

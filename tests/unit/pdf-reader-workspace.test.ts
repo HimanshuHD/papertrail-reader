@@ -9,7 +9,8 @@ const pdfSession = vi.hoisted(() => ({
   openPdfDocument: vi.fn(),
 }))
 
-vi.mock('../../src/features/pdf/pdf-session', () => ({
+vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/features/pdf/pdf-session')>()),
   openPdfDocument: pdfSession.openPdfDocument,
   PdfOpenError: class PdfOpenError extends Error {},
 }))
