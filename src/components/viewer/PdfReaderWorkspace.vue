@@ -156,7 +156,6 @@ async function openDocument() {
     emit('status', `Opened ${props.document.name}. ${next.totalPages} pages.`)
     await nextTick()
     measureViewport()
-
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -523,9 +522,7 @@ onBeforeUnmount(() => {
           <h3 id="pdf-contents-title" class="font-semibold">Contents</h3>
           <button type="button" class="text-sm text-muted" @click="panel = null">Close</button>
         </div>
-        <p v-if="outlineBusy" class="mt-3 text-sm text-muted" role="status">
-          Loading PDF outline…
-        </p>
+        <p v-if="outlineBusy" class="mt-3 text-sm text-muted" role="status">Loading PDF outline…</p>
         <p v-else-if="outlineLoaded && flatOutline.length === 0" class="mt-3 text-sm text-muted">
           This PDF does not provide an outline.
         </p>
