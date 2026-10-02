@@ -43,6 +43,8 @@ const availableWidth = ref(720)
 const availableHeight = ref(900)
 const panel = ref<UtilityPanel>(null)
 const outline = shallowRef<readonly PdfOutlineItem[]>([])
+const outlineLoaded = ref(false)
+const outlineBusy = ref(false)
 const searchQuery = ref('')
 const searchMatches = shallowRef<readonly PdfSearchMatch[]>([])
 const searchTextPageCount = ref(0)
@@ -111,6 +113,8 @@ function resetUtilities() {
   searchController = null
   panel.value = null
   outline.value = []
+  outlineLoaded.value = false
+  outlineBusy.value = false
   searchQuery.value = ''
   searchMatches.value = []
   searchTextPageCount.value = 0
@@ -153,11 +157,6 @@ async function openDocument() {
     await nextTick()
     measureViewport()
 
-    try {
-      outline.value = await next.getOutline()
-    } catch {
-      outline.value = []
-    }
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -236,8 +235,24 @@ function handleSlider(event: Event) {
   void goToPage(Number(input.value))
 }
 
+async function loadOutline() {
+  const current = session.value
+  if (!current || outlineLoaded.value || outlineBusy.value) return
+
+  outlineBusy.value = true
+  try {
+    outline.value = await current.getOutline()
+  } catch {
+    outline.value = []
+  } finally {
+    outlineLoaded.value = true
+    outlineBusy.value = false
+  }
+}
+
 async function openPanel(next: Exclude<UtilityPanel, null>) {
   panel.value = panel.value === next ? null : next
+  if (panel.value === 'contents') void loadOutline()
   if (panel.value === 'search') {
     await nextTick()
     searchInput.value?.focus()
@@ -508,10 +523,13 @@ onBeforeUnmount(() => {
           <h3 id="pdf-contents-title" class="font-semibold">Contents</h3>
           <button type="button" class="text-sm text-muted" @click="panel = null">Close</button>
         </div>
-        <p v-if="flatOutline.length === 0" class="mt-3 text-sm text-muted">
+        <p v-if="outlineBusy" class="mt-3 text-sm text-muted" role="status">
+          Loading PDF outline…
+        </p>
+        <p v-else-if="outlineLoaded && flatOutline.length === 0" class="mt-3 text-sm text-muted">
           This PDF does not provide an outline.
         </p>
-        <ul v-else class="mt-3 max-h-52 space-y-1 overflow-auto">
+        <ul v-else-if="flatOutline.length > 0" class="mt-3 max-h-52 space-y-1 overflow-auto">
           <li v-for="(item, index) in flatOutline" :key="`${item.title}-${index}`">
             <button
               v-if="item.pageNumber"
