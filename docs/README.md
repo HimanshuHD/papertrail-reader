@@ -28,3 +28,7 @@ Add new documentation here and update this index. Live issues and docs/progress.
 [Roadmap](roadmap.md) separates first release (#1, bug gate #79, release gate #80) from post-release Roadmap 2 (#78). [First-release bug tracking](first-release-bugs.md) defines intake and linked child evidence. The existing roadmap PDF is historical; Markdown and live issues carry the revised plan.
 
 [Loading feedback](loading-feedback.md) preserves the merged #85 screenshots and validation. [Reader polish](reader-polish.md) records combined #86/#87 control, motion and footer changes.
+
+## Release records
+
+[Release history](releases/README.md) indexes successive versions. [v1.0.0](releases/v1.0.0.md) records scope, regression, support and tagging/deployment steps; [acceptance audit](releases/v1.0.0-acceptance-audit.md) covers all closed issues. Use [TEMPLATE.md](releases/TEMPLATE.md) for future releases.
