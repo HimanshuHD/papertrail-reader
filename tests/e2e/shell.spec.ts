@@ -379,6 +379,14 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
     await library.press('Escape')
     await expect(page.getByRole('button', { name: 'Show library' })).toBeFocused()
   }
+  await expect(page.getByLabel('Rendered PDF page 1', { exact: true })).toBeVisible()
+  await expect
+    .poll(() =>
+      page
+        .getByLabel('Rendered PDF page 1', { exact: true })
+        .evaluate((e) => (e as HTMLCanvasElement).width),
+    )
+    .toBeGreaterThan(0)
   await pdf.focus()
   await page.keyboard.press('PageDown')
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('2')

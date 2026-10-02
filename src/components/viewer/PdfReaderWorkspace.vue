@@ -192,7 +192,7 @@ async function goToPage(page: number) {
       pageElement.getBoundingClientRect().top -
       scrollElement.getBoundingClientRect().top +
       scrollElement.scrollTop
-    scrollElement.scrollTo?.({ top, behavior: 'smooth' })
+    scrollElement.scrollTo?.({ top, behavior: 'instant' })
   }
   emit('status', `Page ${next} of ${totalPages.value}.`)
 }
