@@ -977,6 +977,13 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     ].map((text, index) => {
       const span = document.createElement('span')
       const link = document.createElement('a')
+      // Match Vue's compiled scoped markup so the real component's link rules apply.
+      for (const attribute of element
+        .getAttributeNames()
+        .filter((name) => name.startsWith('data-v-'))) {
+        span.setAttribute(attribute, '')
+        link.setAttribute(attribute, '')
+      }
       link.textContent = text
       link.href =
         index === 0
