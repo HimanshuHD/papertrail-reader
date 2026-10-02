@@ -285,7 +285,6 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(page.getByRole('alert')).toContainText('This file is not a valid or supported PDF.')
 })
 
-
 test('PDF search, keyboard utilities and fullscreen work on a real text PDF', async ({ page }) => {
   await page.goto('./#/app')
   const fileInput = page.locator('input[accept*=".pdf"]')
