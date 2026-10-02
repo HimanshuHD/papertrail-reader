@@ -7,26 +7,60 @@ defineProps<{ sidebarOpen: boolean }>()
     <aside
       v-if="sidebarOpen"
       id="document-sidebar"
-      class="min-w-0 border-b border-line bg-panel lg:border-r lg:border-b-0"
+      class="library-scroll border-line bg-panel"
       aria-label="Document library"
+      tabindex="0"
     >
       <slot name="sidebar" />
     </aside>
-    <div class="min-w-0">
+    <div class="reader-column">
       <slot name="toolbar" />
-      <slot />
+      <div class="reader-content"><slot /></div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .reader-layout {
+  position: relative;
   display: grid;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
   grid-template-columns: minmax(0, 1fr);
+}
+.library-scroll {
+  position: absolute;
+  inset: 0 auto 0 0;
+  z-index: 30;
+  width: min(280px, 90%);
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-right: 1px solid var(--pt-line);
+  box-shadow: 12px 0 24px rgb(0 0 0 / 12%);
+}
+.reader-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+.reader-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
 }
 @media (min-width: 1024px) {
   .reader-layout.sidebar-visible {
     grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .library-scroll {
+    position: static;
+    width: auto;
+    box-shadow: none;
   }
 }
 </style>

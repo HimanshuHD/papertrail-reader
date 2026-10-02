@@ -55,6 +55,7 @@ const fullscreen = ref(false)
 const visibility = new Map<number, number>()
 let openSequence = 0
 let resizeFrame = 0
+let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
 
 const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
@@ -99,8 +100,19 @@ function measureViewport() {
   const element = viewport.value
   if (!element) return
 
-  availableWidth.value = Math.max(240, element.clientWidth - 32)
-  availableHeight.value = Math.max(320, element.clientHeight - 32)
+  const style = getComputedStyle(element)
+  availableWidth.value = Math.max(
+    1,
+    element.clientWidth -
+      parseFloat(style.paddingLeft || '0') -
+      parseFloat(style.paddingRight || '0'),
+  )
+  availableHeight.value = Math.max(
+    1,
+    element.clientHeight -
+      parseFloat(style.paddingTop || '0') -
+      parseFloat(style.paddingBottom || '0'),
+  )
 }
 
 function scheduleViewportMeasure() {
@@ -173,10 +185,15 @@ async function goToPage(page: number) {
   const next = clampPage(page)
   currentPage.value = next
   await nextTick()
-  document.getElementById(`pdf-page-${next}`)?.scrollIntoView?.({
-    block: 'start',
-    behavior: 'smooth',
-  })
+  const pageElement = viewport.value?.querySelector<HTMLElement>(`#pdf-page-${next}`)
+  const scrollElement = viewport.value
+  if (pageElement && scrollElement) {
+    const top =
+      pageElement.getBoundingClientRect().top -
+      scrollElement.getBoundingClientRect().top +
+      scrollElement.scrollTop
+    scrollElement.scrollTo?.({ top, behavior: 'smooth' })
+  }
   emit('status', `Page ${next} of ${totalPages.value}.`)
 }
 
@@ -327,6 +344,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function handleShortcut(event: KeyboardEvent) {
   if (phase.value !== 'ready') return
+  if (event.target instanceof Element && event.target.closest('#document-sidebar')) return
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'f') {
     event.preventDefault()
@@ -375,6 +393,10 @@ function handleShortcut(event: KeyboardEvent) {
 }
 
 onMounted(() => {
+  if (typeof ResizeObserver !== 'undefined' && viewport.value) {
+    resizeObserver = new ResizeObserver(scheduleViewportMeasure)
+    resizeObserver.observe(viewport.value)
+  }
   void openDocument()
   globalThis.addEventListener('resize', scheduleViewportMeasure)
   globalThis.addEventListener('keydown', handleShortcut)
@@ -390,6 +412,7 @@ onBeforeUnmount(() => {
   openSequence += 1
   searchController?.abort()
   cancelAnimationFrame(resizeFrame)
+  resizeObserver?.disconnect()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
@@ -399,9 +422,9 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="readerRoot" class="min-w-0 bg-canvas">
+  <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
     <header
-      class="flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-4 sm:px-8"
+      class="pdf-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-4 sm:px-8"
     >
       <div class="min-w-0 flex-1">
         <p class="text-xs font-semibold tracking-wider text-brand uppercase">
@@ -516,7 +539,10 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
-    <div v-if="phase === 'ready' && panel" class="border-b border-line bg-panel px-5 py-4 sm:px-8">
+    <div
+      v-if="phase === 'ready' && panel"
+      class="pdf-utilities border-b border-line bg-panel px-5 py-4 sm:px-8"
+    >
       <section v-if="panel === 'contents'" aria-labelledby="pdf-contents-title">
         <div class="flex items-center justify-between gap-3">
           <h3 id="pdf-contents-title" class="font-semibold">Contents</h3>
@@ -618,7 +644,9 @@ onBeforeUnmount(() => {
 
     <section
       ref="viewport"
-      class="h-[70vh] min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
+      class="pdf-scroll min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
+      aria-label="PDF pages"
+      tabindex="0"
       aria-labelledby="reader-title"
     >
       <div
@@ -661,6 +689,7 @@ onBeforeUnmount(() => {
           :zoom="zoom"
           :available-width="availableWidth"
           :available-height="availableHeight"
+          :scroll-root="viewport"
           @visibility="handleVisibility"
           @rendered="handleRendered"
           @error="handleRenderError"
@@ -669,3 +698,29 @@ onBeforeUnmount(() => {
     </section>
   </div>
 </template>
+
+<style scoped>
+.pdf-reader {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.pdf-header {
+  flex-shrink: 0;
+  max-height: 40%;
+  overflow: auto;
+}
+.pdf-utilities {
+  flex-shrink: 0;
+  max-height: 30%;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.pdf-scroll {
+  flex: 1;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+</style>

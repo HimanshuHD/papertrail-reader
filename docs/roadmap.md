@@ -185,3 +185,7 @@ Current release excludes EPUB #12; defer EPUB engine and CFI acceptance to the n
 Implement #62 viewport sizing/independent scrolling, then #63 compact library controls, then #64 right Contents/Search panel, icon toolbar and closable search/help popovers. #61 owns the current verification and post-#60 reconciliation. Keep unknown viewer bugs pending reproducible reports.
 
 PR lifecycle: create draft → resolve lint/format/unit/type/build errors → mark Ready for review once → explicit Browser E2E → review/merge. Ordinary frontend CI stays browser-free. The PDF roadmap document remains a historical planning snapshot; this Markdown and live issues carry the revised scope.
+
+## Active PDF UI work after merged PR #65
+
+#61 is completed. #62 is now in progress for viewport fit and independent library/PDF scrolling; #63 compact library controls and #64 utility panels/tooltips/popovers follow. This increment keeps Home scrolling separate and adds pane-rooted PDF visibility/lazy rendering acceptance. EPUB remains next-version scope.
