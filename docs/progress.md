@@ -131,3 +131,9 @@ The search-overlap fix passed all 45 Chromium checks in Browser E2E 37001588269,
 ## Reopened PDF lifecycle acceptance (#10)
 
 PR #73 merged as 058195008dca9fc6797f035c272801fdd5f0d0f9. Main Frontend CI 37005211269 and tracker reconciliation 37005211500 passed. #64/#74/#75/#76 are delivered in that merge. #10 remains reopened for direct lifecycle regression evidence: replacing an active canvas render, cancelling a text layer, cancelling work before document cleanup/loading-task destruction, rejecting renders after close, and idempotent repeated close. Branch test/10-pdf-lifecycle adds focused service tests; draft CI is the validation gate. Saved PDF positions/bookmarks #13 follows this acceptance increment; EPUB remains deferred.
+
+## Post-merge and lifecycle acceptance — PR #73 / #77
+
+PR #73 merged at 2026-10-02T12:11:18Z as 058195008dca9fc6797f035c272801fdd5f0d0f9. Main CI 37005211269, tracker reconciliation 37005211500 and production publisher 37005270079 passed. Deployment metadata identifies that source and CI run; preview #73 is retired. #64/#74/#75/#76 are completed. This is workflow/metadata evidence, not a new live interactive browser audit.
+
+PR #77 adds the remaining direct lifecycle tests for reopened #10 on test/10-pdf-lifecycle. Frontend CI 37005502235 passed on 13647f6, including new canvas replacement, text-layer cancellation, teardown order and repeated-close tests, plus existing document-switching/viewport disposal coverage. No application behavior changed. #10 remains open until this acceptance PR merges. Next product work is PDF saved positions/bookmarks #13; EPUB #12 stays next-version scope.
