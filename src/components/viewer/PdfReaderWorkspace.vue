@@ -334,6 +334,7 @@ async function performSearch() {
         ? 'No searchable PDF text found.'
         : `${result.matches.length} PDF search matches found.`,
     )
+    closePopover(true)
   } catch (error) {
     if (error instanceof DOMException && error.name === 'AbortError') return
     if (searchController !== controller) return
@@ -343,6 +344,7 @@ async function performSearch() {
     searchTruncated.value = false
     searchCompleted.value = true
     emit('status', 'PDF search could not be completed.')
+    closePopover(true)
   } finally {
     if (searchController === controller) searchBusy.value = false
   }
@@ -748,13 +750,16 @@ onBeforeUnmount(() => {
           aria-labelledby="pdf-search-results-title"
         >
           <h3 id="pdf-search-results-title" class="mb-2 text-sm font-semibold">Search results</h3>
-          <p v-if="!searchCompleted" class="text-sm text-muted">
-            Open search to find text in this PDF.
-          </p>
-          <p v-else-if="searchMatches.length === 0" class="text-sm text-muted">
+          <p
+            v-if="searchCompleted"
+            class="mb-2 text-xs leading-relaxed text-muted"
+            role="status"
+            aria-live="polite"
+          >
             {{ searchSummary }}
           </p>
-          <ul v-else class="space-y-2">
+          <p v-else class="text-sm text-muted">Open search to find text in this PDF.</p>
+          <ul v-if="searchMatches.length > 0" class="space-y-2">
             <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
               <button
                 type="button"

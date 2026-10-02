@@ -94,6 +94,7 @@ describe('PDF reader utility workspace', () => {
 
     expect(wrapper.get('[aria-label="PDF search results panel"]').text()).toContain('Matching text')
     expect(wrapper.findAll('[aria-label="PDF search results panel"] li')).toHaveLength(1)
+    expect(wrapper.find('input[aria-label="Search PDF text"]').exists()).toBe(false)
     expect(wrapper.findAll('li')).toHaveLength(1)
   })
 
