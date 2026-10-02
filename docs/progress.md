@@ -116,14 +116,10 @@ Draft PR #70 checkpoint 1: Frontend CI [36975882279](https://github.com/Himanshu
 
 PR #70 is merged and the owner accepted manual preview and production validation. Main CI 36995614326 and publisher 36995672425 passed; manual preview publisher 36995317258 passed. #69 is completed. #63 is now active: floating closed-panel opener, in-panel refresh/add/close icons and keyboard-accessible source menu. Directory tree space takes priority; scan/selection feedback remains accessible. #64 right utility panel and toolbar is the next separate increment.
 
-## Compact library acceptance (#63 / PR #71)
+## Compact library acceptance (#63 and #72 / PR #71)
 
-Implementation `92e4c46b606996be31a965e28357d1029bfed31a` passed [Frontend CI 36996477628](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996477628) and [Browser E2E 36996568915](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36996568915): 40 Chromium checks at 320/375/768/1024/1440px. Tests cover exclusive floating opener, close/open focus, source-menu keyboard and outside/focus dismissal, selection fallbacks, capability-based refresh/reselection, independent scrolling and PDF utilities. #63 is in review in PR #71 and stays open until merge. #64 follows. No publisher ran for the draft CI updates; preview remains manual.
+PR #71 merged at 2026-10-02T11:02:59Z as 9e5db87a38673651214989053c495270ed9b73df. Its 45 Chromium Browser E2E checks passed in run 36998109332; fast Frontend CI 36998040249 and final docs CI 36998328721 passed before merge. Main Frontend CI 36998853805 passed and production publisher 36998900442 succeeded. Pages metadata identifies the merge source; preview #71 is retired. Issues #63 and #72 are closed as completed.
 
-## Preview refinements (#72, child of #63)
+## Current work: PDF utilities (#64)
 
-PR #71 remains on feat/63-compact-library. Move the opener to the top beside reserved title space, add sliding/grid transitions with reduced-motion support, and widen the default library from 280 to 308px. A bounded pointer-captured separator supports mouse/touch dragging, col-resize hover, Arrow keys (Shift for fine steps), Home/End and accessible width values. Width survives panel toggling; resize observation keeps it within the current viewport. Desktop retains at least 360px for the reader; smaller screens retain the overlay. #72 is in progress until acceptance and merge.
-
-## Preview refinement acceptance (#72)
-
-Implementation `f59cfc5df76c811c6a9a421dd93da392f333d3a5` passed [Frontend CI 36998040249](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998040249) and [Browser E2E 36998109332](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36998109332): 45 Chromium checks at 320/375/768/1024/1440px. New acceptance covers mouse drag, separator cursor/keyboard bounds, remembered width, top opener/title gap and reduced-motion behavior. #72 (child #63) is in review in existing PR #71. The owner must republish preview #71 to review the revised source before merge. #64 remains next.
+Issue #64 is In progress on feat/64-reader-utilities. Scope: a toggleable right panel for PDF contents and search results, compact icon-only controls with hover/focus labels, closable search and keyboard-help popovers, and an ellipsized filename with its full value available on hover/focus. The search-results list belongs in the right panel. Keep the PR draft until Frontend CI passes; mark it ready afterward to run Browser E2E. PDF persistence/bookmarks #13 follows this UI increment; EPUB #12 remains next-version scope.

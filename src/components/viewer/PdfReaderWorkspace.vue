@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
   openPdfDocument,
@@ -20,7 +21,8 @@ const emit = defineEmits<{
 }>()
 
 type ReaderPhase = 'loading' | 'ready' | 'error'
-type UtilityPanel = 'contents' | 'search' | 'help' | null
+type UtilityPanel = 'contents' | 'search' | null
+type UtilityPopover = 'search' | 'help' | null
 
 interface FlatOutlineItem {
   title: string
@@ -31,6 +33,7 @@ interface FlatOutlineItem {
 const readerRoot = ref<HTMLElement | null>(null)
 const viewport = ref<HTMLElement | null>(null)
 const searchInput = ref<HTMLInputElement | null>(null)
+const popoverRoot = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
@@ -41,7 +44,8 @@ const fitMode = ref<PdfFitMode>('width')
 const renderedScale = ref(1)
 const availableWidth = ref(720)
 const availableHeight = ref(900)
-const panel = ref<UtilityPanel>(null)
+const rightPanel = ref<UtilityPanel>(null)
+const popover = ref<UtilityPopover>(null)
 const outline = shallowRef<readonly PdfOutlineItem[]>([])
 const outlineLoaded = ref(false)
 const outlineBusy = ref(false)
@@ -123,7 +127,8 @@ function scheduleViewportMeasure() {
 function resetUtilities() {
   searchController?.abort()
   searchController = null
-  panel.value = null
+  rightPanel.value = null
+  popover.value = null
   outline.value = []
   outlineLoaded.value = false
   outlineBusy.value = false
@@ -266,12 +271,40 @@ async function loadOutline() {
   }
 }
 
-async function openPanel(next: Exclude<UtilityPanel, null>) {
-  panel.value = panel.value === next ? null : next
-  if (panel.value === 'contents') void loadOutline()
-  if (panel.value === 'search') {
+function toggleRightPanel(next: Exclude<UtilityPanel, null>) {
+  rightPanel.value = rightPanel.value === next ? null : next
+  if (rightPanel.value === 'contents') void loadOutline()
+}
+
+async function openPopover(next: Exclude<UtilityPopover, null>) {
+  if (next === 'search') rightPanel.value = 'search'
+  popover.value = popover.value === next ? null : next
+  if (popover.value === 'search') {
     await nextTick()
     searchInput.value?.focus()
+  }
+}
+
+function closePopover(restoreFocus = false) {
+  const closing = popover.value
+  popover.value = null
+  if (restoreFocus && closing) {
+    void nextTick(() => {
+      document.querySelector<HTMLButtonElement>(`[data-reader-action="${closing}"]`)?.focus()
+    })
+  }
+}
+
+function handlePopoverPointer(event: PointerEvent) {
+  if (popover.value && !popoverRoot.value?.contains(event.target as Node)) {
+    closePopover()
+  }
+}
+
+function handlePopoverKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && popover.value) {
+    event.preventDefault()
+    closePopover(true)
   }
 }
 
@@ -291,6 +324,7 @@ async function performSearch() {
     if (searchController !== controller) return
 
     searchMatches.value = result.matches
+    rightPanel.value = 'search'
     searchTextPageCount.value = result.textPageCount
     searchTruncated.value = result.truncated
     searchCompleted.value = true
@@ -348,24 +382,26 @@ function handleShortcut(event: KeyboardEvent) {
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'f') {
     event.preventDefault()
-    void openPanel('search')
+    void openPopover('search')
     return
   }
 
   if (isTypingTarget(event.target)) {
-    if (event.key === 'Escape') panel.value = null
+    if (event.key === 'Escape') {
+      closePopover(true)
+    }
     return
   }
 
   switch (event.key) {
     case '/':
       event.preventDefault()
-      void openPanel('search')
+      void openPopover('search')
       break
     case 'c':
     case 'C':
       event.preventDefault()
-      void openPanel('contents')
+      toggleRightPanel('contents')
       break
     case 'f':
     case 'F':
@@ -374,7 +410,7 @@ function handleShortcut(event: KeyboardEvent) {
       break
     case '?':
       event.preventDefault()
-      void openPanel('help')
+      void openPopover('help')
       break
     case 'ArrowRight':
     case 'PageDown':
@@ -387,7 +423,7 @@ function handleShortcut(event: KeyboardEvent) {
       void goToPage(currentPage.value - 1)
       break
     case 'Escape':
-      panel.value = null
+      closePopover(true)
       break
   }
 }
@@ -400,6 +436,8 @@ onMounted(() => {
   void openDocument()
   globalThis.addEventListener('resize', scheduleViewportMeasure)
   globalThis.addEventListener('keydown', handleShortcut)
+  globalThis.addEventListener('pointerdown', handlePopoverPointer)
+  globalThis.addEventListener('keydown', handlePopoverKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
 })
 
@@ -415,6 +453,8 @@ onBeforeUnmount(() => {
   resizeObserver?.disconnect()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
+  globalThis.removeEventListener('pointerdown', handlePopoverPointer)
+  globalThis.removeEventListener('keydown', handlePopoverKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
   void closeCurrentSession()
@@ -424,13 +464,15 @@ onBeforeUnmount(() => {
 <template>
   <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
     <header
-      class="pdf-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-4 sm:px-8"
+      class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
     >
-      <div class="min-w-0 flex-1">
-        <p class="text-xs font-semibold tracking-wider text-brand uppercase">
-          PDF · local document
-        </p>
-        <h2 id="reader-title" class="mt-1 break-words text-lg font-semibold">
+      <div class="min-w-0 flex-1 basis-40">
+        <h2
+          id="reader-title"
+          class="truncate text-base font-semibold sm:text-lg"
+          :title="document.name"
+          :aria-label="document.name"
+        >
           {{ document.name }}
         </h2>
         <p v-if="phase === 'ready'" class="mt-1 text-xs text-muted">
@@ -440,262 +482,297 @@ onBeforeUnmount(() => {
 
       <div
         v-if="phase === 'ready'"
-        class="flex flex-wrap items-center gap-2"
+        class="flex min-w-0 flex-wrap items-center justify-end gap-1"
         aria-label="PDF reader controls"
       >
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
+        <IconButton
+          label="Previous page"
+          icon="previous"
+          tooltip-above
           :disabled="currentPage <= 1"
           @click="goToPage(currentPage - 1)"
-        >
-          Previous
-        </button>
-        <label class="flex items-center gap-2 text-sm">
-          <span class="sr-only">Current page</span>
-          <input
-            :value="currentPage"
-            type="number"
-            min="1"
-            :max="totalPages"
-            class="w-20 rounded-lg border border-line bg-canvas px-2 py-2"
-            aria-label="Current page"
-            @change="handlePageInput"
-          />
-        </label>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
+        />
+        <input
+          :value="currentPage"
+          type="number"
+          min="1"
+          :max="totalPages"
+          class="h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
+          aria-label="Current page"
+          @change="handlePageInput"
+        />
+        <IconButton
+          label="Next page"
+          icon="next"
+          tooltip-above
           :disabled="currentPage >= totalPages"
           @click="goToPage(currentPage + 1)"
-        >
-          Next
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
-          aria-label="Zoom out"
-          @click="changeZoom(-0.25)"
-        >
-          −
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
-          aria-label="Zoom in"
-          @click="changeZoom(0.25)"
-        >
-          +
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
+        />
+        <IconButton label="Zoom out" icon="zoom-out" tooltip-above @click="changeZoom(-0.25)" />
+        <IconButton label="Zoom in" icon="zoom-in" tooltip-above @click="changeZoom(0.25)" />
+        <IconButton
+          label="Fit width"
+          icon="fit-width"
+          tooltip-above
+          :active="fitMode === 'width'"
           :aria-pressed="fitMode === 'width'"
           @click="setFit('width')"
-        >
-          Fit width
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
+        />
+        <IconButton
+          label="Fit page"
+          icon="fit-page"
+          tooltip-above
+          :active="fitMode === 'page'"
           :aria-pressed="fitMode === 'page'"
           @click="setFit('page')"
-        >
-          Fit page
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
-          :aria-pressed="panel === 'contents'"
-          @click="openPanel('contents')"
-        >
-          Contents
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
-          :aria-pressed="panel === 'search'"
-          @click="openPanel('search')"
-        >
-          Search
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
+        />
+        <IconButton
+          label="Contents"
+          icon="contents"
+          tooltip-above
+          :active="rightPanel === 'contents'"
+          :aria-pressed="rightPanel === 'contents'"
+          @click="toggleRightPanel('contents')"
+        />
+        <IconButton
+          data-reader-action="search"
+          label="Search PDF"
+          icon="search"
+          tooltip-above
+          :active="popover === 'search'"
+          :aria-pressed="popover === 'search'"
+          @click="openPopover('search')"
+        />
+        <IconButton
+          :label="fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+          :icon="fullscreen ? 'fullscreen-exit' : 'fullscreen'"
+          tooltip-above
           :aria-pressed="fullscreen"
           @click="toggleFullscreen"
-        >
-          {{ fullscreen ? 'Exit fullscreen' : 'Fullscreen' }}
-        </button>
-        <button
-          type="button"
-          class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm"
-          :aria-pressed="panel === 'help'"
-          aria-label="Keyboard help"
-          @click="openPanel('help')"
-        >
-          ?
-        </button>
+        />
+        <IconButton
+          data-reader-action="help"
+          label="Keyboard help"
+          icon="help"
+          tooltip-above
+          :active="popover === 'help'"
+          :aria-pressed="popover === 'help'"
+          @click="openPopover('help')"
+        />
+      </div>
+
+      <div
+        v-if="phase === 'ready' && popover"
+        ref="popoverRoot"
+        class="absolute top-full right-3 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-xl border border-line bg-panel p-4 shadow-xl"
+        :aria-label="popover === 'search' ? 'PDF search' : 'Keyboard help'"
+      >
+        <section v-if="popover === 'search'" aria-labelledby="pdf-search-title">
+          <div class="flex items-center justify-between gap-3">
+            <h3 id="pdf-search-title" class="font-semibold">Search PDF</h3>
+            <IconButton label="Close search" icon="close" @click="closePopover(true)" />
+          </div>
+          <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
+            <input
+              ref="searchInput"
+              v-model="searchQuery"
+              type="search"
+              class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+              placeholder="Search PDF text"
+              aria-label="Search PDF text"
+            />
+            <button
+              type="submit"
+              class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm font-medium"
+              :disabled="searchBusy || !searchQuery.trim()"
+            >
+              {{ searchBusy ? 'Searching…' : 'Search' }}
+            </button>
+          </form>
+          <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
+            {{ searchSummary }}
+          </p>
+          <p v-if="searchCompleted" class="mt-1 text-xs text-muted">
+            Results are shown in the Search results panel.
+          </p>
+        </section>
+
+        <section v-else aria-labelledby="pdf-help-title">
+          <div class="flex items-center justify-between gap-3">
+            <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
+            <IconButton label="Close keyboard help" icon="close" @click="closePopover(true)" />
+          </div>
+          <dl class="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
+            <dt class="font-medium">Ctrl/⌘ + F or /</dt>
+            <dd class="text-muted">Focus PDF search.</dd>
+            <dt class="font-medium">C</dt>
+            <dd class="text-muted">Toggle contents.</dd>
+            <dt class="font-medium">F</dt>
+            <dd class="text-muted">Toggle fullscreen.</dd>
+            <dt class="font-medium">← / Page Up</dt>
+            <dd class="text-muted">Previous page.</dd>
+            <dt class="font-medium">→ / Page Down</dt>
+            <dd class="text-muted">Next page.</dd>
+            <dt class="font-medium">?</dt>
+            <dd class="text-muted">Toggle this help.</dd>
+            <dt class="font-medium">Mouse / touch selection</dt>
+            <dd class="text-muted">Select text from text-based PDFs for normal browser copy.</dd>
+          </dl>
+        </section>
       </div>
     </header>
 
-    <div
-      v-if="phase === 'ready' && panel"
-      class="pdf-utilities border-b border-line bg-panel px-5 py-4 sm:px-8"
-    >
-      <section v-if="panel === 'contents'" aria-labelledby="pdf-contents-title">
-        <div class="flex items-center justify-between gap-3">
-          <h3 id="pdf-contents-title" class="font-semibold">Contents</h3>
-          <button type="button" class="text-sm text-muted" @click="panel = null">Close</button>
+    <div class="pdf-body relative flex min-h-0 flex-1">
+      <section
+        ref="viewport"
+        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas p-4 sm:p-6"
+        aria-label="PDF pages"
+        tabindex="0"
+        aria-describedby="reader-title"
+      >
+        <div
+          v-if="phase === 'loading'"
+          class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5 text-sm text-muted"
+          role="status"
+          aria-live="polite"
+        >
+          Opening {{ document.name }}…
         </div>
-        <p v-if="outlineBusy" class="mt-3 text-sm text-muted" role="status">Loading PDF outline…</p>
-        <p v-else-if="outlineLoaded && flatOutline.length === 0" class="mt-3 text-sm text-muted">
-          This PDF does not provide an outline.
-        </p>
-        <ul v-else-if="flatOutline.length > 0" class="mt-3 max-h-52 space-y-1 overflow-auto">
-          <li v-for="(item, index) in flatOutline" :key="`${item.title}-${index}`">
-            <button
-              v-if="item.pageNumber"
-              type="button"
-              class="min-h-9 w-full rounded-md px-2 py-1 text-left text-sm hover:bg-canvas"
-              :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
-              @click="goToPage(item.pageNumber)"
-            >
-              {{ item.title }}
-              <span class="text-xs text-muted">· page {{ item.pageNumber }}</span>
-            </button>
-            <p
-              v-else
-              class="px-2 py-1 text-sm text-muted"
-              :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
-            >
-              {{ item.title }}
-            </p>
-          </li>
-        </ul>
-      </section>
 
-      <section v-else-if="panel === 'search'" aria-labelledby="pdf-search-title">
-        <div class="flex items-center justify-between gap-3">
-          <h3 id="pdf-search-title" class="font-semibold">Search document</h3>
-          <button type="button" class="text-sm text-muted" @click="panel = null">Close</button>
+        <div
+          v-else-if="phase === 'error'"
+          class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
+          role="alert"
+        >
+          <p class="font-medium">PaperTrail could not open this PDF</p>
+          <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
         </div>
-        <form class="mt-3 flex flex-wrap gap-2" role="search" @submit.prevent="performSearch">
+
+        <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
           <input
-            ref="searchInput"
-            v-model="searchQuery"
-            type="search"
-            class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
-            placeholder="Search PDF text"
-            aria-label="Search PDF text"
+            v-if="totalPages > 1"
+            :value="currentPage"
+            type="range"
+            min="1"
+            :max="totalPages"
+            step="1"
+            class="sticky top-0 z-10 w-full max-w-2xl bg-canvas py-2"
+            aria-label="PDF page progress"
+            @input="handleSlider"
           />
-          <button
-            type="submit"
-            class="min-h-10 rounded-lg border border-line px-3 py-2 text-sm font-medium"
-            :disabled="searchBusy || !searchQuery.trim()"
-          >
-            {{ searchBusy ? 'Searching…' : 'Search' }}
-          </button>
-        </form>
-        <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
-          {{ searchSummary }}
-        </p>
-        <ul v-if="searchMatches.length > 0" class="mt-3 max-h-56 space-y-2 overflow-auto">
-          <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
+
+          <PdfPageView
+            v-for="pageNumber in pages"
+            :key="pageNumber"
+            :session="session"
+            :page-number="pageNumber"
+            :fit-mode="fitMode"
+            :zoom="zoom"
+            :available-width="availableWidth"
+            :available-height="availableHeight"
+            :scroll-root="viewport"
+            @visibility="handleVisibility"
+            @rendered="handleRendered"
+            @error="handleRenderError"
+          />
+        </div>
+      </section>
+
+      <aside
+        v-if="phase === 'ready' && rightPanel"
+        class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
+        :aria-label="rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'"
+      >
+        <div
+          class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
+        >
+          <div class="flex min-w-0 items-center gap-1" aria-label="PDF utility panel mode">
             <button
               type="button"
-              class="w-full rounded-lg border border-line p-2 text-left hover:bg-canvas"
-              @click="goToPage(match.pageNumber)"
+              class="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+              :aria-pressed="rightPanel === 'contents'"
+              @click="((rightPanel = 'contents'), loadOutline())"
             >
-              <span class="block text-xs font-semibold text-brand">
-                Page {{ match.pageNumber }}
-              </span>
-              <span class="mt-1 block text-sm leading-relaxed text-muted">
-                {{ match.excerpt }}
-              </span>
+              Contents
             </button>
-          </li>
-        </ul>
-      </section>
-
-      <section v-else aria-labelledby="pdf-help-title">
-        <div class="flex items-center justify-between gap-3">
-          <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
-          <button type="button" class="text-sm text-muted" @click="panel = null">Close</button>
+            <button
+              type="button"
+              class="rounded-md px-2 py-1.5 text-sm font-medium hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+              :aria-pressed="rightPanel === 'search'"
+              @click="rightPanel = 'search'"
+            >
+              Search results
+            </button>
+          </div>
+          <IconButton label="Close utility panel" icon="close" @click="rightPanel = null" />
         </div>
-        <dl class="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
-          <dt class="font-medium">Ctrl/⌘ + F or /</dt>
-          <dd class="text-muted">Focus PDF search.</dd>
-          <dt class="font-medium">C</dt>
-          <dd class="text-muted">Toggle contents.</dd>
-          <dt class="font-medium">F</dt>
-          <dd class="text-muted">Toggle fullscreen.</dd>
-          <dt class="font-medium">← / Page Up</dt>
-          <dd class="text-muted">Previous page.</dd>
-          <dt class="font-medium">→ / Page Down</dt>
-          <dd class="text-muted">Next page.</dd>
-          <dt class="font-medium">?</dt>
-          <dd class="text-muted">Toggle this help.</dd>
-          <dt class="font-medium">Mouse / touch selection</dt>
-          <dd class="text-muted">Select text from text-based PDFs for normal browser copy.</dd>
-        </dl>
-      </section>
+
+        <section
+          v-if="rightPanel === 'contents'"
+          class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
+          aria-labelledby="pdf-contents-title"
+        >
+          <h3 id="pdf-contents-title" class="sr-only">PDF contents</h3>
+          <p v-if="outlineBusy" class="p-2 text-sm text-muted" role="status">
+            Loading PDF outline…
+          </p>
+          <p v-else-if="outlineLoaded && flatOutline.length === 0" class="p-2 text-sm text-muted">
+            This PDF does not provide an outline.
+          </p>
+          <ul v-else-if="flatOutline.length > 0" class="space-y-1">
+            <li v-for="(item, index) in flatOutline" :key="`${item.title}-${index}`">
+              <button
+                v-if="item.pageNumber"
+                type="button"
+                class="min-h-9 w-full rounded-md px-2 py-1 text-left text-sm hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+                :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
+                @click="goToPage(item.pageNumber)"
+              >
+                {{ item.title }}
+                <span class="text-xs text-muted">· page {{ item.pageNumber }}</span>
+              </button>
+              <p
+                v-else
+                class="px-2 py-1 text-sm text-muted"
+                :style="{ paddingInlineStart: `${item.depth * 16 + 8}px` }"
+              >
+                {{ item.title }}
+              </p>
+            </li>
+          </ul>
+        </section>
+
+        <section
+          v-else
+          class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
+          aria-labelledby="pdf-search-results-title"
+        >
+          <h3 id="pdf-search-results-title" class="mb-2 text-sm font-semibold">Search results</h3>
+          <p v-if="!searchCompleted" class="text-sm text-muted">
+            Open search to find text in this PDF.
+          </p>
+          <p v-else-if="searchMatches.length === 0" class="text-sm text-muted">
+            {{ searchSummary }}
+          </p>
+          <ul v-else class="space-y-2">
+            <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
+              <button
+                type="button"
+                class="w-full rounded-lg border border-line p-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+                @click="goToPage(match.pageNumber)"
+              >
+                <span class="block text-xs font-semibold text-brand"
+                  >Page {{ match.pageNumber }}</span
+                >
+                <span class="mt-1 block text-sm leading-relaxed text-muted">{{
+                  match.excerpt
+                }}</span>
+              </button>
+            </li>
+          </ul>
+        </section>
+      </aside>
     </div>
-
-    <section
-      ref="viewport"
-      class="pdf-scroll min-w-0 overflow-auto bg-canvas p-4 sm:p-6"
-      aria-label="PDF pages"
-      tabindex="0"
-      aria-describedby="reader-title"
-    >
-      <div
-        v-if="phase === 'loading'"
-        class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5 text-sm text-muted"
-        role="status"
-        aria-live="polite"
-      >
-        Opening {{ document.name }}…
-      </div>
-
-      <div
-        v-else-if="phase === 'error'"
-        class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
-        role="alert"
-      >
-        <p class="font-medium">PaperTrail could not open this PDF</p>
-        <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
-      </div>
-
-      <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
-        <input
-          v-if="totalPages > 1"
-          :value="currentPage"
-          type="range"
-          min="1"
-          :max="totalPages"
-          step="1"
-          class="sticky top-0 z-10 w-full max-w-2xl bg-canvas py-2"
-          aria-label="PDF page progress"
-          @input="handleSlider"
-        />
-
-        <PdfPageView
-          v-for="pageNumber in pages"
-          :key="pageNumber"
-          :session="session"
-          :page-number="pageNumber"
-          :fit-mode="fitMode"
-          :zoom="zoom"
-          :available-width="availableWidth"
-          :available-height="availableHeight"
-          :scroll-root="viewport"
-          @visibility="handleVisibility"
-          @rendered="handleRendered"
-          @error="handleRenderError"
-        />
-      </div>
-    </section>
   </div>
 </template>
 
@@ -707,20 +784,27 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: hidden;
 }
-.pdf-header {
-  flex-shrink: 0;
-  max-height: 40%;
-  overflow: auto;
-}
-.pdf-utilities {
-  flex-shrink: 0;
-  max-height: 30%;
-  overflow: auto;
-  overscroll-behavior: contain;
-}
 .pdf-scroll {
-  flex: 1;
   min-height: 0;
   overscroll-behavior: contain;
+}
+.pdf-side-panel {
+  min-width: 0;
+  overscroll-behavior: contain;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pdf-side-panel {
+    animation: panel-enter 140ms ease-out;
+  }
+}
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(0.5rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 </style>

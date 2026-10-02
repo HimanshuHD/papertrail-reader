@@ -198,8 +198,4 @@ PR lifecycle: create draft → resolve lint/format/unit/type/build errors → ma
 
 Refinement acceptance: Frontend CI [36974909774](https://github.com/HimanshuHD/papertrail-reader/actions/runs/36974909774) passed lint/format/tests/types/build; 6 pipeline tests cover coexistence, closed-preview reconciliation, manual preview policy and main build freshness. Local YAML, embedded JavaScript and shell syntax checks passed. Actual trigger suppression and deployment remain post-merge verification in #67.
 
-Current sequence after accepted PR #70: #63 compact library controls is active, then #64 right utility panel/icon toolbar/popovers, then PDF persistence #13. #67 workflow refinement and #69 SVG logo lifecycle validation are completed.
-
-#63 is implemented and in review in PR #71 after 40 Chromium checks. Verify manual preview and merge/deployment, then continue #64 right utility panel, icon toolbar and search/help popovers.
-
-Preview feedback child #72 is in review within PR #71/#63: top interactive opener, sliding panel/reduced motion, 308px default and bounded draggable/keyboard width. 45 Chromium checks passed. Keep a single feature branch; #64 follows acceptance and merge.
+Current sequence after PR #71: #63 compact library controls and child #72 preview refinements are completed. Main CI 36998853805 and publisher 36998900442 passed; preview #71 is retired. Issue #64 is in progress for PDF utility panel, icon toolbar, search/help popovers and filename truncation. Keep its PR draft until fast CI passes, then run Browser E2E after marking ready. PDF positions/bookmarks #13 follow #64; EPUB #12 remains deferred to the next version.

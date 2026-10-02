@@ -2,9 +2,25 @@
 import UiIcon from './UiIcon.vue'
 defineProps<{
   label: string
-  icon: 'refresh' | 'plus' | 'close' | 'library'
+  icon:
+    | 'refresh'
+    | 'plus'
+    | 'close'
+    | 'library'
+    | 'previous'
+    | 'next'
+    | 'zoom-out'
+    | 'zoom-in'
+    | 'fit-width'
+    | 'fit-page'
+    | 'contents'
+    | 'search'
+    | 'fullscreen'
+    | 'fullscreen-exit'
+    | 'help'
   disabled?: boolean
   tooltipAbove?: boolean
+  active?: boolean
 }>()
 </script>
 <template>
@@ -13,7 +29,8 @@ defineProps<{
     :aria-label="label"
     :title="label"
     :disabled="disabled"
-    class="icon-button relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink disabled:opacity-40"
+    class="icon-button relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40"
+    :class="{ 'bg-canvas text-brand': active }"
   >
     <UiIcon :name="icon" />
     <span

@@ -107,6 +107,14 @@ PdfReaderWorkspace owns the remaining-height PDF scroll root and bounded tempora
 
 ReaderView owns panel visibility and restores focus to the floating opener after closing; opening focuses the in-panel close button. ReaderShell renders the opener only when closed and retains the bounded library scroll root. LibrarySidebar has a sticky compact header and prioritizes the local tree after discovery. LibrarySourcePicker owns refresh capability, native/fallback inputs and the source dropdown. Hidden inputs stay mounted while its menu is closed. Escape dismisses the menu first, preserving the panel and returning focus to Add; arrow/Home/End navigation, outside pointer dismissal and Tab focus departure are supported. Pointer listeners are removed on unmount. IconButton/UiIcon share labeled, hover/focus tooltips with decorative SVGs. Snapshot refresh means explicit reselection; live directory refresh still uses the handle. #64 remains separate.
 
-## Preview refinements (#72, child of #63)
+## Merged compact library refinement (#63/#72, PR #71)
 
-PR #71 remains on feat/63-compact-library. Move the opener to the top beside reserved title space, add sliding/grid transitions with reduced-motion support, and widen the default library from 280 to 308px. A bounded pointer-captured separator supports mouse/touch dragging, col-resize hover, Arrow keys (Shift for fine steps), Home/End and accessible width values. Width survives panel toggling; resize observation keeps it within the current viewport. Desktop retains at least 360px for the reader; smaller screens retain the overlay. #72 is in progress until acceptance and merge.
+The library opener, sliding panel transition, reduced-motion handling, and 308px default draggable/keyboard-adjustable width are implemented in the shell. PR #71 merged as 9e5db87a38673651214989053c495270ed9b73df; main CI 36998853805 and production publisher 36998900442 succeeded. Preview #71 is retired. See [shell-layout.md](shell-layout.md) for layout ownership.
+
+## PDF utility workspace in progress (#64)
+
+PdfReaderWorkspace owns transient PDF presentation state. The reader header keeps the document title on one truncated line with the full filename exposed by title and accessible name. IconButton/UiIcon render compact toolbar actions with visible labels on hover/focus and semantic button state.
+
+A flex body places the independently scrolling PDF viewport beside a bounded utility aside. The aside switches between document outline and search results; on narrow screens it overlays the page viewport to preserve reading width. Search entry and keyboard help are anchored popovers, with Escape dismissal and focus restoration. Search query/execution and outline data remain in the reader workspace; the right panel only presents results and outline navigation. Switching/closing the PDF continues to abort pending search and release the session through the existing PDF service.
+
+The implementation stays in the existing PDF reader component and shared icon system. ReaderToolbar remains the labeled placeholder for non-PDF sample content. Regression coverage belongs with the component tests and browser E2E; fullscreen, page navigation, search, outline and small-screen behavior must remain intact. Issue #64 is active; EPUB stays deferred to #12.
