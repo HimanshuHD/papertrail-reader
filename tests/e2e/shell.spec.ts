@@ -12,20 +12,19 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
-function createPdfFixture(): Buffer {
+function createPdfFixture(pageCount = 2): Buffer {
+  const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
-    '<< /Type /Pages /Kids [3 0 R 5 0 R] /Count 2 >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 6 0 R >>',
+    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageCount} >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-    '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 7 0 R >>',
   ]
-  const streams = [
-    'BT /F1 24 Tf 72 720 Td (First page) Tj ET',
-    'BT /F1 24 Tf 72 720 Td (Second page) Tj ET',
-  ]
-
-  for (const stream of streams) {
+  for (let i = 0; i < pageCount; i++) {
+    const label = i === 0 ? 'First page' : i === 1 ? 'Second page' : `Page ${i + 1}`
+    const stream = `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
+    )
     objects.push(
       `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
     )
@@ -511,4 +510,68 @@ test('library width resizes within bounds and top opener preserves title space',
   await noOverflow(page)
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await expect(page.locator('.reader-layout')).toHaveCSS('transition-duration', '0s')
+})
+
+test('PDF geometry and canvas stay stable after large scroll jumps and panel resize', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  await page
+    .locator('input[accept*=".pdf"]')
+    .setInputFiles({
+      name: 'scroll-regression.pdf',
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(8),
+    })
+  await page.getByRole('button', { name: /scroll-regression.pdf/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  const shells = pane.locator('.pdf-page')
+  await expect(pane.getByLabel('Rendered PDF page 1', { exact: true })).toBeVisible()
+  const heights = await shells.evaluateAll((nodes) =>
+    nodes.map((n) => n.getBoundingClientRect().height),
+  )
+  // Native scrollbar drags change scrollTop in large increments; exercise that path directly.
+  await pane.evaluate((node) => {
+    node.scrollTop = node.scrollHeight - node.clientHeight
+  })
+  const last = pane.getByLabel('Rendered PDF page 8', { exact: true })
+  await expect(last).toBeVisible()
+  await expect(pane.getByLabel('Selectable text for PDF page 8', { exact: true })).toContainText(
+    'Page 8',
+  )
+  await pane.evaluate((node) => {
+    node.scrollTop = 0
+  })
+  const first = pane.getByLabel('Rendered PDF page 1', { exact: true })
+  await expect(first).toBeVisible()
+  await expect
+    .poll(() => shells.evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().height)))
+    .toEqual(heights)
+  const identity = await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())
+  await pane.evaluate((node) => {
+    node.scrollTop = node.scrollHeight
+  })
+  await expect(last).toBeVisible()
+  await pane.evaluate((node) => {
+    node.scrollTop = 0
+  })
+  await expect(first).toBeVisible()
+  expect(await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())).toBe(identity)
+  await page.getByRole('button', { name: 'Contents', exact: true }).click()
+  await page.getByRole('button', { name: 'Close utility panel' }).click()
+  await pane.evaluate((node) => {
+    node.scrollTop = node.scrollHeight
+  })
+  await expect(last).toBeVisible()
+  await expect
+    .poll(() =>
+      last.evaluate((node) =>
+        Math.abs(
+          node.getBoundingClientRect().width - node.parentElement!.getBoundingClientRect().width,
+        ),
+      ),
+    )
+    .toBeLessThan(2)
+  await capture(page, info, 'pdf-scroll-jump-regression')
 })

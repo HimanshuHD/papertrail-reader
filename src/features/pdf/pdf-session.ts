@@ -138,6 +138,12 @@ export class PdfDocumentSession {
     return this.document.numPages
   }
 
+  async getPageDimensions(pageNumber: number): Promise<{ width: number; height: number }> {
+    const page = await this.getPage(pageNumber)
+    const viewport = page.getViewport({ scale: 1 })
+    return { width: viewport.width, height: viewport.height }
+  }
+
   private async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
     const current = this.activeRenders.get(canvas)
     this.activeRenders.delete(canvas)
@@ -312,6 +318,7 @@ export class PdfDocumentSession {
     const task = page.render({
       canvas: request.canvas,
       canvasContext: context,
+      background: '#ffffff',
       viewport,
       transform,
     })

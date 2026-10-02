@@ -26,7 +26,10 @@ describe('PDF viewport ownership', () => {
     const render = vi.fn().mockResolvedValue({ width: 400, height: 600, scale: 1 })
     const wrapper = mount(PdfPageView, {
       props: {
-        session: { render } as unknown as PdfDocumentSession,
+        session: {
+          render,
+          getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
+        } as unknown as PdfDocumentSession,
         pageNumber: 1,
         fitMode: 'width',
         zoom: 1,
@@ -41,10 +44,68 @@ describe('PDF viewport ownership', () => {
     observers[0]!.callback([entry], {} as IntersectionObserver)
     await flushPromises()
     expect(render).toHaveBeenCalledOnce()
+    observers[0]!.callback(
+      [{ isIntersecting: false } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    observers[0]!.callback([entry], {} as IntersectionObserver)
+    await flushPromises()
+    expect(render).toHaveBeenCalledOnce()
+    observers[0]!.callback(
+      [{ isIntersecting: false } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    )
+    await wrapper.setProps({ availableWidth: 300 })
+    expect(wrapper.get('.pdf-page').attributes('style')).toContain('width: 300px')
+    expect(render).toHaveBeenCalledOnce()
+    observers[0]!.callback([entry], {} as IntersectionObserver)
+    await flushPromises()
+    expect(render).toHaveBeenCalledTimes(2)
+    expect(render.mock.calls[1]![0].availableWidth).toBe(300)
     expect(wrapper.emitted('visibility')).toBeUndefined()
     observers[1]!.callback([entry], {} as IntersectionObserver)
     expect(wrapper.emitted('visibility')).toEqual([[1, 0.5]])
     wrapper.unmount()
     expect(observers.every((o) => o.disconnect.mock.calls.length === 1)).toBe(true)
   })
+})
+
+it('reserves measured geometry while drawing and serializes invalidated renders', async () => {
+  vi.stubGlobal('IntersectionObserver', undefined)
+  let finish!: (value: { width: number; height: number; scale: number }) => void
+  const render = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    .mockResolvedValue({ width: 300, height: 450, scale: 0.75 })
+  const wrapper = mount(PdfPageView, {
+    props: {
+      session: {
+        render,
+        getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
+      } as unknown as PdfDocumentSession,
+      pageNumber: 1,
+      fitMode: 'width',
+      zoom: 1,
+      availableWidth: 400,
+      availableHeight: 600,
+      scrollRoot: null,
+    },
+  })
+  await flushPromises()
+  expect(wrapper.get('.pdf-page').attributes('style')).toContain('height: 600px')
+  expect(wrapper.get('canvas').attributes('style')).toContain('hidden')
+  await wrapper.setProps({ availableWidth: 300 })
+  expect(render).toHaveBeenCalledOnce()
+  expect(wrapper.get('.pdf-page').attributes('style')).toContain('height: 450px')
+  finish({ width: 400, height: 600, scale: 1 })
+  await flushPromises()
+  expect(render).toHaveBeenCalledTimes(2)
+  expect(wrapper.emitted('rendered')).toEqual([[1, 0.75]])
+  expect(wrapper.get('canvas').attributes('style')).toContain('visible')
+  wrapper.unmount()
 })

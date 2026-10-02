@@ -45,6 +45,7 @@ beforeEach(() => {
   })
   pdfSessionMocks.open.mockImplementation(async () => ({
     totalPages: 3,
+    getPageDimensions: vi.fn().mockResolvedValue({ width: 600, height: 800 }),
     render: pdfSessionMocks.render,
     close: pdfSessionMocks.close,
     getOutline: pdfSessionMocks.getOutline,

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { PdfDocumentSession, PdfFitMode } from '../../features/pdf/pdf-session'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { resolvePdfScale, type PdfDocumentSession, type PdfFitMode } from '../../features/pdf/pdf-session'
 
 const props = defineProps<{
   session: PdfDocumentSession
@@ -23,21 +23,28 @@ const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
 const rendered = ref(false)
 const rendering = ref(false)
-const pageWidth = ref(0)
-const pageHeight = ref(0)
+const dimensions = ref<{ width: number; height: number } | null>(null)
+const layout = computed(() => {
+  const size = dimensions.value ?? { width: 612, height: 792 }
+  const scale = resolvePdfScale(props.fitMode, props.zoom, size.width, size.height, props.availableWidth, props.availableHeight)
+  return { width: size.width * scale, height: size.height * scale }
+})
 let observer: IntersectionObserver | null = null
 let visibilityObserver: IntersectionObserver | null = null
 let renderSequence = 0
 let nearViewport = false
+let dirty = true
+let disposed = false
 
 async function renderPage() {
-  if (!nearViewport || rendering.value) return
+  if (!nearViewport || rendering.value || !dirty || !dimensions.value || disposed) return
   const currentCanvas = canvas.value
   const currentTextLayer = textLayer.value
   if (!currentCanvas || !currentTextLayer) return
 
   const sequence = ++renderSequence
   rendering.value = true
+  dirty = false
 
   try {
     const result = await props.session.render({
@@ -51,8 +58,6 @@ async function renderPage() {
     })
     if (sequence !== renderSequence) return
 
-    pageWidth.value = result.width
-    pageHeight.value = result.height
     rendered.value = true
     emit('rendered', props.pageNumber, result.scale)
   } catch (error) {
@@ -72,7 +77,8 @@ async function renderPage() {
         : `PaperTrail could not render page ${props.pageNumber}.`,
     )
   } finally {
-    if (sequence === renderSequence) rendering.value = false
+    rendering.value = false
+    if (dirty && nearViewport && !disposed) void renderPage()
   }
 }
 
@@ -113,11 +119,10 @@ function observePage() {
 
 watch(
   () => [props.fitMode, props.zoom, props.availableWidth, props.availableHeight] as const,
-  async () => {
-    if (!nearViewport) return
+  () => {
     renderSequence += 1
-    rendering.value = false
-    await nextTick()
+    dirty = true
+    rendered.value = false
     void renderPage()
   },
 )
@@ -130,9 +135,20 @@ watch(
     observePage()
   },
 )
-onMounted(observePage)
+onMounted(async () => {
+  observePage()
+  try {
+    const size = await props.session.getPageDimensions(props.pageNumber)
+    if (disposed) return
+    dimensions.value = size
+    void renderPage()
+  } catch (error) {
+    if (!disposed) emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
+  }
+})
 
 onBeforeUnmount(() => {
+  disposed = true
   renderSequence += 1
   observer?.disconnect()
   observer = null
@@ -145,24 +161,26 @@ onBeforeUnmount(() => {
   <article
     :id="`pdf-page-${pageNumber}`"
     ref="root"
-    class="pdf-page-shell flex min-h-[65vh] w-full scroll-mt-4 items-start justify-center"
+    class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
     :aria-label="`PDF page ${pageNumber}`"
   >
     <div
       class="pdf-page relative bg-white shadow-sm"
       :style="{
-        width: pageWidth ? `${pageWidth}px` : 'min(100%, 720px)',
-        height: pageHeight ? `${pageHeight}px` : '65vh',
+        width: `${layout.width}px`,
+        height: `${layout.height}px`,
       }"
     >
       <canvas
         ref="canvas"
-        class="block max-w-none"
+        class="block max-w-none bg-white"
+        :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
       <div
         ref="textLayer"
         class="textLayer absolute top-0 left-0 overflow-hidden"
+        :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
       ></div>
       <div
