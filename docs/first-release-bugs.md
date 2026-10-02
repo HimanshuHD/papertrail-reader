@@ -8,15 +8,15 @@ Capture reproducible defects in the delivered browser PDF product. Agree the rel
 
 ## Current bug groups
 
-| Issue   | Points / scope                                                                 | Status                     |
-| ------- | ------------------------------------------------------------------------------ | -------------------------- |
-| #84     | 1–4: library tooltip, title/fallback labels, truncation, list-only scrolling   | Completed in merged PR #96 |
-| #85     | 5–6: centered library/PDF loading feedback                                     | Completed in merged PR #97 |
-| #86     | 7–10: toolbar spacing, theme label, active tabs, motion                        | Completed in merged PR #98 |
-| #87     | 11: compact footer and cohesive pane colors                                    | Completed in merged PR #98 |
-| #88     | 12: PDF rendering/scroll stability                                             | Completed in merged PR #90 |
-| #89     | 13–16: search excerpts and match highlighting                                  | Queued                     |
-| #91–#95 | Zoom/fit anchors, fast scrolling, page tracking and large-document performance | Completed in merged PR #90 |
+| Issue   | Points / scope                                                                 | Status                      |
+| ------- | ------------------------------------------------------------------------------ | --------------------------- |
+| #84     | 1–4: library tooltip, title/fallback labels, truncation, list-only scrolling   | Completed in merged PR #96  |
+| #85     | 5–6: centered library/PDF loading feedback                                     | Completed in merged PR #97  |
+| #86     | 7–10: toolbar spacing, theme label, active tabs, motion                        | Completed in merged PR #98  |
+| #87     | 11: compact footer and cohesive pane colors                                    | Completed in merged PR #98  |
+| #88     | 12: PDF rendering/scroll stability                                             | Completed in merged PR #90  |
+| #89     | 13–16: search excerpts and match highlighting                                  | Completed in merged PR #101 |
+| #91–#95 | Zoom/fit anchors, fast scrolling, page tracking and large-document performance | Completed in merged PR #90  |
 
 PR #90 merged as c191353b17391c8f1e5a3e9a820e5d863a06498b. Main CI 37033803318, issue reconciliation 37033803232 and publisher 37033885573 succeeded. Production metadata identifies the merge and CI; preview #90 is retired. Pre-merge browser validation passed 61 checks, including a 1,001-page document. This is workflow/deployment metadata evidence, not a new interactive production audit. #79/#1/#80 remain open; the version stays 0.1.0.
 
@@ -55,6 +55,10 @@ Application/test 14cd505 passed Frontend CI 37044894101 (83 unit and 6 pipeline 
 
 PR #98 merged as 376323ce2171eb17f45ecded2f266cf431baa07e. #86/#87 are completed. Main CI 37045669575, issue reconciliation 37045671003 and publisher 37045732211 passed; pages-state metadata identifies production 376323c/source CI 37045669575 and preview #98 is retired. This verifies pipeline/source metadata, not a new interactive production audit. Final application/browser evidence is 14cd505 / Frontend CI 37044894101 / Browser E2E 37045007961 (83 unit, 6 pipeline, 76 browser checks without retries; four intentional duplicate long-document skips). Final screenshots and current documentation are preserved in a docs-only follow-up because #98 was merged during documentation recording. This supersedes historical pending preview/merge statements above. Next #89, then final regression/release #80. #79/#1 remain open; version remains 0.1.0.
 
-## Active #89
+## Active #89 — validated for preview
 
-#89 is implemented on fix/89-search-highlighting; unit mapping/context tests pass locally. Full CI, real-PDF occurrence/zoom/fit browser evidence and owner preview/merge are pending. #79 remains open until this final group and release regression complete. #100 is deferred to Roadmap 2 and does not block v1.0.0.
+PR #101 application/test 48c4295 passed Frontend CI 37050069997 (87 unit, 6 pipeline tests, lint/format/types/build) and Browser E2E 37050221708 (81 passed without retries; four intentional duplicate long-document skips). All five search cases passed at 320/375/768/1024/1440 widths, including independent canvas-ink alignment. The final selected-occurrence screenshot was visually inspected and is preserved in [search-highlighting.md](search-highlighting.md). An earlier DOM-only alignment test missed displaced native text; the PDF.js CSS contract was corrected. A later test incorrectly required every fit change to keep a selected match visible; visibility is required on result clicks, while fit/zoom retains the existing reading point and preserves alignment. These initial results are superseded by the clean final run. No automatic PR publisher ran. Keep #89/#79 open for manual preview acceptance/merge and final first-release regression. Publish website on main with pr_number 101. #100 remains deferred under Roadmap 2 #78; workflows and version 0.1.0 are unchanged.
+
+## Current reconciliation — merged #101
+
+PR #101 merged as 77b8f311a638ba616a19dea0102833167a5453fa. #89 is completed. Main CI 37050685881, issue reconciliation 37050685625 and publisher 37050755788 passed; pages-state metadata identifies production 77b8f31/source CI 37050685881 and preview #101 is retired. This verifies deployment/source metadata, not an additional interactive production audit. Final application/test 48c4295 passed CI 37050069997 (87 unit, 6 pipeline tests) and Browser E2E 37050221708 (81 passed without retries, four intentional duplicate long-document skips). The selected-occurrence screenshot confirms alignment with painted PDF text. Final documentation evidence follows separately because #101 was merged during recording. #79/#1/#80 remain open for final first-release regression and v1.0.0 preparation; version remains 0.1.0. Chore #100 stays deferred under Roadmap 2 #78.
