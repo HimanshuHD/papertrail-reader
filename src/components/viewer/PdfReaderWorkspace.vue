@@ -133,7 +133,7 @@ function measureViewport() {
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
       if (viewport.value !== element || operation !== layoutOperation) return
-      if (!atEnd && Math.abs(element.scrollTop - scrollBefore) > 1) return
+      if (Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
     })
