@@ -12,7 +12,7 @@ Browser selection is a permission boundary, not unrestricted hard-drive access. 
 
 Saved metadata does not guarantee future file access. Reuse persisted handles only where supported and after checking permissions; otherwise restore reading state once the user reselects matching files. Do not store full documents by default.
 
-P0: folder/file selection, incremental indexing, tree, single reader, loading/error/empty states, PDF page navigation/progress/zoom/fit/scroll, EPUB chapters/contents/font controls.
+P0: folder/file selection, incremental indexing, tree, single reader, loading/error/empty states, PDF page navigation/progress/zoom/fit/scroll/search/contents. EPUB chapters/contents/font controls are deferred to the next version.
 
 P1: positions, bookmarks, search, text selection, outlines, fullscreen, keyboard controls and themes.
 
@@ -60,7 +60,7 @@ Integrate epub.js behind the reader contract. Add chapters/contents, fonts, read
 Exit: reading position survives font/window changes; location generation does not freeze UI; contents navigation works.
 
 M5 - Productivity (#13, #14, #15)
-For 0.1 ship IndexedDB reading positions/bookmarks #13. Match reselected files before restoration; handle cleared storage and unavailable permissions. Follow with recents/library search #14 and annotations/statistics #15.
+For the PDF release ship IndexedDB PDF reading positions/bookmarks #13. Match reselected files before restoration; handle cleared storage and unavailable permissions. Follow with recents/library search #14 and annotations/statistics #15.
 Exit: bookmarks and positions restore after reopening/reselection; migrations and ambiguous identity are tested. Library search is distinguished from document search. Annotation selectors and migration behavior are tested before notes ship.
 
 Dependencies: #10 follows #7/#9; #11 follows #10; #12 follows #7/#9; #13 PDF persistence follows #9/#10; EPUB persistence follows #12 in the next version. M5 expansion must not silently become a first-release blocker.
