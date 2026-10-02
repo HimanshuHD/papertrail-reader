@@ -9,7 +9,8 @@ const pdfSession = vi.hoisted(() => ({
   openPdfDocument: vi.fn(),
 }))
 
-vi.mock('../../src/features/pdf/pdf-session', () => ({
+vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/features/pdf/pdf-session')>()),
   openPdfDocument: pdfSession.openPdfDocument,
   PdfOpenError: class PdfOpenError extends Error {},
 }))
@@ -55,6 +56,7 @@ describe('PDF reader utility workspace', () => {
     pdfSession.close.mockResolvedValue(undefined)
     pdfSession.openPdfDocument.mockResolvedValue({
       totalPages: 3,
+      getPageDimensions: vi.fn().mockResolvedValue({ width: 600, height: 800 }),
       getOutline: pdfSession.getOutline,
       searchText: pdfSession.searchText,
       close: pdfSession.close,
@@ -162,5 +164,18 @@ describe('PDF reader utility workspace', () => {
       expect(button.get('.icon-tooltip').classes()).toContain('top-full')
     }
     expect(wrapper.find('input[type="range"]').exists()).toBe(false)
+  })
+  it('increments zoom from the active fit scale and accumulates rapid clicks', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    await wrapper.get('button[aria-label="Fit page"]').trigger('click')
+    await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('50%')
+    await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
+    await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('100%')
   })
 })

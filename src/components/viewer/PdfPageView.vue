@@ -1,6 +1,10 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-import type { PdfDocumentSession, PdfFitMode } from '../../features/pdf/pdf-session'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import {
+  resolvePdfScale,
+  type PdfDocumentSession,
+  type PdfFitMode,
+} from '../../features/pdf/pdf-session'
 
 const props = defineProps<{
   session: PdfDocumentSession
@@ -22,27 +26,63 @@ const root = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
 const rendered = ref(false)
+const previewed = ref(false)
 const rendering = ref(false)
-const pageWidth = ref(0)
-const pageHeight = ref(0)
+const dimensions = ref<{ width: number; height: number } | null>(null)
+const layout = computed(() => {
+  const size = dimensions.value ??
+    props.session.defaultPageDimensions ?? { width: 612, height: 792 }
+  const scale = resolvePdfScale(
+    props.fitMode,
+    props.zoom,
+    size.width,
+    size.height,
+    props.availableWidth,
+    props.availableHeight,
+  )
+  return { width: size.width * scale, height: size.height * scale }
+})
 let observer: IntersectionObserver | null = null
 let visibilityObserver: IntersectionObserver | null = null
 let renderSequence = 0
 let nearViewport = false
+let dirty = true
+let disposed = false
+let scrollFrame = 0
+let measuring = false
+let pendingBitmap: HTMLCanvasElement | null = null
 
 async function renderPage() {
-  if (!nearViewport || rendering.value) return
+  if (!nearViewport || rendering.value || !dirty || disposed) return
+  if (!dimensions.value) {
+    if (measuring) return
+    measuring = true
+    try {
+      dimensions.value = await props.session.getPageDimensions(props.pageNumber)
+    } catch (error) {
+      if (!disposed)
+        emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
+      return
+    } finally {
+      measuring = false
+    }
+    if (!nearViewport || disposed) return
+  }
   const currentCanvas = canvas.value
   const currentTextLayer = textLayer.value
   if (!currentCanvas || !currentTextLayer) return
 
+  const pendingCanvas = document.createElement('canvas')
+  const pendingText = document.createElement('div')
+  pendingBitmap = pendingCanvas
   const sequence = ++renderSequence
   rendering.value = true
+  dirty = false
 
   try {
     const result = await props.session.render({
-      canvas: currentCanvas,
-      textLayer: currentTextLayer,
+      canvas: pendingCanvas,
+      textLayer: pendingText,
       pageNumber: props.pageNumber,
       fitMode: props.fitMode,
       zoom: props.zoom,
@@ -51,9 +91,16 @@ async function renderPage() {
     })
     if (sequence !== renderSequence) return
 
-    pageWidth.value = result.width
-    pageHeight.value = result.height
+    const context = currentCanvas.getContext('2d', { alpha: false })
+    if (!context) throw new Error('Canvas rendering is unavailable in this browser.')
+    currentCanvas.width = pendingCanvas.width
+    currentCanvas.height = pendingCanvas.height
+    context.drawImage(pendingCanvas, 0, 0)
+    currentTextLayer.style.cssText = pendingText.style.cssText
+    currentTextLayer.replaceChildren(...pendingText.childNodes)
     rendered.value = true
+    previewed.value = false
+    props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
     emit('rendered', props.pageNumber, result.scale)
   } catch (error) {
     if (sequence !== renderSequence) return
@@ -72,8 +119,62 @@ async function renderPage() {
         : `PaperTrail could not render page ${props.pageNumber}.`,
     )
   } finally {
-    if (sequence === renderSequence) rendering.value = false
+    pendingCanvas.width = 0
+    pendingCanvas.height = 0
+    pendingBitmap = null
+    rendering.value = false
+    if (!nearViewport) releaseBitmap()
+    if (dirty && nearViewport && !disposed) void renderPage()
   }
+}
+
+function showPreview() {
+  const preview = props.session.getPagePreview?.(props.pageNumber)
+  const displayed = canvas.value
+  if (preview && displayed) {
+    displayed.width = preview.width
+    displayed.height = preview.height
+    displayed.getContext('2d', { alpha: false })?.drawImage(preview, 0, 0)
+    previewed.value = true
+  }
+}
+
+function releaseBitmap() {
+  const displayed = canvas.value
+  if (!displayed) return
+  displayed.width = 0
+  displayed.height = 0
+  textLayer.value?.replaceChildren()
+  rendered.value = false
+  previewed.value = false
+  dirty = true
+}
+
+function updateProximity(next: boolean) {
+  nearViewport = next
+  if (next) {
+    if (!rendered.value && !previewed.value) showPreview()
+    void renderPage()
+  } else {
+    renderSequence += 1
+    dirty = true
+    if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
+    releaseBitmap()
+  }
+}
+
+function checkScrollPosition() {
+  if (disposed) return
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(() => {
+    const element = root.value
+    const pane = props.scrollRoot
+    if (!element || !pane) return
+    const box = element.getBoundingClientRect()
+    const bounds = pane.getBoundingClientRect()
+    const next = box.bottom >= bounds.top - 700 && box.top <= bounds.bottom + 700
+    if (next !== nearViewport || dirty) updateProximity(next)
+  })
 }
 
 function observePage() {
@@ -91,8 +192,7 @@ function observePage() {
       const entry = entries[0]
       if (!entry) return
 
-      nearViewport = entry.isIntersecting
-      if (entry.isIntersecting) void renderPage()
+      if (entry.isIntersecting !== nearViewport || dirty) updateProximity(entry.isIntersecting)
     },
     {
       root: props.scrollRoot,
@@ -113,26 +213,36 @@ function observePage() {
 
 watch(
   () => [props.fitMode, props.zoom, props.availableWidth, props.availableHeight] as const,
-  async () => {
-    if (!nearViewport) return
+  () => {
     renderSequence += 1
-    rendering.value = false
-    await nextTick()
+    dirty = true
     void renderPage()
+    checkScrollPosition()
   },
 )
 
 watch(
   () => props.scrollRoot,
-  () => {
+  (next, previous) => {
+    previous?.removeEventListener('scroll', checkScrollPosition)
+    next?.addEventListener('scroll', checkScrollPosition, { passive: true })
     observer?.disconnect()
     visibilityObserver?.disconnect()
     observePage()
   },
 )
-onMounted(observePage)
+onMounted(() => {
+  props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
+  observePage()
+  if (nearViewport) showPreview()
+})
 
 onBeforeUnmount(() => {
+  disposed = true
+  if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
+  releaseBitmap()
+  cancelAnimationFrame(scrollFrame)
+  props.scrollRoot?.removeEventListener('scroll', checkScrollPosition)
   renderSequence += 1
   observer?.disconnect()
   observer = null
@@ -145,29 +255,38 @@ onBeforeUnmount(() => {
   <article
     :id="`pdf-page-${pageNumber}`"
     ref="root"
-    class="pdf-page-shell flex min-h-[65vh] w-full scroll-mt-4 items-start justify-center"
+    class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
     :aria-label="`PDF page ${pageNumber}`"
+    :data-render-state="rendering ? 'rendering' : rendered ? 'ready' : 'pending'"
   >
     <div
-      class="pdf-page relative bg-white shadow-sm"
+      class="pdf-page relative shrink-0 bg-white shadow-sm"
       :style="{
-        width: pageWidth ? `${pageWidth}px` : 'min(100%, 720px)',
-        height: pageHeight ? `${pageHeight}px` : '65vh',
+        width: `${layout.width}px`,
+        height: `${layout.height}px`,
       }"
     >
       <canvas
         ref="canvas"
-        class="block max-w-none"
+        width="0"
+        height="0"
+        class="block max-w-none bg-white"
+        :style="{
+          visibility: rendered || previewed ? 'visible' : 'hidden',
+          width: `${layout.width}px`,
+          height: `${layout.height}px`,
+        }"
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
       <div
         ref="textLayer"
         class="textLayer absolute top-0 left-0 overflow-hidden"
+        :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
       ></div>
       <div
-        v-if="!rendered && rendering"
-        class="absolute inset-0 grid place-items-center text-sm text-muted"
+        v-if="!rendered && !previewed"
+        class="absolute inset-0 grid place-items-center bg-white text-sm text-muted"
         role="status"
       >
         Rendering page {{ pageNumber }}…

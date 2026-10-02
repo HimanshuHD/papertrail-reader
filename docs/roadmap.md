@@ -55,3 +55,5 @@ PR #73 merged as 058195008dca9fc6797f035c272801fdd5f0d0f9. PR #77 merged as b41d
 Reference issues in commits and PRs. Keep implementation PRs draft until lint/format/unit/type/build checks pass; Ready for review runs explicit Browser E2E. Ordinary CI stays browser-free. Previews are manual; successful main builds publish automatically. Reconcile live issues and docs after merges. Release publication follows #80 after the agreed bugs are finished.
 
 The [earlier roadmap PDF](PaperTrail-Web-First-Roadmap.pdf) is a historical planning snapshot. This document and issues #1/#78 are authoritative for current scope.
+
+Large-document performance: #95 follows #94 under #79/#88 in PR #90. Replace blocking all-page preview warm-up with viewport-driven rendering and a bounded reusable cache before first-release acceptance. The affected 1,000+ page PDF needs owner preview validation; first release remains blocked by #79.

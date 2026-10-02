@@ -282,3 +282,64 @@ describe('PDF render and session lifecycle', () => {
     )
   })
 })
+
+describe('demand-driven PDF preparation', () => {
+  it('opens a 1,001-page document after measuring only its first page, without rasterization', async () => {
+    const page = {
+      getViewport: () => ({ width: 600, height: 800 }),
+      render: vi.fn(),
+    }
+    const documentProxy = {
+      numPages: 1001,
+      getPage: vi.fn().mockResolvedValue(page),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    }
+    const loadingTask = {
+      promise: Promise.resolve(documentProxy),
+      destroy: vi.fn().mockResolvedValue(undefined),
+    }
+    const loader = async () =>
+      ({ getDocument: () => loadingTask }) as unknown as typeof import('pdfjs-dist')
+    const session = await openPdfDocument(new File(['fixture'], 'long.pdf'), loader)
+    expect(session.totalPages).toBe(1001)
+    expect(documentProxy.getPage.mock.calls).toEqual([[1]])
+    expect(page.render).not.toHaveBeenCalled()
+    expect(session.defaultPageDimensions).toEqual({ width: 600, height: 800 })
+    await session.getPageDimensions(1)
+    expect(documentProxy.getPage).toHaveBeenCalledOnce()
+    await session.close()
+  })
+
+  it('bounds reusable preview pixels with LRU eviction and releases them on close', async () => {
+    const context = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
+    const session = new PdfDocumentSession(
+      {} as typeof import('pdfjs-dist'),
+      { destroy: vi.fn().mockResolvedValue(undefined) } as never,
+      { numPages: 1001, cleanup: vi.fn().mockResolvedValue(undefined) } as never,
+    )
+    const source = document.createElement('canvas')
+    source.width = 1200
+    source.height = 1600
+    session.cachePagePreview(1, source)
+    session.cachePagePreview(2, source)
+    const evicted = session.getPagePreview(2)!
+    for (let n = 3; n <= 128; n += 1) session.cachePagePreview(n, source)
+    session.getPagePreview(1) // Retain the recently visited first page.
+    session.cachePagePreview(129, source)
+    expect(session.getPagePreview(1)).toBeDefined()
+    expect(session.getPagePreview(2)).toBeUndefined()
+    expect(evicted.width).toBe(0)
+    const previews = Array.from({ length: 129 }, (_, i) => session.getPagePreview(i + 1)).filter(
+      (v): v is HTMLCanvasElement => Boolean(v),
+    )
+    expect(previews).toHaveLength(128)
+    expect(
+      previews.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0),
+    ).toBeLessThan(18 * 1024 * 1024)
+    await session.close()
+    expect(previews.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true)
+    context.mockRestore()
+  })
+})

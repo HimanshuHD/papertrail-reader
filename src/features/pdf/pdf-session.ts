@@ -127,6 +127,47 @@ export function resolvePdfScale(
 export class PdfDocumentSession {
   private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
+  private readonly dimensions = new Map<number, { width: number; height: number }>()
+  private readonly previews = new Map<number, HTMLCanvasElement>()
+
+  getPagePreview(pageNumber: number): HTMLCanvasElement | undefined {
+    const preview = this.previews.get(pageNumber)
+    if (preview) {
+      this.previews.delete(pageNumber)
+      this.previews.set(pageNumber, preview)
+    }
+    return preview
+  }
+
+  get defaultPageDimensions(): { width: number; height: number } {
+    return this.dimensions.get(1) ?? { width: 612, height: 792 }
+  }
+
+  cachePagePreview(pageNumber: number, source: HTMLCanvasElement): void {
+    if (this.closed || !source.width || !source.height) return
+    const scale = Math.min(1, 192 / Math.max(source.width, source.height))
+    const preview = document.createElement('canvas')
+    preview.width = Math.max(1, Math.floor(source.width * scale))
+    preview.height = Math.max(1, Math.floor(source.height * scale))
+    const context = preview.getContext('2d', { alpha: false })
+    if (!context) return
+    context.drawImage(source, 0, 0, preview.width, preview.height)
+    const previous = this.previews.get(pageNumber)
+    if (previous) {
+      previous.width = 0
+      previous.height = 0
+    }
+    this.previews.delete(pageNumber)
+    this.previews.set(pageNumber, preview)
+    // At most 128 previews, each at most 192² RGBA pixels (<18 MiB).
+    while (this.previews.size > 128) {
+      const oldest = this.previews.keys().next().value!
+      const evicted = this.previews.get(oldest)!
+      evicted.width = 0
+      evicted.height = 0
+      this.previews.delete(oldest)
+    }
+  }
 
   constructor(
     private readonly pdfjs: PdfJsModule,
@@ -138,7 +179,17 @@ export class PdfDocumentSession {
     return this.document.numPages
   }
 
-  private async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
+  async getPageDimensions(pageNumber: number): Promise<{ width: number; height: number }> {
+    const cached = this.dimensions.get(pageNumber)
+    if (cached) return cached
+    const page = await this.getPage(pageNumber)
+    const viewport = page.getViewport({ scale: 1 })
+    const size = { width: viewport.width, height: viewport.height }
+    this.dimensions.set(pageNumber, size)
+    return size
+  }
+
+  async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
     const current = this.activeRenders.get(canvas)
     this.activeRenders.delete(canvas)
     if (!current) return
@@ -312,6 +363,7 @@ export class PdfDocumentSession {
     const task = page.render({
       canvas: request.canvas,
       canvasContext: context,
+      background: '#ffffff',
       viewport,
       transform,
     })
@@ -354,6 +406,12 @@ export class PdfDocumentSession {
     if (this.closed) return
     this.closed = true
     await this.cancelAllRenders()
+    for (const preview of this.previews.values()) {
+      preview.width = 0
+      preview.height = 0
+    }
+    this.previews.clear()
+    this.dimensions.clear()
     await this.document.cleanup()
     await this.loadingTask.destroy()
   }
@@ -362,6 +420,7 @@ export class PdfDocumentSession {
 export async function openPdfDocument(
   file: File,
   loader: PdfJsLoader = loadPdfJs,
+  signal?: AbortSignal,
 ): Promise<PdfDocumentSession> {
   const pdfjs = await loader()
   const data = new Uint8Array(await file.arrayBuffer())
@@ -378,11 +437,27 @@ export async function openPdfDocument(
     }
   })
 
+  let ownedBySession = false
   try {
     const document = await Promise.race([loadingTask.promise, passwordRequest])
-    return new PdfDocumentSession(pdfjs, loadingTask, document)
+    const session = new PdfDocumentSession(pdfjs, loadingTask, document)
+    ownedBySession = true
+    const abort = () => {
+      void session.close().catch(() => undefined)
+    }
+    signal?.addEventListener('abort', abort, { once: true })
+    try {
+      if (signal?.aborted) throw new DOMException('PDF preparation cancelled.', 'AbortError')
+      await session.getPageDimensions(1)
+      return session
+    } catch (error) {
+      await session.close()
+      throw error
+    } finally {
+      signal?.removeEventListener('abort', abort)
+    }
   } catch (error) {
-    await loadingTask.destroy()
+    if (!ownedBySession) await loadingTask.destroy()
     throw classifyPdfOpenError(error)
   }
 }

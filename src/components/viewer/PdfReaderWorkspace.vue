@@ -4,6 +4,7 @@ import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
   openPdfDocument,
+  resolvePdfScale,
   PdfOpenError,
   type PdfDocumentSession,
   type PdfFitMode,
@@ -57,11 +58,13 @@ const searchBusy = ref(false)
 const searchCompleted = ref(false)
 const searchError = ref('')
 const fullscreen = ref(false)
-const visibility = new Map<number, number>()
 let openSequence = 0
 let resizeFrame = 0
+let scrollFrame = 0
+let layoutOperation = 0
 let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
+let documentController: AbortController | null = null
 
 const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
 
@@ -107,6 +110,14 @@ function measureViewport() {
   const element = viewport.value
   if (!element) return
 
+  const atEnd =
+    element.scrollHeight > element.clientHeight &&
+    element.scrollHeight - element.scrollTop - element.clientHeight < 2
+  const readingPoint = captureReadingPoint()
+  const operation = layoutOperation
+  const scrollBefore = element.scrollTop
+  const previousWidth = availableWidth.value
+  const previousHeight = availableHeight.value
   const style = getComputedStyle(element)
   availableWidth.value = Math.max(
     1,
@@ -120,6 +131,14 @@ function measureViewport() {
       parseFloat(style.paddingTop || '0') -
       parseFloat(style.paddingBottom || '0'),
   )
+  if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
+    void nextTick(() => {
+      if (viewport.value !== element || operation !== layoutOperation) return
+      if (Math.abs(element.scrollTop - scrollBefore) > 1) return
+      if (atEnd) element.scrollTop = element.scrollHeight
+      else void restoreReadingPoint(readingPoint)
+    })
+  }
 }
 
 function scheduleViewportMeasure() {
@@ -151,6 +170,9 @@ async function closeCurrentSession() {
 }
 
 async function openDocument() {
+  documentController?.abort()
+  const controller = new AbortController()
+  documentController = controller
   const sequence = ++openSequence
   phase.value = 'loading'
   errorMessage.value = ''
@@ -159,13 +181,12 @@ async function openDocument() {
   fitMode.value = 'width'
   zoom.value = 1
   renderedScale.value = 1
-  visibility.clear()
   resetUtilities()
 
   await closeCurrentSession()
 
   try {
-    const next = await openPdfDocument(props.document.file)
+    const next = await openPdfDocument(props.document.file, undefined, controller.signal)
     if (sequence !== openSequence) {
       await next.close()
       return
@@ -191,6 +212,7 @@ async function openDocument() {
 }
 
 async function goToPage(page: number) {
+  layoutOperation += 1
   const next = clampPage(page)
   currentPage.value = next
   await nextTick()
@@ -207,26 +229,40 @@ async function goToPage(page: number) {
 }
 
 function chooseMostVisiblePage() {
+  const pane = viewport.value
+  if (!pane) return
+  const bounds = pane.getBoundingClientRect()
   let bestPage = currentPage.value
-  let bestRatio = -1
-
-  for (const [pageNumber, ratio] of visibility) {
-    if (ratio > bestRatio || (ratio === bestRatio && pageNumber < bestPage)) {
-      bestPage = pageNumber
-      bestRatio = ratio
+  let bestPixels = 0
+  for (const element of pane.querySelectorAll<HTMLElement>('.pdf-page-shell')) {
+    const box = element.getBoundingClientRect()
+    const pixels = Math.max(
+      0,
+      Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
+    )
+    if (pixels > bestPixels) {
+      bestPixels = pixels
+      bestPage = Number(element.id.replace('pdf-page-', ''))
     }
   }
-
-  if (bestRatio > 0 && bestPage !== currentPage.value) {
+  if (bestPixels > 0 && bestPage !== currentPage.value) {
     currentPage.value = bestPage
     emit('status', `Page ${bestPage} of ${totalPages.value}.`)
   }
 }
 
-function handleVisibility(pageNumber: number, ratio: number) {
-  if (ratio > 0) visibility.set(pageNumber, ratio)
-  else visibility.delete(pageNumber)
+function handleViewerScroll() {
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(chooseMostVisiblePage)
+}
+
+function handleVisibility() {
+  handleViewerScroll()
+}
+
+function stepPage(delta: number) {
   chooseMostVisiblePage()
+  void goToPage(currentPage.value + delta)
 }
 
 function handleRendered(pageNumber: number, scale: number) {
@@ -239,14 +275,72 @@ function handleRenderError(message: string) {
   emit('status', message)
 }
 
-function changeZoom(delta: number) {
+function captureReadingPoint() {
+  const pane = viewport.value
+  if (!pane) return null
+  const bounds = pane.getBoundingClientRect()
+  const center = bounds.top + pane.clientHeight / 2
+  const candidates = [...pane.querySelectorAll<HTMLElement>('.pdf-page')]
+  const page =
+    candidates.find((element) => {
+      const box = element.getBoundingClientRect()
+      return box.top <= center && box.bottom >= center
+    }) ??
+    candidates.reduce<HTMLElement | null>((best, element) => {
+      const distance = (node: HTMLElement) =>
+        Math.abs(
+          node.getBoundingClientRect().top + node.getBoundingClientRect().height / 2 - center,
+        )
+      return !best || distance(element) < distance(best) ? element : best
+    }, null)
+  if (!page) return null
+  const box = page.getBoundingClientRect()
+  return {
+    pane,
+    page,
+    x: (bounds.left + pane.clientWidth / 2 - box.left) / Math.max(1, box.width),
+    y: (bounds.top + pane.clientHeight / 2 - box.top) / Math.max(1, box.height),
+  }
+}
+
+async function restoreReadingPoint(point: ReturnType<typeof captureReadingPoint>) {
+  await nextTick()
+  if (!point || !point.page.isConnected || viewport.value !== point.pane) return
+  const bounds = point.pane.getBoundingClientRect()
+  const box = point.page.getBoundingClientRect()
+  point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
+  point.pane.scrollLeft += box.left + point.x * box.width - bounds.left - point.pane.clientWidth / 2
+}
+
+async function changeZoom(delta: number) {
+  const current = session.value
+  if (!current) return
+  const point = captureReadingPoint()
+  const page =
+    Number(point?.page.closest('article')?.id.replace('pdf-page-', '')) || currentPage.value
+  const dimensions = await current.getPageDimensions(page)
+  if (session.value !== current) return
+  const baseline = resolvePdfScale(
+    fitMode.value,
+    zoom.value,
+    dimensions.width,
+    dimensions.height,
+    availableWidth.value,
+    availableHeight.value,
+  )
+  layoutOperation += 1
+  zoom.value = Math.min(4, Math.max(0.25, baseline + delta))
   fitMode.value = 'custom'
-  zoom.value = Math.min(4, Math.max(0.25, renderedScale.value + delta))
+  renderedScale.value = zoom.value
+  await restoreReadingPoint(point)
   emit('status', `PDF zoom set to ${Math.round(zoom.value * 100)}%.`)
 }
 
-function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
+  layoutOperation += 1
+  const point = captureReadingPoint()
   fitMode.value = mode
+  await restoreReadingPoint(point)
   emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
 }
 
@@ -415,12 +509,12 @@ function handleShortcut(event: KeyboardEvent) {
     case 'ArrowRight':
     case 'PageDown':
       event.preventDefault()
-      void goToPage(currentPage.value + 1)
+      stepPage(1)
       break
     case 'ArrowLeft':
     case 'PageUp':
       event.preventDefault()
-      void goToPage(currentPage.value - 1)
+      stepPage(-1)
       break
     case 'Escape':
       closePopover(true)
@@ -448,8 +542,10 @@ watch(
 
 onBeforeUnmount(() => {
   openSequence += 1
+  documentController?.abort()
   searchController?.abort()
   cancelAnimationFrame(resizeFrame)
+  cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
@@ -489,7 +585,7 @@ onBeforeUnmount(() => {
           label="Previous page"
           icon="previous"
           :disabled="currentPage <= 1"
-          @click="goToPage(currentPage - 1)"
+          @click="stepPage(-1)"
         />
         <input
           :value="currentPage"
@@ -504,7 +600,7 @@ onBeforeUnmount(() => {
           label="Next page"
           icon="next"
           :disabled="currentPage >= totalPages"
-          @click="goToPage(currentPage + 1)"
+          @click="stepPage(1)"
         />
         <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
         <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
@@ -646,6 +742,7 @@ onBeforeUnmount(() => {
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
+        @scroll.passive="handleViewerScroll"
       >
         <div
           v-if="phase === 'loading'"
@@ -793,6 +890,7 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .pdf-scroll {
+  overflow-anchor: none;
   min-height: 0;
   overscroll-behavior: contain;
 }

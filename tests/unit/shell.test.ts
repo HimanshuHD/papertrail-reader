@@ -11,9 +11,10 @@ const pdfSessionMocks = vi.hoisted(() => ({
   searchText: vi.fn(),
 }))
 
-vi.mock('../../src/features/pdf/pdf-session', () => {
+vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
   class PdfOpenError extends Error {}
   return {
+    ...(await importOriginal<typeof import('../../src/features/pdf/pdf-session')>()),
     PdfOpenError,
     openPdfDocument: pdfSessionMocks.open,
   }
@@ -23,6 +24,9 @@ import ReaderView from '../../src/views/ReaderView.vue'
 import { createAppRouter } from '../../src/router'
 
 beforeEach(() => {
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({
+    drawImage: vi.fn(),
+  } as unknown as CanvasRenderingContext2D)
   vi.clearAllMocks()
   pdfSessionMocks.render.mockResolvedValue({ scale: 1.25, width: 765, height: 990 })
   pdfSessionMocks.getOutline.mockResolvedValue([
@@ -45,6 +49,7 @@ beforeEach(() => {
   })
   pdfSessionMocks.open.mockImplementation(async () => ({
     totalPages: 3,
+    getPageDimensions: vi.fn().mockResolvedValue({ width: 600, height: 800 }),
     render: pdfSessionMocks.render,
     close: pdfSessionMocks.close,
     getOutline: pdfSessionMocks.getOutline,
@@ -230,7 +235,7 @@ describe('home and product shell', () => {
     await flushPromises()
 
     expect(guide.attributes('aria-pressed')).toBe('true')
-    expect(pdfSessionMocks.open).toHaveBeenCalledWith(files[0])
+    expect(pdfSessionMocks.open.mock.calls[0]?.[0]).toBe(files[0])
     expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
     expect(wrapper.text()).toContain('Page 1 of 3')
     expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
