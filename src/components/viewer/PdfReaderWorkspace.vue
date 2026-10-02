@@ -107,6 +107,15 @@ function measureViewport() {
   const element = viewport.value
   if (!element) return
 
+  const atEnd =
+    element.scrollHeight > element.clientHeight &&
+    element.scrollHeight - element.scrollTop - element.clientHeight < 2
+  const anchor = element.querySelector<HTMLElement>(`#pdf-page-${currentPage.value}`)
+  const anchorOffset = anchor
+    ? anchor.getBoundingClientRect().top - element.getBoundingClientRect().top
+    : null
+  const previousWidth = availableWidth.value
+  const previousHeight = availableHeight.value
   const style = getComputedStyle(element)
   availableWidth.value = Math.max(
     1,
@@ -120,6 +129,16 @@ function measureViewport() {
       parseFloat(style.paddingTop || '0') -
       parseFloat(style.paddingBottom || '0'),
   )
+  if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
+    void nextTick(() => {
+      if (viewport.value !== element) return
+      if (atEnd) element.scrollTop = element.scrollHeight
+      else if (anchor?.isConnected && anchorOffset !== null) {
+        element.scrollTop +=
+          anchor.getBoundingClientRect().top - element.getBoundingClientRect().top - anchorOffset
+      }
+    })
+  }
 }
 
 function scheduleViewportMeasure() {
