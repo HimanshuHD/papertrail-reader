@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { textLayerMatchRanges } from '../../features/pdf/search-text'
 import {
   resolvePdfScale,
   type PdfDocumentSession,
@@ -14,6 +15,9 @@ const props = defineProps<{
   availableWidth: number
   availableHeight: number
   scrollRoot: HTMLElement | null
+  searchQuery?: string
+  selectedOccurrence?: number | null
+  selectionRequest?: number
 }>()
 
 const emit = defineEmits<{
@@ -25,6 +29,63 @@ const emit = defineEmits<{
 const root = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
+const highlightRects = ref<
+  {
+    left: number
+    top: number
+    width: number
+    height: number
+    selected: boolean
+    occurrence: number
+  }[]
+>([])
+let lastScrolledRequest = 0
+function updateHighlights() {
+  highlightRects.value = []
+  const layer = textLayer.value
+  const element = root.value
+  if (!layer || !element || !rendered.value || rendering.value || !props.searchQuery) return
+  const origin = canvas.value?.getBoundingClientRect() ?? layer.getBoundingClientRect()
+  const highlights: typeof highlightRects.value = []
+  let selectedRect: DOMRect | null = null
+  for (const { range, occurrence } of textLayerMatchRanges(layer, props.searchQuery)) {
+    if (typeof range.getClientRects !== 'function') continue
+    const selected = occurrence === props.selectedOccurrence
+    for (const rect of range.getClientRects()) {
+      if (rect.width < 0.5 || rect.height < 0.5) continue
+      highlights.push({
+        left: rect.left - origin.left,
+        top: rect.top - origin.top,
+        width: rect.width,
+        height: rect.height,
+        selected,
+        occurrence,
+      })
+      if (selected && !selectedRect) selectedRect = rect
+    }
+  }
+  highlightRects.value = highlights
+  const pane = props.scrollRoot
+  const request = props.selectionRequest ?? 0
+  if (pane && selectedRect && request && request !== lastScrolledRequest) {
+    lastScrolledRequest = request
+    const bounds = pane.getBoundingClientRect()
+    const left =
+      selectedRect.left < bounds.left || selectedRect.right > bounds.right
+        ? Math.max(0, pane.scrollLeft + selectedRect.left - bounds.left - pane.clientWidth / 3)
+        : pane.scrollLeft
+    pane.scrollTo?.({
+      top: Math.max(0, pane.scrollTop + selectedRect.top - bounds.top - pane.clientHeight / 3),
+      left,
+      behavior: 'instant',
+    })
+  }
+}
+watch(
+  () => [props.searchQuery, props.selectedOccurrence, props.selectionRequest],
+  () => void nextTick(updateHighlights),
+)
+
 const rendered = ref(false)
 const previewed = ref(false)
 const rendering = ref(false)
@@ -77,6 +138,7 @@ async function renderPage() {
   pendingBitmap = pendingCanvas
   const sequence = ++renderSequence
   rendering.value = true
+  highlightRects.value = []
   dirty = false
 
   try {
@@ -97,6 +159,7 @@ async function renderPage() {
     currentCanvas.height = pendingCanvas.height
     context.drawImage(pendingCanvas, 0, 0)
     currentTextLayer.style.cssText = pendingText.style.cssText
+    currentTextLayer.dataset.mainRotation = pendingText.dataset.mainRotation ?? '0'
     currentTextLayer.replaceChildren(...pendingText.childNodes)
     rendered.value = true
     previewed.value = false
@@ -123,6 +186,7 @@ async function renderPage() {
     pendingCanvas.height = 0
     pendingBitmap = null
     rendering.value = false
+    void nextTick(updateHighlights)
     if (!nearViewport) releaseBitmap()
     if (dirty && nearViewport && !disposed) void renderPage()
   }
@@ -144,6 +208,7 @@ function releaseBitmap() {
   if (!displayed) return
   displayed.width = 0
   displayed.height = 0
+  highlightRects.value = []
   textLayer.value?.replaceChildren()
   rendered.value = false
   previewed.value = false
@@ -278,6 +343,21 @@ onBeforeUnmount(() => {
         }"
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
+      <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
+        <span
+          v-for="(rect, index) in highlightRects"
+          :key="index"
+          class="pdf-match"
+          :class="{ selected: rect.selected }"
+          :data-occurrence="rect.occurrence"
+          :style="{
+            left: `${rect.left}px`,
+            top: `${rect.top}px`,
+            width: `${rect.width}px`,
+            height: `${rect.height}px`,
+          }"
+        />
+      </div>
       <div
         ref="textLayer"
         class="textLayer absolute top-0 left-0 overflow-hidden"
@@ -296,13 +376,49 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-match-overlay {
+  z-index: 3;
+}
+.pdf-match {
+  position: absolute;
+  background: rgb(250 204 21 / 40%);
+  border-radius: 2px;
+}
+.pdf-match.selected {
+  background: rgb(251 146 60 / 55%);
+  outline: 1px solid #b45309;
+}
+/* Copyright 2014 Mozilla Foundation
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ *
+ * Adapted PDF.js text-layer layout contract:
+ * https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.css
+ */
 .textLayer {
   z-index: 2;
+  color-scheme: only light;
+  text-align: initial;
   line-height: 1;
+  letter-spacing: normal;
+  word-spacing: normal;
   text-size-adjust: none;
+  forced-color-adjust: none;
   transform-origin: 0 0;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
 }
-
 .textLayer :deep(span),
 .textLayer :deep(br) {
   position: absolute;
@@ -310,16 +426,30 @@ onBeforeUnmount(() => {
   white-space: pre;
   cursor: text;
   transform-origin: 0 0;
+  user-select: text;
 }
-
+.textLayer :deep(> :not(.markedContent)),
+.textLayer :deep(.markedContent span:not(.markedContent)) {
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
 .textLayer :deep(span::selection) {
   background: Highlight;
   color: transparent;
 }
-
 .textLayer :deep(.markedContent) {
-  position: absolute;
-  top: 0;
-  left: 0;
+  display: contents;
+}
+.textLayer[data-main-rotation='90'] {
+  transform: rotate(90deg) translateY(-100%);
+}
+.textLayer[data-main-rotation='180'] {
+  transform: rotate(180deg) translate(-100%, -100%);
+}
+.textLayer[data-main-rotation='270'] {
+  transform: rotate(270deg) translateX(-100%);
 }
 </style>

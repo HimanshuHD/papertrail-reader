@@ -53,6 +53,33 @@ const outline = shallowRef<readonly PdfOutlineItem[]>([])
 const outlineLoaded = ref(false)
 const outlineBusy = ref(false)
 const searchQuery = ref('')
+const completedSearchQuery = ref('')
+const selectedSearchMatch = ref<{ pageNumber: number; occurrence: number; request: number } | null>(
+  null,
+)
+let searchSelectionRequest = 0
+watch(searchQuery, () => {
+  searchController?.abort()
+  searchController = null
+  searchBusy.value = false
+  completedSearchQuery.value = ''
+  selectedSearchMatch.value = null
+  searchSelectionRequest += 1
+  searchMatches.value = []
+  searchCompleted.value = false
+})
+async function selectSearchMatch(match: PdfSearchMatch) {
+  const request = ++searchSelectionRequest
+  const query = completedSearchQuery.value
+  await goToPage(match.pageNumber)
+  if (request !== searchSelectionRequest || query !== completedSearchQuery.value) return
+  selectedSearchMatch.value = {
+    pageNumber: match.pageNumber,
+    occurrence: match.occurrence,
+    request,
+  }
+}
+
 const searchMatches = shallowRef<readonly PdfSearchMatch[]>([])
 const searchTextPageCount = ref(0)
 const searchTruncated = ref(false)
@@ -425,6 +452,8 @@ async function performSearch() {
     const result = await current.searchText(query, { signal: controller.signal })
     if (searchController !== controller) return
 
+    completedSearchQuery.value = query
+    selectedSearchMatch.value = null
     searchMatches.value = result.matches
     rightPanel.value = 'search'
     searchTextPageCount.value = result.textPageCount
@@ -780,6 +809,13 @@ onBeforeUnmount(() => {
             :available-width="availableWidth"
             :available-height="availableHeight"
             :scroll-root="viewport"
+            :search-query="completedSearchQuery"
+            :selected-occurrence="
+              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.occurrence : null
+            "
+            :selection-request="
+              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
+            "
             @visibility="handleVisibility"
             @rendered="handleRendered"
             @error="handleRenderError"
@@ -878,15 +914,24 @@ onBeforeUnmount(() => {
               <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
                 <button
                   type="button"
-                  class="w-full rounded-lg border border-line p-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
-                  @click="goToPage(match.pageNumber)"
+                  class="search-result w-full min-w-0 rounded-lg border border-line p-2 text-left hover:bg-canvas focus-visible:outline-2 focus-visible:outline-brand"
+                  :aria-pressed="
+                    selectedSearchMatch?.pageNumber === match.pageNumber &&
+                    selectedSearchMatch?.occurrence === match.occurrence
+                  "
+                  @click="selectSearchMatch(match)"
                 >
                   <span class="block text-xs font-semibold text-brand"
-                    >Page {{ match.pageNumber }}</span
+                    >Page {{ match.pageNumber }} · Match {{ match.occurrence }}</span
                   >
-                  <span class="mt-1 block text-sm leading-relaxed text-muted">{{
-                    match.excerpt
-                  }}</span>
+                  <span class="search-excerpt mt-1 block text-sm leading-relaxed text-muted"
+                    ><template v-if="match.context"
+                      ><span v-if="match.context.leading">…</span>{{ match.context.before
+                      }}<mark>{{ match.context.term }}</mark
+                      >{{ match.context.after
+                      }}<span v-if="match.context.trailing">…</span></template
+                    ><template v-else>{{ match.excerpt }}</template></span
+                  >
                 </button>
               </li>
             </ul>
@@ -898,6 +943,19 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.search-excerpt {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.search-excerpt mark {
+  background: #fde68a;
+  color: #422006;
+  border-radius: 2px;
+}
+.search-result[aria-pressed='true'] {
+  border-color: var(--pt-brand);
+  background: var(--pt-canvas);
+}
 .pdf-reader {
   display: flex;
   flex-direction: column;

@@ -1,3 +1,4 @@
+import { findTextMatches, indexPdfText, type SearchContext } from './search-text'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
 export type PdfFitMode = 'width' | 'page' | 'custom'
@@ -28,6 +29,7 @@ export interface PdfSearchMatch {
   pageNumber: number
   excerpt: string
   occurrence: number
+  context?: SearchContext
 }
 
 export interface PdfSearchResult {
@@ -287,41 +289,21 @@ export class PdfDocumentSession {
 
       const page = await this.getPage(pageNumber)
       const content = await page.getTextContent()
-      const text = content.items
-        .map((item) => ('str' in item ? item.str : ''))
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-
+      const text = indexPdfText(content.items.map((item) => ('str' in item ? item.str : ''))).text
       if (!text) continue
       textPageCount += 1
-
-      const haystack = text.toLocaleLowerCase()
-      let offset = 0
-      let occurrence = 0
-
-      while (offset <= haystack.length - needle.length) {
-        const index = haystack.indexOf(needle, offset)
-        if (index < 0) break
-
-        occurrence += 1
-        const excerptStart = Math.max(0, index - 55)
-        const excerptEnd = Math.min(text.length, index + needle.length + 75)
-        const prefix = excerptStart > 0 ? '…' : ''
-        const suffix = excerptEnd < text.length ? '…' : ''
-
+      for (const match of findTextMatches(text, query, maxMatches - matches.length)) {
+        const { context } = match
         matches.push({
           pageNumber,
-          occurrence,
-          excerpt: `${prefix}${text.slice(excerptStart, excerptEnd)}${suffix}`,
+          occurrence: match.occurrence,
+          context,
+          excerpt: `${context.leading ? '…' : ''}${context.before}${context.term}${context.after}${context.trailing ? '…' : ''}`,
         })
-
         if (matches.length >= maxMatches) {
           truncated = true
           return { matches, textPageCount, truncated }
         }
-
-        offset = index + Math.max(needle.length, 1)
       }
     }
 
@@ -355,6 +337,8 @@ export class PdfDocumentSession {
       request.textLayer.replaceChildren()
       request.textLayer.style.width = `${Math.floor(viewport.width)}px`
       request.textLayer.style.height = `${Math.floor(viewport.height)}px`
+      request.textLayer.style.setProperty('--scale-round-x', '1px')
+      request.textLayer.style.setProperty('--scale-round-y', '1px')
       request.textLayer.style.setProperty('--scale-factor', String(viewport.scale))
       request.textLayer.style.setProperty('--total-scale-factor', String(viewport.scale))
     }
