@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import IconButton from '../IconButton.vue'
 import {
@@ -188,8 +189,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
     </div>
     <Transition
       name="source-menu"
-      @before-enter="(element: Element) => element.removeAttribute('inert')"
-      @before-leave="(element: Element) => element.setAttribute('inert', '')"
+      @before-enter="restoreTransitionSurface"
+      @before-leave="hideTransitionSurface"
     >
       <div
         v-if="menuOpen"

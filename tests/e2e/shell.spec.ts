@@ -849,7 +849,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     mimeType: 'application/pdf',
     buffer: createPdfFixture(),
   })
-  await page.getByRole('button', { name: 'reader-polish.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'PDF: reader-polish.pdf', exact: true }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByLabel('Current page')).toHaveValue('1')
   await expect(page.locator('.app-header').getByText('Appearance', { exact: true })).toHaveCount(0)
@@ -918,9 +918,16 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
       duration,
       leaving: panel.classList.contains('utility-panel-leave-active'),
       inert: panel.inert,
+      hidden: panel.getAttribute('aria-hidden'),
     }
   })
-  expect(motion).toEqual({ entering: true, duration: '0.32s, 0.32s', leaving: true, inert: true })
+  expect(motion).toEqual({
+    entering: true,
+    duration: '0.32s, 0.32s',
+    leaving: true,
+    inert: true,
+    hidden: 'true',
+  })
   await expect(page.locator('.pdf-side-panel')).toHaveCount(0)
 
   const search = page.getByRole('button', { name: 'Search PDF', exact: true })
@@ -955,7 +962,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
 
   await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
   const footer = page.getByRole('contentinfo', { name: 'Deployment information' })
-  await expect(footer).toHaveCSS('padding-top', '4px')
+  await expect(footer).toHaveCSS('padding-top', '2px')
   await expect(footer).toHaveCSS(
     'background-color',
     await page.locator('.app-header').evaluate((el) => getComputedStyle(el).backgroundColor),

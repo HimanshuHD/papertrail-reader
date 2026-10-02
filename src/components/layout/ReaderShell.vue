@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 defineProps<{ sidebarOpen: boolean }>()
 defineEmits<{ close: [] }>()
@@ -66,8 +67,8 @@ onBeforeUnmount(() => {
     <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
     <Transition
       name="library-slide"
-      @before-enter="(element: Element) => element.removeAttribute('inert')"
-      @before-leave="(element: Element) => element.setAttribute('inert', '')"
+      @before-enter="restoreTransitionSurface"
+      @before-leave="hideTransitionSurface"
     >
       <aside
         v-if="sidebarOpen"

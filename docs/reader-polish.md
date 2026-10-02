@@ -6,11 +6,11 @@ Parent #79; first release roadmap #1. This combined increment preserves #85 scre
 
 The page-number field adds 8px inline margins beyond the toolbar gap, clearing its 2px outline with 4px offset. The main-header Appearance label is removed; Dark mode keeps its accessible name and pressed state. Utility mode buttons expose aria-pressed and show the selected state through a tinted background, brand border/underline and bold ink text in both themes.
 
-Library and utility panels enter and leave over 320ms with cubic-bezier(0.22, 1, 0.36, 1). Search/help and source menus use 240ms with the same easing; icon tooltips use 180ms. Actions update immediately without artificial waits. Leaving surfaces are inert, and entering surfaces remove inert for interrupted/reversed transitions. A departing utility panel is positioned out of flex layout. Its Close/Escape action restores focus to Contents; existing search/help, library and source-menu focus/dismissal behavior remains. Reduced-motion preferences remove transitions.
+Library and utility panels enter and leave over 320ms with cubic-bezier(0.22, 1, 0.36, 1). Search/help and source menus use 240ms with the same easing; icon tooltips use 180ms. Actions update immediately without artificial waits. Leaving surfaces are inert and aria-hidden, and entering surfaces restore both attributes for interrupted/reversed transitions via the shared transition-surface lifecycle helper. A departing utility panel is positioned out of flex layout. Its Close/Escape action restores focus to Contents; existing search/help, library and source-menu focus/dismissal behavior remains. Reduced-motion preferences remove transitions.
 
 ## Footer
 
-The footer uses 4px vertical and 12px horizontal padding, smaller row gaps, a pane-colored background and divider, muted text and brand links. Links retain a 24px minimum target height. Version/environment/PR/branch/SHA links remain unchanged. Long branch names wrap; the app footer's existing bounded independent overflow remains for very short windows.
+The footer uses 2px vertical and 12px horizontal padding, smaller row gaps, a pane-colored background and divider, muted text and brand links. Links retain a 24px minimum target height. Version/environment/PR/branch/SHA links remain unchanged. Long branch names wrap; the app footer's existing bounded independent overflow remains for very short windows.
 
 ## Validation
 

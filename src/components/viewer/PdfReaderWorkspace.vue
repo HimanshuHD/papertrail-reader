@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import LoadingState from '../LoadingState.vue'
 import IconButton from '../IconButton.vue'
@@ -659,8 +660,8 @@ onBeforeUnmount(() => {
 
       <Transition
         name="utility-popover"
-        @before-enter="(element: Element) => element.removeAttribute('inert')"
-        @before-leave="(element: Element) => element.setAttribute('inert', '')"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
       >
         <div
           v-if="phase === 'ready' && popover"
@@ -788,8 +789,8 @@ onBeforeUnmount(() => {
 
       <Transition
         name="utility-panel"
-        @before-enter="(element: Element) => element.removeAttribute('inert')"
-        @before-leave="(element: Element) => element.setAttribute('inert', '')"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
       >
         <aside
           v-if="phase === 'ready' && rightPanel"
