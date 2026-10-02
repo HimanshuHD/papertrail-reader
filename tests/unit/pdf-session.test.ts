@@ -282,3 +282,51 @@ describe('PDF render and session lifecycle', () => {
     )
   })
 })
+
+describe('local preview preparation', () => {
+  it('preloads every page, bounds preview pixels, reports progress and releases the cache', async () => {
+    const context = vi
+      .spyOn(HTMLCanvasElement.prototype, 'getContext')
+      .mockReturnValue({} as CanvasRenderingContext2D)
+    const page = {
+      getViewport: ({ scale }: { scale: number }) => ({
+        width: 600 * scale,
+        height: 800 * scale,
+        scale,
+      }),
+      render: vi.fn(() => ({ promise: Promise.resolve(), cancel: vi.fn() })),
+      cleanup: vi.fn(),
+    }
+    const documentProxy = {
+      numPages: 4,
+      getPage: vi.fn().mockResolvedValue(page),
+      cleanup: vi.fn().mockResolvedValue(undefined),
+    }
+    const loadingTask = { destroy: vi.fn().mockResolvedValue(undefined) }
+    const session = new PdfDocumentSession(
+      {} as typeof import('pdfjs-dist'),
+      loadingTask as never,
+      documentProxy as never,
+    )
+    const progress = vi.fn()
+    await session.preload(progress)
+    const previews = Array.from({ length: 4 }, (_, i) => session.getPagePreview(i + 1)!)
+    expect(previews.every(Boolean)).toBe(true)
+    expect(
+      previews.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0),
+    ).toBeLessThanOrEqual(32 * 1024 * 1024)
+    expect(progress.mock.calls).toEqual([
+      [1, 4],
+      [2, 4],
+      [3, 4],
+      [4, 4],
+    ])
+    const requests = documentProxy.getPage.mock.calls.length
+    await expect(session.getPageDimensions(4)).resolves.toEqual({ width: 600, height: 800 })
+    expect(documentProxy.getPage).toHaveBeenCalledTimes(requests)
+    await session.close()
+    expect(session.getPagePreview(4)).toBeUndefined()
+    expect(previews.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true)
+    context.mockRestore()
+  })
+})

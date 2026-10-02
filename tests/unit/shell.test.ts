@@ -235,7 +235,7 @@ describe('home and product shell', () => {
     await flushPromises()
 
     expect(guide.attributes('aria-pressed')).toBe('true')
-    expect(pdfSessionMocks.open).toHaveBeenCalledWith(files[0])
+    expect(pdfSessionMocks.open.mock.calls[0]?.[0]).toBe(files[0])
     expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
     expect(wrapper.text()).toContain('Page 1 of 3')
     expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)

@@ -196,3 +196,31 @@ it('starts a dirty visible page on scrollbar movement before an observer callbac
   expect(render).toHaveBeenCalledOnce()
   wrapper.unmount()
 })
+
+it('shows a cached page preview before its first full-resolution render finishes', async () => {
+  vi.stubGlobal('IntersectionObserver', undefined)
+  const preview = document.createElement('canvas')
+  preview.width = 100
+  preview.height = 150
+  const render = vi.fn(() => new Promise(() => undefined))
+  const wrapper = mount(PdfPageView, {
+    props: {
+      session: {
+        render,
+        getPagePreview: () => preview,
+        getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
+      } as unknown as PdfDocumentSession,
+      pageNumber: 1,
+      fitMode: 'width',
+      zoom: 1,
+      availableWidth: 400,
+      availableHeight: 600,
+      scrollRoot: null,
+    },
+  })
+  await flushPromises()
+  expect(wrapper.get('canvas').attributes('style')).toContain('visible')
+  expect(wrapper.get('canvas').attributes('width')).toBe('100')
+  expect(wrapper.text()).not.toContain('Rendering page')
+  wrapper.unmount()
+})

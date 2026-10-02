@@ -127,6 +127,45 @@ export function resolvePdfScale(
 export class PdfDocumentSession {
   private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
+  private readonly dimensions = new Map<number, { width: number; height: number }>()
+  private readonly previews = new Map<number, HTMLCanvasElement>()
+
+  getPagePreview(pageNumber: number): HTMLCanvasElement | undefined {
+    return this.previews.get(pageNumber)
+  }
+
+  async preload(onProgress?: (completed: number, total: number) => void): Promise<void> {
+    // Budget RGBA backing pixels across all previews, independent of devicePixelRatio.
+    const pixelsPerPage = Math.floor((32 * 1024 * 1024) / 4 / Math.max(1, this.totalPages))
+    for (let pageNumber = 1; pageNumber <= this.totalPages; pageNumber += 1) {
+      const page = await this.getPage(pageNumber)
+      const base = page.getViewport({ scale: 1 })
+      this.dimensions.set(pageNumber, { width: base.width, height: base.height })
+      const scale = Math.min(
+        192 / Math.max(base.width, base.height),
+        Math.sqrt(pixelsPerPage / (base.width * base.height)),
+      )
+      const viewport = page.getViewport({ scale })
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.floor(viewport.width))
+      canvas.height = Math.max(1, Math.floor(viewport.height))
+      const context = canvas.getContext('2d', { alpha: false })
+      if (!context) throw new Error('Canvas rendering is unavailable in this browser.')
+      const task = page.render({ canvas, canvasContext: context, viewport, background: '#ffffff' })
+      this.activeRenders.set(canvas, { renderTask: task, textLayer: null })
+      try {
+        await task.promise
+        if (this.closed) throw new Error('PDF session is closed.')
+        this.previews.set(pageNumber, canvas)
+        onProgress?.(pageNumber, this.totalPages)
+      } finally {
+        this.activeRenders.delete(canvas)
+        page.cleanup()
+      }
+      // Yield between pages so loading feedback and cancellation remain responsive.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+    }
+  }
 
   constructor(
     private readonly pdfjs: PdfJsModule,
@@ -139,6 +178,8 @@ export class PdfDocumentSession {
   }
 
   async getPageDimensions(pageNumber: number): Promise<{ width: number; height: number }> {
+    const cached = this.dimensions.get(pageNumber)
+    if (cached) return cached
     const page = await this.getPage(pageNumber)
     const viewport = page.getViewport({ scale: 1 })
     return { width: viewport.width, height: viewport.height }
@@ -361,6 +402,12 @@ export class PdfDocumentSession {
     if (this.closed) return
     this.closed = true
     await this.cancelAllRenders()
+    for (const preview of this.previews.values()) {
+      preview.width = 0
+      preview.height = 0
+    }
+    this.previews.clear()
+    this.dimensions.clear()
     await this.document.cleanup()
     await this.loadingTask.destroy()
   }
@@ -369,6 +416,8 @@ export class PdfDocumentSession {
 export async function openPdfDocument(
   file: File,
   loader: PdfJsLoader = loadPdfJs,
+  onProgress?: (completed: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<PdfDocumentSession> {
   const pdfjs = await loader()
   const data = new Uint8Array(await file.arrayBuffer())
@@ -385,11 +434,27 @@ export async function openPdfDocument(
     }
   })
 
+  let ownedBySession = false
   try {
     const document = await Promise.race([loadingTask.promise, passwordRequest])
-    return new PdfDocumentSession(pdfjs, loadingTask, document)
+    const session = new PdfDocumentSession(pdfjs, loadingTask, document)
+    ownedBySession = true
+    const abort = () => {
+      void session.close().catch(() => undefined)
+    }
+    signal?.addEventListener('abort', abort, { once: true })
+    try {
+      if (signal?.aborted) throw new DOMException('PDF preparation cancelled.', 'AbortError')
+      await session.preload(onProgress)
+      return session
+    } catch (error) {
+      await session.close()
+      throw error
+    } finally {
+      signal?.removeEventListener('abort', abort)
+    }
   } catch (error) {
-    await loadingTask.destroy()
+    if (!ownedBySession) await loadingTask.destroy()
     throw classifyPdfOpenError(error)
   }
 }

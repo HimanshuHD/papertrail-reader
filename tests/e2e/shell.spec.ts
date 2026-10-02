@@ -615,3 +615,33 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
     await expect.poll(async () => Math.abs((await readingPoint()) - point)).toBeLessThan(0.025)
   }
 })
+
+test('scrollbar jumps update the page field and navigation starts from the visible page', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'scroll-page-tracking.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(8),
+  })
+  await page.getByRole('button', { name: /scroll-page-tracking.pdf/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await pane.evaluate((node) => {
+    const target = node.querySelector('#pdf-page-6')!
+    node.scrollTop += target.getBoundingClientRect().top - node.getBoundingClientRect().top
+  })
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('6')
+  await expect(pane.getByLabel('Rendered PDF page 6', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Next page', exact: true }).click()
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('7')
+  await page.getByRole('button', { name: 'Previous page', exact: true }).click()
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('6')
+  await pane.evaluate((node) => {
+    node.scrollTop = node.scrollHeight
+  })
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('8')
+  await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeDisabled()
+})

@@ -38,6 +38,7 @@ const popoverRoot = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
+const preparationProgress = ref('')
 const currentPage = ref(1)
 const totalPages = ref(0)
 const zoom = ref(1)
@@ -58,12 +59,13 @@ const searchBusy = ref(false)
 const searchCompleted = ref(false)
 const searchError = ref('')
 const fullscreen = ref(false)
-const visibility = new Map<number, number>()
 let openSequence = 0
 let resizeFrame = 0
+let scrollFrame = 0
 let layoutOperation = 0
 let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
+let documentController: AbortController | null = null
 
 const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
 
@@ -169,21 +171,32 @@ async function closeCurrentSession() {
 }
 
 async function openDocument() {
+  documentController?.abort()
+  const controller = new AbortController()
+  documentController = controller
   const sequence = ++openSequence
   phase.value = 'loading'
+  preparationProgress.value = 'Preparing page previews…'
   errorMessage.value = ''
   currentPage.value = 1
   totalPages.value = 0
   fitMode.value = 'width'
   zoom.value = 1
   renderedScale.value = 1
-  visibility.clear()
   resetUtilities()
 
   await closeCurrentSession()
 
   try {
-    const next = await openPdfDocument(props.document.file)
+    const next = await openPdfDocument(
+      props.document.file,
+      undefined,
+      (completed, total) => {
+        if (sequence === openSequence)
+          preparationProgress.value = `Preparing page ${completed} of ${total}…`
+      },
+      controller.signal,
+    )
     if (sequence !== openSequence) {
       await next.close()
       return
@@ -226,26 +239,40 @@ async function goToPage(page: number) {
 }
 
 function chooseMostVisiblePage() {
+  const pane = viewport.value
+  if (!pane) return
+  const bounds = pane.getBoundingClientRect()
   let bestPage = currentPage.value
-  let bestRatio = -1
-
-  for (const [pageNumber, ratio] of visibility) {
-    if (ratio > bestRatio || (ratio === bestRatio && pageNumber < bestPage)) {
-      bestPage = pageNumber
-      bestRatio = ratio
+  let bestPixels = 0
+  for (const element of pane.querySelectorAll<HTMLElement>('.pdf-page-shell')) {
+    const box = element.getBoundingClientRect()
+    const pixels = Math.max(
+      0,
+      Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
+    )
+    if (pixels > bestPixels) {
+      bestPixels = pixels
+      bestPage = Number(element.id.replace('pdf-page-', ''))
     }
   }
-
-  if (bestRatio > 0 && bestPage !== currentPage.value) {
+  if (bestPixels > 0 && bestPage !== currentPage.value) {
     currentPage.value = bestPage
     emit('status', `Page ${bestPage} of ${totalPages.value}.`)
   }
 }
 
-function handleVisibility(pageNumber: number, ratio: number) {
-  if (ratio > 0) visibility.set(pageNumber, ratio)
-  else visibility.delete(pageNumber)
+function handleViewerScroll() {
+  cancelAnimationFrame(scrollFrame)
+  scrollFrame = requestAnimationFrame(chooseMostVisiblePage)
+}
+
+function handleVisibility() {
+  handleViewerScroll()
+}
+
+function stepPage(delta: number) {
   chooseMostVisiblePage()
+  void goToPage(currentPage.value + delta)
 }
 
 function handleRendered(pageNumber: number, scale: number) {
@@ -492,12 +519,12 @@ function handleShortcut(event: KeyboardEvent) {
     case 'ArrowRight':
     case 'PageDown':
       event.preventDefault()
-      void goToPage(currentPage.value + 1)
+      stepPage(1)
       break
     case 'ArrowLeft':
     case 'PageUp':
       event.preventDefault()
-      void goToPage(currentPage.value - 1)
+      stepPage(-1)
       break
     case 'Escape':
       closePopover(true)
@@ -525,8 +552,10 @@ watch(
 
 onBeforeUnmount(() => {
   openSequence += 1
+  documentController?.abort()
   searchController?.abort()
   cancelAnimationFrame(resizeFrame)
+  cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
@@ -566,7 +595,7 @@ onBeforeUnmount(() => {
           label="Previous page"
           icon="previous"
           :disabled="currentPage <= 1"
-          @click="goToPage(currentPage - 1)"
+          @click="stepPage(-1)"
         />
         <input
           :value="currentPage"
@@ -581,7 +610,7 @@ onBeforeUnmount(() => {
           label="Next page"
           icon="next"
           :disabled="currentPage >= totalPages"
-          @click="goToPage(currentPage + 1)"
+          @click="stepPage(1)"
         />
         <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
         <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
@@ -723,6 +752,7 @@ onBeforeUnmount(() => {
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
+        @scroll.passive="handleViewerScroll"
       >
         <div
           v-if="phase === 'loading'"
@@ -731,6 +761,7 @@ onBeforeUnmount(() => {
           aria-live="polite"
         >
           Opening {{ document.name }}…
+          <span class="block text-xs">{{ preparationProgress }}</span>
         </div>
 
         <div

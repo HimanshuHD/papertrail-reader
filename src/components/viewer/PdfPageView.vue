@@ -26,6 +26,7 @@ const root = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
 const rendered = ref(false)
+const previewed = ref(false)
 const rendering = ref(false)
 const dimensions = ref<{ width: number; height: number } | null>(null)
 const layout = computed(() => {
@@ -175,6 +176,14 @@ watch(
 onMounted(async () => {
   props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
   observePage()
+  const preview = props.session.getPagePreview?.(props.pageNumber)
+  const displayed = canvas.value
+  if (preview && displayed) {
+    displayed.width = preview.width
+    displayed.height = preview.height
+    displayed.getContext('2d', { alpha: false })?.drawImage(preview, 0, 0)
+    previewed.value = true
+  }
   try {
     const size = await props.session.getPageDimensions(props.pageNumber)
     if (disposed) return
@@ -217,7 +226,7 @@ onBeforeUnmount(() => {
         ref="canvas"
         class="block max-w-none bg-white"
         :style="{
-          visibility: rendered ? 'visible' : 'hidden',
+          visibility: rendered || previewed ? 'visible' : 'hidden',
           width: `${layout.width}px`,
           height: `${layout.height}px`,
         }"
@@ -230,7 +239,7 @@ onBeforeUnmount(() => {
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
       ></div>
       <div
-        v-if="!rendered"
+        v-if="!rendered && !previewed"
         class="absolute inset-0 grid place-items-center bg-white text-sm text-muted"
         role="status"
       >
