@@ -46,6 +46,8 @@ describe('PDF viewport ownership', () => {
         scrollRoot: pane,
       },
     })
+    expect((wrapper.props().session as PdfDocumentSession).getPageDimensions).not.toHaveBeenCalled()
+    expect(wrapper.get('canvas').attributes('width')).toBe('0')
     expect(observers).toHaveLength(2)
     expect(observers.every((o) => o.options.root === pane)).toBe(true)
     const entry = { isIntersecting: true, intersectionRatio: 0.5 } as IntersectionObserverEntry
@@ -56,20 +58,22 @@ describe('PDF viewport ownership', () => {
       [{ isIntersecting: false } as IntersectionObserverEntry],
       {} as IntersectionObserver,
     )
+    await flushPromises()
+    expect(wrapper.get('canvas').attributes('width')).toBe('0')
     observers[0]!.callback([entry], {} as IntersectionObserver)
     await flushPromises()
-    expect(render).toHaveBeenCalledOnce()
+    expect(render).toHaveBeenCalledTimes(2)
     observers[0]!.callback(
       [{ isIntersecting: false } as IntersectionObserverEntry],
       {} as IntersectionObserver,
     )
     await wrapper.setProps({ availableWidth: 300 })
     expect(wrapper.get('.pdf-page').attributes('style')).toContain('width: 300px')
-    expect(render).toHaveBeenCalledOnce()
+    expect(render).toHaveBeenCalledTimes(2)
     observers[0]!.callback([entry], {} as IntersectionObserver)
     await flushPromises()
-    expect(render).toHaveBeenCalledTimes(2)
-    expect(render.mock.calls[1]![0].availableWidth).toBe(300)
+    expect(render).toHaveBeenCalledTimes(3)
+    expect(render.mock.calls[2]![0].availableWidth).toBe(300)
     expect(wrapper.emitted('visibility')).toBeUndefined()
     observers[1]!.callback([entry], {} as IntersectionObserver)
     expect(wrapper.emitted('visibility')).toEqual([[1, 0.5]])

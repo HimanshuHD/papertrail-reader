@@ -546,6 +546,7 @@ test('PDF geometry and canvas stay stable after large scroll jumps and panel res
   await expect
     .poll(() => shells.evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().height)))
     .toEqual(heights)
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
   const identity = await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())
   await pane.evaluate((node) => {
     node.scrollTop = node.scrollHeight
@@ -555,6 +556,7 @@ test('PDF geometry and canvas stay stable after large scroll jumps and panel res
     node.scrollTop = 0
   })
   await expect(first).toBeVisible()
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
   expect(await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())).toBe(identity)
   await page.getByRole('button', { name: 'Contents', exact: true }).click()
   await page.getByRole('button', { name: 'Close utility panel' }).click()
@@ -644,4 +646,51 @@ test('scrollbar jumps update the page field and navigation starts from the visib
   })
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('8')
   await expect(page.getByRole('button', { name: 'Next page', exact: true })).toBeDisabled()
+})
+
+test('a 1,001-page PDF opens without all-page rendering and supports a distant jump', async ({
+  page,
+}, info) => {
+  test.skip(
+    info.project.name !== 'chromium-1440',
+    'Long-document regression runs once; navigation and zoom run at all five widths.',
+  )
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'large-document.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(1001),
+  })
+  const started = Date.now()
+  await page.getByRole('button', { name: /large-document.pdf/ }).click()
+  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await info.attach('first-page-ready-ms', {
+    body: String(Date.now() - started),
+    contentType: 'text/plain',
+  })
+  expect(
+    await pane
+      .locator('canvas')
+      .evaluateAll((nodes) => nodes.filter((n) => (n as HTMLCanvasElement).width > 0).length),
+  ).toBeLessThan(10)
+  await pane.evaluate((node) => {
+    node.scrollTop = node.scrollHeight
+  })
+  await expect(pane.locator('#pdf-page-1001')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('1001')
+  await expect(pane.getByLabel('Selectable text for PDF page 1001', { exact: true })).toContainText(
+    'Page 1001',
+  )
+  await expect
+    .poll(() =>
+      pane
+        .locator('canvas')
+        .evaluateAll((nodes) => nodes.filter((n) => (n as HTMLCanvasElement).width > 0).length),
+    )
+    .toBeLessThan(10)
+  await pane.evaluate((node) => {
+    node.scrollTop = 0
+  })
+  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
 })

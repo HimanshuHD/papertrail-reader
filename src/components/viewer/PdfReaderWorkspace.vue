@@ -38,7 +38,6 @@ const popoverRoot = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
-const preparationProgress = ref('')
 const currentPage = ref(1)
 const totalPages = ref(0)
 const zoom = ref(1)
@@ -176,7 +175,6 @@ async function openDocument() {
   documentController = controller
   const sequence = ++openSequence
   phase.value = 'loading'
-  preparationProgress.value = 'Preparing page previews…'
   errorMessage.value = ''
   currentPage.value = 1
   totalPages.value = 0
@@ -188,15 +186,7 @@ async function openDocument() {
   await closeCurrentSession()
 
   try {
-    const next = await openPdfDocument(
-      props.document.file,
-      undefined,
-      (completed, total) => {
-        if (sequence === openSequence)
-          preparationProgress.value = `Preparing page ${completed} of ${total}…`
-      },
-      controller.signal,
-    )
+    const next = await openPdfDocument(props.document.file, undefined, controller.signal)
     if (sequence !== openSequence) {
       await next.close()
       return
@@ -761,7 +751,6 @@ onBeforeUnmount(() => {
           aria-live="polite"
         >
           Opening {{ document.name }}…
-          <span class="block text-xs">{{ preparationProgress }}</span>
         </div>
 
         <div
