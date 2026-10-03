@@ -1,5 +1,13 @@
 # Workflow trigger audit
 
+## #111 merged; final open-preview gate — 3 October 2026
+
+PR #111 merged as `ced390ac3f38b872df1f158f548fa85275f7049f`. Main CI 37119131725, dependent production publication and reconciliation 37119131448 passed. The generated tracker at 4078d6f exactly matches Prettier output, completing #112. #106 is also completed. Earlier #110 docs-only draft/readiness/main acceptance passed without automatic Browser E2E or publication.
+
+The only successful recent manual run, 37118395268, selected `KIND: production` with an empty PR number and deployed source 445f58a. It verifies manual production recovery, not numbered PR preview. No successful #111 preview run is recorded. Owner-confirmed validation is retained, but the Actions ledger cannot substitute production recovery for the open-preview acceptance gate.
+
+Use this open documentation PR for the final preview check: Actions → Publish website → Run workflow → branch main → enter this PR number in the PR-number field → Run workflow. Leave the PR open until source/PR/current successful CI identity and unchanged production are verified. Then #100/Preparation can close and the owner can merge this evidence-only update. No workflow/application/test/package changes are made by this update.
+
 ## Docs-only main verification and remaining preview gate — 3 October 2026
 
 PR #110 merged as `445f58a2f10ceb3b04008b48fc184077c41aebb8`. Main Frontend CI [37118283175](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37118283175) passed; its dependent publication job skipped. Merge reconciliation [37118282733](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37118282733) passed. No automatic Browser E2E or standalone Publish website run was created by this docs-only merge. Draft/readiness checks on #110 had already produced only CI 37118142765.
