@@ -284,4 +284,4 @@ Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056
 
 ## #14 implementation validation
 
-Recent PDF metadata and library filtering are implemented on `feat/14-recent-library-search`. Local lint/format/types, 121 unit/component tests and 10 pipeline tests pass. Browser lifecycle coverage is added for all five viewport widths; GitHub browser evidence remains pending. Keep #14 open through review, owner validation and merge. #120 main Frontend CI 37144758631 passed.
+Recent PDF metadata and library filtering are implemented on `feat/14-recent-library-search`. Local lint/format/types, 121 unit/component tests and 10 pipeline tests pass. Frontend CI 37145713723 and Browser E2E 37145782531 passed on `f6d6349`: 102 browser cases, eight intentional skips, no retries. All five recent-library lifecycles and existing PDF regressions passed. [Inspected mobile/desktop captures](../evidence/recent-library.md) are preserved. #121 is ready for owner review. Keep #14 open through review, owner validation and merge. #120 main Frontend CI 37144758631 passed.
