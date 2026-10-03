@@ -1640,7 +1640,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     0,
   )
   await page.getByRole('button', { name: 'Clear library search' }).click()
-  const recentToggle = library.getByRole('button', { name: 'Recent 1', exact: true })
+  const recentToggle = library.getByRole('button', { name: /^Recent\s*1$/ })
   await recentToggle.click()
   await expect(recentToggle).toHaveAttribute('aria-expanded', 'false')
   await expect(
