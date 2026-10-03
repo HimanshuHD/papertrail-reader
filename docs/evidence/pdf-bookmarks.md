@@ -30,8 +30,12 @@ These are real light-theme Chromium captures with a synthetic six-page PDF. The 
 
 ## Review gate
 
-PR #120 is ready for owner review. Preview publication remains manual; no preview or merge is claimed. Keep #115 open until accepted and merged. Reading continuity milestone 2 and parent #13/#78 remain open for unfinished scope.
+PR #120 was owner-validated and merged as `0b2b5c19268071e49e3c6a2cb70cc06493ac3986`; #115 is completed. Final head Frontend CI 37141468399 passed. No additional preview audit is claimed. Reading continuity milestone 2 and parent #13/#78 remain open for unfinished scope.
 
 ---
 
 [Previous](search-highlighting.md) · [Documentation home](../README.md)
+
+## Bookmark merge and next increment — 4 October 2026
+
+#120 merged as `0b2b5c1`; owner confirmed validation. #115 is completed and its active status label is removed. PDF increments #114/#117/#118/#115 are completed; #13 stays open only for separate format acceptance after #12. Preparation milestone 1 is confirmed closed through #100’s embedded milestone metadata. Reading continuity milestone 2 stays open for #14 and unfinished format scope. Next branch: `feat/14-recent-library-search`, from reconciled main. Prior pending-review/milestone-closure statements are historical and superseded.

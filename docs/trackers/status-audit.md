@@ -4,7 +4,7 @@ Roadmap owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78) 
 
 ## Current checkpoint — 3 October 2026, after PR #119
 
-#114/#117 are completed in #116. #118 is completed in #119 (`7dc8bca`); main CI 37138731032 passed. Accepted source `deed40b` passed Frontend CI 37138095654 and Browser E2E 37138156717 (108 unit/component, 10 pipeline, 92 browser cases; eight intentional skips). #115 PDF bookmarks is now active. #13 remains open for bookmark and separate format acceptance; #14 follows. Preparation #100/#106/#112 is concluded by owner acceptance; GitHub milestone 1 state requires UI reconciliation. Reading continuity milestone 2 and roadmap #78 remain open. No new production interaction or owner preview evidence is asserted.
+#114/#117 are completed in #116. #118 is completed in #119 (`7dc8bca`); main CI 37138731032 passed. Accepted source `deed40b` passed Frontend CI 37138095654 and Browser E2E 37138156717 (108 unit/component, 10 pipeline, 92 browser cases; eight intentional skips). #115 PDF bookmarks is completed in merged #120; #14 recent documents/library search is next. #13 remains open for bookmark and separate format acceptance; #14 follows. Preparation #100/#106/#112 is concluded by owner acceptance; GitHub milestone 1 is verified closed. Reading continuity milestone 2 and roadmap #78 remain open. No new production interaction or owner preview evidence is asserted.
 
 ## Historical checkpoint after PR #98
 
@@ -39,3 +39,7 @@ PR #98 merged as 376323ce2171eb17f45ecded2f266cf431baa07e. #86/#87 are completed
 ---
 
 [Previous](progress.md) · [Documentation home](../README.md) · [Next](first-release-bugs.md)
+
+## Bookmark merge and next increment — 4 October 2026
+
+#120 merged as `0b2b5c1`; owner confirmed validation. #115 is completed and its active status label is removed. PDF increments #114/#117/#118/#115 are completed; #13 stays open only for separate format acceptance after #12. Preparation milestone 1 is confirmed closed through #100’s embedded milestone metadata. Reading continuity milestone 2 stays open for #14 and unfinished format scope. Next branch: `feat/14-recent-library-search`, from reconciled main. Prior pending-review/milestone-closure statements are historical and superseded.

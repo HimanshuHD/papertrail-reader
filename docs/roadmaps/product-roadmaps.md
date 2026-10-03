@@ -36,7 +36,7 @@ A reported defect may be promoted from deferred scope if it breaks the agreed fi
 
 ## Product Roadmap 2
 
-See [current Roadmap 2 milestones](roadmap-2.md) and [the issue tracker](../trackers/progress.md). Preparation #100/#106/#112 is concluded by owner acceptance. Reading continuity #114/#117/#118 is merged; #115 bookmarks is active under #13, followed by #14, EPUB #12, annotations #15, reliability #16/#28 and release delivery #19/#26/#32/#44. Multiple-document workspace #17/#18 is assigned to [Roadmap 3 #107](roadmap-3.md). Desktop #4/#23/#27 remains separately deferred.
+See [current Roadmap 2 milestones](roadmap-2.md) and [the issue tracker](../trackers/progress.md). Preparation #100/#106/#112 is concluded by owner acceptance. Reading continuity #114/#117/#118 is merged; #115 bookmarks is completed under #13, followed by #14, EPUB #12, annotations #15, reliability #16/#28 and release delivery #19/#26/#32/#44. Multiple-document workspace #17/#18 is assigned to [Roadmap 3 #107](roadmap-3.md). Desktop #4/#23/#27 remains separately deferred.
 
 ## Reconciled delivery
 
@@ -101,3 +101,7 @@ Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056
 ---
 
 [Documentation home](../README.md) · [Next](roadmap-2.md)
+
+## Bookmark merge and next increment — 4 October 2026
+
+#120 merged as `0b2b5c1`; owner confirmed validation. #115 is completed and its active status label is removed. PDF increments #114/#117/#118/#115 are completed; #13 stays open only for separate format acceptance after #12. Preparation milestone 1 is confirmed closed through #100’s embedded milestone metadata. Reading continuity milestone 2 stays open for #14 and unfinished format scope. Next branch: `feat/14-recent-library-search`, from reconciled main. Prior pending-review/milestone-closure statements are historical and superseded.
