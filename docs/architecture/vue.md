@@ -1,6 +1,8 @@
 # Vue application architecture
 
-## PDF continuity service boundaries (#13 / #114)
+## PDF continuity service boundaries (#13 / #114 / #117)
+
+`services/pdf-reading-state.ts` validates view settings. Record version 2 adds custom zoom and fit mode; version-1 page-only records migrate lazily under their original identity, without changing the IndexedDB database version. Fit modes remain responsive to the current viewport. Restore awaits identity/settings before mounting pages, navigates behind an opaque loader, and reveals the reader only after the target bitmap and layout are ready. Scroll-based page detection and persistence stay disabled during restoration. Cancellation retains the document/session generation guard.
 
 The first Reading continuity increment keeps Vue components responsible for display and navigation. `useReadingContinuity` coordinates restore/save lifecycle, cancels stale identity work, debounces page changes, and flushes pending writes on document switches, unmount, page hide and hidden visibility. It never renders a PDF.
 
@@ -12,7 +14,7 @@ The first Reading continuity increment keeps Vue components responsible for disp
 
 Restoration clamps pages to the current page count and does not override navigation made while identity resolves. Ambiguous or malformed records are preserved without guessing; automatic saves remain disabled for that selection. Clearing storage starts fresh after reselection. Browser origin and preview path share IndexedDB: identity matching uses content rather than deployment identity. Pending IndexedDB writes at abrupt process termination remain best effort.
 
-Bookmarks are tracked separately in #115; EPUB locations follow #12. This increment stores the page only, not zoom or intra-page scroll offsets.
+Bookmarks are tracked separately in #115; EPUB locations follow #12. Reading metadata now includes the page and zoom/fit mode; normalized intra-page offsets belong to workspace restoration (#118).
 
 Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 

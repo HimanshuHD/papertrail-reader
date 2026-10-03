@@ -1,4 +1,9 @@
 import { onBeforeUnmount, ref } from 'vue'
+import {
+  normalizePdfView,
+  type PdfReadingState,
+  type PdfViewSettings,
+} from '../services/pdf-reading-state'
 import { fingerprintDocument } from '../services/document-identity'
 import { IndexedDbReadingStorage, type ReadingStorage } from '../services/reading-storage'
 
@@ -8,7 +13,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
   let generation = 0
   let controller: AbortController | null = null
   let identity: string | null = null
-  let pending: { id: string; page: number } | null = null
+  let pending: { id: string; page: number; view: PdfViewSettings } | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let writes = Promise.resolve()
 
@@ -19,7 +24,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     if (!next) return
     const owner = generation
     writes = writes
-      .then(() => storage.save(next.id, next.page))
+      .then(() => storage.save(next.id, next.page, next.view))
       .catch(() => {
         if (owner === generation)
           notice.value = 'Your reading position could not be saved. You can continue reading.'
@@ -34,7 +39,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     notice.value = ''
   }
 
-  async function restore(file: File, totalPages: number): Promise<number | null> {
+  async function restore(file: File, totalPages: number): Promise<PdfReadingState | null> {
     reset()
     const owner = generation
     const abort = new AbortController()
@@ -51,7 +56,10 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
         return null
       }
       identity = match.record.id
-      return Math.min(totalPages, Math.max(1, match.record.page))
+      return {
+        page: Math.min(totalPages, Math.max(1, match.record.page)),
+        view: normalizePdfView(match.record.view),
+      }
     } catch {
       if (owner === generation && !abort.signal.aborted)
         notice.value = 'Reading position storage is unavailable. You can continue reading.'
@@ -59,9 +67,9 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     }
   }
 
-  function save(page: number) {
+  function save(page: number, view?: PdfViewSettings) {
     if (!identity) return
-    pending = { id: identity, page }
+    pending = { id: identity, page, view: normalizePdfView(view) }
     clearTimeout(timer)
     timer = setTimeout(flush, 300)
   }

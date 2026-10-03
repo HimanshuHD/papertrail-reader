@@ -1,4 +1,5 @@
 import { mount, flushPromises } from '@vue/test-utils'
+import { ref } from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PdfReaderWorkspace from '../../src/components/viewer/PdfReaderWorkspace.vue'
 
@@ -13,6 +14,11 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../src/features/pdf/pdf-session')>()),
   openPdfDocument: pdfSession.openPdfDocument,
   PdfOpenError: class PdfOpenError extends Error {},
+}))
+
+const continuity = vi.hoisted(() => ({ restore: vi.fn(), save: vi.fn(), reset: vi.fn() }))
+vi.mock('../../src/composables/useReadingContinuity', () => ({
+  useReadingContinuity: () => ({ ...continuity, notice: ref('') }),
 }))
 
 const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-needs-ellipsis.pdf', {
@@ -35,7 +41,13 @@ function mountReader() {
     },
     global: {
       stubs: {
-        PdfPageView: true,
+        PdfPageView: {
+          props: ['pageNumber'],
+          mounted() {
+            this.$emit('rendered', this.pageNumber, 1)
+          },
+          template: '<div />',
+        },
       },
     },
   })
@@ -45,6 +57,7 @@ const wrappers: ReturnType<typeof mountReader>[] = []
 
 describe('PDF reader utility workspace', () => {
   beforeEach(() => {
+    continuity.restore.mockResolvedValue(null)
     pdfSession.getOutline.mockResolvedValue([
       { title: 'Introduction', pageNumber: 2, children: [] },
     ])
@@ -66,6 +79,25 @@ describe('PDF reader utility workspace', () => {
   afterEach(() => {
     wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
     vi.clearAllMocks()
+  })
+
+  it('keeps pages hidden until saved state and the target bitmap are ready', async () => {
+    let finish!: (state: { page: number; view: { fitMode: 'custom'; zoom: number } }) => void
+    continuity.restore.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    )
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(wrapper.findAllComponents({ name: 'PdfPageView' })).toHaveLength(0)
+    expect(wrapper.get('[aria-label="PDF pages"]').attributes('aria-busy')).toBe('true')
+    finish({ page: 3, view: { fitMode: 'custom', zoom: 1.5 } })
+    await flushPromises()
+    expect(wrapper.get('[aria-label="PDF pages"]').attributes('aria-busy')).toBe('false')
+    expect(wrapper.text()).toContain('Page 3 of 3')
+    expect(continuity.save).toHaveBeenCalledWith(3, { fitMode: 'custom', zoom: 1.5 })
   })
 
   it('truncates a long filename while preserving the full name for assistive and hover access', async () => {

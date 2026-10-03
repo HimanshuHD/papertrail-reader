@@ -1,6 +1,9 @@
+import { normalizePdfView, type PdfViewSettings } from './pdf-reading-state'
+
 export interface ReadingRecord {
   id: string
-  version: 1
+  version: 1 | 2
+  view?: PdfViewSettings
   fingerprint: string
   name: string
   page: number
@@ -9,7 +12,7 @@ export interface ReadingRecord {
 
 export interface ReadingStorage {
   resolve(fingerprint: string, name: string): Promise<{ record: ReadingRecord; ambiguous: boolean }>
-  save(id: string, page: number): Promise<void>
+  save(id: string, page: number, view?: PdfViewSettings): Promise<void>
 }
 
 /** Connections are short-lived so upgrades/deletion by another tab cannot leave stale handles. */
@@ -72,15 +75,25 @@ export class IndexedDbReadingStorage implements ReadingStorage {
       request.onsuccess = () => {
         const matches = request.result as ReadingRecord[]
         const valid = matches.filter(
-          (record) => record.version === 1 && Number.isInteger(record.page) && record.page >= 1,
+          (record) =>
+            (record.version === 1 || record.version === 2) &&
+            Number.isInteger(record.page) &&
+            record.page >= 1,
         )
         if (matches.length === 1 && valid.length === 1) {
-          done({ record: valid[0]!, ambiguous: false })
+          const record: ReadingRecord = {
+            ...valid[0]!,
+            version: 2,
+            view: normalizePdfView(valid[0]!.view),
+          }
+          store.put(record)
+          done({ record, ambiguous: false })
           return
         }
         const record: ReadingRecord = {
           id: crypto.randomUUID(),
-          version: 1,
+          version: 2,
+          view: normalizePdfView(),
           fingerprint,
           name,
           page: 1,
@@ -93,7 +106,7 @@ export class IndexedDbReadingStorage implements ReadingStorage {
     })
   }
 
-  save(id: string, page: number): Promise<void> {
+  save(id: string, page: number, view?: PdfViewSettings): Promise<void> {
     if (!Number.isInteger(page) || page < 1)
       return Promise.reject(new RangeError('Invalid reading page.'))
     return this.transaction<void>((store, done) => {
@@ -101,7 +114,14 @@ export class IndexedDbReadingStorage implements ReadingStorage {
       request.onsuccess = () => {
         const record = request.result as ReadingRecord | undefined
         // Cleared storage starts fresh on reselection; do not resurrect deleted metadata.
-        if (record?.version === 1) store.put({ ...record, page, updatedAt: Date.now() })
+        if (record && (record.version === 1 || record.version === 2))
+          store.put({
+            ...record,
+            version: 2,
+            page,
+            view: normalizePdfView(view ?? record.view),
+            updatedAt: Date.now(),
+          })
         done(undefined)
       }
     })

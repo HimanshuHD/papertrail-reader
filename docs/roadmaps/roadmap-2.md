@@ -2,6 +2,8 @@
 
 ## Reading continuity delivery sequence
 
+Preview refinements in PR #116: #114 smooth direct landing, plus #117 zoom/fit-mode persistence. #118 adds permission-aware single-workspace/library restoration in a separate increment; broader multi-document workspace remains Roadmap 3.
+
 1. [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114), under #13: PDF content identity and saved-page restoration, with independent storage/identity services and lifecycle composable.
 2. [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115), under #13: PDF bookmarks using the validated persistence foundation.
 3. #14: recent documents and library search. EPUB location persistence follows #12 independently.

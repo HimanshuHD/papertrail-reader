@@ -44,15 +44,18 @@ it('clamps restored pages to the current document and serializes queued saves be
   vi.useFakeTimers()
   const repository = storage()
   const reader = setup(repository)
-  expect(await reader.restore(new File([''], 'A'), 3)).toBe(3)
+  expect(await reader.restore(new File([''], 'A'), 3)).toEqual({
+    page: 3,
+    view: { fitMode: 'width', zoom: 1 },
+  })
   reader.save(2)
   reader.save(3)
   await reader.restore(new File([''], 'B'), 20)
-  expect(repository.save).toHaveBeenCalledExactlyOnceWith('A', 3)
+  expect(repository.save).toHaveBeenCalledExactlyOnceWith('A', 3, { fitMode: 'width', zoom: 1 })
   reader.save(4)
   reader.reset()
   await flushPromises()
-  expect(repository.save).toHaveBeenLastCalledWith('B', 4)
+  expect(repository.save).toHaveBeenLastCalledWith('B', 4, { fitMode: 'width', zoom: 1 })
 })
 
 it('never attaches a stale identity when the document changes during resolution', async () => {
@@ -76,7 +79,7 @@ it('never attaches a stale identity when the document changes during resolution'
   reader.save(5)
   reader.reset()
   await flushPromises()
-  expect(repository.save).toHaveBeenCalledExactlyOnceWith('B', 5)
+  expect(repository.save).toHaveBeenCalledExactlyOnceWith('B', 5, { fitMode: 'width', zoom: 1 })
 })
 
 it('preserves ambiguous matches and reads without storage after failure', async () => {
@@ -93,4 +96,29 @@ it('preserves ambiguous matches and reads without storage after failure', async 
   vi.mocked(repository.resolve).mockRejectedValueOnce(new Error('Quota exceeded'))
   expect(await reader.restore(new File([''], 'B'), 20)).toBeNull()
   expect(reader.notice.value).toContain('unavailable')
+})
+
+it('restores custom view settings and includes view-only changes in queued saves', async () => {
+  const repository = storage()
+  vi.mocked(repository.resolve).mockResolvedValueOnce({
+    record: {
+      id: 'A',
+      version: 2,
+      fingerprint: 'A',
+      name: 'A',
+      page: 7,
+      updatedAt: 0,
+      view: { fitMode: 'custom', zoom: 1.75 },
+    },
+    ambiguous: false,
+  })
+  const reader = setup(repository)
+  expect(await reader.restore(new File([''], 'A'), 20)).toEqual({
+    page: 7,
+    view: { fitMode: 'custom', zoom: 1.75 },
+  })
+  reader.save(7, { fitMode: 'page', zoom: 1.75 })
+  reader.reset()
+  await flushPromises()
+  expect(repository.save).toHaveBeenCalledExactlyOnceWith('A', 7, { fitMode: 'page', zoom: 1.75 })
 })

@@ -24,7 +24,7 @@ const emit = defineEmits<{
   status: [message: string]
 }>()
 
-type ReaderPhase = 'loading' | 'ready' | 'error'
+type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
 type UtilityPanel = 'contents' | 'search' | null
 type UtilityPopover = 'search' | 'help' | null
 
@@ -44,18 +44,17 @@ const errorMessage = ref('')
 const currentPage = ref(1)
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
-let navigationRevision = 0
-watch(
-  currentPage,
-  (page) => {
-    navigationRevision += 1
-    if (phase.value === 'ready') continuity.save(page)
-  },
-  { flush: 'sync' },
-)
 const totalPages = ref(0)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
+watch(
+  [currentPage, fitMode, zoom],
+  () => {
+    if (phase.value === 'ready')
+      continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+  },
+  { flush: 'sync' },
+)
 const renderedScale = ref(1)
 const availableWidth = ref(720)
 const availableHeight = ref(900)
@@ -217,6 +216,11 @@ async function openDocument() {
   documentController = controller
   const sequence = ++openSequence
   phase.value = 'loading'
+  if (viewport.value) {
+    viewport.value.scrollTop = 0
+    viewport.value.scrollLeft = 0
+  }
+  completingRestore = false
   errorMessage.value = ''
   currentPage.value = 1
   totalPages.value = 0
@@ -234,21 +238,21 @@ async function openDocument() {
       return
     }
 
+    const restored = await continuity.restore(props.document.file, next.totalPages)
+    if (sequence !== openSequence) {
+      await next.close()
+      return
+    }
+    currentPage.value = restored?.page ?? 1
+    fitMode.value = restored?.view.fitMode ?? 'width'
+    zoom.value = restored?.view.zoom ?? 1
+    renderedScale.value = zoom.value
+    phase.value = 'restoring'
     session.value = next
     totalPages.value = next.totalPages
-    phase.value = 'ready'
-    emit('status', `Opened ${props.document.name}. ${next.totalPages} pages.`)
     await nextTick()
     measureViewport()
-    const revision = navigationRevision
-    void continuity.restore(props.document.file, next.totalPages).then(async (page) => {
-      if (sequence !== openSequence || session.value !== next) return
-      if (page !== null && revision === navigationRevision) {
-        if (page !== currentPage.value) await goToPage(page)
-      } else {
-        continuity.save(currentPage.value)
-      }
-    })
+    if (currentPage.value !== 1) await goToPage(currentPage.value)
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -280,6 +284,7 @@ async function goToPage(page: number) {
 }
 
 function chooseMostVisiblePage() {
+  if (phase.value !== 'ready') return
   const pane = viewport.value
   if (!pane) return
   const bounds = pane.getBoundingClientRect()
@@ -316,8 +321,27 @@ function stepPage(delta: number) {
   void goToPage(currentPage.value + delta)
 }
 
-function handleRendered(pageNumber: number, scale: number) {
-  if (pageNumber === currentPage.value) renderedScale.value = scale
+let completingRestore = false
+async function handleRendered(pageNumber: number, scale: number) {
+  if (pageNumber !== currentPage.value) return
+  renderedScale.value = scale
+  if (phase.value !== 'restoring' || completingRestore) return
+  completingRestore = true
+  const sequence = openSequence
+  try {
+    // Target dimensions and bitmap are ready; align while the pages remain hidden.
+    if (pageNumber !== 1) await goToPage(pageNumber)
+    await nextTick()
+    if (sequence !== openSequence || phase.value !== 'restoring') return
+    phase.value = 'ready'
+    continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+    emit(
+      'status',
+      `Opened ${props.document.name}. Page ${currentPage.value} of ${totalPages.value}.`,
+    )
+  } finally {
+    if (sequence === openSequence) completingRestore = false
+  }
 }
 
 function handleRenderError(message: string) {
@@ -638,13 +662,18 @@ onBeforeUnmount(() => {
         >
           {{ document.name }}
         </h2>
-        <p v-if="phase === 'ready'" class="mt-1 text-xs text-muted">
+        <p v-if="session" class="mt-1 text-xs text-muted">
           Page {{ currentPage }} of {{ totalPages }} · {{ progressPercent }}% · {{ zoomPercent }}%
         </p>
       </div>
 
       <div
-        v-if="phase === 'ready'"
+        v-if="session"
+        :inert="phase !== 'ready'"
+        :style="{
+          visibility: phase === 'ready' ? 'visible' : 'hidden',
+          opacity: phase === 'ready' ? 1 : 0,
+        }"
         class="flex min-w-0 flex-wrap items-center justify-end gap-1"
         aria-label="PDF reader controls"
       >
@@ -813,13 +842,18 @@ onBeforeUnmount(() => {
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
-        :aria-busy="phase === 'loading'"
+        :aria-busy="phase === 'loading' || phase === 'restoring'"
         @scroll.passive="handleViewerScroll"
       >
-        <LoadingState v-if="phase === 'loading'" label="Opening document" :detail="document.name" />
+        <div
+          v-if="phase === 'loading' || phase === 'restoring'"
+          class="absolute inset-0 z-10 bg-canvas"
+        >
+          <LoadingState label="Opening document" :detail="document.name" />
+        </div>
 
         <div
-          v-else-if="phase === 'error'"
+          v-if="phase === 'error'"
           class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
           role="alert"
         >
@@ -827,10 +861,19 @@ onBeforeUnmount(() => {
           <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
         </div>
 
-        <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
+        <div
+          v-else-if="session"
+          class="flex min-w-0 flex-col items-center gap-6"
+          :inert="phase !== 'ready'"
+          :aria-hidden="phase !== 'ready'"
+          :style="{
+            visibility: phase === 'ready' ? 'visible' : 'hidden',
+            opacity: phase === 'ready' ? 1 : 0,
+          }"
+        >
           <PdfPageView
             v-for="pageNumber in pages"
-            :key="pageNumber"
+            :key="`${openSequence}:${pageNumber}`"
             :session="session"
             :page-number="pageNumber"
             :fit-mode="fitMode"
