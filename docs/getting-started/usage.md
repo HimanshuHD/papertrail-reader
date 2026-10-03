@@ -11,3 +11,9 @@ Password entry is not supported in v1.0.0. Consult the [release support and limi
 ---
 
 [Documentation home](../README.md) · [Next](local-setup.md)
+
+## Search your library and return to recent PDFs
+
+Use **Search documents...** to filter filenames, titles, paths and formats in the current listing. This does not search PDF page text; use the reader’s Search button for that. Clear the library query to restore the full tree.
+
+The collapsible **Recent** section keeps the last 20 successfully opened PDFs on this browser. Choose an entry to reopen matching content in your accessible selected files. If access is missing or the file changed, use **+** to reselect its source and try again. Renaming the same content preserves its reading identity. Removing a recent entry or **Clear recent history** leaves reading positions and bookmarks intact. **Forget library** clears workspace access but preserves recent history and reading metadata. Clearing site storage clears saved metadata. EPUB reading history follows the upcoming EPUB reader.
