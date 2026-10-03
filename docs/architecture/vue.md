@@ -12,7 +12,7 @@ Bookmark metadata shares the `papertrail-reading` document store and its resolve
 
 `PdfBookmarksPanel` provides named creation, inline rename, removal and navigation in the existing right utility panel, with keyboard labels, focus recovery and wrapping names. `PdfReaderWorkspace` captures the viewport-center anchor and applies navigation when the target page is ready, retaining current zoom/fit. Bookmark panel selection is retained by workspace restoration. Identical content after renaming reuses the resolved identity; changed files receive separate bookmarks. Forget library preserves this metadata; clearing browser storage removes it. Bookmarks are local PDF metadata only; EPUB CFI, sync, export and multi-document tabs are separate work.
 
-Validation for this branch: local lint/format/type/build, 115 unit/component and 10 pipeline tests pass. Browser coverage adds named anchor navigation, rename/remove, reload/reselection, changed-content isolation, storage-clear recovery and screenshots at all five viewport widths. Remote CI and browser acceptance remain pending until recorded in the PR.
+Validation for this branch: local lint/format/type/build, 115 unit/component and 10 pipeline tests pass. [PR #120](https://github.com/HimanshuHD/papertrail-reader/pull/120) application/test source `793adcdc` passed Frontend CI 37140924880 and Browser E2E 37140988461: 97 browser cases passed, eight intentional skips, no retries. Named anchor navigation, rename/remove, reload/reselection and changed-content isolation passed at all five widths; storage-clear recovery passed at desktop width. See [inspected bookmark evidence](../evidence/pdf-bookmarks.md). Owner review and merge remain pending.
 
 ## PDF continuity service boundaries (#13 / #114 / #117)
 
