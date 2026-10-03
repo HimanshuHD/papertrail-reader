@@ -17,7 +17,7 @@ Reading continuity remains open for #14 recent documents/library search, and sep
 
 ## Current milestone status — 3 October 2026
 
-Preparation work (#100/#106/#112) is concluded under the owner's recorded acceptance. Historical pending Preparation gates below are superseded. GitHub milestone 1 is verified closed through the milestone metadata on #100 (closed_at 2026-10-03T11:28:55Z). Reading continuity milestone 2 remains open: #114/#117/#118/#115 are completed, #115 is completed, and #13/#14 are unfinished. No later milestone or parent #78 is completed.
+Preparation work (#100/#106/#112) is concluded under the owner's recorded acceptance. Historical pending Preparation gates below are superseded. GitHub milestone 1 is verified closed through the milestone metadata on #100 (closed_at 2026-10-03T11:28:55Z). Reading continuity milestone 2 remains open: #114/#117/#118/#115 are completed, and #13/#14 are unfinished. No later milestone or parent #78 is completed.
 
 ## Current Preparation reconciliation — 3 October 2026
 
@@ -68,7 +68,7 @@ Updated: 3 October 2026 (Asia/Kolkata). Latest merged documentation: #104 / 6422
 | [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Completed                                              |
 | [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | New — planned; implementation not started              |
 | [#13](https://github.com/HimanshuHD/papertrail-reader/issues/13) | Web           | Browser document identity, saved positions and bookmarks              | PDF scope completed — separate EPUB acceptance pending |
-| [#14](https://github.com/HimanshuHD/papertrail-reader/issues/14) | Web           | Recent documents and library search                                   | In progress — recent documents and library search      |
+| [#14](https://github.com/HimanshuHD/papertrail-reader/issues/14) | Web           | Recent documents and library search                                   | In review — recent documents and library search (#121) |
 | [#15](https://github.com/HimanshuHD/papertrail-reader/issues/15) | Web           | Annotations, highlights and reading statistics                        | New — planned; implementation not started              |
 | [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) | Web           | Browser performance, reliability and document safety                  | New — planned; implementation not started              |
 | [#17](https://github.com/HimanshuHD/papertrail-reader/issues/17) | Web           | Document tabs and session restoration                                 | New — planned; implementation not started              |

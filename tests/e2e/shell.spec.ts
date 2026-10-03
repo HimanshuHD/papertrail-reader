@@ -1138,7 +1138,7 @@ test('PDF reading positions survive reload and rename without matching changed c
       .setInputFiles({ name, mimeType: 'application/pdf', buffer })
     await page
       .getByRole('region', { name: 'Library documents', exact: true })
-      .getByRole('button', { name: new RegExp(name.replaceAll('.', '\\.')) })
+      .getByRole('button', { name: new RegExp('^PDF: ' + name.replaceAll('.', '\\.') + '$') })
       .click()
     await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
       'aria-busy',
