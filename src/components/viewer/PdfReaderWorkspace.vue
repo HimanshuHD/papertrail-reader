@@ -244,7 +244,7 @@ async function openDocument() {
     void continuity.restore(props.document.file, next.totalPages).then(async (page) => {
       if (sequence !== openSequence || session.value !== next) return
       if (page !== null && revision === navigationRevision) {
-        await goToPage(page)
+        if (page !== currentPage.value) await goToPage(page)
       } else {
         continuity.save(currentPage.value)
       }
