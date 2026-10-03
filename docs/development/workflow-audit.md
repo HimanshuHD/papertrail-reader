@@ -1,5 +1,13 @@
 # Workflow trigger audit
 
+## Docs-only main verification and remaining preview gate — 3 October 2026
+
+PR #110 merged as `445f58a2f10ceb3b04008b48fc184077c41aebb8`. Main Frontend CI [37118283175](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37118283175) passed; its dependent publication job skipped. Merge reconciliation [37118282733](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37118282733) passed. No automatic Browser E2E or standalone Publish website run was created by this docs-only merge. Draft/readiness checks on #110 had already produced only CI 37118142765.
+
+Manual Publish website [37118358674](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37118358674) failed at trusted-build selection with `Choose an open same-repository PR targeting main`: the requested PR was already closed. This is expected source-selection protection, not a deployment regression. No Pages upload or deployment occurred. Owner confirmed merge/validation; the failed run does not prove a successful open-PR preview.
+
+#106 is completed. Keep #100 and Roadmap 2 — Preparation open for one remaining live gate: publish an open docs-only PR manually, verify its preview PR/SHA/current successful CI identity and unchanged production, then merge it. Do not dispatch its preview after closing the PR. PR #111 provides the open preview head and also repairs #112: reconciliation aligns generated Markdown tables so status updates retain Prettier-compatible output. A mocked workflow regression checks canonical reads and generated output against Prettier. Because this repair changes a workflow/test, readiness Browser E2E and main publication are eligible; #110 already supplies the pure-docs filter evidence. No application/package/version changes are included.
+
 ## Pure-docs Preparation acceptance — 3 October 2026
 
 #108/#109 workflow changes are merged. Browser E2E remains manual or ready_for_review only; docs-only PR path filters exclude automatic runs. Main CI stays required, while docs-only builds set publish=false and skip the dependent publisher. Ready-PR updates do not automatically run Browser E2E. A workflow change is eligible; the earlier #109 PR was not a pure-docs test.
