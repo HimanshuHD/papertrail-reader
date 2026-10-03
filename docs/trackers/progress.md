@@ -4,15 +4,15 @@
 
 Roadmap owners: [Roadmap 2 #78](../roadmaps/roadmap-2.md), [Roadmap 3 #107](../roadmaps/roadmap-3.md); historical [Roadmap 1 #1](../roadmaps/product-roadmaps.md) is completed. #108 merged as `94c6be4adac1d56ed897b477653e75942a662c22`. Main Frontend CI [37105807478](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37105807478) passed, including dependent production publication and Pages deployment. This is workflow/job evidence; it is not a visual website inspection. #100 remains open for docs-only and manual-preview live acceptance.
 
-#106 is in progress on `chore/106-documentation-navigation`: canonical categories, index, navigation, migration pointers and reconciliation paths. It includes a necessary workflow edit, so docs-only filtering will be checked with a subsequent pure-docs change. #13 is next after Preparation acceptance. #17/#18 are new Roadmap 3 scope; only desktop #4/#23/#27 remain deferred. Earlier entries below are historical.
+#106 is in review in PR #109 on `chore/106-documentation-navigation`: canonical categories, index, navigation, migration pointers and reconciliation paths. It includes a necessary workflow edit, so docs-only filtering will be checked with a subsequent pure-docs change. #13 is next after Preparation acceptance. #17/#18 are new Roadmap 3 scope; only desktop #4/#23/#27 remain deferred. Earlier entries below are historical.
 
 ## Preparation status
 
-| Issue                                                              | Scope                                                           | Status                                                                      |
-| ------------------------------------------------------------------ | --------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| [#100](https://github.com/HimanshuHD/papertrail-reader/issues/100) | Selective publisher/browser triggers, Preparation milestone     | In review — #108 merged; live docs-only/manual-preview evidence pending     |
-| [#106](https://github.com/HimanshuHD/papertrail-reader/issues/106) | Categorized documentation and navigation, Preparation milestone | In progress — local link/navigation checks passed; remote CI/review pending |
-| [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) | Roadmap 3 workspace scope                                       | New — #17/#18 planned; no milestone assigned                                |
+| Issue                                                              | Target    | Scope                                                           | Status                                                                                |
+| ------------------------------------------------------------------ | --------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [#100](https://github.com/HimanshuHD/papertrail-reader/issues/100) | Web       | Selective publisher/browser triggers, Preparation milestone     | In review — #108 merged; docs-only/manual-preview acceptance pending                  |
+| [#106](https://github.com/HimanshuHD/papertrail-reader/issues/106) | Docs      | Categorized documentation and navigation, Preparation milestone | In review — PR #109; Frontend CI 37106394565 passed; browser/merge acceptance pending |
+| [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) | Web later | Roadmap 3 workspace scope                                       | New — #17/#18 planned; no milestone assigned                                          |
 
 ## Current workflow refinement — #100
 
@@ -76,7 +76,7 @@ Updated: 3 October 2026 (Asia/Kolkata). Latest merged documentation: #104 / 6422
 | [#52](https://github.com/HimanshuHD/papertrail-reader/issues/52) | Web           | Restore fast automatic CI; browser tests explicit only                | Completed                                      |
 | [#82](https://github.com/HimanshuHD/papertrail-reader/issues/82) | Web           | Reader empty-state and library UI polish                              | Completed                                      |
 
-## Current application
+## Historical application snapshot — foundation
 
 Version 0.1.0 is the initial foundation. Home retains its card and includes Go to app; /app provides a responsive local library, production empty state and PDF reader workspace. Light/Dark sun/moon preferences persist; System mode is removed. Production footer shows version and source SHA; previews show linked PR/branch/SHA. Browser library scope and PDF core reading/navigation/zoom are implemented. #11 PDF search, outlines/contents, fullscreen and keyboard help are merged in PR #60. Browser acceptance is tracked in #61; PDF UI #62–#64 and PDF persistence #13 follow. EPUB #12 is next-version scope.
 
