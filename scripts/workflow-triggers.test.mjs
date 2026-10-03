@@ -27,9 +27,9 @@ test('required frontend CI remains unconditional and automatic publication depen
   assert.match(ci, /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/)
 })
 
-test('browser filters preserve manual acceptance, ready updates and whole-PR application changes', () => {
+test('browser filters preserve manual acceptance, readiness-only events and whole-PR application changes', () => {
   const browser = read('.github/workflows/browser-e2e.yml')
-  assert.match(browser, /types: \[opened, synchronize, reopened, ready_for_review\]/)
+  assert.match(browser, /types: \[ready_for_review\]/)
   assert.match(browser, /workflow_dispatch:/)
   assert.match(browser, /github.event.pull_request.draft == false/)
   assert.ok(!browser.includes('\n  push:'))
