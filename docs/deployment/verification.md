@@ -1,5 +1,11 @@
 # Deployment verification
 
+## Preparation reconciliation — #109 merged — 3 October 2026
+
+#109 merged as `2cfe48827989392ea7dcf753fb0be1dafb9bb5d7`. Main CI 37117659748 and its dependent production publisher passed; merge reconciliation 37117659837 wrote docs/trackers/progress.md in d28d563. #106 is closed. This verifies workflow/job/source-path evidence, not another visual browser-product audit. The v1.0.0 tag remains b2eb932.
+
+The current reconciliation PR edits Markdown only. Record draft/readiness/update/main run evidence, deliberately publish its PR preview and verify source/PR identity, then close #100 and milestone 1 if all gates pass. Until then Preparation remains open. Historical entries below retain earlier policy/run evidence and are superseded by this current gate.
+
 ## #108 production workflow verification — 3 October 2026
 
 Merged #108 source `94c6be4adac1d56ed897b477653e75942a662c22` passed main Frontend CI [37105807478](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37105807478). Dependent publisher job `111154050458` succeeded, verified that source SHA, uploaded the aggregate Pages artifact and completed deployment. Its recorded production URL is https://himanshuhd.github.io/papertrail-reader/. Publication is inside the Frontend CI run; no standalone automatic Publish website run was created for this source. This is job/log evidence, not an interactive website inspection.
