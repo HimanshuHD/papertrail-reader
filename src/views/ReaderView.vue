@@ -143,11 +143,14 @@ function selectLibraryDocument(id: string, restoring = false) {
     workspaceOperation += 1
     reconnecting.value = false
   }
+  const sameActive =
+    activePdfDocument.value?.id === document.id && activePdfDocument.value?.file === document.file
   selectedLibraryDocumentId.value = id
   workspace.patch({
     selectedPath: document.relativePath,
     activePath: document.format === 'PDF' ? document.relativePath : null,
-    activeFingerprint: restoring ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
+    activeFingerprint:
+      restoring || sameActive ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
   })
   if (document.format === 'PDF') {
     activePdfDocument.value = document
