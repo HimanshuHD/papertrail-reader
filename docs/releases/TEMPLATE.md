@@ -41,3 +41,7 @@ Known-good source, reviewed revert/fix-forward procedure; never move a released 
 - [ ] Exact tag/release identity recorded.
 - [ ] Production source/version and smoke verified.
 - [ ] Issue/roadmap/release ledger reconciled.
+
+---
+
+[Previous](v1.0.0-acceptance-audit.md) · [Documentation home](../README.md)

@@ -1,34 +1,75 @@
-# Documentation
+# PaperTrail documentation
 
-| Document                                              | Purpose                                                                |
-| ----------------------------------------------------- | ---------------------------------------------------------------------- |
-| [Roadmap PDF](PaperTrail-Web-First-Roadmap.pdf)       | Web-first planning snapshot, revision 2                                |
-| [Roadmap](roadmap.md)                                 | Browser milestones and deferred desktop scope                          |
-| [Progress](progress.md)                               | Cross-issue status and merge evidence                                  |
-| [Status audit](status-audit.md)                       | Reconciled states, children and pending acceptance                     |
-| [Architecture overview](architecture.md)              | Browser provider and reader boundaries                                 |
-| [Vue architecture](vue-architecture.md)               | Current/pending module ownership, theme/state/routing and UI children  |
-| [Deployment guide](deployment.md)                     | How to publish previews and validate production                        |
-| [Deployment architecture](deployment-architecture.md) | Artifact trust, pages-state, trigger policy, recovery and release gaps |
-| [Deployment verification](deployment-verification.md) | Recorded live evidence and final docs-only check                       |
-| [Development](development.md)                         | GitHub-first quality and contribution workflow                         |
+Choose a category below. The repository [README](../README.md) links here; each guide provides Previous · Documentation home · Next navigation within its category. Markdown and live issues are current; the roadmap PDF and historical evidence are snapshots.
 
-Add new documentation here and update this index. Live issues and docs/progress.md track delivery; plans and the roadmap PDF do not imply implemented features. Keep architecture changes and issue references together in the implementation PR.
+## Suggested reading paths
 
-[Initial version history](../CHANGELOG.md) records the 0.1.0 foundation scope and its limitations.
+- Use the reader: Usage → release support and limitations.
+- Contribute: Local setup → Contributing → issue policy → browser testing.
+- Plan delivery: Roadmap 2 → progress tracker → milestone issues.
+- Understand the product: Architecture overview → Vue architecture → reader shell.
+- Publish or recover: Deployment architecture → publishing guide → verification ledger.
 
-[Reader shell layout](shell-layout.md) documents home/app navigation, responsive layout and component boundaries (#42/#49).
+## Categories
 
-[Browser validation](browser-testing.md) covers the Playwright matrix, explicit browser checks and historical screenshot/report evidence (#37).
+### [Getting Started](getting-started/README.md)
 
-[Branch maintenance](branch-maintenance.md) records verified stale work branches and the retained main/pages-state infrastructure.
+- [Read with PaperTrail](getting-started/usage.md)
+- [Local setup](getting-started/local-setup.md)
+- [Contributing](getting-started/contributing.md)
 
-## Current release planning
+### [Roadmaps](roadmaps/README.md)
 
-[Roadmap](roadmap.md) separates first release (#1, bug gate #79, release gate #80) from post-release Roadmap 2 (#78). [First-release bug tracking](first-release-bugs.md) defines intake and linked child evidence. The existing roadmap PDF is historical; Markdown and live issues carry the revised plan.
+- [PaperTrail release roadmaps](roadmaps/product-roadmaps.md)
+- [Product Roadmap 2](roadmaps/roadmap-2.md)
+- [Product Roadmap 3](roadmaps/roadmap-3.md)
 
-[Loading feedback](loading-feedback.md) preserves the merged #85 screenshots and validation. [Reader polish](reader-polish.md) records combined #86/#87 control, motion and footer changes.
+### [Trackers](trackers/README.md)
 
-## Release records
+- [PaperTrail progress](trackers/progress.md)
+- [Current status audit](trackers/status-audit.md)
+- [First-release bug tracking](trackers/first-release-bugs.md)
+- [Branch maintenance](trackers/branch-maintenance.md)
 
-[Release history](releases/README.md) indexes successive versions. [v1.0.0](releases/v1.0.0.md) records scope, regression, support and tagging/deployment steps; [acceptance audit](releases/v1.0.0-acceptance-audit.md) covers all closed issues. Use [TEMPLATE.md](releases/TEMPLATE.md) for future releases.
+### [Architecture](architecture/README.md)
+
+- [Browser-first architecture](architecture/overview.md)
+- [Vue application architecture](architecture/vue.md)
+- [Reader shell and home entry (#42/#49)](architecture/reader-shell.md)
+- [Deployment architecture](architecture/deployment.md)
+
+### [Development](development/README.md)
+
+- [GitHub-first web development](development/workflow.md)
+- [Issue, label and milestone policy](development/issue-policy.md)
+- [Browser validation (#37)](development/browser-testing.md)
+- [Workflow trigger audit](development/workflow-audit.md)
+- [Documentation conventions](development/documentation-conventions.md)
+- [Documentation inventory and migration — #106](development/documentation-migration.md)
+
+### [Deployment](deployment/README.md)
+
+- [Deployment, previews and releases](deployment/publishing.md)
+- [Deployment verification](deployment/verification.md)
+
+### [Releases](releases/README.md)
+
+- [PaperTrail v1.0.0 — first browser PDF release](releases/v1.0.0.md)
+- [PaperTrail v1.0.0](releases/v1.0.0-notes.md)
+- [v1.0.0 acceptance and closed-issue audit](releases/v1.0.0-acceptance-audit.md)
+- [PaperTrail vVERSION](releases/TEMPLATE.md)
+
+### [Evidence](evidence/README.md)
+
+- [Loading feedback — #85](evidence/loading-feedback.md)
+- [Reader polish — #86 and #87](evidence/reader-polish.md)
+- [Search excerpts and selected PDF matches — #89](evidence/search-highlighting.md)
+
+## Snapshots, assets and attribution
+
+- [Historical web-first roadmap PDF](roadmaps/PaperTrail-Web-First-Roadmap.pdf) — revision 2; not current release scope.
+- [Assets and screenshot policy](assets/README.md).
+- [Lucide attribution](licenses/lucide.txt).
+- [Changelog](../CHANGELOG.md).
+
+Old guide paths contain migration pointers; add new links to canonical paths. Follow [documentation conventions](development/documentation-conventions.md) for future additions.

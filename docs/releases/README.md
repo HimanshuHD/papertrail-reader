@@ -8,3 +8,10 @@ Keep one record per version here. Each record identifies the reviewed applicatio
 | 0.1.0   | Historical foundation version; no tag/GitHub release found during audit | [Foundation changelog](../../CHANGELOG.md#010--initial-foundation)                                              | Historical production 77b8f31 / CI 37050685881                                                          |
 
 Roadmap #1 → bug gate #79 → release gate #80 → Roadmap 2 #78. #79/#80/#1 are completed after tag/release and production verification. Roadmap 2 #78 is ready; #13 is next.
+
+## Reading sequence
+
+- [PaperTrail v1.0.0 — first browser PDF release](v1.0.0.md)
+- [PaperTrail v1.0.0](v1.0.0-notes.md)
+- [v1.0.0 acceptance and closed-issue audit](v1.0.0-acceptance-audit.md)
+- [PaperTrail vVERSION](TEMPLATE.md)

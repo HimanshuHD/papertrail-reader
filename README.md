@@ -30,13 +30,13 @@ Browser E2E uses the Playwright version pinned in package-lock. CI runs the fast
 
 ## Roadmap and documentation
 
-Start at [docs/README.md](docs/README.md). See the [complete roadmap PDF](docs/PaperTrail-Web-First-Roadmap.pdf), [roadmap](docs/roadmap.md), [live progress tracker](docs/progress.md), [Vue architecture](docs/vue-architecture.md), and [deployment guide](docs/deployment.md).
+Start at [docs/README.md](docs/README.md). See the [historical roadmap PDF snapshot](docs/roadmaps/PaperTrail-Web-First-Roadmap.pdf), [roadmap](docs/roadmaps/product-roadmaps.md), [live progress tracker](docs/trackers/progress.md), [Vue architecture](docs/architecture/vue.md), and [deployment guide](docs/deployment/publishing.md).
 
 Issue [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1) tracks first release v1.0.0. [Roadmap 2 #78](https://github.com/HimanshuHD/papertrail-reader/issues/78) holds unfinished expansion scope after the release, including PDF saved positions/bookmarks #13, EPUB #12 and later Tauri integration.
 
 ## Production and previews
 
-Production: [himanshuhd.github.io/papertrail-reader](https://himanshuhd.github.io/papertrail-reader/). Successful builds merged to main publish automatically. PR previews publish on demand from Actions → Publish website with the PR number. See [deployment verification](docs/deployment-verification.md) for source SHAs and run evidence.
+Production: [himanshuhd.github.io/papertrail-reader](https://himanshuhd.github.io/papertrail-reader/). Successful builds merged to main publish automatically. PR previews publish on demand from Actions → Publish website with the PR number. See [deployment verification](docs/deployment/verification.md) for source SHAs and run evidence.
 
 ## License
 
