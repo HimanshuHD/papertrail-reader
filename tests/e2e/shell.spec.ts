@@ -1374,7 +1374,6 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     viewport: info.project.use.viewport,
     baseURL: info.project.use.baseURL,
   })
-  await context.tracing.start({ screenshots: true, snapshots: true, sources: true })
   const page = context.pages()[0] ?? (await context.newPage())
   try {
     await page.goto('./#/app')
@@ -1472,9 +1471,6 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     await expect(pane).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'PDF: book.pdf', exact: true })).toBeEnabled()
   } finally {
-    const path = info.outputPath('native-profile-trace.zip')
-    await context.tracing.stop({ path })
-    await info.attach('native-profile-trace', { path, contentType: 'application/zip' })
     await context.close()
   }
 })
