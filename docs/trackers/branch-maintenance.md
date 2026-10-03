@@ -44,6 +44,10 @@ Published stable [v1.0.0](https://github.com/HimanshuHD/papertrail-reader/releas
 
 Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056086941. Publisher 37056172706 succeeded with upload/deploy/URL steps skipped for docs-only input. Production remains b2eb932/source CI 37054802868. Tag/release publication created no additional Actions run in the reviewed latest-run listing. #100 retains event-level docs-only publisher filtering for Roadmap 2.
 
+## Workspace restoration handoff — 3 October 2026
+
+PR #119 is merged at `7dc8bca1bcf9f3eb9f78c75150e2dc7b25241c48`; accepted feature head is `deed40b317099d0878fdd0dd8110fa3c4ef879aa`. Create `feat/115-pdf-bookmarks` from reconciled main for #115. `feat/workspace-restoration` is no longer the active implementation branch. No branch deletion or unverified branch inventory is claimed. Keep main and generated pages-state.
+
 ---
 
 [Previous](first-release-bugs.md) · [Documentation home](../README.md)

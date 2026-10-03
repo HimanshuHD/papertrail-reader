@@ -4,7 +4,7 @@
 
 [Roadmap 2 scope and milestones](roadmap-2.md) → [progress tracker](../trackers/progress.md). [Roadmap 3](roadmap-3.md) owns #17/#18. Desktop #4/#23/#27 stay deferred separately. First-release #1 is completed; [release records](../releases/README.md) preserve evidence. Earlier planning entries below are historical and superseded by these current roadmap guides.
 
-## Current workflow refinement — #100
+## Delivered workflow refinement — #100 (historical validation notes)
 
 Implementation in the Preparation milestone (#78). Frontend CI remains unconditional on main pushes and PR updates, preserving required checks and current-head preview artifacts. After a successful website-affecting main build, CI calls pages.yml as a dependent reusable job using its own run ID and artifact. The separate workflow_run publisher subscription is removed. Docs/tracker-only main builds finish validation without a publishing workflow run; the dependent publication job is skipped. Manual Publish website remains available on main for numbered PR previews or production recovery.
 
@@ -36,7 +36,7 @@ A reported defect may be promoted from deferred scope if it breaks the agreed fi
 
 ## Product Roadmap 2
 
-See [current Roadmap 2 milestones](roadmap-2.md) and [the issue tracker](../trackers/progress.md). Preparation #100/#106 precedes reading continuity #13/#14, EPUB #12, annotations #15, reliability #16/#28 and release delivery #19/#26/#32/#44. Multiple-document workspace #17/#18 is assigned to [Roadmap 3 #107](roadmap-3.md). Desktop #4/#23/#27 remains separately deferred.
+See [current Roadmap 2 milestones](roadmap-2.md) and [the issue tracker](../trackers/progress.md). Preparation #100/#106/#112 is concluded by owner acceptance. Reading continuity #114/#117/#118 is merged; #115 bookmarks is active under #13, followed by #14, EPUB #12, annotations #15, reliability #16/#28 and release delivery #19/#26/#32/#44. Multiple-document workspace #17/#18 is assigned to [Roadmap 3 #107](roadmap-3.md). Desktop #4/#23/#27 remains separately deferred.
 
 ## Reconciled delivery
 

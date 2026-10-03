@@ -4,18 +4,20 @@
 
 PR #116 is merged. Its accepted application source `3dd5b3e93ca2122dc292f14d4ffba0cfcb124010` passed [Frontend CI 37124839688](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124839688) and [Browser E2E 37124902731](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124902731). #114 and #117 are completed; #13 remains open for its remaining acceptance.
 
-#118 is implemented on `feat/workspace-restoration`: byte-free cached tree/UI metadata, permission-aware persisted directory access, fresh path/content verification, normalized reading-anchor restoration, and explicit Forget library. Unit coverage includes denied/missing/unsupported access, stale loads, write/clear ordering and duplicate/changed paths. Browser coverage adds cached context at all five viewport widths and a real persisted native handle at desktop width. CI, Browser E2E and owner preview acceptance remain the review gate.
+PR #119 completed #118 and merged as `7dc8bca1bcf9f3eb9f78c75150e2dc7b25241c48`. The accepted head `deed40b317099d0878fdd0dd8110fa3c4ef879aa` passed [Frontend CI 37138095654](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37138095654) and [Browser E2E 37138156717](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37138156717): 108 unit/component tests, 10 pipeline tests and 92 browser cases, with eight intentional viewport-specific skips. Native persisted-handle reopening, normalized anchor/zoom/utility restoration and changed-content rejection passed in an isolated normal Chromium profile. Main CI [37138731032](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37138731032) passed after merge. This records automated evidence, not a new owner preview or production interaction audit.
 
-| Issue                                                              | Target                         | Scope                                                           | Status    |
-| ------------------------------------------------------------------ | ------------------------------ | --------------------------------------------------------------- | --------- |
-| [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114) | Roadmap 2 — Reading continuity | PDF identity and saved-page restoration; parent #13             | Completed |
-| [#117](https://github.com/HimanshuHD/papertrail-reader/issues/117) | Roadmap 2 — Reading continuity | Retain PDF zoom/fit mode; parent #13                            | Completed |
-| [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13 | Completed |
-| [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | PDF bookmarks on the #114 persistence foundation; parent #13    | Backlog   |
+| Issue                                                              | Target                         | Scope                                                               | Status      |
+| ------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------------- | ----------- |
+| [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114) | Roadmap 2 — Reading continuity | PDF identity, direct landing and saved-page restoration; parent #13 | Completed   |
+| [#117](https://github.com/HimanshuHD/papertrail-reader/issues/117) | Roadmap 2 — Reading continuity | Retain PDF zoom/fit mode; parent #13                                | Completed   |
+| [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13     | Completed   |
+| [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | Named PDF bookmarks using persisted document identity; parent #13   | In progress |
 
-Roadmap 2 — Reading continuity has started. Parent #13 remains open; #114 implements PDF identity and saved-page restoration, with #115 tracking bookmarks next. Current branch: `feat/workspace-restoration`. Existing file access and PDF rendering services remain separate from the new identity, IndexedDB storage and lifecycle composable. Metadata only is saved; document bytes are not retained.
+Reading continuity remains open for #115 bookmarks, #14 recent documents/library search, and separately recorded EPUB acceptance after #12. The next branch is `feat/115-pdf-bookmarks`, based on reconciled main. Storage, file permissions, PDF identity/rendering and lifecycle coordination remain separate. No document bytes are cached by the application. Forget library removes workspace access while preserving reading metadata.
 
-Workspace acceptance and deployment evidence will be reconciled after #118 is tested and merged. Neither bookmarks nor EPUB persistence is complete in this increment.
+## Current milestone status — 3 October 2026
+
+Preparation work (#100/#106/#112) is concluded under the owner's recorded acceptance. Historical pending Preparation gates below are superseded. The connector cannot update GitHub milestone state; closure of milestone 1 through the UI is pending. Reading continuity milestone 2 remains open: #114/#117/#118 are completed, #115 is active, and #13/#14 are unfinished. No later milestone or parent #78 is completed.
 
 ## Current Preparation reconciliation — 3 October 2026
 
@@ -29,7 +31,7 @@ Fifteen remaining issue records now identify their actual milestone and owning r
 | [#106](https://github.com/HimanshuHD/papertrail-reader/issues/106) | Docs      | Categorized Markdown and navigation  | Completed                        |
 | [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) | Web later | Roadmap 3 workspace scope            | New — implementation not started |
 
-## Milestone 1 closure gate
+## Historical milestone 1 closure gate
 
 Keep Roadmap 2 — Preparation open until #100 passes a pure-docs PR draft/readiness/update test, an explicit numbered manual preview, and a docs-only main merge with skipped publisher/no automatic Browser E2E. This reconciliation PR changes Markdown only and is the controlled test. Verify its successful current-head artifact, published preview identity and unchanged production identity before closure. Then start #13 in Reading continuity. No new reader feature is implemented by this reconciliation.
 

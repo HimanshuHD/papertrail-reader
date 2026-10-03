@@ -2,6 +2,10 @@
 
 Roadmap owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78) · [Roadmap documentation](../roadmaps/roadmap-2.md) · [Current progress](progress.md). This record includes historical evidence; current statuses come from the progress tracker and live issues.
 
+## Current checkpoint — 3 October 2026, after PR #119
+
+#114/#117 are completed in #116. #118 is completed in #119 (`7dc8bca`); main CI 37138731032 passed. Accepted source `deed40b` passed Frontend CI 37138095654 and Browser E2E 37138156717 (108 unit/component, 10 pipeline, 92 browser cases; eight intentional skips). #115 PDF bookmarks is now active. #13 remains open for bookmark and separate format acceptance; #14 follows. Preparation #100/#106/#112 is concluded by owner acceptance; GitHub milestone 1 state requires UI reconciliation. Reading continuity milestone 2 and roadmap #78 remain open. No new production interaction or owner preview evidence is asserted.
+
 ## Historical checkpoint after PR #98
 
 Updated: 2 October 2026 (Asia/Kolkata).

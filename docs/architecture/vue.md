@@ -1,5 +1,9 @@
 # Vue application architecture
 
+## Workspace restoration delivery — #118
+
+PR #119 merged the workspace metadata repository, permission/access service, fresh document revalidation and continuity composable. Accepted source `deed40b` passed native-handle reload, normalized anchor/zoom/panel restoration and changed-content rejection in Browser E2E 37138156717. Native lifecycle tests use full Chromium with a temporary normal profile; real OPFS handles and IndexedDB are exercised, with a fixture-supplied picker. OS permission prompts are not certified by that fixture. Application storage contains metadata and handles, not PDF bytes. #115 adds bookmark operations over the same resolved document identity; bookmark UI state belongs in a separate composable.
+
 ## PDF continuity service boundaries (#13 / #114 / #117)
 
 `services/pdf-reading-state.ts` validates view settings. Record version 2 adds custom zoom and fit mode; version-1 page-only records migrate lazily under their original identity, without changing the IndexedDB database version. Fit modes remain responsive to the current viewport. Restore awaits identity/settings before mounting pages, navigates behind an opaque loader, and reveals the reader only after the target bitmap and layout are ready. Scroll-based page detection and persistence stay disabled during restoration. Cancellation retains the document/session generation guard.
