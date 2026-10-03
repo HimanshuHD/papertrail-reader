@@ -1142,8 +1142,10 @@ test('PDF reading positions survive reload and rename without matching changed c
   }
   const savedPage = () =>
     page.evaluate(async () => {
+      if (!(await indexedDB.databases()).some((database) => database.name === 'papertrail-reading'))
+        return null
       return new Promise<number | null>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-reading', 1)
+        const request = indexedDB.open('papertrail-reading')
         request.onerror = () => reject(request.error)
         request.onsuccess = () => {
           const db = request.result
