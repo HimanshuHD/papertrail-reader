@@ -1,4 +1,4 @@
-import type { DiscoveredDocument } from './discovery'
+import type { LibraryDocumentMetadata } from './discovery'
 
 export interface LibraryFolderNode {
   kind: 'folder'
@@ -12,7 +12,7 @@ export interface LibraryFolderNode {
 export interface LibraryDocumentNode {
   kind: 'document'
   id: string
-  document: DiscoveredDocument
+  document: LibraryDocumentMetadata
 }
 
 export type LibraryTreeNode = LibraryFolderNode | LibraryDocumentNode
@@ -21,7 +21,7 @@ interface MutableFolder {
   name: string
   path: string
   folders: Map<string, MutableFolder>
-  documents: DiscoveredDocument[]
+  documents: LibraryDocumentMetadata[]
 }
 
 function compareText(left: string, right: string): number {
@@ -64,7 +64,7 @@ function toNodes(folder: MutableFolder): readonly LibraryTreeNode[] {
 }
 
 export function buildLibraryTree(
-  documents: readonly DiscoveredDocument[],
+  documents: readonly LibraryDocumentMetadata[],
 ): readonly LibraryTreeNode[] {
   const root: MutableFolder = {
     name: '',

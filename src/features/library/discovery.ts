@@ -2,7 +2,7 @@ import type { BrowserLibrarySelection } from './browser-selection'
 
 export type DocumentFormat = 'PDF' | 'EPUB'
 
-export interface DiscoveredDocument {
+export interface LibraryDocumentMetadata {
   /** Session-local identity only. Persistent identity belongs to #13. */
   id: string
   name: string
@@ -12,6 +12,9 @@ export interface DiscoveredDocument {
   relativePath: string
   parentPath: string
   source: BrowserLibrarySelection['source']
+}
+
+export interface DiscoveredDocument extends LibraryDocumentMetadata {
   file: File
 }
 

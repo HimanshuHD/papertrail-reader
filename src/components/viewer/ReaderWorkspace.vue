@@ -1,15 +1,28 @@
 <script setup lang="ts">
-import type { DiscoveredDocument } from '../../features/library/discovery'
+import type { LibraryDocumentMetadata } from '../../features/library/discovery'
 
 defineProps<{
-  selectedDocument: DiscoveredDocument | null
+  selectedDocument: LibraryDocumentMetadata | null
   hasLibrarySelection: boolean
 }>()
 </script>
 
 <template>
   <section class="reader-welcome min-w-0 px-4 py-6 sm:px-8 sm:py-9" aria-labelledby="reader-title">
-    <div v-if="selectedDocument?.format === 'EPUB'" class="document-stage">
+    <article
+      v-if="selectedDocument?.format === 'PDF'"
+      class="welcome-page rounded-card border border-line bg-panel p-6 shadow-xl"
+    >
+      <p class="text-xs font-semibold text-brand">Saved document</p>
+      <h2 id="reader-title" class="mt-3 break-words font-serif text-3xl">
+        {{ selectedDocument.title || selectedDocument.name }}
+      </h2>
+      <p class="mt-4 text-sm text-muted">
+        Reconnect your library or reselect the source to resume this PDF. Your reading position is
+        saved separately.
+      </p>
+    </article>
+    <div v-else-if="selectedDocument?.format === 'EPUB'" class="document-stage">
       <article class="welcome-page epub-state rounded-card border border-line bg-panel shadow-xl">
         <div class="flex items-center justify-between gap-4">
           <p class="text-xs font-semibold tracking-[0.18em] text-brand uppercase">EPUB document</p>

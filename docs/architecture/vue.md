@@ -14,7 +14,20 @@ The first Reading continuity increment keeps Vue components responsible for disp
 
 Restoration clamps pages to the current page count and does not override navigation made while identity resolves. Ambiguous or malformed records are preserved without guessing; automatic saves remain disabled for that selection. Clearing storage starts fresh after reselection. Browser origin and preview path share IndexedDB: identity matching uses content rather than deployment identity. Pending IndexedDB writes at abrupt process termination remain best effort.
 
-Bookmarks are tracked separately in #115; EPUB locations follow #12. Reading metadata now includes the page and zoom/fit mode; normalized intra-page offsets belong to workspace restoration (#118).
+Bookmarks are tracked separately in #115; EPUB locations follow #12. Reading metadata includes page, zoom/fit mode and an optional normalized viewport-center anchor. Existing page-only/view records remain compatible.
+
+## Single-workspace restoration (#118)
+
+- `services/workspace-storage.ts` owns the separate `papertrail-workspace` IndexedDB database and validates a single metadata snapshot. Cached documents have paths, titles, size and modification time, with no File/Blob or PDF bytes. Native directory handles are structured-cloned only when available.
+- `services/library-access.ts` queries read permission during startup. Only an explicit Resume library gesture requests renewed permission. File-input sources and unsupported/missing handles require source reselection; the cached listing remains visible with unavailable document buttons disabled.
+- `services/workspace-revalidation.ts` matches unique paths from fresh enumeration and checks file metadata plus full content fingerprint before automatic reopening. Changed, missing, moved or ambiguous paths require explicit selection. Cached identities never authorize an unrelated file.
+- `composables/useWorkspaceContinuity.ts` serializes/debounces workspace writes, cancels stale startup loads and permission results, flushes on page hide/unmount, and orders Forget before newer library writes. Storage failure leaves ordinary reading available with an accessible notice.
+- `ReaderView` connects fresh discovery and revalidation to UI state. Tree nodes receive controlled collapsed paths; the library listing owns its independent scroll container. Sidebar visibility/width, selection, library scroll, and the contents/search utility panel persist. Search results are regenerated from the verified PDF; transient popovers and result objects are not saved.
+- `useReadingContinuity` and the existing reading repository retain the document's page/view/normalized anchor independently. The renderer reserves the restored utility-panel layout, navigates behind the opening loader, waits for the target bitmap, and restores the anchor before revealing pages. Zoom stays custom when saved as custom; fit modes adapt to the current viewport.
+
+Forget library removes the saved workspace and handle references, stops active enumeration and closes the current PDF. It deliberately keeps reading metadata so selecting a PDF later can still restore its position. Browser clearing/site-data removal removes both databases. Closing a process abruptly can still interrupt a final asynchronous write; no durability beyond browser storage is promised.
+
+Automatic reopening applies to granted persisted directory handles on supporting browsers. Standard folder/file inputs do not provide durable handles and require reselection. Selecting the same named source verifies the saved path and fingerprint again before reopening; selecting a different source starts a new workspace. No folder picker opens automatically, no document bytes are retained, and multi-document tabs remain Roadmap 3.
 
 Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 

@@ -18,7 +18,7 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => ({
 
 const continuity = vi.hoisted(() => ({ restore: vi.fn(), save: vi.fn(), reset: vi.fn() }))
 vi.mock('../../src/composables/useReadingContinuity', () => ({
-  useReadingContinuity: () => ({ ...continuity, notice: ref('') }),
+  useReadingContinuity: () => ({ ...continuity, notice: ref(''), fingerprint: ref('test-pdf') }),
 }))
 
 const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-needs-ellipsis.pdf', {

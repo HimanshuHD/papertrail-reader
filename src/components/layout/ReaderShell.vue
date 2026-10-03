@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
-defineProps<{ sidebarOpen: boolean }>()
-defineEmits<{ close: [] }>()
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+const props = defineProps<{ sidebarOpen: boolean; initialWidth?: number }>()
+const emit = defineEmits<{ close: []; widthChange: [width: number] }>()
 const root = ref<HTMLElement | null>(null)
-const width = ref(308)
+const width = ref(props.initialWidth ?? 308)
 const hostWidth = ref(1024)
 const dragging = ref(false)
 const maxWidth = computed(() =>
@@ -16,8 +16,18 @@ const maxWidth = computed(() =>
 const minWidth = computed(() => Math.min(240, maxWidth.value))
 let observer: ResizeObserver | null = null
 function setWidth(value: number) {
-  width.value = Math.round(Math.max(minWidth.value, Math.min(maxWidth.value, value)))
+  const next = Math.round(Math.max(minWidth.value, Math.min(maxWidth.value, value)))
+  if (next !== width.value) {
+    width.value = next
+    emit('widthChange', next)
+  }
 }
+watch(
+  () => props.initialWidth,
+  (value) => {
+    if (value !== undefined) setWidth(value)
+  },
+)
 function measure() {
   hostWidth.value = root.value?.clientWidth || window.innerWidth
   setWidth(width.value)

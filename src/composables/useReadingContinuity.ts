@@ -1,6 +1,8 @@
 import { onBeforeUnmount, ref } from 'vue'
 import {
   normalizePdfView,
+  normalizePdfAnchor,
+  type PdfReadingAnchor,
   type PdfReadingState,
   type PdfViewSettings,
 } from '../services/pdf-reading-state'
@@ -10,10 +12,16 @@ import { IndexedDbReadingStorage, type ReadingStorage } from '../services/readin
 /** Coordinates async identity/storage; components own navigation and rendering. */
 export function useReadingContinuity(storage: ReadingStorage = new IndexedDbReadingStorage()) {
   const notice = ref('')
+  const fingerprint = ref<string | null>(null)
   let generation = 0
   let controller: AbortController | null = null
   let identity: string | null = null
-  let pending: { id: string; page: number; view: PdfViewSettings } | null = null
+  let pending: {
+    id: string
+    page: number
+    view: PdfViewSettings
+    anchor?: PdfReadingAnchor
+  } | null = null
   let timer: ReturnType<typeof setTimeout> | undefined
   let writes = Promise.resolve()
 
@@ -24,7 +32,11 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     if (!next) return
     const owner = generation
     writes = writes
-      .then(() => storage.save(next.id, next.page, next.view))
+      .then(() =>
+        next.anchor
+          ? storage.save(next.id, next.page, next.view, next.anchor)
+          : storage.save(next.id, next.page, next.view),
+      )
       .catch(() => {
         if (owner === generation)
           notice.value = 'Your reading position could not be saved. You can continue reading.'
@@ -36,6 +48,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     generation += 1
     controller?.abort()
     identity = null
+    fingerprint.value = null
     notice.value = ''
   }
 
@@ -45,10 +58,11 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     const abort = new AbortController()
     controller = abort
     try {
-      const fingerprint = await fingerprintDocument(file, abort.signal)
+      const digest = await fingerprintDocument(file, abort.signal)
       await writes
       if (owner !== generation) return null
-      const match = await storage.resolve(fingerprint, file.name)
+      fingerprint.value = digest
+      const match = await storage.resolve(digest, file.name)
       if (owner !== generation) return null
       if (match.ambiguous) {
         notice.value =
@@ -59,6 +73,9 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
       return {
         page: Math.min(totalPages, Math.max(1, match.record.page)),
         view: normalizePdfView(match.record.view),
+        ...(normalizePdfAnchor(match.record.anchor, totalPages)
+          ? { anchor: normalizePdfAnchor(match.record.anchor, totalPages) }
+          : {}),
       }
     } catch {
       if (owner === generation && !abort.signal.aborted)
@@ -67,9 +84,14 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     }
   }
 
-  function save(page: number, view?: PdfViewSettings) {
+  function save(page: number, view?: PdfViewSettings, anchor?: PdfReadingAnchor) {
     if (!identity) return
-    pending = { id: identity, page, view: normalizePdfView(view) }
+    pending = {
+      id: identity,
+      page,
+      view: normalizePdfView(view),
+      anchor: normalizePdfAnchor(anchor),
+    }
     clearTimeout(timer)
     timer = setTimeout(flush, 300)
   }
@@ -84,5 +106,5 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     globalThis.removeEventListener('pagehide', flush)
     document.removeEventListener('visibilitychange', hide)
   })
-  return { notice, restore, save, reset }
+  return { notice, fingerprint, restore, save, reset }
 }

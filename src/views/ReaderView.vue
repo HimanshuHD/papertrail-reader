@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, shallowRef } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, shallowRef } from 'vue'
 import { RouterLink } from 'vue-router'
 import BrandMark from '../components/BrandMark.vue'
 import IconButton from '../components/IconButton.vue'
@@ -24,11 +24,39 @@ import {
 import { waitForMinimumLoading } from '../features/library/loading-duration'
 import { enrichPdfTitles } from '../features/library/pdf-titles'
 
+import { useWorkspaceContinuity } from '../composables/useWorkspaceContinuity'
+import { cacheLibraryDocuments, type WorkspaceSnapshot } from '../services/workspace-storage'
+import { revalidateWorkspace } from '../services/workspace-revalidation'
+
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
+const workspace = useWorkspaceContinuity()
+const sidebarWidth = ref(308)
+const reconnecting = ref(false)
+let workspaceOperation = 0
+const displayDocuments = computed(() =>
+  discoveredDocuments.value.length || discoveryPhase.value === 'ready'
+    ? discoveredDocuments.value
+    : (workspace.snapshot.value?.documents ?? []),
+)
+const cached = computed(
+  () =>
+    Boolean(workspace.snapshot.value) &&
+    (!librarySelection.value || (reconnecting.value && !discoveredDocuments.value.length)),
+)
+const workspaceMessage = computed(
+  () =>
+    workspace.notice.value ||
+    (reconnecting.value
+      ? 'Reconnecting your library…'
+      : cached.value
+        ? 'Saved library. Resume access or use + to select the same source again.'
+        : ''),
+)
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
+watch(sidebarOpen, (value) => workspace.patch({ sidebarOpen: value }))
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
 const announcement = ref('PaperTrail workspace ready. No documents selected yet.')
 
@@ -44,6 +72,7 @@ const discoveryProblems = shallowRef<readonly DiscoveryProblem[]>([])
 let discoveryController: AbortController | null = null
 let metadataController: AbortController | null = null
 onBeforeUnmount(() => {
+  workspaceOperation += 1
   discoveryController?.abort()
   metadataController?.abort()
 })
@@ -55,7 +84,9 @@ const librarySelectionSummary = computed(() =>
 )
 
 const libraryLabel = computed(() =>
-  librarySelection.value ? librarySelectionLabel(librarySelection.value) : 'Local documents',
+  librarySelection.value
+    ? librarySelectionLabel(librarySelection.value)
+    : (workspace.snapshot.value?.label ?? 'Local documents'),
 )
 
 const refreshAction = computed(() =>
@@ -63,7 +94,10 @@ const refreshAction = computed(() =>
 )
 
 const showLibraryResults = computed(
-  () => discoveryPhase.value === 'ready' || discoveryPhase.value === 'cancelled',
+  () =>
+    Boolean(workspace.snapshot.value) ||
+    discoveryPhase.value === 'ready' ||
+    discoveryPhase.value === 'cancelled',
 )
 
 const discoverySummary = computed(() => {
@@ -97,15 +131,24 @@ const discoverySummary = computed(() => {
 
 const selectedLibraryDocument = computed(
   () =>
-    discoveredDocuments.value.find((document) => document.id === selectedLibraryDocumentId.value) ??
+    displayDocuments.value.find((document) => document.id === selectedLibraryDocumentId.value) ??
     null,
 )
 
-function selectLibraryDocument(id: string) {
+function selectLibraryDocument(id: string, restoring = false) {
   const document = discoveredDocuments.value.find((item) => item.id === id)
   if (!document) return
 
+  if (!restoring) {
+    workspaceOperation += 1
+    reconnecting.value = false
+  }
   selectedLibraryDocumentId.value = id
+  workspace.patch({
+    selectedPath: document.relativePath,
+    activePath: document.format === 'PDF' ? document.relativePath : null,
+    activeFingerprint: restoring ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
+  })
   if (document.format === 'PDF') {
     activePdfDocument.value = document
     announcement.value = `Opening local PDF: ${document.name}.`
@@ -117,7 +160,7 @@ function selectLibraryDocument(id: string) {
 }
 
 function restoreLibrarySelection(
-  previous: DiscoveredDocument | null,
+  previous: { id: string; relativePath: string } | null,
   documents: readonly DiscoveredDocument[],
 ): string | null {
   if (!previous) return null
@@ -132,6 +175,7 @@ function restoreLibrarySelection(
 async function runDiscovery(
   selection: BrowserLibrarySelection,
   preserveSelection: boolean,
+  quiet = false,
 ): Promise<void> {
   const previous = preserveSelection ? selectedLibraryDocument.value : null
 
@@ -156,9 +200,10 @@ async function runDiscovery(
     if (discoveryController !== controller) return
 
     discoveredDocuments.value = result.documents
+    workspace.patch({ documents: cacheLibraryDocuments(result.documents) })
     discoveryProblems.value = result.problems
     selectedLibraryDocumentId.value = restoreLibrarySelection(previous, result.documents)
-    if (result.status === 'completed' && result.problems.length === 0)
+    if (!quiet && result.status === 'completed' && result.problems.length === 0)
       await waitForMinimumLoading(startedAt, controller.signal)
     if (discoveryController !== controller) return
     const cancelled = result.status === 'cancelled' || controller.signal.aborted
@@ -170,6 +215,7 @@ async function runDiscovery(
         discoveredDocuments.value = discoveredDocuments.value.map((document) =>
           document.id === id ? { ...document, title } : document,
         )
+        workspace.patch({ documents: cacheLibraryDocuments(discoveredDocuments.value) })
       })
     }
     discoveryPhase.value = cancelled ? 'cancelled' : 'ready'
@@ -184,15 +230,126 @@ async function runDiscovery(
   }
 }
 
+async function reconnect(
+  selection: BrowserLibrarySelection,
+  saved: WorkspaceSnapshot,
+  owner: number,
+) {
+  reconnecting.value = true
+  librarySelection.value = selection
+  activePdfDocument.value = null
+  try {
+    await runDiscovery(selection, false, true)
+    if (owner !== workspaceOperation || discoveryPhase.value !== 'ready') return
+    const result = await revalidateWorkspace(
+      saved,
+      discoveredDocuments.value,
+      discoveryController?.signal,
+    )
+    if (owner !== workspaceOperation) return
+    selectedLibraryDocumentId.value = result.selectedId
+    if (result.activeDocument) {
+      selectLibraryDocument(result.activeDocument.id, true)
+    } else if (saved.activePath) {
+      workspace.notice.value =
+        'The previously opened PDF changed or is unavailable. Select a document to continue.'
+      workspace.patch({ activePath: null, activeFingerprint: null })
+    }
+  } catch {
+    if (owner === workspaceOperation)
+      workspace.notice.value = 'Library access could not be restored. Choose your source again.'
+  } finally {
+    if (owner === workspaceOperation) reconnecting.value = false
+  }
+}
+
 async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  const saved = workspace.snapshot.value
+  const owner = ++workspaceOperation
+  const label = librarySelectionLabel(selection)
+  if (saved && cached.value && saved.label === label && saved.source === selection.source) {
+    workspace.patch({ handle: selection.kind === 'directory' ? selection.handle : null })
+    await reconnect(selection, saved, owner)
+    return
+  }
+  reconnecting.value = false
   activePdfDocument.value = null
   librarySelection.value = selection
   selectedLibraryDocumentId.value = null
+  workspace.remember({
+    version: 1,
+    source: selection.source,
+    label,
+    handle: selection.kind === 'directory' ? selection.handle : null,
+    documents: [],
+    selectedPath: null,
+    activePath: null,
+    activeFingerprint: null,
+    collapsedPaths: [],
+    libraryScroll: 0,
+    sidebarOpen: sidebarOpen.value,
+    sidebarWidth: sidebarWidth.value,
+  })
   announcement.value = describeLibrarySelection(selection)
   await runDiscovery(selection, false)
 }
 
+async function resumeWorkspace() {
+  const saved = workspace.snapshot.value
+  if (!saved || reconnecting.value) return
+  const owner = ++workspaceOperation
+  const access = await workspace.resume()
+  if (owner !== workspaceOperation) return
+  if (access?.status === 'granted') await reconnect(access.selection, saved, owner)
+  else
+    workspace.notice.value = 'Access was not granted. Resume again or use + to reselect the source.'
+}
+
+async function forgetWorkspace() {
+  workspaceOperation += 1
+  discoveryController?.abort()
+  metadataController?.abort()
+  discoveryController = null
+  metadataController = null
+  reconnecting.value = false
+  activePdfDocument.value = null
+  librarySelection.value = null
+  discoveredDocuments.value = []
+  selectedLibraryDocumentId.value = null
+  discoveryPhase.value = 'idle'
+  await workspace.forget()
+}
+
+function saveSidebarWidth(width: number) {
+  sidebarWidth.value = width
+  workspace.patch({ sidebarWidth: width })
+}
+
+function toggleFolder(path: string, expanded: boolean) {
+  const paths = new Set(workspace.snapshot.value?.collapsedPaths ?? [])
+  if (expanded) paths.delete(path)
+  else paths.add(path)
+  workspace.patch({ collapsedPaths: [...paths] })
+}
+
+onMounted(async () => {
+  const owner = workspaceOperation
+  const access = await workspace.restore((saved) => {
+    if (owner !== workspaceOperation) return
+    sidebarOpen.value = saved.sidebarOpen
+    sidebarWidth.value = saved.sidebarWidth
+    selectedLibraryDocumentId.value =
+      saved.documents.find((item) => item.relativePath === saved.selectedPath)?.id ?? null
+  })
+  const saved = workspace.snapshot.value
+  if (!saved || owner !== workspaceOperation) return
+  if (access?.status === 'granted') await reconnect(access.selection, saved, owner)
+})
+
 async function refreshLibrary() {
+  workspaceOperation += 1
+  reconnecting.value = false
+  workspace.patch({ activePath: null, activeFingerprint: null })
   const selection = librarySelection.value
   if (!selection || selection.kind !== 'directory') return
 
@@ -202,6 +359,8 @@ async function refreshLibrary() {
 }
 
 function cancelDiscovery() {
+  workspaceOperation += 1
+  reconnecting.value = false
   discoveryController?.abort()
   discoveryPhase.value = 'cancelled'
   announcement.value = 'Document discovery cancelled.'
@@ -252,7 +411,12 @@ async function closeSidebarAndRestoreFocus() {
     </header>
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
-    <ReaderShell :sidebar-open="sidebarOpen" @close="closeSidebarAndRestoreFocus">
+    <ReaderShell
+      :sidebar-open="sidebarOpen"
+      :initial-width="sidebarWidth"
+      @width-change="saveSidebarWidth"
+      @close="closeSidebarAndRestoreFocus"
+    >
       <template v-if="!sidebarOpen" #opener>
         <IconButton
           ref="sidebarToggle"
@@ -267,15 +431,25 @@ async function closeSidebarAndRestoreFocus() {
       </template>
       <template #sidebar>
         <LibrarySidebar
-          :library-documents="discoveredDocuments"
+          :library-documents="displayDocuments"
+          :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
+          :scroll-position="workspace.snapshot.value?.libraryScroll"
+          :cached="cached"
+          :has-workspace="Boolean(workspace.snapshot.value) || Boolean(workspace.notice.value)"
+          :workspace-message="workspaceMessage"
+          :can-resume="Boolean(workspace.snapshot.value?.handle) && cached && !reconnecting"
           :selected-library-document-id="selectedLibraryDocumentId"
           :library-label="libraryLabel"
           :show-library-results="showLibraryResults"
           :refresh-action="refreshAction"
           :selection-summary="librarySelectionSummary"
           :discovery-summary="discoverySummary"
-          :discovery-busy="discoveryPhase === 'indexing'"
+          :discovery-busy="discoveryPhase === 'indexing' && !cached"
           :discovery-problem-count="discoveryProblems.length"
+          @toggle-folder="toggleFolder"
+          @library-scroll="workspace.patch({ libraryScroll: $event })"
+          @resume-workspace="resumeWorkspace"
+          @forget-workspace="forgetWorkspace"
           @select-library-document="selectLibraryDocument"
           @library-selection="acceptLibrarySelection"
           @refresh-library="refreshLibrary"
@@ -286,7 +460,13 @@ async function closeSidebarAndRestoreFocus() {
       <PdfReaderWorkspace
         v-if="activePdfDocument"
         :document="activePdfDocument"
+        :initial-panel="workspace.snapshot.value?.utilityPanel"
+        :initial-search-query="workspace.snapshot.value?.searchQuery"
+        @utility-change="
+          (panel, query) => workspace.patch({ utilityPanel: panel, searchQuery: query })
+        "
         @status="announcement = $event"
+        @identity="workspace.patch({ activeFingerprint: $event })"
       />
       <ReaderWorkspace
         v-else

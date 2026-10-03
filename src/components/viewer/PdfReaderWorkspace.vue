@@ -17,12 +17,29 @@ import {
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
+  initialPanel?: 'contents' | 'search' | null
+  initialSearchQuery?: string
   document: DiscoveredDocument
 }>()
 
 const emit = defineEmits<{
   status: [message: string]
+  identity: [fingerprint: string]
+  utilityChange: [panel: 'contents' | 'search' | null, query: string]
 }>()
+
+import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
+
+let restoredAnchor: PdfReadingAnchor | undefined
+function saveReadingPoint() {
+  if (phase.value !== 'ready') return
+  const point = captureReadingPoint()
+  const page = Number(point?.page.closest('article')?.id.replace('pdf-page-', ''))
+  const view = { fitMode: fitMode.value, zoom: zoom.value }
+  const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
+  if (anchor) continuity.save(currentPage.value, view, anchor)
+  else continuity.save(currentPage.value, view)
+}
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
 type UtilityPanel = 'contents' | 'search' | null
@@ -52,8 +69,7 @@ const fitMode = ref<PdfFitMode>('width')
 watch(
   [currentPage, fitMode, zoom],
   () => {
-    if (phase.value === 'ready')
-      continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+    if (phase.value === 'ready') void nextTick().then(saveReadingPoint)
   },
   { flush: 'sync' },
 )
@@ -67,6 +83,9 @@ const outlineLoaded = ref(false)
 const outlineBusy = ref(false)
 const searchQuery = ref('')
 const completedSearchQuery = ref('')
+watch([rightPanel, completedSearchQuery], ([panel, query]) => {
+  if (phase.value === 'ready') emit('utilityChange', panel, query)
+})
 const selectedSearchMatch = ref<{ pageNumber: number; occurrence: number; request: number } | null>(
   null,
 )
@@ -248,6 +267,7 @@ async function openDocument() {
       await next.close()
       return
     }
+    restoredAnchor = restored?.anchor
     currentPage.value = restored?.page ?? 1
     fitMode.value = restored?.view.fitMode ?? 'width'
     zoom.value = restored?.view.zoom ?? 1
@@ -257,7 +277,13 @@ async function openDocument() {
     totalPages.value = next.totalPages
     await nextTick()
     measureViewport()
-    if (currentPage.value !== 1) await goToPage(currentPage.value)
+    if (props.initialPanel === 'search') rightPanel.value = 'search'
+    if (props.initialPanel === 'contents') {
+      rightPanel.value = 'contents'
+      void loadOutline()
+    }
+    const target = restoredAnchor?.page ?? currentPage.value
+    if (target !== 1) await goToPage(target)
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -314,7 +340,10 @@ function chooseMostVisiblePage() {
 
 function handleViewerScroll() {
   cancelAnimationFrame(scrollFrame)
-  scrollFrame = requestAnimationFrame(chooseMostVisiblePage)
+  scrollFrame = requestAnimationFrame(() => {
+    chooseMostVisiblePage()
+    saveReadingPoint()
+  })
 }
 
 function handleVisibility() {
@@ -328,7 +357,11 @@ function stepPage(delta: number) {
 
 let completingRestore = false
 async function handleRendered(pageNumber: number, scale: number) {
-  if (pageNumber !== currentPage.value) return
+  if (
+    pageNumber !==
+    (phase.value === 'restoring' ? (restoredAnchor?.page ?? currentPage.value) : currentPage.value)
+  )
+    return
   renderedScale.value = scale
   if (phase.value !== 'restoring' || completingRestore) return
   completingRestore = true
@@ -336,10 +369,27 @@ async function handleRendered(pageNumber: number, scale: number) {
   try {
     // Target dimensions and bitmap are ready; align while the pages remain hidden.
     if (pageNumber !== 1) await goToPage(pageNumber)
+    if (restoredAnchor && viewport.value) {
+      const page = viewport.value.querySelector<HTMLElement>(
+        `#pdf-page-${restoredAnchor.page} .pdf-page`,
+      )
+      if (page)
+        await restoreReadingPoint({
+          pane: viewport.value,
+          page,
+          x: restoredAnchor.x,
+          y: restoredAnchor.y,
+        })
+    }
     await nextTick()
     if (sequence !== openSequence || phase.value !== 'restoring') return
     phase.value = 'ready'
-    continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+    if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
+    saveReadingPoint()
+    if (props.initialPanel === 'search' && props.initialSearchQuery) {
+      searchQuery.value = props.initialSearchQuery
+      void performSearch()
+    }
     emit(
       'status',
       `Opened ${props.document.name}. Page ${currentPage.value} of ${totalPages.value}.`,
@@ -422,6 +472,7 @@ async function changeZoom(delta: number) {
   fitMode.value = 'custom'
   renderedScale.value = zoom.value
   await restoreReadingPoint(point)
+  saveReadingPoint()
   emit('status', `PDF zoom set to ${Math.round(zoom.value * 100)}%.`)
 }
 
@@ -430,6 +481,7 @@ async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
   const point = captureReadingPoint()
   fitMode.value = mode
   await restoreReadingPoint(point)
+  saveReadingPoint()
   emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
 }
 
@@ -927,7 +979,9 @@ onBeforeUnmount(() => {
         @before-leave="hideTransitionSurface"
       >
         <aside
-          v-if="phase === 'ready' && rightPanel"
+          v-if="(phase === 'restoring' || phase === 'ready') && rightPanel"
+          :inert="phase !== 'ready'"
+          :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
           :aria-label="
             rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'
