@@ -4,6 +4,16 @@
 
 PR #119 merged the workspace metadata repository, permission/access service, fresh document revalidation and continuity composable. Accepted source `deed40b` passed native-handle reload, normalized anchor/zoom/panel restoration and changed-content rejection in Browser E2E 37138156717. Native lifecycle tests use full Chromium with a temporary normal profile; real OPFS handles and IndexedDB are exercised, with a fixture-supplied picker. OS permission prompts are not certified by that fixture. Application storage contains metadata and handles, not PDF bytes. #115 adds bookmark operations over the same resolved document identity; bookmark UI state belongs in a separate composable.
 
+## Named PDF bookmarks — #115
+
+Bookmark metadata shares the `papertrail-reading` document store and its resolved UUID with reading positions. `services/reading-database.ts` owns short-lived atomic transactions; `reading-storage.ts` resolves document identity and saves positions, while `pdf-bookmarks.ts` validates and loads/adds/renames/removes bookmark records. Each bookmark contains a UUID, a trimmed name of at most 120 characters, a normalized PDF anchor and creation time. Existing document records gain an optional bookmarks array; database version 1 and existing reading-record versions 1/2 remain compatible. Atomic edits preserve reading position/view metadata and position saves preserve bookmark metadata. Missing document records are not resurrected after storage clearing.
+
+`useReadingContinuity` exposes the unambiguous resolved document UUID. `usePdfBookmarks` owns list/loading/mutation state, duplicate-action suppression, stale-result rejection and accessible storage notices. No identity means disabled bookmark editing; failed edits preserve drafts, with retry/reselection guidance. The service permits at most 500 bookmarks per document and ignores malformed saved entries.
+
+`PdfBookmarksPanel` provides named creation, inline rename, removal and navigation in the existing right utility panel, with keyboard labels, focus recovery and wrapping names. `PdfReaderWorkspace` captures the viewport-center anchor and applies navigation when the target page is ready, retaining current zoom/fit. Bookmark panel selection is retained by workspace restoration. Identical content after renaming reuses the resolved identity; changed files receive separate bookmarks. Forget library preserves this metadata; clearing browser storage removes it. Bookmarks are local PDF metadata only; EPUB CFI, sync, export and multi-document tabs are separate work.
+
+Validation for this branch: local lint/format/type/build, 115 unit/component and 10 pipeline tests pass. Browser coverage adds named anchor navigation, rename/remove, reload/reselection, changed-content isolation, storage-clear recovery and screenshots at all five viewport widths. Remote CI and browser acceptance remain pending until recorded in the PR.
+
 ## PDF continuity service boundaries (#13 / #114 / #117)
 
 `services/pdf-reading-state.ts` validates view settings. Record version 2 adds custom zoom and fit mode; version-1 page-only records migrate lazily under their original identity, without changing the IndexedDB database version. Fit modes remain responsive to the current viewport. Restore awaits identity/settings before mounting pages, navigates behind an opaque loader, and reveals the reader only after the target bitmap and layout are ready. Scroll-based page detection and persistence stay disabled during restoration. Cancellation retains the document/session generation guard.
@@ -18,7 +28,7 @@ The first Reading continuity increment keeps Vue components responsible for disp
 
 Restoration clamps pages to the current page count and does not override navigation made while identity resolves. Ambiguous or malformed records are preserved without guessing; automatic saves remain disabled for that selection. Clearing storage starts fresh after reselection. Browser origin and preview path share IndexedDB: identity matching uses content rather than deployment identity. Pending IndexedDB writes at abrupt process termination remain best effort.
 
-Bookmarks are tracked separately in #115; EPUB locations follow #12. Reading metadata includes page, zoom/fit mode and an optional normalized viewport-center anchor. Existing page-only/view records remain compatible.
+Named PDF bookmarks are implemented in the #115 review branch; EPUB locations follow #12. Reading metadata includes page, zoom/fit mode and an optional normalized viewport-center anchor. Existing page-only/view records remain compatible.
 
 ## Single-workspace restoration (#118)
 

@@ -1474,3 +1474,139 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     await context.close()
   }
 })
+
+test('PDF bookmarks retain named anchors across reload and rename and isolate changed files', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  const bytes = createPdfFixture(6)
+  const select = async (name: string, buffer: Buffer) => {
+    const opener = page.getByRole('button', { name: 'Show library' })
+    if (await opener.isVisible()) await opener.click()
+    await page
+      .locator('input[accept*=".pdf"]')
+      .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    await page
+      .getByRole('region', { name: 'Library documents', exact: true })
+      .getByRole('button', { name: `PDF: ${name}`, exact: true })
+      .click()
+    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    await page.getByRole('button', { name: 'Hide library' }).click()
+  }
+  const panel = page.getByRole('complementary', { name: 'PDF bookmarks panel', exact: true })
+  const openBookmarks = async () => {
+    if (!(await panel.isVisible())) await page.locator('button[aria-label="Bookmarks"]').click()
+    await expect(
+      panel.getByRole('button', { name: 'Save current place', exact: true }),
+    ).toBeEnabled()
+  }
+  const records = () =>
+    page.evaluate(
+      async () =>
+        new Promise<Record<string, unknown>[]>((resolve, reject) => {
+          const open = indexedDB.open('papertrail-reading')
+          open.onerror = () => reject(open.error)
+          open.onsuccess = () => {
+            const db = open.result
+            const transaction = db.transaction('documents')
+            const request = transaction.objectStore('documents').getAll()
+            request.onsuccess = () => resolve(request.result)
+            transaction.oncomplete = () => db.close()
+          }
+        }),
+    )
+  await select('bookmarked.pdf', bytes)
+  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  const input = page.getByRole('spinbutton', { name: 'Current page' })
+  await input.fill('3')
+  await input.press('Tab')
+  await pane.evaluate((element) => {
+    element.scrollTop += 90
+  })
+  await openBookmarks()
+  await panel.getByLabel('Bookmark name', { exact: true }).fill('The important part')
+  await panel.getByRole('button', { name: 'Save current place', exact: true }).click()
+  await expect(
+    panel.getByRole('button', { name: 'Go to bookmark The important part', exact: true }),
+  ).toBeVisible()
+  const saved = (await records())[0]!
+  const bookmark = (saved.bookmarks as { anchor: { page: number; x: number; y: number } }[])[0]!
+  expect(bookmark.anchor.page).toBeGreaterThanOrEqual(3)
+  await panel.getByRole('button', { name: 'Close utility panel' }).click()
+  await input.fill('1')
+  await input.press('Tab')
+  await openBookmarks()
+  await panel
+    .getByRole('button', { name: 'Go to bookmark The important part', exact: true })
+    .click()
+  await expect(panel).toHaveCount(0)
+  await expect
+    .poll(() =>
+      pane.evaluate((element, anchor) => {
+        const box = element
+          .querySelector(`#pdf-page-${anchor.page} .pdf-page`)!
+          .getBoundingClientRect()
+        return Math.abs(
+          (element.getBoundingClientRect().top + element.clientHeight / 2 - box.top) / box.height -
+            anchor.y,
+        )
+      }, bookmark.anchor),
+    )
+    .toBeLessThan(0.035)
+  await openBookmarks()
+  await panel
+    .getByRole('button', { name: 'Rename bookmark The important part', exact: true })
+    .click()
+  await panel.getByLabel('New bookmark name', { exact: true }).fill('Revisit this chapter')
+  await panel.getByRole('button', { name: 'Save name', exact: true }).click()
+  await expect(
+    panel.getByRole('button', { name: 'Go to bookmark Revisit this chapter', exact: true }),
+  ).toBeVisible()
+  await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe('bookmarks')
+  await noOverflow(page)
+  await capture(page, info, 'pdf-bookmarks')
+  await page.reload()
+  await select('renamed.pdf', bytes)
+  await openBookmarks()
+  await expect(
+    panel.getByRole('button', { name: 'Go to bookmark Revisit this chapter', exact: true }),
+  ).toBeVisible()
+  expect((await records())[0]!.id).toBe(saved.id)
+  await panel.getByRole('button', { name: 'Close utility panel' }).click()
+  await select('renamed.pdf', createPdfFixture(2))
+  await openBookmarks()
+  await expect(
+    panel.getByText('No bookmarks yet. Save your current place to begin.', { exact: true }),
+  ).toBeVisible()
+  await panel.getByRole('button', { name: 'Close utility panel' }).click()
+  await select('original-again.pdf', bytes)
+  await openBookmarks()
+  await expect(
+    panel.getByRole('button', { name: 'Go to bookmark Revisit this chapter', exact: true }),
+  ).toBeVisible()
+  await panel
+    .getByRole('button', { name: 'Remove bookmark Revisit this chapter', exact: true })
+    .click()
+  await expect(
+    panel.getByText('No bookmarks yet. Save your current place to begin.', { exact: true }),
+  ).toBeVisible()
+  await expect(panel.getByLabel('Bookmark name', { exact: true })).toBeFocused()
+  if (info.project.name === 'chromium-1440') {
+    await page.evaluate(
+      async () =>
+        new Promise<void>((resolve, reject) => {
+          const request = indexedDB.deleteDatabase('papertrail-reading')
+          request.onsuccess = () => resolve()
+          request.onerror = () => reject(request.error)
+        }),
+    )
+    await panel.getByLabel('Bookmark name', { exact: true }).fill('Keep this draft')
+    await panel.getByRole('button', { name: 'Save current place', exact: true }).click()
+    await expect(panel.getByRole('status')).toContainText('could not be saved')
+    await expect(panel.getByLabel('Bookmark name', { exact: true })).toHaveValue('Keep this draft')
+    expect(await records()).toEqual([])
+  }
+})

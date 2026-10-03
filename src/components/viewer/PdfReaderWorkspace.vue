@@ -4,6 +4,9 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch 
 import LoadingState from '../LoadingState.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
+import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
+import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
+import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
 import {
   openPdfDocument,
@@ -17,7 +20,7 @@ import {
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
-  initialPanel?: 'contents' | 'search' | null
+  initialPanel?: 'contents' | 'search' | 'bookmarks' | null
   initialSearchQuery?: string
   document: DiscoveredDocument
 }>()
@@ -25,7 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   status: [message: string]
   identity: [fingerprint: string]
-  utilityChange: [panel: 'contents' | 'search' | null, query: string]
+  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | null, query: string]
 }>()
 
 import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
@@ -42,7 +45,7 @@ function saveReadingPoint() {
 }
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
-type UtilityPanel = 'contents' | 'search' | null
+type UtilityPanel = 'contents' | 'search' | 'bookmarks' | null
 type UtilityPopover = 'search' | 'help' | null
 
 interface FlatOutlineItem {
@@ -63,6 +66,8 @@ const pageEditing = ref(false)
 const pageDraft = ref('1')
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
+const bookmarks = usePdfBookmarks(continuity.documentId)
+let pendingBookmark: PdfBookmark | null = null
 const totalPages = ref(0)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
@@ -232,6 +237,7 @@ async function closeCurrentSession() {
 }
 
 async function openDocument() {
+  pendingBookmark = null
   continuity.reset()
   documentController?.abort()
   const controller = new AbortController()
@@ -294,7 +300,8 @@ async function openDocument() {
   }
 }
 
-async function goToPage(page: number) {
+async function goToPage(page: number, bookmarkNavigation = false) {
+  if (!bookmarkNavigation) pendingBookmark = null
   layoutOperation += 1
   const next = clampPage(page)
   currentPage.value = next
@@ -354,6 +361,8 @@ function stepPage(delta: number) {
 
 let completingRestore = false
 async function handleRendered(pageNumber: number, scale: number) {
+  if (phase.value === 'ready' && pendingBookmark?.anchor.page === pageNumber)
+    await finishBookmarkNavigation(pageNumber)
   if (
     pageNumber !==
     (phase.value === 'restoring' ? (restoredAnchor?.page ?? currentPage.value) : currentPage.value)
@@ -508,10 +517,54 @@ async function loadOutline() {
   }
 }
 
+async function addBookmark(name: string) {
+  if (phase.value !== 'ready') return false
+  const point = captureReadingPoint()
+  const page =
+    Number(point?.page.closest('article')?.id.replace('pdf-page-', '')) || currentPage.value
+  const anchor = normalizePdfAnchor({ page, x: point?.x ?? 0.5, y: point?.y ?? 0 })
+  return anchor ? bookmarks.add(name, anchor) : false
+}
+
+async function finishBookmarkNavigation(pageNumber: number) {
+  const bookmark = pendingBookmark
+  const pane = viewport.value
+  if (!bookmark || bookmark.anchor.page !== pageNumber || !pane) return
+  const page = pane.querySelector<HTMLElement>(`#pdf-page-${pageNumber} .pdf-page`)
+  if (!page) return
+  pendingBookmark = null
+  await restoreReadingPoint({ pane, page, x: bookmark.anchor.x, y: bookmark.anchor.y })
+  chooseMostVisiblePage()
+  saveReadingPoint()
+  pane.focus({ preventScroll: true })
+  emit('status', `Opened bookmark ${bookmark.name}. Page ${pageNumber} of ${totalPages.value}.`)
+}
+
+async function navigateBookmark(bookmark: PdfBookmark) {
+  if (phase.value !== 'ready' || bookmark.anchor.page > totalPages.value) return
+  const sequence = openSequence
+  pendingBookmark = bookmark
+  rightPanel.value = null
+  await nextTick()
+  measureViewport()
+  await nextTick()
+  if (sequence !== openSequence || pendingBookmark !== bookmark) return
+  await goToPage(bookmark.anchor.page, true)
+  await nextTick()
+  if (viewport.value?.querySelector(`#pdf-page-${bookmark.anchor.page}[data-render-state="ready"]`))
+    await finishBookmarkNavigation(bookmark.anchor.page)
+}
+
 function closeRightPanel() {
+  const closing = rightPanel.value
+
   rightPanel.value = null
   void nextTick(() => {
-    readerRoot.value?.querySelector<HTMLButtonElement>('button[aria-label="Contents"]')?.focus()
+    readerRoot.value
+      ?.querySelector<HTMLButtonElement>(
+        `button[aria-label="${closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
+      )
+      ?.focus()
   })
 }
 
@@ -813,6 +866,13 @@ onBeforeUnmount(() => {
           @click="openPopover('help')"
         />
         <IconButton
+          label="Bookmarks"
+          icon="bookmark"
+          :active="rightPanel === 'bookmarks'"
+          :aria-pressed="rightPanel === 'bookmarks'"
+          @click="toggleRightPanel('bookmarks')"
+        />
+        <IconButton
           label="Contents"
           icon="contents"
           :active="rightPanel === 'contents'"
@@ -982,14 +1042,21 @@ onBeforeUnmount(() => {
           :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
           :aria-label="
-            rightPanel === 'contents' ? 'PDF contents panel' : 'PDF search results panel'
+            rightPanel === 'contents'
+              ? 'PDF contents panel'
+              : rightPanel === 'bookmarks'
+                ? 'PDF bookmarks panel'
+                : 'PDF search results panel'
           "
           @keydown.esc.stop.prevent="closeRightPanel"
         >
           <div
             class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
           >
-            <div class="flex min-w-0 items-center gap-1" aria-label="PDF utility panel mode">
+            <div
+              class="flex min-w-0 flex-wrap items-center gap-1"
+              aria-label="PDF utility panel mode"
+            >
               <button
                 type="button"
                 class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
@@ -1005,6 +1072,14 @@ onBeforeUnmount(() => {
                 @click="rightPanel = 'search'"
               >
                 Search results
+              </button>
+              <button
+                type="button"
+                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
+                :aria-pressed="rightPanel === 'bookmarks'"
+                @click="rightPanel = 'bookmarks'"
+              >
+                Bookmarks
               </button>
             </div>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
@@ -1045,6 +1120,22 @@ onBeforeUnmount(() => {
             </ul>
           </section>
 
+          <PdfBookmarksPanel
+            v-else-if="rightPanel === 'bookmarks'"
+            :key="continuity.documentId.value ?? document.id"
+            :bookmarks="bookmarks.bookmarks.value"
+            :available="bookmarks.available.value"
+            :busy="bookmarks.busy.value"
+            :loading="bookmarks.loading.value"
+            :notice="bookmarks.notice.value"
+            :current-page="currentPage"
+            :total-pages="totalPages"
+            :add="addBookmark"
+            :rename="bookmarks.rename"
+            :remove="bookmarks.remove"
+            @navigate="navigateBookmark"
+            @retry="bookmarks.reload"
+          />
           <section
             v-else
             class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"

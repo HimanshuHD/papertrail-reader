@@ -11,6 +11,7 @@ defineProps<{
     | 'zoom-in'
     | 'fit-width'
     | 'fit-page'
+    | 'bookmark'
     | 'contents'
     | 'search'
     | 'fullscreen'
@@ -29,6 +30,7 @@ const paths = {
   'zoom-in': 'M21 21 16.65 16.65M8 11h6M11 8v6',
   'fit-width': 'M4 7h16M4 12h16M4 17h16M2 7l2-2 2 2M22 17l-2 2-2-2',
   'fit-page': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
+  bookmark: 'M6 3h12v18l-6-4-6 4z',
   contents: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   search: 'm21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z',
   fullscreen:

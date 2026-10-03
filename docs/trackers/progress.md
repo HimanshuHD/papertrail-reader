@@ -13,7 +13,7 @@ PR #119 completed #118 and merged as `7dc8bca1bcf9f3eb9f78c75150e2dc7b25241c48`.
 | [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13     | Completed   |
 | [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | Named PDF bookmarks using persisted document identity; parent #13   | In progress |
 
-Reading continuity remains open for #115 bookmarks, #14 recent documents/library search, and separately recorded EPUB acceptance after #12. The next branch is `feat/115-pdf-bookmarks`, based on reconciled main. Storage, file permissions, PDF identity/rendering and lifecycle coordination remain separate. No document bytes are cached by the application. Forget library removes workspace access while preserving reading metadata.
+Reading continuity remains open for #115 bookmarks, #14 recent documents/library search, and separately recorded EPUB acceptance after #12. Active review branch: `feat/115-pdf-bookmarks`, based on reconciled main. Named anchor bookmarks are implemented with separate service/composable/UI boundaries; local lint/format/type/build, 115 unit/component and 10 pipeline tests pass. Remote CI/browser acceptance and owner review remain pending. Storage, file permissions, PDF identity/rendering and lifecycle coordination remain separate. No document bytes are cached by the application. Forget library removes workspace access while preserving reading metadata.
 
 ## Current milestone status — 3 October 2026
 

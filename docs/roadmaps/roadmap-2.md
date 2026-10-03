@@ -6,7 +6,7 @@ Merged PR #116 completed #114 smooth direct landing and #117 zoom/fit-mode persi
 
 1. [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114), under #13: PDF content identity and saved-page restoration, with independent storage/identity services and lifecycle composable.
 2. [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118), under #13: restore the single library, panels and active PDF with permission/content revalidation; completed in PR #119.
-3. [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115), under #13: PDF bookmarks using the validated persistence foundation; in progress.
+3. [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115), under #13: PDF bookmarks using the validated persistence foundation; implementation on `feat/115-pdf-bookmarks`, acceptance pending.
 4. #14: recent documents and library search. EPUB location persistence follows #12 independently.
 
 #13 stays open until its remaining format and bookmark acceptance is recorded.

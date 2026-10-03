@@ -13,6 +13,7 @@ defineProps<{
     | 'zoom-in'
     | 'fit-width'
     | 'fit-page'
+    | 'bookmark'
     | 'contents'
     | 'search'
     | 'fullscreen'
