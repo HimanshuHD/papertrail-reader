@@ -2,6 +2,7 @@
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import LoadingState from '../LoadingState.vue'
+import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
@@ -41,6 +42,17 @@ const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
 const currentPage = ref(1)
+const continuity = useReadingContinuity()
+const persistenceNotice = continuity.notice
+let navigationRevision = 0
+watch(
+  currentPage,
+  (page) => {
+    navigationRevision += 1
+    if (phase.value === 'ready') continuity.save(page)
+  },
+  { flush: 'sync' },
+)
 const totalPages = ref(0)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
@@ -199,6 +211,7 @@ async function closeCurrentSession() {
 }
 
 async function openDocument() {
+  continuity.reset()
   documentController?.abort()
   const controller = new AbortController()
   documentController = controller
@@ -227,6 +240,15 @@ async function openDocument() {
     emit('status', `Opened ${props.document.name}. ${next.totalPages} pages.`)
     await nextTick()
     measureViewport()
+    const revision = navigationRevision
+    void continuity.restore(props.document.file, next.totalPages).then(async (page) => {
+      if (sequence !== openSequence || session.value !== next) return
+      if (page !== null && revision === navigationRevision) {
+        await goToPage(page)
+      } else {
+        continuity.save(currentPage.value)
+      }
+    })
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -597,6 +619,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
+    <p
+      v-if="persistenceNotice"
+      role="status"
+      class="border-b border-line bg-panel px-4 py-2 text-xs text-muted"
+    >
+      {{ persistenceNotice }}
+    </p>
     <header
       class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
     >

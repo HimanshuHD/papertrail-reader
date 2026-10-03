@@ -1124,3 +1124,50 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await capture(page, info, 'wrapped-search-occurrence-dark')
   await noOverflow(page)
 })
+
+test('PDF reading positions survive reload and rename without matching changed content', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const bytes = createPdfFixture(4)
+  const select = async (name: string, buffer: Buffer) => {
+    await page
+      .locator('input[accept*=".pdf"]')
+      .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    await page
+      .getByRole('region', { name: 'Library documents', exact: true })
+      .getByRole('button', { name: new RegExp(name.replaceAll('.', '\\.')) })
+      .click()
+    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toBeVisible()
+  }
+  const savedPage = () =>
+    page.evaluate(async () => {
+      return new Promise<number | null>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-reading', 1)
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          if (!db.objectStoreNames.contains('documents')) {
+            db.close()
+            resolve(null)
+            return
+          }
+          const transaction = db.transaction('documents')
+          const records = transaction.objectStore('documents').getAll()
+          records.onsuccess = () => resolve(records.result[0]?.page ?? null)
+          transaction.oncomplete = () => db.close()
+        }
+      })
+    })
+  await select('original.pdf', bytes)
+  await expect.poll(savedPage).toBe(1)
+  const input = page.getByRole('spinbutton', { name: 'Current page' })
+  await input.fill('3')
+  await input.press('Tab')
+  await expect.poll(savedPage).toBe(3)
+  await page.reload()
+  await select('renamed.pdf', bytes)
+  await expect(input).toHaveValue('3')
+  await select('renamed.pdf', createPdfFixture(2))
+  await expect(input).toHaveValue('1')
+})

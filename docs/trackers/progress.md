@@ -1,5 +1,11 @@
 # PaperTrail progress
 
+## Reading continuity implementation (#114)
+
+Roadmap 2 — Reading continuity has started. Parent #13 remains open; #114 implements PDF identity and saved-page restoration, with #115 tracking bookmarks next. Branch: `feat/pdf-reading-continuity`. Existing file access and PDF rendering services remain separate from the new identity, IndexedDB storage and lifecycle composable. Metadata only is saved; document bytes are not retained.
+
+Acceptance and deployment evidence will be reconciled after this increment is tested and merged. Neither bookmarks nor EPUB persistence is complete in this increment.
+
 ## Current Preparation reconciliation — 3 October 2026
 
 #109 merged as `2cfe48827989392ea7dcf753fb0be1dafb9bb5d7`. Main CI [37117659748](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37117659748) and its dependent production publisher passed. Reconciliation [37117659837](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37117659837) produced `d28d56395b985c494a84896d99803864a6186cdb`, updating the canonical tracker. #106 is completed and closed; its guide/index/navigation and asset acceptance passed before merge.

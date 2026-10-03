@@ -1,5 +1,19 @@
 # Vue application architecture
 
+## PDF continuity service boundaries (#13 / #114)
+
+The first Reading continuity increment keeps Vue components responsible for display and navigation. `useReadingContinuity` coordinates restore/save lifecycle, cancels stale identity work, debounces page changes, and flushes pending writes on document switches, unmount, page hide and hidden visibility. It never renders a PDF.
+
+- `features/library/browser-selection.ts` and `discovery.ts` own browser access and enumeration; IDs here remain session-local.
+- `features/pdf/pdf-session.ts` owns PDF.js loading, rendering, text and outline access.
+- `services/document-identity.ts` lazily fingerprints only the opened file. SHA-256 digests every 1 MiB chunk and a size/version manifest, bounding temporary reads without preloading pages. Rename/path changes preserve identity; changed content creates a separate identity.
+- `services/reading-storage.ts` owns version-1 IndexedDB metadata and generated UUIDs. Resolve/create is atomic in a read-write transaction; save updates only the selected identity. No bytes or permission-bearing handles are stored.
+- `composables/useReadingContinuity.ts` exposes restore/save/reset and a user-facing storage notice. It queues writes to avoid late saves overtaking newer pages. Storage errors never prevent reading.
+
+Restoration clamps pages to the current page count and does not override navigation made while identity resolves. Ambiguous or malformed records are preserved without guessing; automatic saves remain disabled for that selection. Clearing storage starts fresh after reselection. Browser origin and preview path share IndexedDB: identity matching uses content rather than deployment identity. Pending IndexedDB writes at abrupt process termination remain best effort.
+
+Bookmarks are tracked separately in #115; EPUB locations follow #12. This increment stores the page only, not zoom or intra-page scroll offsets.
+
 Updated: 2 October 2026. Owner: #1. Foundation: #3/#22. Completed increment: #6 / merged PR #41.
 
 ## Current reader UI increment
