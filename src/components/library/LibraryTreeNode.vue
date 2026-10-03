@@ -7,13 +7,27 @@ defineOptions({ name: 'LibraryTreeNode' })
 const props = defineProps<{
   node: LibraryTreeNode
   selectedId: string | null
+  collapsedPaths?: readonly string[]
+  disabled?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   select: [id: string]
+  toggle: [path: string, expanded: boolean]
 }>()
 
-const expanded = ref(true)
+const localExpanded = ref(true)
+const expanded = computed(() =>
+  props.collapsedPaths && props.node.kind === 'folder'
+    ? !props.collapsedPaths.includes(props.node.path)
+    : localExpanded.value,
+)
+function toggle() {
+  if (props.node.kind !== 'folder') return
+  const next = !expanded.value
+  localExpanded.value = next
+  emit('toggle', props.node.path, next)
+}
 const label = computed(() =>
   props.node.kind === 'document'
     ? props.node.document.title?.trim() || props.node.document.name
@@ -28,7 +42,7 @@ const label = computed(() =>
         type="button"
         class="flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
         :aria-expanded="expanded"
-        @click="expanded = !expanded"
+        @click="toggle"
       >
         <span class="w-4 shrink-0 text-center text-muted" aria-hidden="true">{{
           expanded ? '▾' : '▸'
@@ -43,6 +57,9 @@ const label = computed(() =>
           :key="child.id"
           :node="child"
           :selected-id="selectedId"
+          :collapsed-paths="collapsedPaths"
+          :disabled="disabled"
+          @toggle="(path, expanded) => $emit('toggle', path, expanded)"
           @select="$emit('select', $event)"
         />
       </ul>
@@ -51,6 +68,7 @@ const label = computed(() =>
     <button
       v-else
       type="button"
+      :disabled="disabled"
       :aria-pressed="selectedId === node.document.id"
       :title="label"
       :aria-label="`${node.document.format}: ${label}`"

@@ -1,19 +1,21 @@
 # PaperTrail progress
 
-## Reading continuity implementation (#114 / #117)
+## Reading continuity implementation (#114 / #117 / #118)
 
-Preview refinement in PR #116: #114 keeps loading visible until the saved target bitmap is ready; #117 retains custom zoom and responsive fit mode with backwards-compatible reading metadata. #118 tracks single workspace/library restoration as a separate next increment. Browser acceptance for the refined source must be recorded before owner preview/merge.
+PR #116 is merged. Its accepted application source `3dd5b3e93ca2122dc292f14d4ffba0cfcb124010` passed [Frontend CI 37124839688](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124839688) and [Browser E2E 37124902731](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124902731). #114 and #117 are completed; #13 remains open for its remaining acceptance.
 
-| Issue                                                              | Target                         | Scope                                                           | Status    |
-| ------------------------------------------------------------------ | ------------------------------ | --------------------------------------------------------------- | --------- |
-| [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114) | Roadmap 2 — Reading continuity | PDF identity and saved-page restoration; parent #13             | Completed |
-| [#117](https://github.com/HimanshuHD/papertrail-reader/issues/117) | Roadmap 2 — Reading continuity | Retain PDF zoom/fit mode; parent #13                            | Completed |
-| [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13 | Backlog   |
-| [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | PDF bookmarks on the #114 persistence foundation; parent #13    | Backlog   |
+#118 is implemented on `feat/workspace-restoration`: byte-free cached tree/UI metadata, permission-aware persisted directory access, fresh path/content verification, normalized reading-anchor restoration, and explicit Forget library. Unit coverage includes denied/missing/unsupported access, stale loads, write/clear ordering and duplicate/changed paths. Browser coverage adds cached context at all five viewport widths and a real persisted native handle at desktop width. CI, Browser E2E and owner preview acceptance remain the review gate.
 
-Roadmap 2 — Reading continuity has started. Parent #13 remains open; #114 implements PDF identity and saved-page restoration, with #115 tracking bookmarks next. Branch: `feat/pdf-reading-continuity`. Existing file access and PDF rendering services remain separate from the new identity, IndexedDB storage and lifecycle composable. Metadata only is saved; document bytes are not retained.
+| Issue                                                              | Target                         | Scope                                                           | Status      |
+| ------------------------------------------------------------------ | ------------------------------ | --------------------------------------------------------------- | ----------- |
+| [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114) | Roadmap 2 — Reading continuity | PDF identity and saved-page restoration; parent #13             | Completed   |
+| [#117](https://github.com/HimanshuHD/papertrail-reader/issues/117) | Roadmap 2 — Reading continuity | Retain PDF zoom/fit mode; parent #13                            | Completed   |
+| [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13 | In progress |
+| [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | PDF bookmarks on the #114 persistence foundation; parent #13    | Backlog     |
 
-Acceptance and deployment evidence will be reconciled after this increment is tested and merged. Neither bookmarks nor EPUB persistence is complete in this increment.
+Roadmap 2 — Reading continuity has started. Parent #13 remains open; #114 implements PDF identity and saved-page restoration, with #115 tracking bookmarks next. Current branch: `feat/workspace-restoration`. Existing file access and PDF rendering services remain separate from the new identity, IndexedDB storage and lifecycle composable. Metadata only is saved; document bytes are not retained.
+
+Workspace acceptance and deployment evidence will be reconciled after #118 is tested and merged. Neither bookmarks nor EPUB persistence is complete in this increment.
 
 ## Current Preparation reconciliation — 3 October 2026
 

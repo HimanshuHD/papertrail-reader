@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { nextTick, ref, watch } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
 import LoadingState from '../LoadingState.vue'
@@ -7,10 +8,10 @@ import type {
   BrowserLibrarySelection,
   LibraryRefreshAction,
 } from '../../features/library/browser-selection'
-import type { DiscoveredDocument } from '../../features/library/discovery'
+import type { LibraryDocumentMetadata } from '../../features/library/discovery'
 
-defineProps<{
-  libraryDocuments: readonly DiscoveredDocument[]
+const props = defineProps<{
+  libraryDocuments: readonly LibraryDocumentMetadata[]
   selectedLibraryDocumentId: string | null
   libraryLabel: string
   showLibraryResults: boolean
@@ -19,6 +20,12 @@ defineProps<{
   discoverySummary: string
   discoveryBusy: boolean
   discoveryProblemCount: number
+  collapsedPaths?: readonly string[]
+  scrollPosition?: number
+  cached?: boolean
+  workspaceMessage?: string
+  canResume?: boolean
+  hasWorkspace?: boolean
 }>()
 
 defineEmits<{
@@ -27,7 +34,21 @@ defineEmits<{
   librarySelection: [selection: BrowserLibrarySelection]
   refreshLibrary: []
   cancelDiscovery: []
+  toggleFolder: [path: string, expanded: boolean]
+  libraryScroll: [position: number]
+  resumeWorkspace: []
+  forgetWorkspace: []
 }>()
+const list = ref<HTMLElement | null>(null)
+watch(
+  [() => props.scrollPosition, () => props.libraryDocuments, list],
+  async () => {
+    await nextTick()
+    if (list.value && props.scrollPosition !== undefined)
+      list.value.scrollTop = props.scrollPosition
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -46,15 +67,31 @@ defineEmits<{
       />
     </header>
 
+    <div v-if="hasWorkspace" class="shrink-0 border-b border-line px-3 py-2 text-xs">
+      <p v-if="workspaceMessage" role="status" class="mb-2 text-muted">{{ workspaceMessage }}</p>
+      <button
+        v-if="canResume"
+        type="button"
+        class="mr-3 rounded border border-line px-2 py-1 text-brand"
+        @click="$emit('resumeWorkspace')"
+      >
+        Resume library
+      </button>
+      <button type="button" class="text-muted hover:text-brand" @click="$emit('forgetWorkspace')">
+        Forget library
+      </button>
+    </div>
     <p id="discovery-status" class="sr-only" role="status" aria-live="polite">
       {{ discoverySummary }}
     </p>
     <div
+      ref="list"
       class="library-list min-h-0 flex-1 overflow-auto px-3 py-3"
       role="region"
       aria-label="Library documents"
       tabindex="0"
       :aria-busy="discoveryBusy"
+      @scroll.passive="$emit('libraryScroll', ($event.target as HTMLElement).scrollTop)"
     >
       <LoadingState
         v-if="discoveryBusy"
@@ -119,6 +156,9 @@ defineEmits<{
             v-if="libraryDocuments.length > 0"
             :documents="libraryDocuments"
             :selected-id="selectedLibraryDocumentId"
+            :collapsed-paths="collapsedPaths"
+            :disabled="cached"
+            @toggle="(path, expanded) => $emit('toggleFolder', path, expanded)"
             @select="$emit('selectLibraryDocument', $event)"
           />
           <div

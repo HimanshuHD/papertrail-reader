@@ -2,15 +2,18 @@
 import { computed } from 'vue'
 import LibraryTreeNode from './LibraryTreeNode.vue'
 import { buildLibraryTree } from '../../features/library/library-tree'
-import type { DiscoveredDocument } from '../../features/library/discovery'
+import type { LibraryDocumentMetadata } from '../../features/library/discovery'
 
 const props = defineProps<{
-  documents: readonly DiscoveredDocument[]
+  documents: readonly LibraryDocumentMetadata[]
   selectedId: string | null
+  collapsedPaths?: readonly string[]
+  disabled?: boolean
 }>()
 
 defineEmits<{
   select: [id: string]
+  toggle: [path: string, expanded: boolean]
 }>()
 
 const nodes = computed(() => buildLibraryTree(props.documents))
@@ -23,6 +26,9 @@ const nodes = computed(() => buildLibraryTree(props.documents))
       :key="node.id"
       :node="node"
       :selected-id="selectedId"
+      :collapsed-paths="collapsedPaths"
+      :disabled="disabled"
+      @toggle="(path, expanded) => $emit('toggle', path, expanded)"
       @select="$emit('select', $event)"
     />
   </ul>

@@ -1,8 +1,14 @@
-import { normalizePdfView, type PdfViewSettings } from './pdf-reading-state'
+import {
+  normalizePdfView,
+  normalizePdfAnchor,
+  type PdfReadingAnchor,
+  type PdfViewSettings,
+} from './pdf-reading-state'
 
 export interface ReadingRecord {
   id: string
   version: 1 | 2
+  anchor?: PdfReadingAnchor
   view?: PdfViewSettings
   fingerprint: string
   name: string
@@ -12,7 +18,7 @@ export interface ReadingRecord {
 
 export interface ReadingStorage {
   resolve(fingerprint: string, name: string): Promise<{ record: ReadingRecord; ambiguous: boolean }>
-  save(id: string, page: number, view?: PdfViewSettings): Promise<void>
+  save(id: string, page: number, view?: PdfViewSettings, anchor?: PdfReadingAnchor): Promise<void>
 }
 
 /** Connections are short-lived so upgrades/deletion by another tab cannot leave stale handles. */
@@ -85,6 +91,7 @@ export class IndexedDbReadingStorage implements ReadingStorage {
             ...valid[0]!,
             version: 2,
             view: normalizePdfView(valid[0]!.view),
+            anchor: normalizePdfAnchor(valid[0]!.anchor),
           }
           store.put(record)
           done({ record, ambiguous: false })
@@ -106,7 +113,7 @@ export class IndexedDbReadingStorage implements ReadingStorage {
     })
   }
 
-  save(id: string, page: number, view?: PdfViewSettings): Promise<void> {
+  save(id: string, page: number, view?: PdfViewSettings, anchor?: PdfReadingAnchor): Promise<void> {
     if (!Number.isInteger(page) || page < 1)
       return Promise.reject(new RangeError('Invalid reading page.'))
     return this.transaction<void>((store, done) => {
@@ -120,6 +127,7 @@ export class IndexedDbReadingStorage implements ReadingStorage {
             version: 2,
             page,
             view: normalizePdfView(view ?? record.view),
+            anchor: normalizePdfAnchor(anchor),
             updatedAt: Date.now(),
           })
         done(undefined)

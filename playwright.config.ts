@@ -16,7 +16,12 @@ export default defineConfig({
   projects: [
     ...[320, 375, 768, 1024, 1440].map((width) => ({
       name: `chromium-${width}`,
-      use: { browserName: 'chromium' as const, viewport: { width, height: 900 } },
+      // Exercise native persisted handles in full Chromium, not the separate headless shell.
+      use: {
+        browserName: 'chromium' as const,
+        channel: 'chromium',
+        viewport: { width, height: 900 },
+      },
     })),
     ...(process.env.E2E_WEBKIT ? [375, 1440] : []).map((width) => ({
       name: `webkit-${width}`,

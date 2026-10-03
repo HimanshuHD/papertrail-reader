@@ -122,3 +122,35 @@ it('restores custom view settings and includes view-only changes in queued saves
   await flushPromises()
   expect(repository.save).toHaveBeenCalledExactlyOnceWith('A', 7, { fitMode: 'page', zoom: 1.75 })
 })
+
+it('restores and saves the normalized intra-page anchor independently of header page', async () => {
+  const repository = storage()
+  vi.mocked(repository.resolve).mockResolvedValueOnce({
+    record: {
+      id: 'A',
+      version: 2,
+      fingerprint: 'A',
+      name: 'A',
+      page: 3,
+      updatedAt: 0,
+      view: { fitMode: 'custom', zoom: 1.5 },
+      anchor: { page: 4, x: 0.5, y: 0.7 },
+    },
+    ambiguous: false,
+  })
+  const reader = setup(repository)
+  expect(await reader.restore(new File([''], 'A'), 10)).toEqual({
+    page: 3,
+    view: { fitMode: 'custom', zoom: 1.5 },
+    anchor: { page: 4, x: 0.5, y: 0.7 },
+  })
+  reader.save(3, { fitMode: 'custom', zoom: 1.5 }, { page: 4, x: 0.5, y: 0.8 })
+  reader.reset()
+  await flushPromises()
+  expect(repository.save).toHaveBeenCalledExactlyOnceWith(
+    'A',
+    3,
+    { fitMode: 'custom', zoom: 1.5 },
+    { page: 4, x: 0.5, y: 0.8 },
+  )
+})
