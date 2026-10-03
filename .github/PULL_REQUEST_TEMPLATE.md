@@ -11,7 +11,7 @@ Refs #<!-- related or partially addressed issue -->
 
 - [ ] Acceptance criteria verified, with results below.
 - [ ] Appropriate checks pass (or absence/limitations explained).
-- [ ] docs/progress.md and related documentation updated.
+- [ ] docs/trackers/progress.md and related documentation updated.
 - [ ] Incomplete work is tracked in linked issues.
 
 Results:
