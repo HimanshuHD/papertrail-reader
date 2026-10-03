@@ -100,6 +100,25 @@ describe('PDF reader utility workspace', () => {
     expect(continuity.save).toHaveBeenCalledWith(3, { fitMode: 'custom', zoom: 1.5 })
   })
 
+  it('keeps a page-number edit intact while the visible page changes', async () => {
+    continuity.restore.mockResolvedValueOnce({ page: 3, view: { fitMode: 'width', zoom: 1 } })
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('input[aria-label="Current page"]')
+    await input.trigger('focus')
+    input.element.value = '1'
+    await input.trigger('input')
+    await wrapper.get('button[aria-label="Previous page"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 2 of 3')
+    expect(input.element.value).toBe('1')
+    await input.trigger('change')
+    await input.trigger('blur')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 1 of 3')
+  })
+
   it('truncates a long filename while preserving the full name for assistive and hover access', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)

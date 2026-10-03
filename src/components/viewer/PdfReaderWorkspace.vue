@@ -42,6 +42,8 @@ const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
 const currentPage = ref(1)
+const pageEditing = ref(false)
+const pageDraft = ref('1')
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
 const totalPages = ref(0)
@@ -153,7 +155,8 @@ function measureViewport() {
   const atEnd =
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
-  const readingPoint = captureReadingPoint()
+  const preservePosition = phase.value === 'ready'
+  const readingPoint = preservePosition ? captureReadingPoint() : null
   const operation = layoutOperation
   const scrollBefore = element.scrollTop
   const previousWidth = availableWidth.value
@@ -173,7 +176,7 @@ function measureViewport() {
   )
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
-      if (viewport.value !== element || operation !== layoutOperation) return
+      if (!preservePosition || viewport.value !== element || operation !== layoutOperation) return
       if (Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
@@ -223,6 +226,8 @@ async function openDocument() {
   completingRestore = false
   errorMessage.value = ''
   currentPage.value = 1
+  pageEditing.value = false
+  pageDraft.value = '1'
   totalPages.value = 0
   fitMode.value = 'width'
   zoom.value = 1
@@ -378,9 +383,18 @@ function captureReadingPoint() {
   }
 }
 
-async function restoreReadingPoint(point: ReturnType<typeof captureReadingPoint>) {
+async function restoreReadingPoint(
+  point: ReturnType<typeof captureReadingPoint>,
+  operation = layoutOperation,
+) {
   await nextTick()
-  if (!point || !point.page.isConnected || viewport.value !== point.pane) return
+  if (
+    operation !== layoutOperation ||
+    !point ||
+    !point.page.isConnected ||
+    viewport.value !== point.pane
+  )
+    return
   const bounds = point.pane.getBoundingClientRect()
   const box = point.page.getBoundingClientRect()
   point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
@@ -688,12 +702,18 @@ onBeforeUnmount(() => {
           @click="stepPage(-1)"
         />
         <input
-          :value="currentPage"
+          :value="pageEditing ? pageDraft : currentPage"
           type="number"
           min="1"
           :max="totalPages"
           class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
+          @focus="
+            pageEditing = true
+            pageDraft = String(currentPage)
+          "
+          @input="pageDraft = ($event.target as HTMLInputElement).value"
+          @blur="pageEditing = false"
           @change="handlePageInput"
         />
         <IconButton
