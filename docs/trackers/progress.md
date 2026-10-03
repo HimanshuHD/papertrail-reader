@@ -6,11 +6,11 @@
 
 Fifteen remaining issue records now identify their actual milestone and owning roadmap; twelve obsolete M0/M4/M5/M6/M7 title prefixes are removed. Roadmap 2 issues retain the actual milestones in [Roadmap 2](../roadmaps/roadmap-2.md). #17/#18 belong to [Roadmap 3](../roadmaps/roadmap-3.md), with no milestone assigned yet. Desktop #4/#23/#27 remains separately deferred outside both roadmap scopes.
 
-| Issue                                                              | Target    | Scope                                | Status                                                               |
-| ------------------------------------------------------------------ | --------- | ------------------------------------ | -------------------------------------------------------------------- |
-| [#100](https://github.com/HimanshuHD/papertrail-reader/issues/100) | Web       | Selective publisher/browser triggers | In review — #108 merged; pure-docs/manual-preview acceptance pending |
-| [#106](https://github.com/HimanshuHD/papertrail-reader/issues/106) | Docs      | Categorized Markdown and navigation  | Completed                                                            |
-| [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) | Web later | Roadmap 3 workspace scope            | New — implementation not started                                     |
+| Issue                                                              | Target    | Scope                                | Status                                                                 |
+| ------------------------------------------------------------------ | --------- | ------------------------------------ | ---------------------------------------------------------------------- |
+| [#100](https://github.com/HimanshuHD/papertrail-reader/issues/100) | Web       | Selective publisher/browser triggers | In review — docs-only merge passed; successful open-PR preview pending |
+| [#106](https://github.com/HimanshuHD/papertrail-reader/issues/106) | Docs      | Categorized Markdown and navigation  | Completed                                                              |
+| [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) | Web later | Roadmap 3 workspace scope            | New — implementation not started                                       |
 
 ## Milestone 1 closure gate
 
