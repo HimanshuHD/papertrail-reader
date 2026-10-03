@@ -19,6 +19,9 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
     openPdfDocument: pdfSessionMocks.open,
   }
 })
+vi.mock('../../src/services/document-identity', () => ({
+  fingerprintDocument: vi.fn(async () => 'shell-fixture'),
+}))
 import App from '../../src/App.vue'
 import * as discovery from '../../src/features/library/discovery'
 import ReaderView from '../../src/views/ReaderView.vue'

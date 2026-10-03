@@ -1124,3 +1124,122 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await capture(page, info, 'wrapped-search-occurrence-dark')
   await noOverflow(page)
 })
+
+test('PDF reading positions survive reload and rename without matching changed content', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const bytes = createPdfFixture(4)
+  const select = async (name: string, buffer: Buffer) => {
+    const opener = page.getByRole('button', { name: 'Show library' })
+    if (await opener.isVisible()) await opener.click()
+    await page
+      .locator('input[accept*=".pdf"]')
+      .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    await page
+      .getByRole('region', { name: 'Library documents', exact: true })
+      .getByRole('button', { name: new RegExp(name.replaceAll('.', '\\.')) })
+      .click()
+    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    await page.getByRole('button', { name: 'Hide library' }).click()
+  }
+  const savedPage = () =>
+    page.evaluate(async () => {
+      if (!(await indexedDB.databases()).some((database) => database.name === 'papertrail-reading'))
+        return null
+      return new Promise<number | null>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-reading')
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          if (!db.objectStoreNames.contains('documents')) {
+            db.close()
+            resolve(null)
+            return
+          }
+          const transaction = db.transaction('documents')
+          const records = transaction.objectStore('documents').getAll()
+          records.onsuccess = () => resolve(records.result[0]?.page ?? null)
+          transaction.oncomplete = () => db.close()
+        }
+      })
+    })
+  await select('original.pdf', bytes)
+  await expect.poll(savedPage).toBe(1)
+  const input = page.getByRole('spinbutton', { name: 'Current page' })
+  await input.fill('3')
+  await input.press('Tab')
+  await expect.poll(savedPage).toBe(3)
+  await page.getByRole('button', { name: 'Zoom in' }).click()
+  const readView = () =>
+    page.evaluate(
+      async () =>
+        new Promise<{ fitMode: string; zoom: number } | null>((resolve, reject) => {
+          const request = indexedDB.open('papertrail-reading')
+          request.onerror = () => reject(request.error)
+          request.onsuccess = () => {
+            const db = request.result
+            const transaction = db.transaction('documents')
+            const records = transaction.objectStore('documents').getAll()
+            records.onsuccess = () => resolve(records.result[0]?.view ?? null)
+            transaction.oncomplete = () => db.close()
+          }
+        }),
+    )
+  await expect.poll(async () => (await readView())?.fitMode).toBe('custom')
+  const savedView = (await readView())!
+  await page.reload()
+  // Delay identity resolution to make any first-page flash observable.
+  await page.evaluate(() => {
+    const digest = crypto.subtle.digest.bind(crypto.subtle)
+    crypto.subtle.digest = async (...args: Parameters<SubtleCrypto['digest']>) => {
+      await new Promise((resolve) => setTimeout(resolve, 250))
+      return digest(...args)
+    }
+    const observed: string[] = []
+    ;(window as unknown as { restoredFrames: string[] }).restoredFrames = observed
+    const sample = () => {
+      const pane = document.querySelector('[aria-label="PDF pages"]')
+      if (pane?.getAttribute('aria-busy') === 'false') {
+        const input = document.querySelector<HTMLInputElement>('[aria-label="Current page"]')
+        if (input) observed.push(input.value)
+      }
+      requestAnimationFrame(sample)
+    }
+    requestAnimationFrame(sample)
+  })
+  await select('renamed.pdf', bytes)
+  await expect(input).toHaveValue('3')
+  await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible()
+  await expect(
+    page.getByText(new RegExp(`Page 3 of 4 ·.*${Math.round(savedView.zoom * 100)}%`)),
+  ).toBeVisible()
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => (window as unknown as { restoredFrames: string[] }).restoredFrames.length,
+      ),
+    )
+    .toBeGreaterThan(0)
+  expect(
+    await page.evaluate(() =>
+      (window as unknown as { restoredFrames: string[] }).restoredFrames.every(
+        (value) => value === '3',
+      ),
+    ),
+  ).toBe(true)
+  await page.getByRole('button', { name: 'Fit page', exact: true }).click()
+  await expect.poll(async () => (await readView())?.fitMode).toBe('page')
+  await page.reload()
+  await select('renamed.pdf', bytes)
+  await expect(input).toHaveValue('3')
+  await expect(page.getByRole('button', { name: 'Fit page', exact: true })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
+  await select('renamed.pdf', createPdfFixture(2))
+  await expect(input).toHaveValue('1')
+})

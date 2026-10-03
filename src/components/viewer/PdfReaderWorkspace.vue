@@ -2,6 +2,7 @@
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import LoadingState from '../LoadingState.vue'
+import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfPageView from './PdfPageView.vue'
 import {
@@ -23,7 +24,7 @@ const emit = defineEmits<{
   status: [message: string]
 }>()
 
-type ReaderPhase = 'loading' | 'ready' | 'error'
+type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
 type UtilityPanel = 'contents' | 'search' | null
 type UtilityPopover = 'search' | 'help' | null
 
@@ -41,9 +42,21 @@ const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
 const errorMessage = ref('')
 const currentPage = ref(1)
+const pageEditing = ref(false)
+const pageDraft = ref('1')
+const continuity = useReadingContinuity()
+const persistenceNotice = continuity.notice
 const totalPages = ref(0)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
+watch(
+  [currentPage, fitMode, zoom],
+  () => {
+    if (phase.value === 'ready')
+      continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+  },
+  { flush: 'sync' },
+)
 const renderedScale = ref(1)
 const availableWidth = ref(720)
 const availableHeight = ref(900)
@@ -142,7 +155,8 @@ function measureViewport() {
   const atEnd =
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
-  const readingPoint = captureReadingPoint()
+  const preservePosition = phase.value === 'ready'
+  const readingPoint = preservePosition ? captureReadingPoint() : null
   const operation = layoutOperation
   const scrollBefore = element.scrollTop
   const previousWidth = availableWidth.value
@@ -162,7 +176,7 @@ function measureViewport() {
   )
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
-      if (viewport.value !== element || operation !== layoutOperation) return
+      if (!preservePosition || viewport.value !== element || operation !== layoutOperation) return
       if (Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
@@ -199,13 +213,21 @@ async function closeCurrentSession() {
 }
 
 async function openDocument() {
+  continuity.reset()
   documentController?.abort()
   const controller = new AbortController()
   documentController = controller
   const sequence = ++openSequence
   phase.value = 'loading'
+  if (viewport.value) {
+    viewport.value.scrollTop = 0
+    viewport.value.scrollLeft = 0
+  }
+  completingRestore = false
   errorMessage.value = ''
   currentPage.value = 1
+  pageEditing.value = false
+  pageDraft.value = '1'
   totalPages.value = 0
   fitMode.value = 'width'
   zoom.value = 1
@@ -221,12 +243,21 @@ async function openDocument() {
       return
     }
 
+    const restored = await continuity.restore(props.document.file, next.totalPages)
+    if (sequence !== openSequence) {
+      await next.close()
+      return
+    }
+    currentPage.value = restored?.page ?? 1
+    fitMode.value = restored?.view.fitMode ?? 'width'
+    zoom.value = restored?.view.zoom ?? 1
+    renderedScale.value = zoom.value
+    phase.value = 'restoring'
     session.value = next
     totalPages.value = next.totalPages
-    phase.value = 'ready'
-    emit('status', `Opened ${props.document.name}. ${next.totalPages} pages.`)
     await nextTick()
     measureViewport()
+    if (currentPage.value !== 1) await goToPage(currentPage.value)
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
@@ -258,6 +289,7 @@ async function goToPage(page: number) {
 }
 
 function chooseMostVisiblePage() {
+  if (phase.value !== 'ready') return
   const pane = viewport.value
   if (!pane) return
   const bounds = pane.getBoundingClientRect()
@@ -294,8 +326,27 @@ function stepPage(delta: number) {
   void goToPage(currentPage.value + delta)
 }
 
-function handleRendered(pageNumber: number, scale: number) {
-  if (pageNumber === currentPage.value) renderedScale.value = scale
+let completingRestore = false
+async function handleRendered(pageNumber: number, scale: number) {
+  if (pageNumber !== currentPage.value) return
+  renderedScale.value = scale
+  if (phase.value !== 'restoring' || completingRestore) return
+  completingRestore = true
+  const sequence = openSequence
+  try {
+    // Target dimensions and bitmap are ready; align while the pages remain hidden.
+    if (pageNumber !== 1) await goToPage(pageNumber)
+    await nextTick()
+    if (sequence !== openSequence || phase.value !== 'restoring') return
+    phase.value = 'ready'
+    continuity.save(currentPage.value, { fitMode: fitMode.value, zoom: zoom.value })
+    emit(
+      'status',
+      `Opened ${props.document.name}. Page ${currentPage.value} of ${totalPages.value}.`,
+    )
+  } finally {
+    if (sequence === openSequence) completingRestore = false
+  }
 }
 
 function handleRenderError(message: string) {
@@ -332,9 +383,18 @@ function captureReadingPoint() {
   }
 }
 
-async function restoreReadingPoint(point: ReturnType<typeof captureReadingPoint>) {
+async function restoreReadingPoint(
+  point: ReturnType<typeof captureReadingPoint>,
+  operation = layoutOperation,
+) {
   await nextTick()
-  if (!point || !point.page.isConnected || viewport.value !== point.pane) return
+  if (
+    operation !== layoutOperation ||
+    !point ||
+    !point.page.isConnected ||
+    viewport.value !== point.pane
+  )
+    return
   const bounds = point.pane.getBoundingClientRect()
   const box = point.page.getBoundingClientRect()
   point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
@@ -371,6 +431,11 @@ async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
   fitMode.value = mode
   await restoreReadingPoint(point)
   emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
+}
+
+function beginPageEdit() {
+  pageEditing.value = true
+  pageDraft.value = String(currentPage.value)
 }
 
 function handlePageInput(event: Event) {
@@ -597,6 +662,13 @@ onBeforeUnmount(() => {
 
 <template>
   <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
+    <p
+      v-if="persistenceNotice"
+      role="status"
+      class="border-b border-line bg-panel px-4 py-2 text-xs text-muted"
+    >
+      {{ persistenceNotice }}
+    </p>
     <header
       class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
     >
@@ -609,13 +681,22 @@ onBeforeUnmount(() => {
         >
           {{ document.name }}
         </h2>
-        <p v-if="phase === 'ready'" class="mt-1 text-xs text-muted">
+        <p
+          v-if="session"
+          :style="{ visibility: phase === 'ready' ? 'visible' : 'hidden' }"
+          class="mt-1 text-xs text-muted"
+        >
           Page {{ currentPage }} of {{ totalPages }} · {{ progressPercent }}% · {{ zoomPercent }}%
         </p>
       </div>
 
       <div
-        v-if="phase === 'ready'"
+        v-if="session"
+        :inert="phase !== 'ready'"
+        :style="{
+          visibility: phase === 'ready' ? 'visible' : 'hidden',
+          opacity: phase === 'ready' ? 1 : 0,
+        }"
         class="flex min-w-0 flex-wrap items-center justify-end gap-1"
         aria-label="PDF reader controls"
       >
@@ -626,12 +707,15 @@ onBeforeUnmount(() => {
           @click="stepPage(-1)"
         />
         <input
-          :value="currentPage"
+          :value="pageEditing ? pageDraft : currentPage"
           type="number"
           min="1"
           :max="totalPages"
           class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
+          @focus="beginPageEdit"
+          @input="pageDraft = ($event.target as HTMLInputElement).value"
+          @blur="pageEditing = false"
           @change="handlePageInput"
         />
         <IconButton
@@ -784,13 +868,18 @@ onBeforeUnmount(() => {
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
-        :aria-busy="phase === 'loading'"
+        :aria-busy="phase === 'loading' || phase === 'restoring'"
         @scroll.passive="handleViewerScroll"
       >
-        <LoadingState v-if="phase === 'loading'" label="Opening document" :detail="document.name" />
+        <div
+          v-if="phase === 'loading' || phase === 'restoring'"
+          class="absolute inset-0 z-10 bg-canvas"
+        >
+          <LoadingState label="Opening document" :detail="document.name" />
+        </div>
 
         <div
-          v-else-if="phase === 'error'"
+          v-if="phase === 'error'"
           class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
           role="alert"
         >
@@ -798,10 +887,19 @@ onBeforeUnmount(() => {
           <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
         </div>
 
-        <div v-else-if="session" class="flex min-w-0 flex-col items-center gap-6">
+        <div
+          v-else-if="session"
+          class="flex min-w-0 flex-col items-center gap-6"
+          :inert="phase !== 'ready'"
+          :aria-hidden="phase !== 'ready'"
+          :style="{
+            visibility: phase === 'ready' ? 'visible' : 'hidden',
+            opacity: phase === 'ready' ? 1 : 0,
+          }"
+        >
           <PdfPageView
             v-for="pageNumber in pages"
-            :key="pageNumber"
+            :key="`${openSequence}:${pageNumber}`"
             :session="session"
             :page-number="pageNumber"
             :fit-mode="fitMode"
