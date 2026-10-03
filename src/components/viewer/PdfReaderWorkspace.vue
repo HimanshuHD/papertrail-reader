@@ -433,6 +433,11 @@ async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
   emit('status', mode === 'width' ? 'Fit width enabled.' : 'Fit page enabled.')
 }
 
+function beginPageEdit() {
+  pageEditing.value = true
+  pageDraft.value = String(currentPage.value)
+}
+
 function handlePageInput(event: Event) {
   const input = event.currentTarget as HTMLInputElement
   void goToPage(Number(input.value))
@@ -708,10 +713,7 @@ onBeforeUnmount(() => {
           :max="totalPages"
           class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
-          @focus="
-            pageEditing = true
-            pageDraft = String(currentPage)
-          "
+          @focus="beginPageEdit"
           @input="pageDraft = ($event.target as HTMLInputElement).value"
           @blur="pageEditing = false"
           @change="handlePageInput"
