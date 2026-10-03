@@ -1,9 +1,11 @@
 name: Publish website
 on:
-  workflow_run:
-    workflows: [Frontend CI]
-    types: [completed]
-    branches: [main]
+  workflow_call:
+    inputs:
+      build_run:
+        description: 'Current CI run whose successful frontend job produced web-build'
+        required: true
+        type: string
   workflow_dispatch:
     inputs:
       pr_number:
@@ -17,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    if: github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' && github.event.workflow_run.head_branch == 'main')
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment:
@@ -35,13 +37,19 @@ jobs:
       - name: Select a trusted successful build
         id: select
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          BUILD_RUN: ${{ inputs.build_run }}
         with:
           script: |
             const { owner, repo } = context.repo;
             const { previewDecision, eligibleMainBuild } = await import(require('node:url').pathToFileURL(process.cwd() + '/scripts/deploy-policy.mjs').href);
             const manual = context.eventName === 'workflow_dispatch';
             const requested = context.payload.inputs?.pr_number?.trim() || '';
-            let run = context.payload.workflow_run, selectedPR;
+            let run, selectedPR;
+            if (!manual) {
+              if (process.env.BUILD_RUN !== String(context.runId)) throw new Error('Reusable publisher requires its current CI run');
+              run = (await github.rest.actions.getWorkflowRun({owner,repo,run_id:context.runId})).data;
+            }
             const skip = reason => { core.setOutput('skip','true'); core.setOutput('reason',reason); };
             if (manual) {
               if (requested) {

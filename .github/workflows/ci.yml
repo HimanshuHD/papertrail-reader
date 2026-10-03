@@ -9,12 +9,14 @@ permissions:
   contents: read
 concurrency:
   group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   frontend:
     name: Validate and build website
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      publish: ${{ steps.identity.outputs.publish }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -43,6 +45,7 @@ jobs:
           fi
           npm run build -- --base "$DEPLOY_BASE"
       - name: Record artifact identity
+        id: identity
         env:
           PR_NUMBER: ${{ github.event.pull_request.number }}
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
@@ -55,3 +58,15 @@ jobs:
           name: web-build
           path: dist/
           retention-days: 7
+  publish:
+    name: Publish validated production build
+    needs: frontend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.frontend.outputs.publish == 'true'
+    permissions:
+      actions: read
+      contents: write
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
+    with:
+      build_run: ${{ format('{0}', github.run_id) }}

@@ -10,11 +10,10 @@ if (
 ) {
   const paths = execFileSync(
     'git',
-    ['diff', '--name-only', process.env.BEFORE_SHA, process.env.GITHUB_SHA],
+    ['diff', '--no-renames', '--name-only', '-z', process.env.BEFORE_SHA, process.env.GITHUB_SHA],
     { encoding: 'utf8' },
   )
-    .trim()
-    .split('\n')
+    .split('\0')
     .filter(Boolean)
   publish = affectsWebsite(paths)
 }
@@ -22,6 +21,10 @@ fs.writeFileSync(
   'dist/build.json',
   JSON.stringify({ sha: process.env.SOURCE_SHA, runId: process.env.GITHUB_RUN_ID, publish }),
 )
+
+if (process.env.GITHUB_OUTPUT) {
+  fs.appendFileSync(process.env.GITHUB_OUTPUT, `publish=${publish}\n`)
+}
 
 if (process.env.PR_NUMBER) {
   fs.writeFileSync(
