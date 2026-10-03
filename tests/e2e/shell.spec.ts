@@ -1360,104 +1360,121 @@ test('cached workspace preserves tree, selection and panel context without retai
 })
 
 test('native persisted directory reopens the PDF at its anchor and rejects changed content', async ({
-  page,
+  playwright,
 }, info) => {
   test.skip(
     info.project.name !== 'chromium-1440',
     'Native handle lifecycle is covered once; cached UI is covered at all viewport widths.',
   )
-  await page.goto('./#/app')
-  await page.evaluate(
-    async (bytes) => {
-      const root = await navigator.storage.getDirectory()
-      const directory = await root.getDirectoryHandle('remembered-books', { create: true })
-      const file = await directory.getFileHandle('book.pdf', { create: true })
-      const writer = await file.createWritable()
-      await writer.write(new Uint8Array(bytes))
-      await writer.close()
-      Object.defineProperty(window, 'showDirectoryPicker', {
-        configurable: true,
-        value: async () => directory,
-      })
-    },
-    [...createPdfFixture(8)],
-  )
-  await page.getByRole('button', { name: 'Add local documents' }).click()
-  await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
-  await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
-  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
-  await expect(pane).toHaveAttribute('aria-busy', 'false')
-  await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
-  await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
-  await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
-  await page.getByRole('button', { name: 'Hide library' }).click()
-  const input = page.getByRole('spinbutton', { name: 'Current page' })
-  await input.fill('3')
-  await input.press('Tab')
-  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await pane.evaluate((element) => {
-    element.scrollTop += 180
+  // Native handle persistence uses a normal profile, not an incognito context.
+  // An empty userDataDir asks Playwright for an isolated temporary profile.
+  const context = await playwright.chromium.launchPersistentContext('', {
+    channel: 'chromium',
+    headless: true,
+    viewport: info.project.use.viewport,
+    baseURL: info.project.use.baseURL,
   })
-  const reading = () =>
-    page.evaluate(
-      async () =>
-        new Promise<{
-          anchor: { page: number; x: number; y: number }
-          view: { fitMode: string; zoom: number }
-        }>((resolve, reject) => {
-          const open = indexedDB.open('papertrail-reading')
-          open.onerror = () => reject(open.error)
-          open.onsuccess = () => {
-            const db = open.result
-            const transaction = db.transaction('documents')
-            const records = transaction.objectStore('documents').getAll()
-            records.onsuccess = () => resolve(records.result[0])
-            transaction.oncomplete = () => db.close()
-          }
-        }),
+  await context.tracing.start({ screenshots: true, snapshots: true, sources: true })
+  const page = context.pages()[0] ?? (await context.newPage())
+  try {
+    await page.goto('./#/app')
+    await page.evaluate(
+      async (bytes) => {
+        const root = await navigator.storage.getDirectory()
+        const directory = await root.getDirectoryHandle('remembered-books', { create: true })
+        const file = await directory.getFileHandle('book.pdf', { create: true })
+        const writer = await file.createWritable()
+        await writer.write(new Uint8Array(bytes))
+        await writer.close()
+        Object.defineProperty(window, 'showDirectoryPicker', {
+          configurable: true,
+          value: async () => directory,
+        })
+      },
+      [...createPdfFixture(8)],
     )
-  await expect.poll(async () => (await reading()).anchor?.page).toBeGreaterThanOrEqual(3)
-  await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
-  await page.getByRole('button', { name: 'Contents', exact: true }).click()
-  await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
-  await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe('contents')
-  const before = await reading()
-  await page.reload()
-  await expect(pane).toHaveAttribute('aria-busy', 'false')
-  await expect(page.getByRole('button', { name: 'Show library' })).toBeVisible()
-  await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Zoom in', exact: true })).toBeVisible()
-  await expect.poll(async () => (await reading()).view.zoom).toBe(before.view.zoom)
-  await expect
-    .poll(async () => Math.abs((await reading()).anchor.y - before.anchor.y))
-    .toBeLessThan(0.025)
-  await expect.poll(async () => (await reading()).anchor.page).toBe(before.anchor.page)
-  const restoredY = await pane.evaluate((element, anchor) => {
-    const pdf = element.querySelector(`#pdf-page-${anchor.page} .pdf-page`)!
-    const box = pdf.getBoundingClientRect()
-    return (element.getBoundingClientRect().top + element.clientHeight / 2 - box.top) / box.height
-  }, before.anchor)
-  expect(Math.abs(restoredY - before.anchor.y)).toBeLessThan(0.025)
-  await capture(page, info, 'workspace-native-restored')
-  await page.evaluate(
-    async (bytes) => {
-      const root = await navigator.storage.getDirectory()
-      const directory = await root.getDirectoryHandle('remembered-books')
-      const file = await directory.getFileHandle('book.pdf')
-      const writer = await file.createWritable()
-      await writer.write(new Uint8Array(bytes))
-      await writer.close()
-    },
-    [...createPdfFixture(2)],
-  )
-  await page.reload()
-  await page.getByRole('button', { name: 'Show library' }).click()
-  await expect(
-    page.getByText(
-      'The previously opened PDF changed or is unavailable. Select a document to continue.',
-      { exact: true },
-    ),
-  ).toBeVisible()
-  await expect(pane).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'PDF: book.pdf', exact: true })).toBeEnabled()
+    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
+    await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
+    const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+    await expect(pane).toHaveAttribute('aria-busy', 'false')
+    await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
+    await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
+    await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    const input = page.getByRole('spinbutton', { name: 'Current page' })
+    await input.fill('3')
+    await input.press('Tab')
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+    await pane.evaluate((element) => {
+      element.scrollTop += 180
+    })
+    const reading = () =>
+      page.evaluate(
+        async () =>
+          new Promise<{
+            anchor: { page: number; x: number; y: number }
+            view: { fitMode: string; zoom: number }
+          }>((resolve, reject) => {
+            const open = indexedDB.open('papertrail-reading')
+            open.onerror = () => reject(open.error)
+            open.onsuccess = () => {
+              const db = open.result
+              const transaction = db.transaction('documents')
+              const records = transaction.objectStore('documents').getAll()
+              records.onsuccess = () => resolve(records.result[0])
+              transaction.oncomplete = () => db.close()
+            }
+          }),
+      )
+    await expect.poll(async () => (await reading()).anchor?.page).toBeGreaterThanOrEqual(3)
+    await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
+    await page.getByRole('button', { name: 'Contents', exact: true }).click()
+    await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
+    await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe('contents')
+    const before = await reading()
+    await page.reload()
+    await expect(pane).toHaveAttribute('aria-busy', 'false')
+    await expect(page.getByRole('button', { name: 'Show library' })).toBeVisible()
+    await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Zoom in', exact: true })).toBeVisible()
+    await expect.poll(async () => (await reading()).view.zoom).toBe(before.view.zoom)
+    await expect
+      .poll(async () => Math.abs((await reading()).anchor.y - before.anchor.y))
+      .toBeLessThan(0.025)
+    await expect.poll(async () => (await reading()).anchor.page).toBe(before.anchor.page)
+    const restoredY = await pane.evaluate((element, anchor) => {
+      const pdf = element.querySelector(`#pdf-page-${anchor.page} .pdf-page`)!
+      const box = pdf.getBoundingClientRect()
+      return (element.getBoundingClientRect().top + element.clientHeight / 2 - box.top) / box.height
+    }, before.anchor)
+    expect(Math.abs(restoredY - before.anchor.y)).toBeLessThan(0.025)
+    await capture(page, info, 'workspace-native-restored')
+    await page.evaluate(
+      async (bytes) => {
+        const root = await navigator.storage.getDirectory()
+        const directory = await root.getDirectoryHandle('remembered-books')
+        const file = await directory.getFileHandle('book.pdf')
+        const writer = await file.createWritable()
+        await writer.write(new Uint8Array(bytes))
+        await writer.close()
+      },
+      [...createPdfFixture(2)],
+    )
+    await page.reload()
+    await page.getByRole('button', { name: 'Show library' }).click()
+    await expect(
+      page.getByText(
+        'The previously opened PDF changed or is unavailable. Select a document to continue.',
+        { exact: true },
+      ),
+    ).toBeVisible()
+    await expect(pane).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'PDF: book.pdf', exact: true })).toBeEnabled()
+  } finally {
+    const path = info.outputPath('native-profile-trace.zip')
+    await context.tracing.stop({ path })
+    await info.attach('native-profile-trace', { path, contentType: 'application/zip' })
+    await context.close()
+  }
 })
