@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
 import LoadingState from '../LoadingState.vue'
@@ -9,6 +9,8 @@ import type {
   LibraryRefreshAction,
 } from '../../features/library/browser-selection'
 import type { LibraryDocumentMetadata } from '../../features/library/discovery'
+
+import { filterLibrary, type RecentDocument } from '../../services/recent-documents'
 
 const props = defineProps<{
   libraryDocuments: readonly LibraryDocumentMetadata[]
@@ -26,9 +28,12 @@ const props = defineProps<{
   workspaceMessage?: string
   canResume?: boolean
   hasWorkspace?: boolean
+  recentDocuments?: readonly RecentDocument[]
+  recentMessage?: string
+  recentBusy?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   selectLibraryDocument: [id: string]
   close: []
   librarySelection: [selection: BrowserLibrarySelection]
@@ -38,7 +43,19 @@ defineEmits<{
   libraryScroll: [position: number]
   resumeWorkspace: []
   forgetWorkspace: []
+  openRecent: [entry: RecentDocument]
+  removeRecent: [id: string]
+  clearRecents: []
+  retryRecents: []
 }>()
+async function forgetRecent(id?: string) {
+  if (id) emit('removeRecent', id)
+  else emit('clearRecents')
+  await nextTick()
+  document.getElementById('recent-title')?.focus()
+}
+const query = ref('')
+const filtered = computed(() => filterLibrary(props.libraryDocuments, query.value))
 const list = ref<HTMLElement | null>(null)
 watch(
   [() => props.scrollPosition, () => props.libraryDocuments, list],
@@ -135,6 +152,63 @@ watch(
         </p>
       </section>
 
+      <section class="mb-4 space-y-2" aria-labelledby="recent-title">
+        <div class="flex items-center justify-between gap-2">
+          <h3 id="recent-title" tabindex="-1" class="text-xs font-semibold text-muted">
+            Recent PDFs
+          </h3>
+          <button
+            v-if="recentDocuments?.length"
+            type="button"
+            :disabled="recentBusy"
+            class="text-xs text-brand"
+            @click="forgetRecent()"
+          >
+            Clear recent history
+          </button>
+        </div>
+        <p v-if="!recentDocuments?.length" class="text-xs text-muted">
+          PDFs you open will appear here.
+        </p>
+        <ul class="space-y-2">
+          <li
+            v-for="entry in recentDocuments"
+            :key="entry.id"
+            class="flex min-w-0 items-start gap-2"
+          >
+            <button
+              type="button"
+              :disabled="recentBusy"
+              class="min-w-0 flex-1 rounded border border-line px-2 py-2 text-left text-xs hover:border-brand"
+              :aria-label="`Open recent PDF ${entry.name}`"
+              @click="$emit('openRecent', entry)"
+            >
+              <span class="block break-words font-medium">{{ entry.title || entry.name }}</span
+              ><span class="block break-words text-muted">{{ entry.relativePath }}</span>
+            </button>
+            <button
+              type="button"
+              :disabled="recentBusy"
+              class="px-1 py-2 text-xs text-muted"
+              :aria-label="`Remove recent PDF ${entry.name}`"
+              @click="forgetRecent(entry.id)"
+            >
+              ×
+            </button>
+          </li>
+        </ul>
+        <p v-if="recentMessage" role="status" class="text-xs text-muted">{{ recentMessage }}</p>
+        <button
+          v-if="recentMessage"
+          type="button"
+          :disabled="recentBusy"
+          class="text-xs text-brand"
+          @click="$emit('retryRecents')"
+        >
+          Retry recent history
+        </button>
+      </section>
+
       <section v-if="showLibraryResults" class="space-y-3" aria-labelledby="local-library-title">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
@@ -151,21 +225,42 @@ watch(
           </span>
         </div>
 
+        <label class="block text-xs text-muted" for="library-filter">Search library</label>
+        <input
+          id="library-filter"
+          v-model="query"
+          type="search"
+          maxlength="200"
+          placeholder="Name, title or path"
+          aria-describedby="library-filter-help"
+          class="w-full rounded border border-line bg-canvas px-2 py-2 text-sm"
+        />
+        <p id="library-filter-help" class="text-xs text-muted">
+          Filters library filenames, titles and paths. Search inside a PDF from its reader toolbar.
+        </p>
+        <p v-if="query" role="status" class="text-xs text-muted">
+          {{ filtered.length }} matching documents
+        </p>
+        <button v-if="query" type="button" class="text-xs text-brand" @click="query = ''">
+          Clear library search
+        </button>
         <div class="mt-3">
           <LibraryTree
-            v-if="libraryDocuments.length > 0"
-            :documents="libraryDocuments"
+            v-if="filtered.length > 0"
+            :documents="filtered"
             :selected-id="selectedLibraryDocumentId"
-            :collapsed-paths="collapsedPaths"
+            :collapsed-paths="query.trim() ? [] : collapsedPaths"
             :disabled="cached"
-            @toggle="(path, expanded) => $emit('toggleFolder', path, expanded)"
+            @toggle="(path, expanded) => !query.trim() && $emit('toggleFolder', path, expanded)"
             @select="$emit('selectLibraryDocument', $event)"
           />
           <div
             v-else
             class="rounded-xl border border-dashed border-line bg-canvas px-4 py-5 text-center"
           >
-            <p class="text-sm font-medium">No supported documents found</p>
+            <p class="text-sm font-medium">
+              {{ query ? 'No matching documents' : 'No supported documents found' }}
+            </p>
             <p class="mt-1 text-xs leading-relaxed text-muted">
               Choose another source with PDF or EPUB files.
             </p>

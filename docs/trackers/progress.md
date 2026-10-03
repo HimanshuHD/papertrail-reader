@@ -13,11 +13,11 @@ PR #119 completed #118 and merged as `7dc8bca1bcf9f3eb9f78c75150e2dc7b25241c48`.
 | [#118](https://github.com/HimanshuHD/papertrail-reader/issues/118) | Roadmap 2 — Reading continuity | Single workspace/library and active PDF restoration; parent #13     | Completed |
 | [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | Named PDF bookmarks using persisted document identity; parent #13   | Completed |
 
-Reading continuity remains open for #14 recent documents/library search, and separately recorded EPUB acceptance after #12. Active review branch: `feat/115-pdf-bookmarks`, based on reconciled main. [PR #120](https://github.com/HimanshuHD/papertrail-reader/pull/120) implements named PDF anchors with separate service/composable/UI boundaries. Source `793adcdc` passed Frontend CI 37140924880 (115 unit/component and 10 pipeline tests) and Browser E2E 37140988461 (97 passed, eight intentional skips, no retries). [Bookmark screenshots and acceptance](../evidence/pdf-bookmarks.md) are recorded. Owner confirmed validation and merged #120 as `0b2b5c1` on 4 October 2026 (Asia/Kolkata). Storage, file permissions, PDF identity/rendering and lifecycle coordination remain separate. No document bytes are cached by the application. Forget library removes workspace access while preserving reading metadata.
+Reading continuity remains open for #14 recent documents/library search, and separately recorded EPUB acceptance after #12. Current branch: `feat/14-recent-library-search`. [PR #120](https://github.com/HimanshuHD/papertrail-reader/pull/120) implements named PDF anchors with separate service/composable/UI boundaries. Source `793adcdc` passed Frontend CI 37140924880 (115 unit/component and 10 pipeline tests) and Browser E2E 37140988461 (97 passed, eight intentional skips, no retries). [Bookmark screenshots and acceptance](../evidence/pdf-bookmarks.md) are recorded. Owner confirmed validation and merged #120 as `0b2b5c1` on 4 October 2026 (Asia/Kolkata). Storage, file permissions, PDF identity/rendering and lifecycle coordination remain separate. No document bytes are cached by the application. Forget library removes workspace access while preserving reading metadata.
 
 ## Current milestone status — 3 October 2026
 
-Preparation work (#100/#106/#112) is concluded under the owner's recorded acceptance. Historical pending Preparation gates below are superseded. GitHub milestone 1 is verified closed through the milestone metadata on #100 (closed_at 2026-10-03T11:28:55Z). Reading continuity milestone 2 remains open: #114/#117/#118 are completed, #115 is completed, and #13/#14 are unfinished. No later milestone or parent #78 is completed.
+Preparation work (#100/#106/#112) is concluded under the owner's recorded acceptance. Historical pending Preparation gates below are superseded. GitHub milestone 1 is verified closed through the milestone metadata on #100 (closed_at 2026-10-03T11:28:55Z). Reading continuity milestone 2 remains open: #114/#117/#118/#115 are completed, #115 is completed, and #13/#14 are unfinished. No later milestone or parent #78 is completed.
 
 ## Current Preparation reconciliation — 3 October 2026
 
@@ -281,3 +281,7 @@ Merged documentation PR #104 passed main CI 37056086312 and reconciliation 37056
 ## Bookmark merge and next increment — 4 October 2026
 
 #120 merged as `0b2b5c1`; owner confirmed validation. #115 is completed and its active status label is removed. PDF increments #114/#117/#118/#115 are completed; #13 stays open only for separate format acceptance after #12. Preparation milestone 1 is confirmed closed through #100’s embedded milestone metadata. Reading continuity milestone 2 stays open for #14 and unfinished format scope. Next branch: `feat/14-recent-library-search`, from reconciled main. Prior pending-review/milestone-closure statements are historical and superseded.
+
+## #14 implementation validation
+
+Recent PDF metadata and library filtering are implemented on `feat/14-recent-library-search`. Local lint/format/types, 121 unit/component tests and 10 pipeline tests pass. Browser lifecycle coverage is added for all five viewport widths; GitHub browser evidence remains pending. Keep #14 open through review, owner validation and merge. #120 main Frontend CI 37144758631 passed.
