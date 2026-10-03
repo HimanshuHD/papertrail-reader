@@ -275,13 +275,10 @@ async function openDocument() {
     phase.value = 'restoring'
     session.value = next
     totalPages.value = next.totalPages
+    rightPanel.value = props.initialPanel ?? null
     await nextTick()
     measureViewport()
-    if (props.initialPanel === 'search') rightPanel.value = 'search'
-    if (props.initialPanel === 'contents') {
-      rightPanel.value = 'contents'
-      void loadOutline()
-    }
+    if (props.initialPanel === 'contents') void loadOutline()
     const target = restoredAnchor?.page ?? currentPage.value
     if (target !== 1) await goToPage(target)
   } catch (error) {
@@ -388,7 +385,8 @@ async function handleRendered(pageNumber: number, scale: number) {
     saveReadingPoint()
     if (props.initialPanel === 'search' && props.initialSearchQuery) {
       searchQuery.value = props.initialSearchQuery
-      void performSearch()
+      await nextTick()
+      if (sequence === openSequence && phase.value === 'ready') void performSearch()
     }
     emit(
       'status',

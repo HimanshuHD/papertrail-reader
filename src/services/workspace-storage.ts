@@ -66,6 +66,7 @@ function validateSnapshot(value: unknown): WorkspaceSnapshot | null {
         typeof item.name !== 'string' ||
         typeof item.parentPath !== 'string' ||
         !['PDF', 'EPUB'].includes(item.format) ||
+        !['directory-picker', 'directory-input', 'file-input'].includes(item.source) ||
         !Number.isFinite(item.size) ||
         item.size < 0 ||
         !Number.isFinite(item.lastModified),

@@ -25,10 +25,13 @@ const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-need
   type: 'application/pdf',
 })
 
-function mountReader() {
+function mountReader(
+  initial: { initialPanel?: 'contents' | 'search'; initialSearchQuery?: string } = {},
+) {
   return mount(PdfReaderWorkspace, {
     attachTo: document.body,
     props: {
+      ...initial,
       document: {
         id: 'file-input:long.pdf:8:1:1',
         name: documentFile.name,
@@ -228,5 +231,16 @@ describe('PDF reader utility workspace', () => {
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await flushPromises()
     expect(wrapper.text()).toContain('100%')
+  })
+  it('regenerates a restored search only after its query watcher has settled', async () => {
+    const wrapper = mountReader({ initialPanel: 'search', initialSearchQuery: 'Matching' })
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(pdfSession.searchText).toHaveBeenCalledWith(
+      'Matching',
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    )
+    expect(wrapper.get('[aria-label="PDF search results panel"]').text()).toContain('Matching text')
+    expect(wrapper.emitted('utilityChange')).toContainEqual(['search', 'Matching'])
   })
 })

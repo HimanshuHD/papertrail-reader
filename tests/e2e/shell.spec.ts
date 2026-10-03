@@ -1254,7 +1254,20 @@ async function readSavedWorkspace(page: Page) {
         const db = open.result
         const transaction = db.transaction('workspace')
         const request = transaction.objectStore('workspace').get('current')
-        request.onsuccess = () => resolve(request.result ?? null)
+        request.onsuccess = () => {
+          const state = request.result
+          // Keep the native capability inside the browser; transport plain evidence only.
+          resolve(
+            state
+              ? {
+                  ...state,
+                  handle: state.handle
+                    ? { kind: state.handle.kind, name: state.handle.name }
+                    : null,
+                }
+              : null,
+          )
+        }
         transaction.oncomplete = () => db.close()
       }
     })
@@ -1402,10 +1415,14 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     )
   await expect.poll(async () => (await reading()).anchor?.page).toBeGreaterThanOrEqual(3)
   await expect.poll(async () => (await readSavedWorkspace(page))?.activeFingerprint).toBeTruthy()
+  await page.getByRole('button', { name: 'Contents', exact: true }).click()
+  await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
+  await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe('contents')
   const before = await reading()
   await page.reload()
   await expect(pane).toHaveAttribute('aria-busy', 'false')
   await expect(page.getByRole('button', { name: 'Show library' })).toBeVisible()
+  await expect(page.getByRole('complementary', { name: 'PDF contents panel' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Zoom in', exact: true })).toBeVisible()
   await expect.poll(async () => (await reading()).view.zoom).toBe(before.view.zoom)
   await expect
