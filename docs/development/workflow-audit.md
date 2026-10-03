@@ -8,7 +8,6 @@ Manual Publish website [37118358674](https://github.com/HimanshuHD/papertrail-re
 
 #106 is completed. Keep #100 and Roadmap 2 — Preparation open for one remaining live gate: publish an open docs-only PR manually, verify its preview PR/SHA/current successful CI identity and unchanged production, then merge it. Do not dispatch its preview after closing the PR. This evidence-only follow-up provides that open PR without changing application/workflow/package files.
 
-
 ## Pure-docs Preparation acceptance — 3 October 2026
 
 #108/#109 workflow changes are merged. Browser E2E remains manual or ready_for_review only; docs-only PR path filters exclude automatic runs. Main CI stays required, while docs-only builds set publish=false and skip the dependent publisher. Ready-PR updates do not automatically run Browser E2E. A workflow change is eligible; the earlier #109 PR was not a pure-docs test.
