@@ -64,6 +64,7 @@ Choose a category below. The repository [README](../README.md) links here; each 
 - [Loading feedback — #85](evidence/loading-feedback.md)
 - [Reader polish — #86 and #87](evidence/reader-polish.md)
 - [Search excerpts and selected PDF matches — #89](evidence/search-highlighting.md)
+- [Named PDF bookmarks — #115](evidence/pdf-bookmarks.md)
 
 ## Snapshots, assets and attribution
 

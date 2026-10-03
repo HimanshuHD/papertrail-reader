@@ -15,7 +15,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
   const fingerprint = ref<string | null>(null)
   let generation = 0
   let controller: AbortController | null = null
-  let identity: string | null = null
+  const documentId = ref<string | null>(null)
   let pending: {
     id: string
     page: number
@@ -47,7 +47,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     flush()
     generation += 1
     controller?.abort()
-    identity = null
+    documentId.value = null
     fingerprint.value = null
     notice.value = ''
   }
@@ -69,7 +69,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
           'Multiple saved identities match this PDF. Reading starts at page 1; saved positions were preserved.'
         return null
       }
-      identity = match.record.id
+      documentId.value = match.record.id
       return {
         page: Math.min(totalPages, Math.max(1, match.record.page)),
         view: normalizePdfView(match.record.view),
@@ -85,9 +85,9 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
   }
 
   function save(page: number, view?: PdfViewSettings, anchor?: PdfReadingAnchor) {
-    if (!identity) return
+    if (!documentId.value) return
     pending = {
-      id: identity,
+      id: documentId.value,
       page,
       view: normalizePdfView(view),
       anchor: normalizePdfAnchor(anchor),
@@ -106,5 +106,5 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     globalThis.removeEventListener('pagehide', flush)
     document.removeEventListener('visibilitychange', hide)
   })
-  return { notice, fingerprint, restore, save, reset }
+  return { notice, fingerprint, documentId, restore, save, reset }
 }
