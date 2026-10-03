@@ -1,6 +1,6 @@
 # First-release bug tracking
 
-Roadmap owner: [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1) · [Roadmap documentation](../roadmaps/product-roadmaps.md) · [Current progress](progress.md). This record includes historical evidence; current statuses come from the progress tracker and live issues.
+Roadmap owner: [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1) · [Roadmap documentation](../roadmaps/product-roadmaps.md) · [Current progress](progress.md). Bug parent: [#79](https://github.com/HimanshuHD/papertrail-reader/issues/79); release gate: [#80](https://github.com/HimanshuHD/papertrail-reader/issues/80). This record includes historical evidence; current statuses come from the progress tracker and live issues.
 
 Parent: [#79](https://github.com/HimanshuHD/papertrail-reader/issues/79). Roadmap: [#1](https://github.com/HimanshuHD/papertrail-reader/issues/1). Release gate: [#80](https://github.com/HimanshuHD/papertrail-reader/issues/80).
 

@@ -1,6 +1,6 @@
 # Product Roadmap 2
 
-Owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78). Delivery status: [progress tracker](../trackers/progress.md); [status audit](../trackers/status-audit.md). v1.0.0 is released; this roadmap builds on the browser PDF reader.
+Owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78). Delivery status: [progress tracker](../trackers/progress.md); [status audit](../trackers/status-audit.md); [branch maintenance](../trackers/branch-maintenance.md). v1.0.0 is released; this roadmap builds on the browser PDF reader.
 
 | Milestone                                                                                         | Scope                                                                         | Planned issues     |
 | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | ------------------ |

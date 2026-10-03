@@ -2,6 +2,8 @@
 
 Roadmap owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78) · [Roadmap documentation](../roadmaps/roadmap-2.md) · [Current progress](progress.md). This record includes historical evidence; current statuses come from the progress tracker and live issues.
 
+## Historical checkpoint after PR #98
+
 Updated: 2 October 2026 (Asia/Kolkata).
 
 #84 is completed in merged #96; #85 is completed in merged #97. Rendering children #88/#91–#95 are completed in #90. #86 and #87 are completed together in merged PR #98. #89 remains queued, followed by final regression and release gate #80. #79/#1 remain open; version remains 0.1.0. EPUB and broader deferred scope remain Roadmap 2 #78.
