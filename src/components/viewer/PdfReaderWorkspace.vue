@@ -527,6 +527,8 @@ async function addBookmark(name: string) {
 }
 
 async function finishBookmarkNavigation(pageNumber: number) {
+  const sequence = openSequence
+  const operation = layoutOperation
   const bookmark = pendingBookmark
   const pane = viewport.value
   if (!bookmark || bookmark.anchor.page !== pageNumber || !pane) return
@@ -534,6 +536,7 @@ async function finishBookmarkNavigation(pageNumber: number) {
   if (!page) return
   pendingBookmark = null
   await restoreReadingPoint({ pane, page, x: bookmark.anchor.x, y: bookmark.anchor.y })
+  if (sequence !== openSequence || operation !== layoutOperation || phase.value !== 'ready') return
   chooseMostVisiblePage()
   saveReadingPoint()
   pane.focus({ preventScroll: true })
