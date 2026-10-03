@@ -2,6 +2,11 @@
 
 ## Reading continuity implementation (#114)
 
+| Issue                                                              | Target                         | Scope                                                        | Status                                                                                                                    |
+| ------------------------------------------------------------------ | ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| [#114](https://github.com/HimanshuHD/papertrail-reader/issues/114) | Roadmap 2 — Reading continuity | PDF identity and saved-page restoration; parent #13          | In review — [PR #116](https://github.com/HimanshuHD/papertrail-reader/pull/116); build passed, browser acceptance pending |
+| [#115](https://github.com/HimanshuHD/papertrail-reader/issues/115) | Roadmap 2 — Reading continuity | PDF bookmarks on the #114 persistence foundation; parent #13 | New — follows #114 acceptance and merge                                                                                   |
+
 Roadmap 2 — Reading continuity has started. Parent #13 remains open; #114 implements PDF identity and saved-page restoration, with #115 tracking bookmarks next. Branch: `feat/pdf-reading-continuity`. Existing file access and PDF rendering services remain separate from the new identity, IndexedDB storage and lifecycle composable. Metadata only is saved; document bytes are not retained.
 
 Acceptance and deployment evidence will be reconciled after this increment is tested and merged. Neither bookmarks nor EPUB persistence is complete in this increment.
