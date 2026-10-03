@@ -662,7 +662,11 @@ onBeforeUnmount(() => {
         >
           {{ document.name }}
         </h2>
-        <p v-if="session" class="mt-1 text-xs text-muted">
+        <p
+          v-if="session"
+          :style="{ visibility: phase === 'ready' ? 'visible' : 'hidden' }"
+          class="mt-1 text-xs text-muted"
+        >
           Page {{ currentPage }} of {{ totalPages }} · {{ progressPercent }}% · {{ zoomPercent }}%
         </p>
       </div>

@@ -1131,6 +1131,8 @@ test('PDF reading positions survive reload and rename without matching changed c
   await page.goto('./#/app')
   const bytes = createPdfFixture(4)
   const select = async (name: string, buffer: Buffer) => {
+    const opener = page.getByRole('button', { name: 'Show library' })
+    if (await opener.isVisible()) await opener.click()
     await page
       .locator('input[accept*=".pdf"]')
       .setInputFiles({ name, mimeType: 'application/pdf', buffer })
@@ -1138,7 +1140,11 @@ test('PDF reading positions survive reload and rename without matching changed c
       .getByRole('region', { name: 'Library documents', exact: true })
       .getByRole('button', { name: new RegExp(name.replaceAll('.', '\\.')) })
       .click()
-    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    await page.getByRole('button', { name: 'Hide library' }).click()
   }
   const savedPage = () =>
     page.evaluate(async () => {
