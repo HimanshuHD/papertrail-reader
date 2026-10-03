@@ -33,7 +33,7 @@ test('browser filters preserve manual acceptance, ready updates and whole-PR app
   assert.match(browser, /workflow_dispatch:/)
   assert.match(browser, /github.event.pull_request.draft == false/)
   assert.ok(!browser.includes('\n  push:'))
-  const patterns = [...browser.matchAll(/^      - '([^']+)'$/gm)].map((m) => m[1])
+  const patterns = [...browser.matchAll(/^ {6}- '([^']+)'$/gm)].map((m) => m[1])
   const ignored = (p) =>
     patterns.some((pattern) => {
       if (pattern.endsWith('/**')) return p.startsWith(pattern.slice(0, -2))
