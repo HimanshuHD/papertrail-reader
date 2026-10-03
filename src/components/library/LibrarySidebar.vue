@@ -2,6 +2,7 @@
 import { computed, nextTick, ref, watch } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
+import RecentDocuments from './RecentDocuments.vue'
 import LoadingState from '../LoadingState.vue'
 import UiIcon from '../UiIcon.vue'
 import type {
@@ -33,7 +34,7 @@ const props = defineProps<{
   recentBusy?: boolean
 }>()
 
-const emit = defineEmits<{
+defineEmits<{
   selectLibraryDocument: [id: string]
   close: []
   librarySelection: [selection: BrowserLibrarySelection]
@@ -48,12 +49,6 @@ const emit = defineEmits<{
   clearRecents: []
   retryRecents: []
 }>()
-async function forgetRecent(id?: string) {
-  if (id) emit('removeRecent', id)
-  else emit('clearRecents')
-  await nextTick()
-  document.getElementById('recent-title')?.focus()
-}
 const query = ref('')
 const filtered = computed(() => filterLibrary(props.libraryDocuments, query.value))
 const list = ref<HTMLElement | null>(null)
@@ -83,6 +78,34 @@ watch(
         @close="$emit('close')"
       />
     </header>
+
+    <div class="shrink-0 border-b border-line px-3 py-3">
+      <div class="relative">
+        <UiIcon
+          name="search"
+          class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
+        />
+        <input
+          id="library-filter"
+          v-model="query"
+          type="search"
+          maxlength="200"
+          placeholder="Search documents..."
+          aria-label="Search library"
+          class="min-h-11 w-full rounded-lg border border-line bg-canvas py-2 pr-10 pl-10 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        />
+        <button
+          v-if="query"
+          type="button"
+          aria-label="Clear library search"
+          class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted hover:text-brand"
+          @click="query = ''"
+        >
+          <UiIcon name="close" />
+        </button>
+      </div>
+      <p v-if="query" role="status" class="sr-only">{{ filtered.length }} matching documents</p>
+    </div>
 
     <div v-if="hasWorkspace" class="shrink-0 border-b border-line px-3 py-2 text-xs">
       <p v-if="workspaceMessage" role="status" class="mb-2 text-muted">{{ workspaceMessage }}</p>
@@ -152,62 +175,15 @@ watch(
         </p>
       </section>
 
-      <section class="mb-4 space-y-2" aria-labelledby="recent-title">
-        <div class="flex items-center justify-between gap-2">
-          <h3 id="recent-title" tabindex="-1" class="text-xs font-semibold text-muted">
-            Recent PDFs
-          </h3>
-          <button
-            v-if="recentDocuments?.length"
-            type="button"
-            :disabled="recentBusy"
-            class="text-xs text-brand"
-            @click="forgetRecent()"
-          >
-            Clear recent history
-          </button>
-        </div>
-        <p v-if="!recentDocuments?.length" class="text-xs text-muted">
-          PDFs you open will appear here.
-        </p>
-        <ul class="space-y-2">
-          <li
-            v-for="entry in recentDocuments"
-            :key="entry.id"
-            class="flex min-w-0 items-start gap-2"
-          >
-            <button
-              type="button"
-              :disabled="recentBusy"
-              class="min-w-0 flex-1 rounded border border-line px-2 py-2 text-left text-xs hover:border-brand"
-              :aria-label="`Open recent PDF ${entry.name}`"
-              @click="$emit('openRecent', entry)"
-            >
-              <span class="block break-words font-medium">{{ entry.title || entry.name }}</span
-              ><span class="block break-words text-muted">{{ entry.relativePath }}</span>
-            </button>
-            <button
-              type="button"
-              :disabled="recentBusy"
-              class="px-1 py-2 text-xs text-muted"
-              :aria-label="`Remove recent PDF ${entry.name}`"
-              @click="forgetRecent(entry.id)"
-            >
-              ×
-            </button>
-          </li>
-        </ul>
-        <p v-if="recentMessage" role="status" class="text-xs text-muted">{{ recentMessage }}</p>
-        <button
-          v-if="recentMessage"
-          type="button"
-          :disabled="recentBusy"
-          class="text-xs text-brand"
-          @click="$emit('retryRecents')"
-        >
-          Retry recent history
-        </button>
-      </section>
+      <RecentDocuments
+        :documents="recentDocuments ?? []"
+        :message="recentMessage"
+        :busy="recentBusy"
+        @open="$emit('openRecent', $event)"
+        @remove="$emit('removeRecent', $event)"
+        @clear="$emit('clearRecents')"
+        @retry="$emit('retryRecents')"
+      />
 
       <section v-if="showLibraryResults" class="space-y-3" aria-labelledby="local-library-title">
         <div class="flex items-start justify-between gap-3">
@@ -225,25 +201,6 @@ watch(
           </span>
         </div>
 
-        <label class="block text-xs text-muted" for="library-filter">Search library</label>
-        <input
-          id="library-filter"
-          v-model="query"
-          type="search"
-          maxlength="200"
-          placeholder="Name, title or path"
-          aria-describedby="library-filter-help"
-          class="w-full rounded border border-line bg-canvas px-2 py-2 text-sm"
-        />
-        <p id="library-filter-help" class="text-xs text-muted">
-          Filters library filenames, titles and paths. Search inside a PDF from its reader toolbar.
-        </p>
-        <p v-if="query" role="status" class="text-xs text-muted">
-          {{ filtered.length }} matching documents
-        </p>
-        <button v-if="query" type="button" class="text-xs text-brand" @click="query = ''">
-          Clear library search
-        </button>
         <div class="mt-3">
           <LibraryTree
             v-if="filtered.length > 0"

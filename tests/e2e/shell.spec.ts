@@ -1614,6 +1614,11 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
 test('library filtering and recent PDF recovery preserve document metadata', async ({
   page,
 }, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
   await page.goto('./#/app')
   const bytes = createPdfFixture(3, 'Recent guide')
   const show = async () => {
@@ -1629,14 +1634,44 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
   await expect(
     library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
   ).toBeEnabled()
-  await library.getByLabel('Search library', { exact: true }).fill('other')
-  await expect(library.getByText('1 matching documents')).toBeVisible()
+  await page.getByLabel('Search library', { exact: true }).fill('other')
+  await expect(page.getByRole('status').filter({ hasText: '1 matching documents' })).toBeVisible()
   await expect(library.getByRole('button', { name: 'PDF: Recent guide', exact: true })).toHaveCount(
     0,
   )
-  await library.getByRole('button', { name: 'Clear library search' }).click()
+  await page.getByRole('button', { name: 'Clear library search' }).click()
+  const recentToggle = library.getByRole('button', { name: 'Recent 1', exact: true })
+  await recentToggle.click()
+  await expect(recentToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(
+    library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
+  ).toBeHidden()
+  await recentToggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(recentToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByPlaceholder('Search documents...', { exact: true })).toBeVisible()
   await noOverflow(page)
+  const searchBox = await page.getByLabel('Search library', { exact: true }).boundingBox()
+  const headerBox = await page.locator('.library-panel > header').boundingBox()
+  const recentBox = await recentToggle.boundingBox()
+  expect(
+    searchBox &&
+      headerBox &&
+      recentBox &&
+      searchBox.y >= headerBox.y + headerBox.height &&
+      searchBox.y < recentBox.y,
+  ).toBeTruthy()
+  await expect(page.getByText('PDFs you open will appear here.', { exact: true })).toHaveCount(0)
+  await expect(
+    page.getByText(
+      'Filters library filenames, titles and paths. Search inside a PDF from its reader toolbar.',
+      { exact: true },
+    ),
+  ).toHaveCount(0)
   await capture(page, info, 'recent-library')
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await capture(page, info, 'recent-library-dark')
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await page.reload()
   await show()
   await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
@@ -1656,7 +1691,8 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     library.getByRole('button', { name: 'Open recent PDF renamed.pdf', exact: true }),
   ).toBeEnabled()
   await library.getByRole('button', { name: 'Clear recent history' }).click()
-  await expect(library.getByText('PDFs you open will appear here.')).toBeVisible()
+  await expect(library.getByTestId('recent-count')).toHaveText('0')
+  await expect(library.getByRole('button', { name: /^Open recent PDF/ })).toHaveCount(0)
   const readingCount = await page.evaluate(
     async () =>
       new Promise<number>((resolve, reject) => {
@@ -1672,4 +1708,5 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
       }),
   )
   expect(readingCount).toBeGreaterThan(0)
+  expect(errors).toEqual([])
 })

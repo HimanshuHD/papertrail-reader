@@ -27,3 +27,9 @@ Owner preview/review and merge remain pending; #14 remains open. Evidence covers
 ---
 
 [Previous](pdf-bookmarks.md) · [Documentation home](../README.md) · [Evidence index](README.md)
+
+## Owner scope and sidebar reconciliation — 4 October 2026
+
+#13 is closed completed: PDF identity, positions, view/anchor restoration and bookmarks are accepted in merged #116/#119/#120. EPUB/CFI and format-specific persistence remain owned by #12 in EPUB milestone 3; they do not block #13. Earlier notes retaining #13 for EPUB are historical and superseded. Reading continuity milestone 2 stays open for #14 only.
+
+#14 owner feedback remains in PR #121: Recent is a collapsible component with a leading clock icon and trailing count; search sits immediately below the Library header with exact `Search documents...` placeholder and a search icon. Visible search label/help and empty recent-history copy are removed; accessible naming/live result count and recovery actions remain. Full validation is running; do not start the next item before owner acceptance.

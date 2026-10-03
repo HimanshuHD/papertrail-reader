@@ -133,8 +133,38 @@ it('distinguishes library filtering, exposes recent recovery and emits independe
   wrappers.push(wrapper)
   await wrapper.get('#library-filter').setValue('guide')
   expect(wrapper.text()).toContain('1 matching documents')
-  expect(wrapper.text()).toContain('Search inside a PDF')
+  expect(wrapper.find('#library-filter').attributes('placeholder')).toBe('Search documents...')
+  expect(wrapper.text()).not.toContain('Search inside a PDF')
+  expect(wrapper.text()).not.toContain('PDFs you open will appear here.')
   await wrapper.get('button[aria-label="Remove recent PDF old.pdf"]').trigger('click')
   expect(wrapper.emitted('removeRecent')).toEqual([['stable']])
   expect(wrapper.text()).toContain('Reselect source')
+})
+
+it('collapses recent entries by keyboard-accessible disclosure while preserving its count', async () => {
+  const wrapper = mount(LibrarySidebar, {
+    attachTo: document.body,
+    props: {
+      libraryDocuments: [],
+      selectedLibraryDocumentId: null,
+      libraryLabel: 'Files',
+      showLibraryResults: false,
+      refreshAction: null,
+      selectionSummary: '',
+      discoverySummary: '',
+      discoveryBusy: false,
+      discoveryProblemCount: 0,
+      recentDocuments: [entry],
+    },
+  })
+  wrappers.push(wrapper)
+  const toggle = wrapper.get('#recent-title')
+  expect(toggle.attributes('aria-expanded')).toBe('true')
+  await toggle.trigger('click')
+  expect(toggle.attributes('aria-expanded')).toBe('false')
+  expect(wrapper.get('#recent-documents').isVisible()).toBe(false)
+  expect(toggle.text()).toBe('Recent1')
+  await toggle.trigger('click')
+  expect(wrapper.get('#recent-documents').isVisible()).toBe(true)
+  expect(wrapper.get('#library-filter').attributes('aria-label')).toBe('Search library')
 })
