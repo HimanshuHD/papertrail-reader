@@ -1,5 +1,13 @@
 # Workflow trigger audit
 
+## Preparation work concluded at owner direction — 3 October 2026
+
+The owner explicitly requested closure of #100 and Preparation. #100/#106/#112 are closed, with merged implementation, docs-only filtering, production publication, recovery/source guards and post-merge table-formatting evidence preserved. Numbered open-PR preview evidence remains unrecorded and is not claimed as passed; it no longer blocks this owner-directed handoff. Perform deliberate preview validation on the next feature PR.
+
+GitHub milestone 1 has no remaining open issues. Its state still requires Close in the owner's authenticated GitHub UI: the connector exposes no milestone-update action and the agent browser is signed out. This is a UI state limitation, not additional product work.
+
+Next milestone is Roadmap 2 — Reading continuity: implement #13 PDF identity, IndexedDB reading metadata, saved positions and bookmarks first, then #14 recent documents and library search. EPUB-specific persistence follows #12. Earlier preview closure-gate instructions below are historical and superseded by this owner acceptance; no new evidence-only PR is needed.
+
 ## #111 merged; final open-preview gate — 3 October 2026
 
 PR #111 merged as `ced390ac3f38b872df1f158f548fa85275f7049f`. Main CI 37119131725, dependent production publication and reconciliation 37119131448 passed. The generated tracker at 4078d6f exactly matches Prettier output, completing #112. #106 is also completed. Earlier #110 docs-only draft/readiness/main acceptance passed without automatic Browser E2E or publication.
