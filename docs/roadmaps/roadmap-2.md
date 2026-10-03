@@ -13,7 +13,7 @@ Owner: [#78](https://github.com/HimanshuHD/papertrail-reader/issues/78). Deliver
 
 Milestone numbers reflect creation order. Complete reliability/browser acceptance before release closure. Each issue retains its own acceptance and dependencies; placing it in a milestone does not mean implementation is complete.
 
-Preparation: #108 merged for #100; docs-only/manual preview live verification remains. #106 implements the Markdown organization. Reading continuity #13 is the next product increment after Preparation acceptance.
+Preparation: #108 is merged for #100; docs-only/manual preview live verification remains. #106 is completed in merged #109; main CI and canonical tracker reconciliation passed. Milestone 1 stays open until #100's controlled docs-only/manual preview/main-merge acceptance passes. Reading continuity #13 is the next product increment after Preparation acceptance.
 
 Multiple-document tabs, session restoration/resource limits, comparison and portable annotation export are assigned to [Roadmap 3](roadmap-3.md), issues #17/#18. Desktop #4/#23/#27 remain deferred outside Roadmap 2 and Roadmap 3. VitePress and a separately hosted docs portal are excluded.
 

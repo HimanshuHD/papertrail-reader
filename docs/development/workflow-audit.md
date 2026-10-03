@@ -1,5 +1,11 @@
 # Workflow trigger audit
 
+## Pure-docs Preparation acceptance — 3 October 2026
+
+#108/#109 workflow changes are merged. Browser E2E remains manual or ready_for_review only; docs-only PR path filters exclude automatic runs. Main CI stays required, while docs-only builds set publish=false and skip the dependent publisher. Ready-PR updates do not automatically run Browser E2E. A workflow change is eligible; the earlier #109 PR was not a pure-docs test.
+
+The current reconciliation PR edits Markdown only. Record draft/readiness/update/main run evidence, deliberately publish its PR preview and verify source/PR identity, then close #100 and milestone 1 if all gates pass. Until then Preparation remains open. Historical entries below retain earlier policy/run evidence and are superseded by this current gate.
+
 ## Current workflow refinement — #100
 
 Implementation in the Preparation milestone (#78). Frontend CI remains unconditional on main pushes and PR updates, preserving required checks and current-head preview artifacts. After a successful website-affecting main build, CI calls pages.yml as a dependent reusable job using its own run ID and artifact. The separate workflow_run publisher subscription is removed. Docs/tracker-only main builds finish validation without a publishing workflow run; the dependent publication job is skipped. Manual Publish website remains available on main for numbered PR previews or production recovery.
