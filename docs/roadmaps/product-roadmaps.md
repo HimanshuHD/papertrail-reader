@@ -1,25 +1,27 @@
 # PaperTrail release roadmaps
 
-## Active EPUB enhancement — #131
+## EPUB contents/typography merge reconciliation — #135
 
-#131 implements bounded authored EPUB 3 nav / EPUB 2 NCX contents, accessible nested local chapter/fragment navigation, and session typography (font size, line spacing, reading width, reset). Verified chapter-order fallback keeps books readable when optional navigation is invalid. Original target IDs survive both modes; duplicate/reserved/removed targets cannot be navigated. Typography updates the mounted view and keeps a text-node offset where available; stable CFI remains #132.
+Owner verified the controls and seven review observations, then merged [PR #135](https://github.com/HimanshuHD/papertrail-reader/pull/135) as `e9d59f424c78e62a94be316dc68a860d0fe8c27f`. #131 is completed/closed; its stale active label is removed. Accepted source `4be9aa0` passed [Frontend CI 37217580155](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37217580155): 189 unit/component tests, 10 pipeline tests, lint/format/types/build. Merge automation reconciled main as `3d5b97a`; owner verification is recorded separately from deferred release browser evidence.
 
-Only `feat/131-epub-contents-typography` is active. Progressive delivery: merge/deploy #131 first, then create #132 from updated main; repeat for #133 and #134. The owner is deleting unused pre-created later branches. Their names below are planned names, not active implementation branches. No later issue is started.
+Delivered: validated nested EPUB 2/3 Contents with spine fallback, PDF-style utility buttons/right panel, measured default font and responsive typography, stable loading overlay/metadata, iframe dismissal/tooltips, Text-only switch and borderless side icons. Full Browser E2E remains #134/#28 on reviewed release-to-main readiness; no new browser run is claimed.
 
-Local regression coverage now includes 189 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
+## Active EPUB enhancement — #132
+
+#132 now starts from reconciled current main on `feat/132-epub-stable-location`. It owns reusable session CFI/text-location capture and restoration across typography, 150ms resize, library/utility changes and rendering modes. Persisted identity/bookmarks/history remain #133; final release evidence remains #134/#28. Create each subsequent branch only after predecessor merge/deployment. EPUB milestone 3 remains open: four open (#12/#132/#133/#134), six completed.
 
 ## Planned EPUB reader enhancements — 4 October 2026
 
-Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, **type:enhancement** (#131 in progress; #132–#134 new) in EPUB milestone 3. Each has explicit acceptance, dependencies and a planned branch name. #131 is the active implementation; full browser execution remains a release gate.
+Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, **type:enhancement** (#131 completed; #132 in progress; #133–#134 new) in EPUB milestone 3. Each has explicit acceptance, dependencies and a planned branch name. #132 is the active implementation; full browser execution remains a release gate.
 
 | Issue                                                              | Enhancement                                             | Branch                                      | Status      |
 | ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------- | ----------- |
-| [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography`         | In progress |
-| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | Planned: `feat/132-epub-stable-location`    | New         |
+| [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography`         | Completed   |
+| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | `feat/132-epub-stable-location`             | In progress |
 | [#133](https://github.com/HimanshuHD/papertrail-reader/issues/133) | identity, saved positions, bookmarks and recent history | Planned: `feat/133-epub-reading-continuity` | New         |
 | [#134](https://github.com/HimanshuHD/papertrail-reader/issues/134) | final format, security and browser release acceptance   | Planned: `test/134-epub-release-acceptance` | New         |
 
-Deliver #131 → #132 → #133 → #134. Create each later branch from updated main after prerequisite merges/deployments. #134 owns EPUB-specific release evidence and coordinates broader supported-browser gate #28; full browser execution stays on reviewed release-to-main readiness. EPUB milestone 3 remains open with five open and five closed issues.
+Deliver #131 → #132 → #133 → #134. Create each later branch from updated main after prerequisite merges/deployments. #134 owns EPUB-specific release evidence and coordinates broader supported-browser gate #28; full browser execution stays on reviewed release-to-main readiness. EPUB milestone 3 remains open with four open and six closed issues.
 
 ## EPUB renderer merge reconciliation — 4 October 2026
 

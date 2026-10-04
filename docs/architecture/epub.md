@@ -48,3 +48,7 @@ ZIP fields follow [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudi
 The initial archive unit suite uses adversarial byte fixtures and bounded read/cancellation assertions. There is no browser or EPUB reading acceptance claim for this foundation-only increment.
 
 The reading-stage loading overlay avoids header/layout shifts; the composable yields one Vue tick before chapter display so transient engine frames remain concealed. Contents retains plain metadata while mode replacement releases the engine. After display/load the component binds capture-phase pointer/Escape handlers in owned iframe documents, disconnecting them on replacement/unmount. Parent capture handles other outside clicks. Tooltip buttons establish a higher stacking layer than the popover. Responsive availability changes apply typography only when a selected width becomes unavailable; ordinary continuous resizing remains controlled by the 150ms engine debounce.
+
+## #135 accepted delivery and next increment
+
+Owner verified #131 and its seven review fixes, then merged #135 as `e9d59f4`. Accepted source `4be9aa0` passed Frontend CI 37217580155 (189 unit/component and 10 pipeline tests, lint/format/types/build). The controls described here are delivered; #132 is now active for stable session text/CFI restoration, followed by #133 persistence. Full current-source browser evidence remains deferred to #134/#28 release readiness.
