@@ -44,10 +44,11 @@ function cancelRecent() {
   recentOpening.value = false
 }
 function rememberRecent(identity: { id: string; fingerprint: string }) {
-  const item = activePdfDocument.value
+  const item = activePdfDocument.value ?? activeEpubDocument.value
   if (item)
     void recents.remember({
       ...identity,
+      format: item.format,
       name: item.name,
       title: item.title,
       relativePath: item.relativePath,
@@ -68,10 +69,11 @@ async function openRecent(entry: RecentDocument) {
       recentMessage.value = ''
     } else
       recentMessage.value =
-        'This recent PDF is unavailable or changed. Use + to reselect its source, then try it again.'
+        'This recent document is unavailable or changed. Use + to reselect its source, then try it again.'
   } catch {
     if (!controller.signal.aborted)
-      recentMessage.value = 'Recent PDF access could not be checked. Use + to reselect its source.'
+      recentMessage.value =
+        'Recent document access could not be checked. Use + to reselect its source.'
   } finally {
     if (recentController === controller) recentOpening.value = false
   }
@@ -100,12 +102,7 @@ const workspaceMessage = computed(
 )
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
-const activeEpubDocument = computed(
-  () =>
-    discoveredDocuments.value.find(
-      (item) => item.id === selectedLibraryDocumentId.value && item.format === 'EPUB',
-    ) ?? null,
-)
+const activeEpubDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
 watch(sidebarOpen, (value) => workspace.patch({ sidebarOpen: value }))
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
@@ -197,21 +194,25 @@ function selectLibraryDocument(id: string, restoring = false) {
     reconnecting.value = false
   }
   const sameActive =
-    activePdfDocument.value?.id === document.id && activePdfDocument.value?.file === document.file
+    (activePdfDocument.value ?? activeEpubDocument.value)?.id === document.id &&
+    (activePdfDocument.value ?? activeEpubDocument.value)?.file === document.file
   selectedLibraryDocumentId.value = id
   workspace.patch({
     selectedPath: document.relativePath,
-    activePath: document.format === 'PDF' ? document.relativePath : null,
+    activePath: document.relativePath,
     activeFingerprint:
       restoring || sameActive ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
   })
   if (document.format === 'PDF') {
+    activeEpubDocument.value = null
     activePdfDocument.value = document
     announcement.value = `Opening local PDF: ${document.name}.`
     return
   }
 
   activePdfDocument.value = null
+  activeEpubDocument.value = null
+  activeEpubDocument.value = document
   announcement.value = `Opening local EPUB: ${document.name}.`
 }
 
@@ -294,6 +295,7 @@ async function reconnect(
   reconnecting.value = true
   librarySelection.value = selection
   activePdfDocument.value = null
+  activeEpubDocument.value = null
   try {
     await runDiscovery(selection, false, true)
     if (owner !== workspaceOperation || discoveryPhase.value !== 'ready') return
@@ -308,7 +310,7 @@ async function reconnect(
       selectLibraryDocument(result.activeDocument.id, true)
     } else if (saved.activePath) {
       workspace.notice.value =
-        'The previously opened PDF changed or is unavailable. Select a document to continue.'
+        'The previously opened document changed or is unavailable. Select a document to continue.'
       workspace.patch({ activePath: null, activeFingerprint: null })
     }
   } catch {
@@ -331,6 +333,7 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
   }
   reconnecting.value = false
   activePdfDocument.value = null
+  activeEpubDocument.value = null
   librarySelection.value = selection
   selectedLibraryDocumentId.value = null
   workspace.remember({
@@ -372,6 +375,7 @@ async function forgetWorkspace() {
   metadataController = null
   reconnecting.value = false
   activePdfDocument.value = null
+  activeEpubDocument.value = null
   librarySelection.value = null
   discoveredDocuments.value = []
   selectedLibraryDocumentId.value = null
@@ -414,6 +418,7 @@ async function refreshLibrary() {
   if (!selection || selection.kind !== 'directory') return
 
   activePdfDocument.value = null
+  activeEpubDocument.value = null
   announcement.value = `Refreshing folder ${selection.handle.name}.`
   await runDiscovery(selection, true)
 }
@@ -540,6 +545,8 @@ async function closeSidebarAndRestoreFocus() {
       <EpubReaderWorkspace
         v-else-if="activeEpubDocument"
         :document="activeEpubDocument"
+        @identity="workspace.patch({ activeFingerprint: $event })"
+        @recent-ready="rememberRecent"
         @status="announcement = $event"
       />
       <ReaderWorkspace

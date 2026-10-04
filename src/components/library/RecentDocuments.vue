@@ -52,7 +52,7 @@ async function forget(id?: string) {
             type="button"
             :disabled="busy"
             class="min-w-0 flex-1 rounded border border-line px-2 py-2 text-left text-xs hover:border-brand"
-            :aria-label="`Open recent PDF ${entry.name}`"
+            :aria-label="`Open recent ${entry.format ?? 'PDF'} ${entry.name}`"
             @click="$emit('open', entry)"
           >
             <span class="block break-words font-medium">{{ entry.title || entry.name }}</span
@@ -62,7 +62,7 @@ async function forget(id?: string) {
             type="button"
             :disabled="busy"
             class="rounded p-2 text-muted hover:text-brand"
-            :aria-label="`Remove recent PDF ${entry.name}`"
+            :aria-label="`Remove recent ${entry.format ?? 'PDF'} ${entry.name}`"
             @click="forget(entry.id)"
           >
             <UiIcon name="close" class="h-4 w-4" />

@@ -49,3 +49,9 @@ Typography, window/library width changes and the Text-only switch retain the vis
 ## #136 merge reconciliation and active #133
 
 Owner merged #136 as `09610e6` after source `2f99f6b` passed Frontend CI 37223881477 (197 unit/component and 10 pipeline tests, lint/format/types/build). #132 is complete and its active label is removed. #133 now owns saved EPUB progress across reload, document switching and later reselection, plus identity/settings/bookmarks/recent history. Its fresh branch starts from updated main; #134 remains new for final release evidence. EPUB milestone 3 remains open: three open (#12/#133/#134), seven completed. Browser E2E remains deferred to reviewed release-to-main readiness.
+
+## Returning to an EPUB
+
+PaperTrail saves the current book's chapter/text location, typography and Text-only setting. Switching documents or reselecting the same unchanged book restores its saved place, even after renaming. Changed file content starts separately. Bookmarks in the right utility panel can be saved, opened, renamed and removed.
+
+After reload, an unchanged active EPUB can reopen when retained folder access is granted. Otherwise use Resume library or + to select the source again. Files themselves are never saved in browser storage. Forget library and clear recent history retain reading positions/bookmarks; clearing browser storage removes them. If storage is unavailable, you can keep reading but progress cannot be saved. The most recent movement may be lost after an abrupt browser shutdown.

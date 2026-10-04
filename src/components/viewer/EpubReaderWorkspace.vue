@@ -4,6 +4,11 @@ import type { DiscoveredDocument } from '../../features/library/discovery'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
 import LoadingState from '../LoadingState.vue'
+import { useEpubContinuity } from '../../composables/useEpubContinuity'
+import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
+import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
+import { normalizeLocation } from '../../features/epub/location'
+import type { EpubReadingSettings, EpubBookmark } from '../../services/epub-reading-storage'
 import type { EpubSession } from '../../features/epub/epub-session'
 import IconButton from '../IconButton.vue'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
@@ -17,13 +22,20 @@ import {
 } from '../../features/epub/typography'
 
 const props = defineProps<{ document: DiscoveredDocument }>()
-const emit = defineEmits<{ status: [message: string] }>()
+const emit = defineEmits<{
+  status: [message: string]
+  identity: [fingerprint: string]
+  recentReady: [identity: { id: string; fingerprint: string }]
+}>()
+const continuity = useEpubContinuity(captureReading)
 const reader = useEpubReader()
+const bookmarks = useEpubBookmarks(continuity.documentId)
+let openGeneration = 0
 const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
-const rightPanel = ref<'contents' | null>(null)
+const rightPanel = ref<'contents' | 'bookmarks' | null>(null)
 const typographyOpen = ref(false)
 const popover = ref<HTMLElement | null>(null)
 const lineOptions = [
@@ -61,12 +73,30 @@ function onFramePointer() {
   closeTypography(false)
 }
 function onFrameKey(event: KeyboardEvent) {
-  if (event.key === 'Escape' && typographyOpen.value) {
+  if (event.key !== 'Escape') return
+  if (typographyOpen.value) {
     event.preventDefault()
     closeTypography()
+  } else if (rightPanel.value) {
+    event.preventDefault()
+    closePanel()
   }
 }
+let readingContainer: HTMLElement | null = null
+function captureReading(): EpubReadingSettings | undefined {
+  if (!reader.session.value || reader.busy.value) return
+  return {
+    textOnly: textOnly.value,
+    typography: { ...typography.value },
+    location: reader.session.value.location?.(),
+  }
+}
+function saveReading() {
+  continuity.save()
+}
 function clearFrameListeners() {
+  readingContainer?.removeEventListener('scroll', saveReading)
+  readingContainer = null
   for (const doc of frameDocuments) {
     doc.removeEventListener('pointerdown', onFramePointer, true)
     doc.removeEventListener('keydown', onFrameKey, true)
@@ -75,6 +105,8 @@ function clearFrameListeners() {
 }
 function bindFrameListeners() {
   clearFrameListeners()
+  readingContainer = host.value?.querySelector<HTMLElement>('.epub-container') ?? null
+  readingContainer?.addEventListener('scroll', saveReading, { passive: true })
   for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
     const doc = frame.contentDocument
     if (!doc) continue
@@ -84,7 +116,7 @@ function bindFrameListeners() {
   }
 }
 watch(
-  () => reader.busy.value,
+  () => reader.busy.value || continuity.preparing.value,
   async (busy) => {
     clearTimeout(loaderTimer)
     showLoader.value = false
@@ -100,7 +132,8 @@ watch(
   },
   { immediate: true },
 )
-const unavailable = computed(() => reader.busy.value || !reader.session.value)
+const loading = computed(() => reader.busy.value || continuity.preparing.value)
+const unavailable = computed(() => loading.value || !reader.session.value)
 function focusAction(label: string) {
   void nextTick(() =>
     root.value
@@ -113,13 +146,14 @@ function closeTypography(focus = true) {
   if (focus) focusAction('Typography')
 }
 function closePanel() {
+  const label = rightPanel.value === 'bookmarks' ? 'Bookmarks' : 'Contents'
   rightPanel.value = null
-  focusAction('Contents')
+  focusAction(label)
 }
-async function togglePanel() {
+async function togglePanel(panel: 'contents' | 'bookmarks' = 'contents') {
   closeTypography(false)
-  if (rightPanel.value) return closePanel()
-  rightPanel.value = 'contents'
+  if (rightPanel.value === panel) return closePanel()
+  rightPanel.value = panel
   await nextTick()
   root.value
     ?.querySelector<HTMLButtonElement>('button[aria-label="Close utility panel"]')
@@ -153,6 +187,7 @@ onMounted(() => {
   globalThis.addEventListener('resize', updateWindowWidth)
 })
 onBeforeUnmount(() => {
+  ++openGeneration
   globalThis.removeEventListener('keydown', onKey)
   globalThis.removeEventListener('pointerdown', onPointer, true)
   globalThis.removeEventListener('resize', updateWindowWidth)
@@ -186,6 +221,7 @@ function selectContents(entry: EpubContentsEntry) {
 }
 function applyTypography() {
   reader.session.value?.typography(typography.value)
+  continuity.save()
 }
 function resetTypography() {
   typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
@@ -195,29 +231,70 @@ function toggleTextOnly() {
   textOnly.value = !textOnly.value
   void open(true)
 }
+async function navigateBookmark(bookmark: EpubBookmark) {
+  if (!(await reader.restore(bookmark.location))) {
+    bookmarks.notice.value = 'This saved place is unavailable. You can continue reading.'
+  } else continuity.save()
+}
+async function addBookmark(name: string) {
+  const location = reader.session.value?.location?.()
+  if (!location) {
+    bookmarks.notice.value =
+      'The current reading place could not be determined. Try again after the chapter loads.'
+    return false
+  }
+  return bookmarks.add(name, location)
+}
 async function open(preserve = false) {
   const file = props.document.file
+  const owner = ++openGeneration
   const contentsEntry = reader.contentsEntry.value
   restoringContentsEntry.value = preserve ? contentsEntry : null
+  let saved: EpubReadingSettings | null = null
+  if (!preserve) {
+    saved = await continuity.prepare(file)
+    if (owner !== openGeneration || file !== props.document.file) return
+    if (saved) {
+      textOnly.value = saved.textOnly
+      typography.value = { ...saved.typography }
+      if (windowWidth.value < 640) typography.value.readingWidth = null
+      else if (windowWidth.value < 1024 && typography.value.readingWidth === 800)
+        typography.value.readingWidth = 640
+    }
+  }
   await nextTick()
-  if (file === props.document.file && host.value) {
+  if (owner === openGeneration && file === props.document.file && host.value) {
     await (preserve ? reader.reopen : reader.open)(
       file,
       host.value,
       theme.resolvedTheme === 'dark',
       {
-        ...(!preserve ? { chapter: 0 } : {}),
+        ...(!preserve
+          ? { chapter: 0, ...(saved?.location ? { location: saved.location } : {}) }
+          : {}),
         textOnly: textOnly.value,
         typography: typography.value,
       },
     )
-    if (preserve && file === props.document.file && reader.session.value)
-      reader.contentsEntry.value = contentsEntry
+    if (owner !== openGeneration || file !== props.document.file || !reader.session.value) return
+    if (preserve) reader.contentsEntry.value = contentsEntry
+    if (saved?.location && !normalizeLocation(saved.location, reader.session.value.chapters.length))
+      continuity.notice.value = 'The saved chapter is unavailable. Reading starts at the beginning.'
+    continuity.save()
+    if (continuity.fingerprint.value) {
+      emit('identity', continuity.fingerprint.value)
+      emit('recentReady', {
+        id: continuity.documentId.value ?? `epub:${continuity.fingerprint.value}`,
+        fingerprint: continuity.fingerprint.value,
+      })
+    }
   }
 }
 watch(
   () => props.document.file,
   () => {
+    continuity.reset()
+    reader.close()
     restoringContentsEntry.value = null
     metadata.value = null
     bookFontSize.value = 18
@@ -227,7 +304,13 @@ watch(
     typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
     void open()
   },
-  { immediate: true },
+  { immediate: true, flush: 'sync' },
+)
+watch(
+  () => reader.chapter.value,
+  () => {
+    void nextTick(saveReading)
+  },
 )
 watch(
   () => theme.resolvedTheme,
@@ -299,13 +382,22 @@ watch(
           @click="toggleTypography"
         />
         <IconButton
+          label="Bookmarks"
+          icon="bookmark"
+          :disabled="unavailable"
+          :active="rightPanel === 'bookmarks'"
+          :aria-expanded="rightPanel === 'bookmarks'"
+          aria-controls="epub-utility-panel"
+          @click="togglePanel('bookmarks')"
+        />
+        <IconButton
           label="Contents"
           icon="contents"
           :disabled="unavailable"
           :active="rightPanel === 'contents'"
           :aria-expanded="rightPanel === 'contents'"
           aria-controls="epub-utility-panel"
-          @click="togglePanel"
+          @click="togglePanel('contents')"
         />
       </div>
       <Transition
@@ -394,15 +486,22 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
+        <p
+          v-if="continuity.notice.value"
+          role="status"
+          class="absolute inset-x-12 bottom-2 z-10 rounded-lg border border-line bg-panel px-3 py-2 text-xs text-muted"
+        >
+          {{ continuity.notice.value }}
+        </p>
         <div
           ref="host"
           class="epub-host"
-          :class="{ 'epub-host-loading': reader.busy.value }"
-          :aria-busy="reader.busy.value"
-          :inert="reader.busy.value || undefined"
+          :class="{ 'epub-host-loading': loading }"
+          :aria-busy="loading"
+          :inert="loading || undefined"
           @load.capture="bindFrameListeners"
         />
-        <div v-if="reader.busy.value" class="epub-loading-cover" aria-busy="true">
+        <div v-if="loading" class="epub-loading-cover" aria-busy="true">
           <LoadingState
             v-if="showLoader"
             :label="metadata ? 'Loading chapter…' : 'Opening EPUB…'"
@@ -465,13 +564,22 @@ watch(
           aria-label="EPUB utility panel"
         >
           <div class="flex items-center justify-between gap-2 border-b border-line p-3">
-            <h3 class="text-sm font-semibold">Contents</h3>
+            <h3 class="text-sm font-semibold">
+              {{ rightPanel === 'bookmarks' ? 'Bookmarks' : 'Contents' }}
+            </h3>
             <IconButton label="Close utility panel" icon="close" @click="closePanel" />
           </div>
-          <p v-if="metadata?.contentsSource === 'spine'" class="px-3 pt-3 text-xs text-muted">
+          <p
+            v-if="rightPanel === 'contents' && metadata?.contentsSource === 'spine'"
+            class="px-3 pt-3 text-xs text-muted"
+          >
             Chapter order
           </p>
-          <nav aria-label="EPUB contents" class="epub-contents p-3 text-sm">
+          <nav
+            v-if="rightPanel === 'contents'"
+            aria-label="EPUB contents"
+            class="epub-contents p-3 text-sm"
+          >
             <EpubContentsList
               :entries="metadata?.contents ?? []"
               :current-id="currentContentsId"
@@ -479,6 +587,21 @@ watch(
               @select="selectContents"
             />
           </nav>
+          <EpubBookmarksPanel
+            v-else
+            :bookmarks="bookmarks.bookmarks.value"
+            :available="bookmarks.available.value"
+            :busy="bookmarks.busy.value || unavailable"
+            :loading="bookmarks.loading.value"
+            :notice="bookmarks.notice.value"
+            :current-chapter="reader.chapter.value + 1"
+            :total-chapters="metadata?.chapters.length ?? 0"
+            :add="addBookmark"
+            :rename="bookmarks.rename"
+            :remove="bookmarks.remove"
+            @navigate="navigateBookmark"
+            @retry="bookmarks.reload"
+          />
         </aside>
       </Transition>
     </div>
