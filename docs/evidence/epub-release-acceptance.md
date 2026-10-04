@@ -1,6 +1,8 @@
 # EPUB release acceptance — #134
 
-Candidate: release PR #138, source `4375fb4478ee915f147ad89fea6b647012ae15ce`. Frontend CI 37226881921 passed. Browser E2E 37226881578 completed with 133 passed, 16 failed, 3 flaky and 8 intentionally skipped cases. EPUB spacing, resize timing, popover interaction and reading-position failures require a corrected candidate and a fresh run; screenshot inspection remains pending. No current-source browser acceptance is claimed in this checkpoint.
+Candidate acceptance remains pending. First source `4375fb4` passed Frontend CI 37226881921 but browser run 37226881578 had 133 passed, 16 failed, 3 flaky and 8 intentionally skipped cases. Corrected source `1c5d74cbcedbdec5e093d6a7fd6c7a40f3235271` passed Frontend CI 37228118345; browser run 37228117456 improved to 147 passed, 4 failed, 1 flaky and 8 intentionally skipped. Header spacing, settled resize and mobile popover checks passed. Remaining failures concern logical character preservation across sequential reflows/mode changes. A further fix retains the restored logical anchor until user scrolling; its focused regression passes.
+
+Run 37228117456 recorded Chromium `153.0.8010.12`, Node `v24.21.0`, Linux, and tested PR checkout `696bc32aa30b4a6e8e91aa4455b91c055aa7f317`. Compact artifact 11312612168 contains screenshots, JSON and the inspected failure trace; full report 11312397712 expires 11 October 2026. These are diagnostic evidence, not final acceptance.
 
 | Area                                                                    | Evidence route                                                                   | Current status                    |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------- |

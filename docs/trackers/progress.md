@@ -1,5 +1,11 @@
 # PaperTrail progress
 
+## Current release acceptance — #134
+
+Final release PR [#138](https://github.com/HimanshuHD/papertrail-reader/pull/138) is validating source `1c5d74cbcedbdec5e093d6a7fd6c7a40f3235271` in [Browser E2E 37228117456](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37228117456). #131/#132/#133 are merged and reconciled; #134 remains in progress. The first browser run exposed EPUB header spacing, unsettled resize assertions, mobile popover interaction and line-sized position shifts. Candidate fixes are applied; final results and screenshot inspection remain pending. See [current evidence](../evidence/epub-release-acceptance.md).
+
+Milestone 3 is open with two open issues (#12/#134) and eight completed issues. #28 retains broader supported-browser/device certification. Earlier counts and pending implementation checkpoints below are historical and superseded by this section.
+
 ## EPUB contents/typography merge reconciliation — #135
 
 Owner verified the controls and seven review observations, then merged [PR #135](https://github.com/HimanshuHD/papertrail-reader/pull/135) as `e9d59f424c78e62a94be316dc68a860d0fe8c27f`. #131 is completed/closed; its stale active label is removed. Accepted source `4be9aa0` passed [Frontend CI 37217580155](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37217580155): 189 unit/component tests, 10 pipeline tests, lint/format/types/build. Merge automation reconciled main as `3d5b97a`; owner verification is recorded separately from deferred release browser evidence.
