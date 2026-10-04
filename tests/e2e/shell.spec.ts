@@ -406,6 +406,105 @@ test('EPUB retains a character inside a long paragraph through typography, panel
   await noOverflow(page)
 })
 
+test('EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Continuity</title></head><body><h1>Continuity</h1><p>${'A saved reading point within a long chapter. '.repeat(500)}</p></body></html>`
+  const bytes = Buffer.from(createEpubFixture({ chapter }))
+  const pick = async (name: string, buffer = bytes) => {
+    await page
+      .locator('input[accept*=".pdf"]')
+      .setInputFiles({ name, mimeType: 'application/epub+zip', buffer })
+    await page
+      .locator('section[aria-labelledby="local-library-title"]')
+      .getByRole('button', { name: new RegExp(name.replace('.', '\\.')) })
+      .click()
+  }
+  await pick('saved.epub')
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'Continuity' }),
+  ).toBeVisible()
+  await reader.locator('.epub-container').evaluate((el) => {
+    el.scrollTop = 600
+    el.dispatchEvent(new Event('scroll'))
+  })
+  const anchor = await epubTextPoint(reader)
+  await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+  await reader.getByRole('button', { name: 'Increase font size' }).click()
+  const size = await reader.getByLabel('Font size', { exact: true }).textContent()
+  await reader.getByRole('button', { name: 'Close typography' }).click()
+  await reader.getByRole('switch', { name: 'Text-only view' }).click()
+  await expect(reader.getByRole('switch', { name: 'Text-only view' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await reader.getByRole('button', { name: 'Bookmarks', exact: true }).click()
+  await reader.getByLabel('Bookmark name', { exact: true }).fill('My place')
+  await reader.getByRole('button', { name: 'Save current place' }).click()
+  await expect(reader.getByRole('button', { name: 'Go to bookmark My place' })).toBeVisible()
+  await reader.getByRole('button', { name: 'Close utility panel' }).click()
+  // A visibility transition flushes pending metadata before a page exits; bytes are reselected.
+  await page.evaluate(() => globalThis.dispatchEvent(new Event('pagehide')))
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          new Promise<boolean>((resolve, reject) => {
+            const request = indexedDB.open('papertrail-epub-reading', 1)
+            request.onerror = () => reject(request.error)
+            request.onsuccess = () => {
+              const database = request.result
+              const transaction = database.transaction('documents')
+              const read = transaction.objectStore('documents').getAll()
+              read.onsuccess = () => resolve(Boolean(read.result[0]?.location))
+              transaction.oncomplete = () => database.close()
+            }
+          }),
+      ),
+    )
+    .toBe(true)
+  await page.reload()
+  await pick('renamed.epub')
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'Continuity' }),
+  ).toBeVisible()
+  await expect(reader.getByRole('switch', { name: 'Text-only view' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+  await expect(reader.getByLabel('Font size', { exact: true })).toHaveText(size!)
+  await reader.getByRole('button', { name: 'Close typography' }).click()
+  await reader.getByRole('button', { name: 'Bookmarks', exact: true }).click()
+  await reader.getByRole('button', { name: 'Rename bookmark My place' }).click()
+  await reader.getByLabel('New bookmark name', { exact: true }).fill('Renamed place')
+  await reader.getByRole('button', { name: 'Save name' }).click()
+  await reader.getByRole('button', { name: 'Go to bookmark Renamed place' }).click()
+  await reader.getByRole('button', { name: 'Remove bookmark Renamed place' }).click()
+  await expect(reader.getByRole('button', { name: 'Go to bookmark Renamed place' })).toHaveCount(0)
+  await reader.getByRole('button', { name: 'Close utility panel' }).click()
+  await pick(
+    'renamed.epub',
+    Buffer.from(
+      createEpubFixture({ chapter: chapter.replace('Continuity</h1>', 'Changed book</h1>') }),
+    ),
+  )
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'Changed book' }),
+  ).toBeVisible()
+  await expect(reader.getByRole('switch', { name: 'Text-only view' })).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+  await reader.getByRole('button', { name: 'Bookmarks', exact: true }).click()
+  await expect(reader.getByRole('button', { name: 'Go to bookmark Renamed place' })).toHaveCount(0)
+  await noOverflow(page)
+})
+
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

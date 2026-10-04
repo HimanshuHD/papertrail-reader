@@ -1,5 +1,5 @@
 import { nextTick, onBeforeUnmount, ref, shallowRef } from 'vue'
-import type { EpubLocation } from '../features/epub/location'
+import { normalizeLocation, type EpubLocation } from '../features/epub/location'
 import {
   openEpubSession,
   type EpubSession,
@@ -45,7 +45,9 @@ export function useEpubReader() {
         result.destroy()
         return
       }
-      chapter.value = Math.max(0, Math.min(chapter.value, result.chapters.length - 1))
+      chapter.value =
+        normalizeLocation(options.location, result.chapters.length)?.chapter ??
+        Math.max(0, Math.min(chapter.value, result.chapters.length - 1))
       session.value = result
       result.appearance(dark)
     } catch (reason) {

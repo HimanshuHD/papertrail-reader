@@ -2,10 +2,55 @@ import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { expect, it, vi } from 'vitest'
 import EpubReaderWorkspace from '../../src/components/viewer/EpubReaderWorkspace.vue'
+import type { EpubBookmark } from '../../src/services/epub-reading-storage'
 import type { EpubSession } from '../../src/features/epub/epub-session'
 
-const mocked = vi.hoisted(() => ({ open: vi.fn() }))
+const mocked = vi.hoisted(() => ({
+  open: vi.fn(),
+  resolve: vi.fn(),
+  save: vi.fn(async () => undefined),
+  load: vi.fn(async () => [] as EpubBookmark[]),
+  add: vi.fn(async () => []),
+  rename: vi.fn(async () => []),
+  remove: vi.fn(async () => []),
+}))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
+vi.mock('../../src/services/document-identity', () => ({
+  fingerprintDocument: vi.fn(async () => 'sha256-chunks-v1:' + 'a'.repeat(64)),
+}))
+
+vi.mock('../../src/services/epub-reading-storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/services/epub-reading-storage')>()
+  return {
+    ...actual,
+    IndexedDbEpubReadingStorage: class {
+      resolve(fingerprint: string, name: string) {
+        return (
+          mocked.resolve(fingerprint, name) ??
+          Promise.resolve({
+            record: {
+              version: 1,
+              format: 'EPUB',
+              id: `epub:${name}`,
+              fingerprint,
+              name,
+              updatedAt: 1,
+              bookmarks: [],
+              textOnly: false,
+              typography: { fontSize: null, lineSpacing: null, readingWidth: null },
+            },
+            ambiguous: false,
+          })
+        )
+      }
+      save = mocked.save
+      load = mocked.load
+      add = mocked.add
+      rename = mocked.rename
+      remove = mocked.remove
+    },
+  }
+})
 
 it('opens formatted by default, keeps side navigation outside the header and retains position across modes', async () => {
   const position = { node: 'pt-3', offset: -10, ratio: 0.4 }
@@ -356,4 +401,90 @@ it('dismisses Typography from inside its iframe and limits width controls as the
     wrapper.unmount()
     vi.unstubAllGlobals()
   }
+})
+
+it('restores saved mode, typography and chapter before opening, and flushes progress before replacement', async () => {
+  const location = {
+    version: 1 as const,
+    chapter: 1,
+    mode: 'formatted' as const,
+    kind: 'text' as const,
+    cfi: null,
+    node: 'pt-4',
+    character: 8,
+    quote: 'saved',
+    offset: -3,
+    ratio: 0.4,
+    atEnd: false,
+  }
+  const mark = { id: 'bookmark', name: 'Saved section', location, createdAt: 1 }
+  const session: EpubSession = {
+    title: 'Saved book',
+    chapters: [
+      { label: 'One', href: 'one' },
+      { label: 'Two', href: 'two' },
+    ],
+    contents: [],
+    contentsSource: 'spine',
+    display: vi.fn(async () => undefined),
+    typography: vi.fn(),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+    location: () => location,
+    restore: vi.fn(async () => true),
+  }
+  const file = (name: string) => ({
+    id: name,
+    name,
+    format: 'EPUB' as const,
+    relativePath: name,
+    parentPath: '',
+    source: 'file-input' as const,
+    file: new File([], name),
+  })
+  mocked.resolve.mockResolvedValueOnce({
+    record: {
+      id: 'epub:saved',
+      textOnly: true,
+      typography: { fontSize: 22, lineSpacing: 1.8, readingWidth: null },
+      location,
+    },
+    ambiguous: false,
+  })
+  mocked.load.mockResolvedValueOnce([mark])
+  mocked.open.mockResolvedValueOnce(session).mockResolvedValueOnce({ ...session, title: 'Other' })
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: { document: file('saved.epub') },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  expect(mocked.open.mock.lastCall![3]).toMatchObject({
+    textOnly: true,
+    location,
+    typography: { fontSize: 22 },
+  })
+  expect(wrapper.get('header').text()).toContain('Chapter 2 of 2')
+  expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('true')
+  expect(wrapper.emitted('recentReady')?.[0]).toEqual([
+    { id: 'epub:saved', fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64) },
+  ])
+  await wrapper.get('button[aria-label="Bookmarks"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('button[aria-label="Go to bookmark Saved section"]').trigger('click')
+  await flushPromises()
+  expect(session.restore).toHaveBeenCalledWith(location)
+  await wrapper.setProps({ document: file('other.epub') })
+  await flushPromises()
+  expect(mocked.save).toHaveBeenCalledWith('epub:saved', {
+    textOnly: true,
+    typography: { fontSize: 22, lineSpacing: 1.8, readingWidth: null },
+    location,
+  })
+  expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
+  wrapper.unmount()
+  await flushPromises()
+  expect(mocked.save).toHaveBeenCalledWith(
+    'epub:other.epub',
+    expect.objectContaining({ location, textOnly: false }),
+  )
 })

@@ -223,3 +223,29 @@ it('never guesses among duplicate paths or automatically opens a moved document'
     await revalidateWorkspace(saved, [{ ...document, relativePath: 'moved/book.pdf' }]),
   ).toEqual({ selectedId: null, activeDocument: null })
 })
+
+it('revalidates an active EPUB with granted file access without borrowing a PDF identity', async () => {
+  const { revalidateWorkspace } = await import('../../src/services/workspace-revalidation')
+  const file = new File(['epub'], 'book.epub', { lastModified: 100 })
+  const item = {
+    id: 'epub',
+    name: file.name,
+    relativePath: file.name,
+    parentPath: '',
+    format: 'EPUB' as const,
+    source: 'file-input' as const,
+    file,
+  }
+  const saved = {
+    ...snapshot(),
+    documents: cacheLibraryDocuments([item]),
+    selectedPath: file.name,
+    activePath: file.name,
+    activeFingerprint: file.name,
+  }
+  expect((await revalidateWorkspace(saved, [item])).activeDocument).toEqual(item)
+  expect((await revalidateWorkspace(saved, [{ ...item, format: 'PDF' }])).activeDocument).toBeNull()
+  expect(
+    (await revalidateWorkspace({ ...saved, activeFingerprint: 'changed' }, [item])).activeDocument,
+  ).toBeNull()
+})

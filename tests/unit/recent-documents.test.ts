@@ -168,3 +168,12 @@ it('collapses recent entries by keyboard-accessible disclosure while preserving 
   expect(wrapper.get('#recent-documents').isVisible()).toBe(true)
   expect(wrapper.get('#library-filter').attributes('aria-label')).toBe('Search library')
 })
+
+it('isolates PDF and EPUB identities in history and requires format-matched verified access', async () => {
+  const epub = { ...entry, id: 'epub:stable', format: 'EPUB' as const, name: 'book.epub' }
+  expect(normalizeRecents([entry, epub])).toHaveLength(2)
+  expect(normalizeRecents([{ ...entry, format: 'DOCX' }])).toEqual([])
+  const file = { ...doc('renamed.pdf'), format: 'EPUB' as const }
+  expect(await matchRecent(epub, [doc('renamed.pdf')], new AbortController().signal)).toBeNull()
+  expect(await matchRecent(epub, [file], new AbortController().signal)).toEqual(file)
+})
