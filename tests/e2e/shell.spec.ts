@@ -417,6 +417,8 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
   const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Continuity</title></head><body><h1>Continuity</h1><p>${'A saved reading point within a long chapter. '.repeat(500)}</p></body></html>`
   const bytes = Buffer.from(createEpubFixture({ chapter }))
   const pick = async (name: string, buffer = bytes) => {
+    const show = page.getByRole('button', { name: 'Show library' })
+    if (await show.isVisible()) await show.click()
     await page
       .locator('input[accept*=".pdf"]')
       .setInputFiles({ name, mimeType: 'application/epub+zip', buffer })
@@ -424,6 +426,7 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
       .locator('section[aria-labelledby="local-library-title"]')
       .getByRole('button', { name: `EPUB: ${name}`, exact: true })
       .click()
+    await page.getByRole('button', { name: 'Hide library' }).click()
   }
   await pick('saved.epub')
   const reader = page.getByRole('region', { name: 'EPUB reader' })
