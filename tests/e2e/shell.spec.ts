@@ -618,7 +618,10 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await page.evaluate(async () => {
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     await Promise.all(
-      document.getAnimations().map((animation) => animation.finished.catch(() => {})),
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => {})),
     )
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
   })
