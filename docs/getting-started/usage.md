@@ -55,3 +55,7 @@ Owner merged #136 as `09610e6` after source `2f99f6b` passed Frontend CI 3722388
 PaperTrail saves the current book's chapter/text location, typography and Text-only setting. Switching documents or reselecting the same unchanged book restores its saved place, even after renaming. Changed file content starts separately. Bookmarks in the right utility panel can be saved, opened, renamed and removed.
 
 After reload, an unchanged active EPUB can reopen when retained folder access is granted. Otherwise use Resume library or + to select the source again. Files themselves are never saved in browser storage. Forget library and clear recent history retain reading positions/bookmarks; clearing browser storage removes them. If storage is unavailable, you can keep reading but progress cannot be saved. The most recent movement may be lost after an abrupt browser shutdown.
+
+## #137 merged; final EPUB acceptance — #134
+
+Owner merged #137 as `d7afbf58cf9448749bbd226018956035c5576076`. Accepted source `ec4f995` passed Frontend CI 37225710749: 206 unit/component and 10 pipeline tests, lint/format/types/build. #133 is completed and its stale active label is removed. #134 now owns final reviewed release-candidate checks and current evidence. EPUB milestone 3 remains open: two open (#12/#134), eight completed. #12 and the milestone remain open until the remaining acceptance is verified. Broader Chrome/Edge/Firefox/Safari capability declarations stay in #28. Earlier pending merge and active-increment checkpoints are historical.
