@@ -2,7 +2,7 @@
 
 ## Current renderer increment — #124
 
-Branch `feat/12-epub-rendering` depends on archive preflight PR #123. The first reader opens local reflowable EPUB 2/3 chapter text through a lazy epub.js 0.3.93 adapter. Original book CSS, images, links and active content are omitted in this text-first increment; the reader explains this limitation. Fixed-layout and encrypted/obfuscated books are rejected. Chapter controls follow linear spine order; authored contents, CFI persistence, typography controls, bookmarks and recent EPUB history remain parent #12 acceptance.
+Branch `feat/12-epub-rendering` builds on merged archive preflight PR #123 (`d5fdbdf`). The first reader opens local reflowable EPUB 2/3 chapter text through a lazy epub.js 0.3.93 adapter. Original book CSS, images, links and active content are omitted in this text-first increment; the reader explains this limitation. Fixed-layout and encrypted/obfuscated books are rejected. Chapter controls follow linear spine order; authored contents, CFI persistence, typography controls, bookmarks and recent EPUB history remain parent #12 acceptance.
 
 `publication.ts` reads consumed ZIP resources in bounded slices, streams deflate input in 1024-byte chunks, enforces actual output sizes and verifies CRC32 before XML parsing. XML input limits are 256 KiB for the container, 1 MiB for the package and 4 MiB per chapter; total chapter input/output is limited to 32 MiB. Invalid UTF-8, entity/internal-subset declarations, missing/remote spine resources and excessive node depth/count fail before rendering. Standard XHTML HTML doctypes are stripped before parsing. Unique linear spine paths prevent repeated-resource work amplification.
 

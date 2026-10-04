@@ -31,6 +31,9 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await page.getByRole('button', { name: 'Hide library' }).click()
   const reader = page.getByRole('region', { name: 'EPUB reader' })
   await expect(reader.getByRole('heading', { name: 'Local test book' })).toBeVisible()
+  const openerBounds = await page.getByRole('button', { name: 'Show library' }).boundingBox()
+  const titleBounds = await reader.getByRole('heading', { name: 'Local test book' }).boundingBox()
+  expect(titleBounds!.x).toBeGreaterThanOrEqual(openerBounds!.x + openerBounds!.width + 12)
   const frame = reader.frameLocator('iframe')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
@@ -40,6 +43,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await reader.getByRole('combobox', { name: 'Chapter' }).selectOption('0')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  await capture(page, info, 'epub-text-reader-light')
   await page.getByRole('button', { name: 'Dark mode' }).click()
   await expect(frame.locator('body')).toHaveCSS('color', 'rgb(231, 233, 238)')
   await capture(page, info, 'epub-text-reader')
@@ -53,11 +57,15 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   // Replacing the source tears down the current engine and its iframe.
-  await page.locator('input[accept*=".pdf"]').setInputFiles({
-    name: 'replacement.pdf',
-    mimeType: 'application/pdf',
-    buffer: createPdfFixture(),
-  })
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await page
+    .getByRole('complementary', { name: 'Document library' })
+    .locator('input[accept*=".pdf"]')
+    .setInputFiles({
+      name: 'replacement.pdf',
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(),
+    })
   await expect(page.locator('.epub-host iframe')).toHaveCount(0)
   await noOverflow(page)
   expect(external).toEqual([])
@@ -458,6 +466,7 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   await localLibrary.getByRole('button', { name: /document-00.pdf/ }).click()
   const pdf = page.getByRole('region', { name: 'PDF pages', exact: true })
   await expect(pdf).toBeVisible()
+  await expect(page.getByTestId('recent-count')).toHaveText('1')
   await expect
     .poll(() =>
       page.evaluate(
