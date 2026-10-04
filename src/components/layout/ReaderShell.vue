@@ -200,6 +200,11 @@ onBeforeUnmount(() => {
   overflow: auto;
   overscroll-behavior: contain;
 }
+/* EPUB owns vertical scrolling inside its frame manager. Avoid a second outer
+   scrollbar while its fixed stage width catches up after a window resize. */
+.reader-content:has(.epub-reader) {
+  overflow: hidden;
+}
 .library-slide-enter-active,
 .library-slide-leave-active {
   transition:

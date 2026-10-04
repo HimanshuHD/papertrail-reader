@@ -37,26 +37,29 @@ export async function openEpubSession(
   let disposed = false
   let opening = true
   let observer: ResizeObserver | null = null
-  let resizeFrame: number | null = null
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null
   let width = 0
   let height = 0
   let chapterIndex = 0
   let navigating = false
   let restoreResize: (() => void) | null = null
+  function applyResize() {
+    if (destroyed || navigating || !rendition) return
+    const nextWidth = root.clientWidth
+    const nextHeight = root.clientHeight
+    // Hidden panels must not replace the last usable layout with a zero-sized one.
+    if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
+    width = nextWidth
+    height = nextHeight
+    rendition.resize(width, height)
+  }
   function scheduleResize() {
-    if (destroyed || resizeFrame !== null || navigating) return
-    resizeFrame = requestAnimationFrame(() => {
-      resizeFrame = null
-      if (destroyed || navigating || !rendition) return
-      const nextWidth = root.clientWidth
-      const nextHeight = root.clientHeight
-      // Hidden panels must not replace the last usable layout with a zero-sized one.
-      if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
-      width = nextWidth
-      height = nextHeight
-      // Update the mounted chapter in place; do not clear/reload its iframe.
-      rendition.resize(width, height)
-    })
+    if (destroyed) return
+    if (resizeTimer !== null) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null
+      applyResize()
+    }, 500)
   }
   function cleanup() {
     if (!destroyed || opening || disposed) return
@@ -72,8 +75,8 @@ export async function openEpubSession(
     destroyed = true
     observer?.disconnect()
     observer = null
-    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
-    resizeFrame = null
+    if (resizeTimer !== null) clearTimeout(resizeTimer)
+    resizeTimer = null
     signal.removeEventListener('abort', destroy)
     root.style.visibility = 'hidden'
     cleanup()
@@ -93,6 +96,7 @@ export async function openEpubSession(
       allowScriptedContent: false,
     })
     rendition.themes.default({
+      html: { 'overflow-x': 'hidden !important' },
       body: {
         'font-family': 'Georgia, serif',
         'font-size': '18px',
@@ -100,6 +104,7 @@ export async function openEpubSession(
         padding: '24px !important',
         'box-sizing': 'border-box !important',
         margin: '0 !important',
+        'overflow-x': 'hidden !important',
       },
       '*': { 'max-width': '100%', 'overflow-wrap': 'anywhere', 'box-sizing': 'border-box' },
       pre: { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
@@ -119,7 +124,8 @@ export async function openEpubSession(
     restoreResize = keepScrolledChapterMounted(rendition, root)
     observer = new ResizeObserver(scheduleResize)
     observer.observe(target)
-    scheduleResize()
+    // Fit the first chapter immediately; subsequent changes wait for resize to settle.
+    applyResize()
     return {
       title: publication.title,
       chapters: publication.chapters,

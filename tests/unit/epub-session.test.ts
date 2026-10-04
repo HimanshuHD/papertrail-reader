@@ -114,7 +114,7 @@ it('releases the root and engine while a navigation promise is still pending', a
   await expect(navigation).rejects.toThrow()
 })
 
-it('reflows on container resize, ignores zero sizes and cancels pending work on disposal', async () => {
+it('debounces resize for 500ms after the last change and cancels queued work on disposal', async () => {
   let notify!: ResizeObserverCallback
   const disconnect = vi.fn()
   vi.stubGlobal(
@@ -127,45 +127,38 @@ it('reflows on container resize, ignores zero sizes and cancels pending work on 
       disconnect = disconnect
     },
   )
-  let scheduled: FrameRequestCallback | null = null
-  const cancel = vi.fn(() => {
-    scheduled = null
-  })
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-    scheduled = callback
-    return 1
-  })
-  vi.stubGlobal('cancelAnimationFrame', cancel)
   try {
     const target = document.createElement('div')
     const session = await openEpubSession(file(), target, new AbortController().signal)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
     const root = target.firstElementChild!
     let width = 600
     Object.defineProperty(root, 'clientWidth', { get: () => width })
     Object.defineProperty(root, 'clientHeight', { get: () => 400 })
-    const flush = () => {
-      const callback = scheduled
-      scheduled = null
-      callback?.(0)
-    }
-    flush()
-    expect(mocks.resize).toHaveBeenLastCalledWith(600, 400)
+    notify([], {} as ResizeObserver)
+    vi.advanceTimersByTime(499)
+    expect(mocks.resize).not.toHaveBeenCalled()
     width = 320
     notify([], {} as ResizeObserver)
-    flush()
-    expect(mocks.resize).toHaveBeenLastCalledWith(320, 400)
+    vi.advanceTimersByTime(499)
+    expect(mocks.resize).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(1)
+    expect(mocks.resize).toHaveBeenCalledExactlyOnceWith(320, 400)
+    notify([], {} as ResizeObserver)
+    vi.advanceTimersByTime(500)
+    expect(mocks.resize).toHaveBeenCalledTimes(1)
     width = 0
     notify([], {} as ResizeObserver)
-    flush()
-    expect(mocks.resize).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(500)
+    expect(mocks.resize).toHaveBeenCalledTimes(1)
     width = 800
     notify([], {} as ResizeObserver)
     session.destroy()
     expect(disconnect).toHaveBeenCalledOnce()
-    expect(cancel).toHaveBeenCalledOnce()
-    flush()
-    expect(mocks.resize).toHaveBeenCalledTimes(2)
+    vi.advanceTimersByTime(500)
+    expect(mocks.resize).toHaveBeenCalledTimes(1)
   } finally {
+    vi.useRealTimers()
     vi.unstubAllGlobals()
   }
 })

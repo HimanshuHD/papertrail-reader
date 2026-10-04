@@ -1,5 +1,11 @@
 # EPUB implementation — #12
 
+## EPUB resize debounce and scrollbar ownership — 4 October 2026
+
+#126 remains reproducible in owner testing. This revision adds a trailing 500 ms debounce after the last container-size change, with immediate initial fit and cancellation on disposal. EPUB now suppresses outer reader-shell scrolling, keeping vertical scrolling in its engine container; horizontal scrolling is explicitly disabled in that container and the chapter document. Existing mounted-frame layout remains in place.
+
+Local lint/format/types, 166 unit/component and 10 pipeline tests and production build pass. Unit coverage verifies no resize before 500 ms of inactivity, latest-size application, unchanged/hidden layouts and cancellation. Browser coverage checks computed horizontal-scroll policies as well as width and frame identity. Fresh browser/owner acceptance remains pending; #126 is not closed. #129/#130 are next-roadmap Preparation planning, status:new, separate from this EPUB correction.
+
 ## In-place EPUB resize and release acceptance policy — 4 October 2026
 
 The previous resize revision `c504c5f` passed CI but failed Browser E2E 37180276140: ten EPUB cases failed, 102 existing cases passed and eight were skipped. The engine resize path cleared the iframe before a location existed, leaving a blank chapter. This is a real regression; earlier pending/success wording below does not accept that revision.

@@ -21,8 +21,8 @@ interface ScrollManager {
 export function keepScrolledChapterMounted(rendition: Rendition, root: HTMLElement): () => void {
   const manager = (rendition as unknown as { manager: ScrollManager }).manager
   const originalResize = manager.resize
-  manager.container.style.overflowX = 'hidden'
-  manager.container.style.overflowY = 'auto'
+  manager.container.style.setProperty('overflow-x', 'hidden', 'important')
+  manager.container.style.setProperty('overflow-y', 'auto', 'important')
   manager.container.style.scrollbarGutter = 'stable'
   manager.resize = (width = root.clientWidth, height = root.clientHeight) => {
     if (!width || !height) return

@@ -99,7 +99,13 @@ watch(
   overflow: hidden;
 }
 .epub-host {
+  min-width: 0;
   position: relative;
   overflow: hidden;
+}
+.epub-host :deep(.epub-container) {
+  max-width: 100%;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
 }
 </style>

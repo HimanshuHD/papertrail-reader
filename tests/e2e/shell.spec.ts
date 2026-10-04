@@ -129,6 +129,9 @@ test('EPUB reflows during live resizing without scroll and stays within the read
   await expect
     .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
     .toBe(true)
+  await expect(reader.locator('.epub-container')).toHaveCSS('overflow-x', 'hidden')
+  await expect(page.locator('.reader-content')).toHaveCSS('overflow-x', 'hidden')
+  await expect(frame.locator('html')).toHaveCSS('overflow-x', 'hidden')
   expect(errors).toEqual([])
 })
 

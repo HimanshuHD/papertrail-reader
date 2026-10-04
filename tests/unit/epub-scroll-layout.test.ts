@@ -33,6 +33,7 @@ it('resizes the existing chapter using width after the scrollbar gutter without 
   expect(layout.calculate).toHaveBeenCalledWith(304, 500)
   expect(manager.stage.settings.width).toBe(320)
   expect(manager.container.style.overflowX).toBe('hidden')
+  expect(manager.container.style.getPropertyPriority('overflow-x')).toBe('important')
   restore()
   expect(manager.resize).toBe(original)
 })
