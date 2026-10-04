@@ -6,13 +6,13 @@ Owner verified the controls and seven review observations, then merged [PR #135]
 
 Delivered: validated nested EPUB 2/3 Contents with spine fallback, PDF-style utility buttons/right panel, measured default font and responsive typography, stable loading overlay/metadata, iframe dismissal/tooltips, Text-only switch and borderless side icons. Full Browser E2E remains #134/#28 on reviewed release-to-main readiness; no new browser run is claimed.
 
-## Active EPUB enhancement — #132
+## Active EPUB enhancement — #133
 
-#132 is implemented on a fresh branch from reconciled current main on `feat/132-epub-stable-location`. It provides reusable session CFI/text-location capture and restoration across typography, 150ms resize, library/utility changes and rendering modes. Persisted identity/bookmarks/history remain #133; final release evidence remains #134/#28. Create each subsequent branch only after predecessor merge/deployment. EPUB milestone 3 remains open: four open (#12/#132/#133/#134), six completed.
+#132 is completed in merged #136. #133 is now active for saved EPUB identity/location/settings, bookmarks and recent history on feat/133-epub-reading-continuity. #134 remains new; create its branch after #133 merges. EPUB milestone 3 remains open with three open and seven completed issues.
 
 ## Planned EPUB reader enhancements — 4 October 2026
 
-Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, **type:enhancement** (#131 completed; #132 in progress; #133–#134 new) in EPUB milestone 3. Each has explicit acceptance, dependencies and a planned branch name. #132 is the active implementation; full browser execution remains a release gate.
+Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, **type:enhancement** (#131 completed; #132 completed; #133 in progress; #134 new) in EPUB milestone 3. Each has explicit acceptance, dependencies and a planned branch name. #133 is the active implementation; full browser execution remains a release gate.
 
 | Issue                                                              | Enhancement                                             | Branch                                      | Status                                                                                                                    |
 | ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
@@ -352,3 +352,7 @@ Chapter/mode loading is contained in a fixed reading-stage overlay with a 150ms 
 ## #132 implementation checkpoint
 
 Session location capture/restoration is implemented with validated generated-publication CFIs and character/text anchors, pixel offsets and end-of-chapter handling. Typography, 150ms resize and mode reopening preserve the reading point with generation/input cancellation. Local checks pass: 197 unit/component tests, 10 pipeline tests, lint/format/types/build. Delivery awaits review and owner merge; the milestone remains open with four open and six completed issues. The release suite lists 140 cases; current browser execution remains #134/#28. See [location semantics](../architecture/epub.md#stable-session-reading-location--132).
+
+## #136 merge reconciliation and active #133
+
+Owner merged #136 as `09610e6` after source `2f99f6b` passed Frontend CI 37223881477 (197 unit/component and 10 pipeline tests, lint/format/types/build). #132 is complete and its active label is removed. #133 now owns saved EPUB progress across reload, document switching and later reselection, plus identity/settings/bookmarks/recent history. Its fresh branch starts from updated main; #134 remains new for final release evidence. EPUB milestone 3 remains open: three open (#12/#133/#134), seven completed. Browser E2E remains deferred to reviewed release-to-main readiness.

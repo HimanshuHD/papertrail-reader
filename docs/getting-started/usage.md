@@ -45,3 +45,7 @@ Owner verified #131 and its seven review fixes, then merged #135 as `e9d59f4`. A
 ## Keeping your EPUB reading point
 
 Typography, window/library width changes and the Text-only switch retain the visible text and its position within the reading area where the rebuilt content permits. At a chapter's end the reader stays at the bottom. A switch that omits an image retains its source location at alternate text. This is session behavior; saved EPUB positions, bookmarks and recent EPUB history are planned in #133.
+
+## #136 merge reconciliation and active #133
+
+Owner merged #136 as `09610e6` after source `2f99f6b` passed Frontend CI 37223881477 (197 unit/component and 10 pipeline tests, lint/format/types/build). #132 is complete and its active label is removed. #133 now owns saved EPUB progress across reload, document switching and later reselection, plus identity/settings/bookmarks/recent history. Its fresh branch starts from updated main; #134 remains new for final release evidence. EPUB milestone 3 remains open: three open (#12/#133/#134), seven completed. Browser E2E remains deferred to reviewed release-to-main readiness.
