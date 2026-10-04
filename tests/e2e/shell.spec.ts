@@ -615,6 +615,13 @@ async function noOverflow(page: Page) {
   )
 }
 async function capture(page: Page, info: TestInfo, name: string) {
+  await page.evaluate(async () => {
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await Promise.all(
+      document.getAnimations().map((animation) => animation.finished.catch(() => {})),
+    )
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+  })
   const path = info.outputPath(`${name}.png`)
   await page.screenshot({ path, fullPage: true })
   await info.attach(name, { path, contentType: 'image/png' })
