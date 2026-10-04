@@ -39,9 +39,7 @@ watch(
       <h2 id="reader-title" class="truncate text-sm font-semibold">
         {{ reader.session.value?.title || document.name }}
       </h2>
-      <p class="my-2 text-xs text-muted">
-        Text reader · Book images and styling are omitted in this increment.
-      </p>
+      <p class="my-2 text-xs text-muted">Text reader · Book images and styling are omitted.</p>
       <div class="flex flex-wrap items-center gap-2">
         <button
           class="rounded border border-line px-3 py-2 text-sm disabled:opacity-40"
