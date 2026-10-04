@@ -15,6 +15,7 @@ defineProps<{
     | 'fit-page'
     | 'bookmark'
     | 'contents'
+    | 'typography'
     | 'search'
     | 'fullscreen'
     | 'fullscreen-exit'

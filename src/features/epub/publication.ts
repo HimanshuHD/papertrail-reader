@@ -1,4 +1,5 @@
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
+import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
 import { verifyBookImage } from './book-images'
 import { Inflate, strToU8, zipSync } from 'fflate'
 import {
@@ -16,6 +17,9 @@ export interface TextPublication {
   bytes: ArrayBuffer
   title: string
   dispose(): void
+  contents: readonly EpubContentsEntry[]
+  contentsSource: 'nav' | 'ncx' | 'spine'
+  fragments: readonly ReadonlySet<string>[]
   chapters: readonly { label: string; href: string }[]
 }
 
@@ -75,7 +79,7 @@ function xml(bytes: Uint8Array, limit: number): Document {
   let text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   // Standard XHTML declarations are inert after removal; internal subsets stay forbidden.
   text = text.replace(
-    /<!DOCTYPE\s+html(?:\s+PUBLIC\s+"[^"<>\x5b\x5d]*"\s+"[^"<>\x5b\x5d]*"|\s+SYSTEM\s+"[^"<>\x5b\x5d]*")?\s*>/giu,
+    /<!DOCTYPE\s+(?:html|ncx)(?:\s+PUBLIC\s+"[^"<>\x5b\x5d]*"\s+"[^"<>\x5b\x5d]*"|\s+SYSTEM\s+"[^"<>\x5b\x5d]*")?\s*>/giu,
     '',
   )
   if (/<!DOCTYPE|<!ENTITY/iu.test(text))
@@ -108,7 +112,7 @@ function resolvePath(base: string, href: string): string {
 
 const XHTML = 'http://www.w3.org/1999/xhtml'
 const allowed = new Set(
-  'p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
+  'a main header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
     ' ',
   ),
 )
@@ -150,8 +154,18 @@ export function sanitizeChapter(
   const direction = body.getAttribute('dir') ?? source.documentElement.getAttribute('dir')
   if (direction === 'rtl' || direction === 'ltr') target.setAttribute('dir', direction)
   function attributes(from: Element, to: Element) {
+    const id = from.getAttribute('id')
+    if (
+      id &&
+      id.length <= 256 &&
+      !id.startsWith('epubjs-') &&
+      !id.startsWith('papertrail-') &&
+      !/\s/u.test(id) &&
+      Array.from(id).every((char) => char.charCodeAt(0) >= 32 && char.charCodeAt(0) !== 127)
+    )
+      to.setAttribute('id', id)
     if (!formatting) return
-    for (const name of ['id', 'class', 'lang', 'title']) {
+    for (const name of ['class', 'lang', 'title']) {
       const value = from.getAttribute(name)
       if (value && value.length <= 1000) to.setAttribute(name, value)
     }
@@ -190,7 +204,12 @@ export function sanitizeChapter(
           if (value && /^\d{1,4}$/u.test(value)) img.setAttribute(name, value)
         }
         parent.appendChild(img)
-      } else parent.appendChild(output.createTextNode(element.getAttribute('alt') ?? ''))
+      } else {
+        const alt = output.createElementNS(XHTML, 'span')
+        attributes(element, alt)
+        alt.textContent = element.getAttribute('alt') ?? ''
+        parent.appendChild(alt)
+      }
       return
     }
     const fresh = allowed.has(tag) ? output.createElementNS(XHTML, tag) : null
@@ -382,6 +401,8 @@ export async function preparePublication(
       return { sheets, images, inline }
     }
     const chapters: { label: string; href: string }[] = []
+    const fragments: Set<string>[] = []
+    const targets = new Map<string, { chapter: number; fragments: Set<string> }>()
     const files: Record<string, Uint8Array> = { mimetype: encode('application/epub+zip') }
     let total = 0
     let inputTotal = 0
@@ -406,9 +427,22 @@ export async function preparePublication(
         throw new EpubArchiveError('EPUB chapter input exceeds the reading budget.')
       const chapter = await resource(path, 4 * 1024 * 1024)
       const href = `chapter-${index}.xhtml`
-      const clean = encode(
-        sanitizeChapter(chapter, textOnly ? undefined : await formatting(chapter, path)),
+      const cleanText = sanitizeChapter(
+        chapter,
+        textOnly ? undefined : await formatting(chapter, path),
       )
+      const clean = encode(cleanText)
+      const sanitized = new DOMParser().parseFromString(cleanText, 'application/xml')
+      const ids = new Set<string>()
+      const duplicateIds = new Set<string>()
+      for (const el of sanitized.querySelectorAll('[id]')) {
+        const id = el.getAttribute('id')!
+        if (ids.has(id)) duplicateIds.add(id)
+        ids.add(id)
+      }
+      for (const id of duplicateIds) ids.delete(id)
+      fragments.push(ids)
+      targets.set(path, { chapter: index, fragments: ids })
       total += clean.length
       if (total > 32 * 1024 * 1024)
         throw new EpubArchiveError('EPUB text exceeds the reading budget.')
@@ -421,6 +455,61 @@ export async function preparePublication(
         href,
       })
     }
+    let contents: EpubContentsEntry[] = []
+    let contentsSource: 'nav' | 'ncx' | 'spine' = 'spine'
+    const navItem = [...items.values()].find(
+      (item) =>
+        item.getAttribute('media-type') === 'application/xhtml+xml' &&
+        item.getAttribute('properties')?.split(/\s+/u).includes('nav'),
+    )
+    const ncxItem =
+      items.get(spine.getAttribute('toc') ?? '') ??
+      [...items.values()].find(
+        (item) => item.getAttribute('media-type') === 'application/x-dtbncx+xml',
+      )
+    for (const [kind, item] of [
+      ['nav', navItem],
+      ['ncx', ncxItem],
+    ] as const) {
+      if (
+        contents.length ||
+        !item ||
+        (kind === 'ncx' && item.getAttribute('media-type') !== 'application/x-dtbncx+xml')
+      )
+        continue
+      try {
+        const path = resolvePath(packagePath, item.getAttribute('href') ?? '')
+        const navDocument = await resource(path, 1024 * 1024)
+        const resolveTarget = (href: string): EpubContentsTarget | null => {
+          try {
+            const parts = href.split('#')
+            if (parts.length > 2) return null
+            const target = targets.get(parts[0] ? resolvePath(path, parts[0]) : path)
+            if (!target) return null
+            const fragment = parts[1] ? decodeURIComponent(parts[1]) : undefined
+            if (fragment && !target.fragments.has(fragment)) return null
+            return { chapter: target.chapter, fragment }
+          } catch {
+            return null
+          }
+        }
+        const parsed = parseEpubContents(navDocument, kind, resolveTarget)
+        if (parsed.length) {
+          contents = parsed
+          contentsSource = kind
+        }
+      } catch {
+        signal?.throwIfAborted()
+        // Optional navigation failure must not prevent reading verified spine chapters.
+      }
+    }
+    if (!contents.length)
+      contents = chapters.map((chapter, index) => ({
+        id: `spine-${index}`,
+        label: chapter.label,
+        chapter: index,
+        children: [],
+      }))
     // Only rebuilt XHTML, sanitized CSS and owned image URLs reach the engine.
     files.mimetype = encode('application/epub+zip')
     files['META-INF/container.xml'] = encode(
@@ -435,6 +524,9 @@ export async function preparePublication(
       title,
       dispose,
       chapters,
+      fragments,
+      contents,
+      contentsSource,
       bytes: packed.buffer.slice(
         packed.byteOffset,
         packed.byteOffset + packed.byteLength,

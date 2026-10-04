@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo } from '@playwright/test'
-import { createEpubFixture, createFormattedEpubFixture } from '../fixtures/epub'
+import {
+  createEpubFixture,
+  createFormattedEpubFixture,
+  createContentsEpubFixture,
+} from '../fixtures/epub'
 
 test('EPUB text reader sanitizes local chapters, navigates and disposes on source changes', async ({
   page,
@@ -41,7 +45,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
   await reader.getByRole('button', { name: 'Next chapter' }).click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
-  await reader.getByRole('combobox', { name: 'Chapters' }).selectOption('0')
+  await reader.getByRole('button', { name: 'Previous chapter' }).click()
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await capture(page, info, 'epub-text-reader-light')
   await page.getByRole('button', { name: 'Dark mode' }).click()
@@ -129,7 +133,7 @@ test('EPUB reflows during live resizing without scroll and stays within the read
   await expect
     .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
     .toBe(true)
-  await reader.getByRole('checkbox', { name: 'Text-only view' }).check()
+  await reader.getByRole('switch', { name: 'Text-only view' }).click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await page.setViewportSize({ width: 320, height: 700 })
   await expect
@@ -157,9 +161,9 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
   await page.getByRole('button', { name: 'Hide library' }).click()
   const reader = page.getByRole('region', { name: 'EPUB reader' })
   const frame = reader.frameLocator('iframe')
-  const toggle = reader.getByRole('checkbox', { name: 'Text-only view' })
+  const toggle = reader.getByRole('switch', { name: 'Text-only view' })
   await expect(frame.getByRole('heading', { name: 'Formatted chapter' })).toBeVisible()
-  await expect(toggle).not.toBeChecked()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await expect(frame.locator('.intro')).toHaveCSS('text-align', 'center')
   await expect(frame.locator('body')).toHaveCSS('color', 'rgb(18, 52, 86)')
   await expect(frame.locator('.intro')).toHaveCSS('padding-top', '12px')
@@ -188,7 +192,7 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
       offset: el.getBoundingClientRect().top - top,
     }
   })
-  await toggle.check()
+  await toggle.click()
   await expect(frame.locator('img')).toHaveCount(0)
   await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
   await expect
@@ -205,9 +209,9 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
     .toBeCloseTo(anchor.offset, 0)
   await next.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
-  await toggle.uncheck()
+  await toggle.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
-  await expect(reader.getByRole('combobox', { name: 'Chapters' })).toHaveValue('1')
+  await expect(reader.locator('header')).toContainText('Chapter 2 of 2')
   await reader.getByRole('button', { name: 'Previous chapter' }).click()
   await expect(frame.locator('img')).toBeVisible()
   await page.setViewportSize({ width: 320, height: 700 })
@@ -217,6 +221,102 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
   await expect(next).toBeVisible()
   await noOverflow(page)
 })
+
+for (const kind of ['nav', 'ncx'] as const) {
+  test(`EPUB ${kind} contents and typography work in both modes without replacing the frame`, async ({
+    page,
+  }, info) => {
+    const requests: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('evil.invalid')) requests.push(request.url())
+    })
+    await page.goto('./#/app')
+    await page.locator('input[accept*=".pdf"]').setInputFiles({
+      name: `contents-${kind}.epub`,
+      mimeType: 'application/epub+zip',
+      buffer: Buffer.from(createContentsEpubFixture(kind)),
+    })
+    await page
+      .locator('section[aria-labelledby="local-library-title"]')
+      .getByRole('button', { name: new RegExp(`contents-${kind}.epub`) })
+      .click()
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    const reader = page.getByRole('region', { name: 'EPUB reader' })
+    const frame = reader.frameLocator('iframe')
+    await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+    await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+    const contents = reader.getByRole('navigation', { name: 'EPUB contents' })
+    await expect(contents.getByText('Part One', { exact: true })).toBeVisible()
+    await reader
+      .locator('iframe')
+      .evaluate((el) => el.setAttribute('data-typography-owner', 'original'))
+    await contents.getByRole('button', { name: 'Later section' }).click()
+    await reader.getByRole('button', { name: 'Close utility panel' }).click()
+    await expect(frame.getByRole('heading', { name: 'Later section' })).toBeVisible()
+    await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+    await expect(contents.getByRole('button', { name: 'Later section' })).toHaveAttribute(
+      'aria-current',
+      'location',
+    )
+    await expect(reader.locator('iframe')).toHaveAttribute('data-typography-owner', 'original')
+    await contents.getByRole('button', { name: 'Introduction' }).click()
+    await reader.getByRole('button', { name: 'Close utility panel' }).click()
+    await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+    await expect(reader.getByLabel('Font size', { exact: true })).toContainText(
+      'Book default (16 px)',
+    )
+    await reader.getByRole('button', { name: 'Increase font size' }).click()
+    await reader.getByRole('button', { name: 'Increase font size' }).click()
+    await reader.getByRole('button', { name: 'Increase font size' }).click()
+    await reader
+      .getByRole('group', { name: 'Line spacing' })
+      .getByRole('button', { name: 'Spacious' })
+      .click()
+    if (page.viewportSize()!.width >= 640) {
+      await reader
+        .getByRole('group', { name: 'Reading width' })
+        .getByRole('button', { name: 'Narrow' })
+        .click()
+    } else await expect(reader.getByRole('group', { name: 'Reading width' })).toHaveCount(0)
+    await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
+    await expect(frame.locator('p').first()).toHaveCSS('line-height', '44px')
+    await expect(frame.locator('p').first()).toHaveCSS('color', 'rgb(18, 52, 86)')
+    await expect(reader.locator('iframe')).toHaveAttribute('data-typography-owner', 'original')
+    if (page.viewportSize()!.width >= 640)
+      await expect
+        .poll(() => frame.locator('body').evaluate((el) => el.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(481)
+    await frame.locator('p').first().click()
+    await expect(reader.getByRole('heading', { name: 'Typography', exact: true })).toHaveCount(0)
+    await reader.getByRole('switch', { name: 'Text-only view' }).click()
+    await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+    await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
+    await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+    await contents.getByRole('button', { name: 'Later section' }).click()
+    await reader.getByRole('button', { name: 'Close utility panel' }).click()
+    await expect(frame.getByRole('heading', { name: 'Later section' })).toBeVisible()
+    await reader.getByRole('switch', { name: 'Text-only view' }).click()
+    await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
+    await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+    await reader.getByRole('button', { name: 'Reset typography' }).click()
+    await reader.getByRole('button', { name: 'Close typography' }).click()
+    await expect(frame.locator('p').first()).toHaveCSS('font-size', '16px')
+    await expect(frame.locator('p').first()).toHaveCSS('color', 'rgb(18, 52, 86)')
+    await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+    await contents.getByRole('button', { name: 'Next chapter', exact: true }).click()
+    await reader.getByRole('button', { name: 'Close utility panel' }).click()
+    await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+    await expect(reader.locator('header')).toContainText('Chapter 2 of 2')
+    await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+    await expect(
+      contents.getByRole('button', { name: 'Next chapter', exact: true }),
+    ).toHaveAttribute('aria-current', 'location')
+    await page.getByRole('button', { name: 'Dark mode' }).click()
+    await noOverflow(page)
+    await capture(page, info, `epub-${kind}-contents-typography`)
+    expect(requests).toEqual([])
+  })
+}
 
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(

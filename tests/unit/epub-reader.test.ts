@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { h } from 'vue'
 import { expect, it, vi } from 'vitest'
 import type { EpubSession } from '../../src/features/epub/epub-session'
@@ -11,6 +11,9 @@ vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked
 function session(): EpubSession {
   return {
     title: 'test',
+    contents: [],
+    contentsSource: 'spine',
+    typography: vi.fn(),
     chapters: [
       { label: 'one', href: 'one' },
       { label: 'two', href: 'two' },
@@ -71,6 +74,7 @@ it('ignores stale navigation and clears the owned session on unmount', async () 
   const { reader, wrapper } = harness()
   await reader.open(new File([], 'book.epub'), document.createElement('div'), false)
   const navigation = reader.go(1)
+  await flushPromises()
   wrapper.unmount()
   finish()
   await navigation
@@ -87,5 +91,29 @@ it('recovers from rejected opens without retaining an engine or busy state', asy
   expect(reader.error.value).toBe('malformed publication')
   expect(reader.session.value).toBeNull()
   expect(reader.busy.value).toBe(false)
+  wrapper.unmount()
+})
+
+it('ignores late contents navigation after source replacement and resets the selected entry', async () => {
+  const old = session()
+  const next = session()
+  let finish!: () => void
+  vi.mocked(old.display).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  mocked.open.mockResolvedValueOnce(old).mockResolvedValueOnce(next)
+  const { reader, wrapper } = harness()
+  await reader.open(new File([], 'one.epub'), document.createElement('div'), false)
+  const pending = reader.go(1, 'anchor', 'selected')
+  await flushPromises()
+  await reader.open(new File([], 'two.epub'), document.createElement('div'), false)
+  finish()
+  await pending
+  expect(reader.session.value).toBe(next)
+  expect(reader.chapter.value).toBe(0)
+  expect(reader.contentsEntry.value).toBeNull()
   wrapper.unmount()
 })
