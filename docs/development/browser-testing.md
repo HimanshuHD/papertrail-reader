@@ -10,6 +10,12 @@ Run `npm run build`, install Chromium with `npx playwright install --with-deps c
 
 The suite keeps the Chromium width matrix at 320/375/768/1024/1440px and expands as interactive product behavior arrives. It covers preserved home, Go to app/direct entry/history, keyboard/theme persistence, both themes, sidebar placement/collapse/selection, disabled actions, readable title width and overflow. It saves home/app screenshots, an HTML report and failure traces locally. Screenshot capture is not a pixel-baseline approval. Config/specs remain strictly type checked; generated reports are ignored.
 
+## Release evidence identity — #134
+
+The release workflow records the candidate source SHA, tested PR merge checkout, exact Chromium version, Node/platform and run ID in `browser-evidence/environment.json`. A JSON reporter records machine-readable outcomes in `browser-evidence/results.json`. Full `browser-review` and compact `browser-summary` artifacts retain reports/screenshots/failure traces for seven days. Curated accepted screenshots are saved with the evidence document. Capture awaits finite page animations; perpetual loading spinners remain visible.
+
+The two costly PDF regressions (1,001 pages and native persisted handle recovery) run once at 1440px; their four duplicate viewport cases each are intentionally skipped. EPUB fixtures run at every width. Headless Linux Chromium and viewport emulation do not certify browser products or real devices; wider release support remains #28.
+
 ## Recorded PR #50 evidence
 
 CI 36912595432 passed 15 browser checks before the policy change. Artifact 11187462095 contains both-theme home/app screenshots; representative screenshots were inspected and the narrow toolbar title corrected. The artifact expires after seven days. These recorded results do not imply future commits are browser-tested automatically.

@@ -79,3 +79,7 @@ Local validation passes 206 unit/component tests, 10 pipeline tests, lint/format
 ## #137 merged; final EPUB acceptance — #134
 
 Owner merged #137 as `d7afbf58cf9448749bbd226018956035c5576076`. Accepted source `ec4f995` passed Frontend CI 37225710749: 206 unit/component and 10 pipeline tests, lint/format/types/build. #133 is completed and its stale active label is removed. #134 now owns final reviewed release-candidate checks and current evidence. EPUB milestone 3 remains open: two open (#12/#134), eight completed. #12 and the milestone remain open until the remaining acceptance is verified. Broader Chrome/Edge/Firefox/Safari capability declarations stay in #28. Earlier pending merge and active-increment checkpoints are historical.
+
+## Final EPUB release acceptance — #134
+
+Release PR #138 records current formatted/text-only, Contents, typography, stable locations, identity, persisted positions/settings/bookmarks and shared PDF/library acceptance. Source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). Final light/dark captures were inspected; see [evidence and supported boundary](../evidence/epub-release-acceptance.md). This supersedes earlier pending implementation/browser checkpoints. Owner merge remains pending; #12/#134 and EPUB milestone 3 stay open until then.

@@ -2,9 +2,9 @@
 
 ## Current release acceptance — #134
 
-Final release PR [#138](https://github.com/HimanshuHD/papertrail-reader/pull/138) is validating source `1c5d74cbcedbdec5e093d6a7fd6c7a40f3235271` in [Browser E2E 37228117456](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37228117456). #131/#132/#133 are merged and reconciled; #134 remains in progress. The first browser run exposed EPUB header spacing, unsettled resize assertions, mobile popover interaction and line-sized position shifts. Candidate fixes are applied; final results and screenshot inspection remain pending. See [current evidence](../evidence/epub-release-acceptance.md).
+Release PR [#138](https://github.com/HimanshuHD/papertrail-reader/pull/138) is ready for owner review/merge. Source `3e4fef13c7934aec32903bfe4a5dd9109f894a30` passed [Frontend CI 37229583694](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229583694): 206 unit/component and 10 pipeline tests, lint/format/types/build. [Browser E2E 37229662269](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229662269) passed 152 cases with zero failed/flaky cases and eight intentional duplicate long-PDF/native-handle skips. All 50 EPUB cases passed at five widths; final light/dark screenshots were inspected and curated originals retained. See [current evidence](../evidence/epub-release-acceptance.md).
 
-Milestone 3 is open with two open issues (#12/#134) and eight completed issues. #28 retains broader supported-browser/device certification. Earlier counts and pending implementation checkpoints below are historical and superseded by this section.
+#131/#132/#133 are merged and reconciled. #134 acceptance is complete, pending owner merge. Milestone 3 remains open with two open (#12/#134) and eight completed issues; merge #138 closes the two remaining issues and permits owner milestone closure. Roadmap #78 and broader browser/device gate #28 remain open. Earlier counts and pending checkpoints below are historical and superseded by this section.
 
 ## EPUB contents/typography merge reconciliation — #135
 
