@@ -4,6 +4,13 @@ import type Contents from 'epubjs/types/contents'
 import type { EpubContentsEntry } from './navigation'
 import { normalizeTypography, typographyCSS, type EpubTypography } from './typography'
 import { preparePublication } from './publication'
+import {
+  captureLocation,
+  restoreLocation,
+  normalizeLocation,
+  type EpubLocation,
+  type CfiBridge,
+} from './location'
 import { keepScrolledChapterMounted } from './scroll-layout'
 
 export interface EpubPosition {
@@ -16,6 +23,7 @@ export interface EpubOpenOptions {
   chapter?: number
   position?: EpubPosition
   typography?: EpubTypography
+  location?: EpubLocation
 }
 export interface EpubSession {
   title: string
@@ -25,6 +33,8 @@ export interface EpubSession {
   display(index: number, fragment?: string): Promise<void>
   typography(settings: EpubTypography): void
   defaultFontSize?(): number
+  location?(): EpubLocation | undefined
+  restore?(location: EpubLocation): Promise<boolean>
   position?(): EpubPosition | undefined
   appearance(dark: boolean): void
   destroy(): void
@@ -73,8 +83,80 @@ export async function openEpubSession(
   let resizeTimer: ReturnType<typeof setTimeout> | null = null
   let width = 0
   let height = 0
-  let chapterIndex = Math.max(0, Math.min(options.chapter ?? 0, publication.chapters.length - 1))
+  const requestedLocation = normalizeLocation(options.location, publication.chapters.length)
+  let chapterIndex = Math.max(
+    0,
+    Math.min(requestedLocation?.chapter ?? options.chapter ?? 0, publication.chapters.length - 1),
+  )
   let navigating = false
+  let navigationEpoch = 0
+  let restorationEpoch = 0
+  let restorationFrame = 0
+  let restoring = false
+  let lastLocation: EpubLocation | undefined
+  const mode = options.textOnly ? 'text' : 'formatted'
+  let scrollContainer: HTMLElement | null = null
+  const inputDocuments = new Set<Document>()
+  function bridge(): CfiBridge | undefined {
+    const doc = root.querySelector('iframe')?.contentDocument
+    const contents = rendition?.getContents() as unknown as Contents[] | undefined
+    return contents?.find((content) => content.document === doc)
+  }
+  function currentLocation() {
+    return destroyed || navigating ? undefined : captureLocation(root, chapterIndex, mode, bridge())
+  }
+  function cancelRestoration() {
+    ++restorationEpoch
+    cancelAnimationFrame(restorationFrame)
+    restorationFrame = 0
+    restoring = false
+  }
+  function keepLocation(saved: EpubLocation | undefined) {
+    cancelRestoration()
+    if (!saved || destroyed || navigating || saved.chapter !== chapterIndex) return false
+    const owner = restorationEpoch
+    restoring = true
+    const applied = restoreLocation(root, saved, mode, bridge())
+    let frames = 0
+    function settle() {
+      if (destroyed || navigating || owner !== restorationEpoch) return
+      if (applied) restoreLocation(root, saved!, mode, bridge())
+      if (++frames < 2) restorationFrame = requestAnimationFrame(settle)
+      else {
+        restoring = false
+        restorationFrame = 0
+        lastLocation = currentLocation()
+      }
+    }
+    restorationFrame = requestAnimationFrame(settle)
+    return applied
+  }
+  function rememberScroll() {
+    if (!restoring && !navigating) lastLocation = currentLocation()
+  }
+  function userInput() {
+    cancelRestoration()
+  }
+  function bindLocationEvents() {
+    if (!scrollContainer) {
+      scrollContainer = root.querySelector<HTMLElement>('.epub-container')
+      scrollContainer?.addEventListener('scroll', rememberScroll, { passive: true })
+      scrollContainer?.addEventListener('wheel', userInput, { passive: true })
+      scrollContainer?.addEventListener('pointerdown', userInput, true)
+    }
+    for (const doc of inputDocuments) {
+      doc.removeEventListener('pointerdown', userInput, true)
+      doc.removeEventListener('keydown', userInput, true)
+    }
+    inputDocuments.clear()
+    const doc = root.querySelector('iframe')?.contentDocument
+    if (doc) {
+      doc.addEventListener('pointerdown', userInput, true)
+      doc.addEventListener('keydown', userInput, true)
+      inputDocuments.add(doc)
+    }
+    lastLocation = currentLocation()
+  }
   let restoreResize: (() => void) | null = null
   function restorePosition(saved: EpubPosition | undefined) {
     if (saved) {
@@ -123,9 +205,11 @@ export async function openEpubSession(
     const nextHeight = root.clientHeight
     // Hidden panels must not replace the last usable layout with a zero-sized one.
     if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
+    const saved = lastLocation ?? currentLocation()
     width = nextWidth
     height = nextHeight
     rendition.resize(width, height)
+    if (saved) keepLocation(saved)
   }
   function scheduleResize() {
     if (destroyed) return
@@ -151,6 +235,16 @@ export async function openEpubSession(
   function destroy() {
     if (destroyed) return
     destroyed = true
+    ++navigationEpoch
+    cancelRestoration()
+    scrollContainer?.removeEventListener('scroll', rememberScroll)
+    scrollContainer?.removeEventListener('wheel', userInput)
+    scrollContainer?.removeEventListener('pointerdown', userInput, true)
+    for (const doc of inputDocuments) {
+      doc.removeEventListener('pointerdown', userInput, true)
+      doc.removeEventListener('keydown', userInput, true)
+    }
+    inputDocuments.clear()
     observer?.disconnect()
     observer = null
     if (resizeTimer !== null) clearTimeout(resizeTimer)
@@ -228,13 +322,20 @@ export async function openEpubSession(
     root
       .querySelector('iframe')
       ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
-    restoreResize = keepScrolledChapterMounted(rendition, root)
+    restoreResize = keepScrolledChapterMounted(rendition, root, {
+      capture: () => lastLocation ?? currentLocation(),
+      restore: (saved) => {
+        if (saved) keepLocation(saved as EpubLocation)
+      },
+    })
     observer = new ResizeObserver(scheduleResize)
     observer.observe(target)
     // Fit the first chapter immediately; subsequent changes wait for resize to settle.
     applyResize()
-    restorePosition(options.position)
-    return {
+    if (requestedLocation) keepLocation(requestedLocation)
+    else restorePosition(options.position)
+    bindLocationEvents()
+    const session: EpubSession = {
       title: publication.title,
       chapters: publication.chapters,
       contents: publication.contents,
@@ -245,6 +346,9 @@ export async function openEpubSession(
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
         if (fragment && !publication.fragments[index]?.has(fragment))
           throw new Error('EPUB contents target is unavailable.')
+        const owner = ++navigationEpoch
+        cancelRestoration()
+        lastLocation = undefined
         const previousChapter = chapterIndex
         const sameChapter = chapterIndex === index
         chapterIndex = index
@@ -252,6 +356,7 @@ export async function openEpubSession(
         try {
           if (!sameChapter) await rendition.display(chapter.href)
           signal.throwIfAborted()
+          if (owner !== navigationEpoch) throw new Error('EPUB navigation was replaced.')
           if (destroyed) throw new Error('EPUB session is unavailable.')
           const container = root.querySelector<HTMLElement>('.epub-container')
           const iframe = root.querySelector('iframe')
@@ -265,17 +370,21 @@ export async function openEpubSession(
             else container.scrollTop = 0
           }
         } catch (error) {
-          chapterIndex = previousChapter
+          if (owner === navigationEpoch) chapterIndex = previousChapter
           throw error
         } finally {
-          navigating = false
-          scheduleResize()
+          if (owner === navigationEpoch) {
+            navigating = false
+            bindLocationEvents()
+            scheduleResize()
+          }
         }
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
       typography(settings) {
         if (destroyed || !rendition || navigating) return
+        const savedLocation = lastLocation ?? currentLocation()
         const saved = capturePosition()
         rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
         // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
@@ -284,11 +393,27 @@ export async function openEpubSession(
         // Recalculate the existing view even when the viewport dimensions are unchanged.
         if (root.clientWidth && root.clientHeight)
           rendition.resize(root.clientWidth, root.clientHeight)
-        restorePosition(saved)
+        if (savedLocation) keepLocation(savedLocation)
+        else restorePosition(saved)
       },
       defaultFontSize() {
         const doc = root.querySelector('iframe')?.contentDocument
         return doc ? (defaultSizes.get(doc) ?? 18) : 18
+      },
+      location: currentLocation,
+      async restore(value) {
+        const saved = normalizeLocation(value, publication.chapters.length)
+        if (!saved || destroyed || navigating) return false
+        const expected = navigationEpoch + (saved.chapter !== chapterIndex ? 1 : 0)
+        try {
+          if (saved.chapter !== chapterIndex) await session.display(saved.chapter)
+        } catch {
+          return false
+        }
+        if (destroyed || navigationEpoch !== expected) return false
+        const result = keepLocation(saved)
+        if (result) lastLocation = saved
+        return result
       },
       position: capturePosition,
       appearance(dark) {
@@ -297,6 +422,7 @@ export async function openEpubSession(
       },
       destroy,
     }
+    return session
   } catch (error) {
     destroy()
     throw error

@@ -5,7 +5,14 @@ import type { EpubSession } from '../../src/features/epub/epub-session'
 import { useEpubReader } from '../../src/composables/useEpubReader'
 
 const mocked = vi.hoisted(() => ({
-  open: vi.fn<(file: Blob, target: HTMLElement, signal: AbortSignal) => Promise<EpubSession>>(),
+  open: vi.fn<
+    (
+      file: Blob,
+      target: HTMLElement,
+      signal: AbortSignal,
+      options?: import('../../src/features/epub/epub-session').EpubOpenOptions,
+    ) => Promise<EpubSession>
+  >(),
 }))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
 function session(): EpubSession {
@@ -115,5 +122,87 @@ it('ignores late contents navigation after source replacement and resets the sel
   expect(reader.session.value).toBe(next)
   expect(reader.chapter.value).toBe(0)
   expect(reader.contentsEntry.value).toBeNull()
+  wrapper.unmount()
+})
+
+it('coordinates precise mode restoration and rejects a late reopen after replacement', async () => {
+  const current = session()
+  const location = {
+    version: 1 as const,
+    chapter: 1,
+    kind: 'text' as const,
+    mode: 'formatted' as const,
+    cfi: 'epubcfi(/6/4!/4/2/1:20)',
+    node: 'pt-3',
+    character: 20,
+    quote: 'reading text',
+    offset: -4,
+    ratio: 0.4,
+    atEnd: false,
+  }
+  current.location = () => location
+  const mode = session()
+  const replacement = session()
+  mocked.open.mockResolvedValueOnce(current).mockResolvedValueOnce(mode)
+  const { reader, wrapper } = harness()
+  const file = new File([], 'book.epub')
+  const host = document.createElement('div')
+  await reader.open(file, host, false)
+  await reader.go(1, undefined, 'entry')
+  await reader.reopen(file, host, false, { textOnly: true })
+  expect(mocked.open.mock.calls[1]![3]).toMatchObject({ location, chapter: 1, textOnly: true })
+  expect(reader.contentsEntry.value).toBe('entry')
+  let finish!: (value: EpubSession) => void
+  mocked.open
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve
+        }),
+    )
+    .mockResolvedValueOnce(replacement)
+  const pending = reader.reopen(file, host, false, { textOnly: false })
+  await reader.open(new File([], 'other.epub'), host, false)
+  finish(session())
+  await pending
+  expect(reader.session.value).toBe(replacement)
+  expect(reader.contentsEntry.value).toBeNull()
+  expect(reader.chapter.value).toBe(0)
+  wrapper.unmount()
+})
+
+it('ignores a stale asynchronous location restore after a new source opens', async () => {
+  const old = session()
+  let finish!: (value: boolean) => void
+  old.restore = vi.fn(
+    () =>
+      new Promise<boolean>((resolve) => {
+        finish = resolve
+      }),
+  )
+  const next = session()
+  mocked.open.mockResolvedValueOnce(old).mockResolvedValueOnce(next)
+  const { reader, wrapper } = harness()
+  await reader.open(new File([], 'old.epub'), document.createElement('div'), false)
+  const pending = reader.restore({
+    version: 1,
+    chapter: 1,
+    kind: 'text',
+    mode: 'text',
+    cfi: null,
+    node: 'pt-3',
+    character: 0,
+    quote: 'text',
+    offset: 0,
+    ratio: 0,
+    atEnd: false,
+  })
+  await flushPromises()
+  await reader.open(new File([], 'next.epub'), document.createElement('div'), false)
+  finish(true)
+  expect(await pending).toBe(false)
+  expect(reader.session.value).toBe(next)
+  expect(reader.chapter.value).toBe(0)
+  expect(reader.busy.value).toBe(false)
   wrapper.unmount()
 })

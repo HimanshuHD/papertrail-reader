@@ -8,7 +8,7 @@ Delivered: validated nested EPUB 2/3 Contents with spine fallback, PDF-style uti
 
 ## Active EPUB enhancement — #132
 
-#132 now starts from reconciled current main on `feat/132-epub-stable-location`. It owns reusable session CFI/text-location capture and restoration across typography, 150ms resize, library/utility changes and rendering modes. Persisted identity/bookmarks/history remain #133; final release evidence remains #134/#28. Create each subsequent branch only after predecessor merge/deployment. EPUB milestone 3 remains open: four open (#12/#132/#133/#134), six completed.
+#132 is implemented on a fresh branch from reconciled current main on `feat/132-epub-stable-location`. It provides reusable session CFI/text-location capture and restoration across typography, 150ms resize, library/utility changes and rendering modes. Persisted identity/bookmarks/history remain #133; final release evidence remains #134/#28. Create each subsequent branch only after predecessor merge/deployment. EPUB milestone 3 remains open: four open (#12/#132/#133/#134), six completed.
 
 ## Planned EPUB reader enhancements — 4 October 2026
 
@@ -17,7 +17,7 @@ Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has 
 | Issue                                                              | Enhancement                                             | Branch                                      | Status                                                 |
 | ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------- | ------------------------------------------------------ |
 | [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography`         | Completed                                              |
-| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | `feat/132-epub-stable-location`             | In progress — planned; implementation has not started. |
+| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | `feat/132-epub-stable-location`             | In progress — implemented; validation/review underway. |
 | [#133](https://github.com/HimanshuHD/papertrail-reader/issues/133) | identity, saved positions, bookmarks and recent history | Planned: `feat/133-epub-reading-continuity` | New — planned; implementation has not started.         |
 | [#134](https://github.com/HimanshuHD/papertrail-reader/issues/134) | final format, security and browser release acceptance   | Planned: `test/134-epub-release-acceptance` | New — planned; implementation has not started.         |
 
@@ -348,3 +348,7 @@ Replaces the duplicate Chapters dropdown with Contents alone. The PDF-style util
 ## #131 review observations: loading and controls
 
 Chapter/mode loading is contained in a fixed reading-stage overlay with a 150ms delayed loader; Contents metadata remains visible and stable. Book default shows the measured chapter text size and its numerical duplicate is excluded from font stepping. Width choices use mobile/tablet/desktop-style measures: Narrow at 50% capped to 480px, Medium at 70% capped to 768px, Wide at 90% capped to 1100px. Mobile windows below 640px have no width choices; tablet windows below 1024px omit Wide. Full width remains distinct. Iframe pointer/Escape listeners dismiss Typography and are cleaned up; top utility tooltips stack above the popover. Text-only is an accessible switch, and fixed chapter controls are borderless icons with subtle hover/focus interaction. Unit regressions and deferred browser fixtures track these observations; full visual execution remains the release gate.
+
+## #132 implementation checkpoint
+
+Session location capture/restoration is implemented with validated generated-publication CFIs and character/text anchors, pixel offsets and end-of-chapter handling. Typography, 150ms resize and mode reopening preserve the reading point with generation/input cancellation. Local checks pass: 197 unit/component tests, 10 pipeline tests, lint/format/types/build. Delivery awaits review and owner merge; the milestone remains open with four open and six completed issues. The release suite lists 140 cases; current browser execution remains #134/#28. See [location semantics](../architecture/epub.md#stable-session-reading-location--132).

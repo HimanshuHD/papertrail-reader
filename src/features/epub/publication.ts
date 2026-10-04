@@ -197,6 +197,8 @@ export function sanitizeChapter(
       if (url) {
         const img = output.createElementNS(XHTML, 'img')
         attributes(element, img)
+        img.setAttribute('data-reader-node', `pt-${nodes}`)
+        img.setAttribute('data-reader-image', '')
         img.setAttribute('src', url)
         img.setAttribute('alt', (element.getAttribute('alt') ?? '').slice(0, 1000))
         for (const name of ['width', 'height']) {
@@ -207,6 +209,8 @@ export function sanitizeChapter(
       } else {
         const alt = output.createElementNS(XHTML, 'span')
         attributes(element, alt)
+        alt.setAttribute('data-reader-node', `pt-${nodes}`)
+        alt.setAttribute('data-reader-image', '')
         alt.textContent = element.getAttribute('alt') ?? ''
         parent.appendChild(alt)
       }
