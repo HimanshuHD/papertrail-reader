@@ -28,7 +28,7 @@ An earlier browser run targeted the departing inert sidebar input during source 
 
 ## Review gate
 
-#124/#126/#127/#128 are completed by owner merge of #125; their delivery/checklists are reconciled. #12 and EPUB milestone 3 remain open (one open, five closed issues) for remaining EPUB scope. Preparation and Reading continuity milestones are closed. Fresh browser/screenshots gates are explicitly retained in #28 and #12; historical evidence above is not current formatted/resize acceptance.
+#124/#126/#127/#128 are completed by owner merge of #125; their delivery/checklists are reconciled. #12 and EPUB milestone 3 remain open (five open, five closed issues; enhancement work tracked in #131–#134) for remaining EPUB scope. Preparation and Reading continuity milestones are closed. Fresh browser/screenshots gates are explicitly retained in #28 and #12; historical evidence above is not current formatted/resize acceptance.
 
 ---
 

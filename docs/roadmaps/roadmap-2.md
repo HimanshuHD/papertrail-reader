@@ -1,5 +1,18 @@
 # Product Roadmap 2
 
+## Planned EPUB reader enhancements — 4 October 2026
+
+Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, all **type:enhancement / status:new** in EPUB milestone 3. Each has explicit acceptance, dependencies and its own branch from reconciled main. This planning creates no implementation or PR and starts no browser workflow.
+
+| Issue                                                              | Enhancement                                             | Branch                              | Status |
+| ------------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------- | ------ |
+| [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography` | New    |
+| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | `feat/132-epub-stable-location`     | New    |
+| [#133](https://github.com/HimanshuHD/papertrail-reader/issues/133) | identity, saved positions, bookmarks and recent history | `feat/133-epub-reading-continuity`  | New    |
+| [#134](https://github.com/HimanshuHD/papertrail-reader/issues/134) | final format, security and browser release acceptance   | `test/134-epub-release-acceptance`  | New    |
+
+Deliver #131 → #132 → #133 → #134. Refresh/rebase dependent branches from main after prerequisite merges before starting them. #134 owns EPUB-specific release evidence and coordinates the broader supported-browser gate #28; full browser execution stays on the reviewed release-to-main readiness workflow. EPUB milestone 3 remains open with five open and five closed issues. The old working branch is no longer needed; these new branches are independent of it.
+
 ## EPUB renderer merge reconciliation — 4 October 2026
 
 [PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) merged as `f9c170329109f9c7ed7ffbff9df0a41e265135b8` at 14:42:21 Asia/Kolkata. Owner deleted `feat/12-epub-rendering`. #124/#126/#127/#128 are completed; stale active labels and pending-merge checklist entries are removed. Source `66ea167` passed [Frontend CI 37190427689](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37190427689): 172 unit/component tests, 10 pipeline tests, lint, formatting, strict types and production build.
@@ -16,7 +29,7 @@ Delivered: formatted local styles/images by default, an unchecked **Text-only vi
 
 Fresh browser evidence for these corrections is deferred to [release acceptance #28](https://github.com/HimanshuHD/papertrail-reader/issues/28) and parent #12. That checklist retains both-mode resize/overflow, fixed-control/focus layout, representative EPUB 2/3 styles/images, mode anchors, hostile resources and mobile/desktop light/dark captures. Historical text-only screenshots/run do not validate current formatted/resize behavior. Browser E2E executes only on reviewed `release` or `release/*` → `main` opening/readiness; feature work uses ordinary CI.
 
-EPUB milestone 3 is verified **open**, with one open issue (#12) and five closed issues. Preparation milestone 1 and Reading continuity milestone 2 are closed. Roadmap #78 remains open for subsequent EPUB, annotations, reliability/browser and delivery scope.
+EPUB milestone 3 is verified **open**, with five open issues (#12 and #131–#134) and five closed issues. Preparation milestone 1 and Reading continuity milestone 2 are closed. Roadmap #78 remains open for subsequent EPUB, annotations, reliability/browser and delivery scope.
 
 #129 was unintentionally closed by a negated closing-keyword reference in #125's description; it is reopened/status:new per owner instruction. The merged workflow prototype does not complete its formal release/staging event acceptance. #130 staging delivery remains new/unimplemented. Both remain Roadmap 3 #107 Preparation planning; actual milestone assignment is pending identification/creation. No staging deployment behavior has changed.
 

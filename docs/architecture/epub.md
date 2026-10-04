@@ -30,9 +30,9 @@ ZIP fields follow [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudi
 
 ## Remaining parent integration sequence
 
-1. Add authored contents navigation and typography settings with explicit format/UI ownership.
-2. Stabilize CFI across font/window changes; persist EPUB content identity, CFI and settings in independent versioned metadata services, with file revalidation.
-3. Integrate EPUB bookmarks and recent history without saving document bytes.
-4. Execute representative EPUB 2/3, security and supported-browser release acceptance in #28; record current screenshots and tested versions. Keep #12 and EPUB milestone 3 open until remaining acceptance is met.
+1. #131: Add authored contents navigation and typography settings with explicit format/UI ownership.
+2. #132: Stabilize logical session CFI/text anchors across typography, window/library resize and formatted/text-only changes, with stale-operation ownership.
+3. #133: Persist EPUB content identity, CFI/settings, bookmarks and recent history in independent versioned metadata services with file revalidation, without saving document bytes.
+4. #134: Execute representative EPUB 2/3, security and browser release acceptance; coordinate supported-browser evidence with #28. Record current screenshots and tested versions. Keep #12 and EPUB milestone 3 open until remaining acceptance is met.
 
 The initial archive unit suite uses adversarial byte fixtures and bounded read/cancellation assertions. There is no browser or EPUB reading acceptance claim for this foundation-only increment.
