@@ -77,3 +77,22 @@ it('cleans up a rejected engine open', async () => {
   expect(target.children).toHaveLength(0)
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
 })
+
+it('releases the root and engine while a navigation promise is still pending', async () => {
+  const target = document.createElement('div')
+  const controller = new AbortController()
+  const session = await openEpubSession(file(), target, controller.signal)
+  let finish!: () => void
+  mocks.display.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  const navigation = session.display(1)
+  controller.abort()
+  expect(target.children).toHaveLength(0)
+  expect(mocks.destroy).toHaveBeenCalledTimes(1)
+  finish()
+  await expect(navigation).rejects.toThrow()
+})

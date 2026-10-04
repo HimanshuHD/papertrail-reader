@@ -28,9 +28,9 @@ export async function openEpubSession(
   let rendition: Rendition | null = null
   let destroyed = false
   let disposed = false
-  let pending = 1
+  let opening = true
   function cleanup() {
-    if (!destroyed || pending || disposed) return
+    if (!destroyed || opening || disposed) return
     disposed = true
     book.destroy()
     rendition = null
@@ -46,6 +46,8 @@ export async function openEpubSession(
   signal.addEventListener('abort', destroy, { once: true })
   try {
     await book.open(publication.bytes, 'binary')
+    opening = false
+    cleanup()
     signal.throwIfAborted()
     rendition = book.renderTo(root, {
       width: '100%',
@@ -66,6 +68,9 @@ export async function openEpubSession(
     })
     await rendition.display(publication.chapters[0]!.href)
     signal.throwIfAborted()
+    root
+      .querySelector('iframe')
+      ?.setAttribute('title', `EPUB chapter: ${publication.chapters[0]!.label}`)
     return {
       title: publication.title,
       chapters: publication.chapters,
@@ -73,14 +78,9 @@ export async function openEpubSession(
         signal.throwIfAborted()
         const chapter = publication.chapters[index]
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
-        pending++
-        try {
-          await rendition.display(chapter.href)
-          signal.throwIfAborted()
-        } finally {
-          pending--
-          cleanup()
-        }
+        await rendition.display(chapter.href)
+        signal.throwIfAborted()
+        root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
       appearance(dark) {
         if (!rendition || destroyed) return
@@ -93,7 +93,7 @@ export async function openEpubSession(
     destroy()
     throw error
   } finally {
-    pending--
+    opening = false
     cleanup()
   }
 }
