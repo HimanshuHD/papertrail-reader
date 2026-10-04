@@ -4,7 +4,6 @@
 
 #124 implements the first local text renderer on `feat/12-epub-rendering`, depending on foundation PR #123. Archive verification, safe text preparation, isolated engine lifecycle and chapter controls are implemented; full acceptance is running. #12 stays open for authored contents/reflow controls/CFI/bookmarks/recent EPUB history. See [EPUB architecture](../architecture/epub.md).
 
-
 ## Active EPUB work — 4 October 2026
 
 #12 is in progress on `feat/12-epub-reading`. First increment [#122](https://github.com/HimanshuHD/papertrail-reader/issues/122) adds bounded local archive preflight; rendering/reflow/CFI acceptance remains in the parent. See [EPUB architecture](../architecture/epub.md). No EPUB reader completion is claimed.
