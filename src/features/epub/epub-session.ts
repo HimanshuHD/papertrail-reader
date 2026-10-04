@@ -1,5 +1,8 @@
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
+import type Contents from 'epubjs/types/contents'
+import type { EpubContentsEntry } from './navigation'
+import { normalizeTypography, typographyCSS, type EpubTypography } from './typography'
 import { preparePublication } from './publication'
 import { keepScrolledChapterMounted } from './scroll-layout'
 
@@ -12,11 +15,15 @@ export interface EpubOpenOptions {
   textOnly?: boolean
   chapter?: number
   position?: EpubPosition
+  typography?: EpubTypography
 }
 export interface EpubSession {
   title: string
   chapters: readonly { label: string; href: string }[]
-  display(index: number): Promise<void>
+  contents: readonly EpubContentsEntry[]
+  contentsSource: 'nav' | 'ncx' | 'spine'
+  display(index: number, fragment?: string): Promise<void>
+  typography(settings: EpubTypography): void
   position?(): EpubPosition | undefined
   appearance(dark: boolean): void
   destroy(): void
@@ -68,6 +75,47 @@ export async function openEpubSession(
   let chapterIndex = Math.max(0, Math.min(options.chapter ?? 0, publication.chapters.length - 1))
   let navigating = false
   let restoreResize: (() => void) | null = null
+  function restorePosition(saved: EpubPosition | undefined) {
+    if (saved) {
+      const container = root.querySelector<HTMLElement>('.epub-container')
+      const iframe = root.querySelector('iframe')
+      const element = /^pt-\d+$/u.test(saved.node)
+        ? iframe?.contentDocument?.querySelector(`[data-reader-node="${saved.node}"]`)
+        : null
+      if (container && iframe) {
+        if (element)
+          container.scrollTop +=
+            iframe.getBoundingClientRect().top +
+            element.getBoundingClientRect().top -
+            container.getBoundingClientRect().top -
+            saved.offset
+        else
+          container.scrollTop =
+            saved.ratio * Math.max(0, container.scrollHeight - container.clientHeight)
+      }
+    }
+  }
+  function capturePosition(): EpubPosition | undefined {
+    const container = root.querySelector<HTMLElement>('.epub-container')
+    const iframe = root.querySelector('iframe')
+    if (!container || !iframe?.contentDocument) return undefined
+    const viewport = container.getBoundingClientRect()
+    const frameTop = iframe.getBoundingClientRect().top
+    const elements = [...iframe.contentDocument.querySelectorAll('[data-reader-node]')]
+    const element = elements.find((el) => {
+      const rect = el.getBoundingClientRect()
+      return (
+        rect.bottom + frameTop > viewport.top &&
+        rect.top + frameTop < viewport.bottom &&
+        ['p', 'h1', 'h2', 'h3', 'li', 'pre', 'td', 'figure'].includes(el.localName)
+      )
+    })
+    return {
+      node: element?.getAttribute('data-reader-node') ?? '',
+      offset: element ? element.getBoundingClientRect().top + frameTop - viewport.top : 0,
+      ratio: container.scrollTop / Math.max(1, container.scrollHeight - container.clientHeight),
+    }
+  }
   function applyResize() {
     if (destroyed || navigating || !rendition) return
     const nextWidth = root.clientWidth
@@ -152,6 +200,13 @@ export async function openEpubSession(
         rendition?.themes.override('background-color', dark ? '#151b27' : '#ffffff', true)
       }
     }
+    rendition.themes.registerCss(
+      'papertrail-typography',
+      typographyCSS(normalizeTypography(options.typography ?? {})),
+    )
+    rendition.hooks.content.register((contents: Contents) =>
+      rendition?.themes.add('papertrail-typography', contents),
+    )
     applyTheme(false)
     rendition.on('displayed', () => {
       if (!destroyed)
@@ -169,36 +224,40 @@ export async function openEpubSession(
     observer.observe(target)
     // Fit the first chapter immediately; subsequent changes wait for resize to settle.
     applyResize()
-    if (options.position) {
-      const container = root.querySelector<HTMLElement>('.epub-container')
-      const iframe = root.querySelector('iframe')
-      const saved = options.position
-      const element = /^pt-\d+$/u.test(saved.node)
-        ? iframe?.contentDocument?.querySelector(`[data-reader-node="${saved.node}"]`)
-        : null
-      if (container && iframe) {
-        if (element)
-          container.scrollTop +=
-            iframe.getBoundingClientRect().top +
-            element.getBoundingClientRect().top -
-            container.getBoundingClientRect().top -
-            saved.offset
-        else
-          container.scrollTop =
-            saved.ratio * Math.max(0, container.scrollHeight - container.clientHeight)
-      }
-    }
+    restorePosition(options.position)
     return {
       title: publication.title,
       chapters: publication.chapters,
-      async display(index) {
+      contents: publication.contents,
+      contentsSource: publication.contentsSource,
+      async display(index, fragment) {
         signal.throwIfAborted()
         const chapter = publication.chapters[index]
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
+        if (fragment && !publication.fragments[index]?.has(fragment))
+          throw new Error('EPUB contents target is unavailable.')
+        const previousChapter = chapterIndex
+        const sameChapter = chapterIndex === index
         chapterIndex = index
         navigating = true
         try {
-          await rendition.display(chapter.href)
+          if (!sameChapter) await rendition.display(chapter.href)
+          signal.throwIfAborted()
+          if (destroyed) throw new Error('EPUB session is unavailable.')
+          const container = root.querySelector<HTMLElement>('.epub-container')
+          const iframe = root.querySelector('iframe')
+          if (container && iframe) {
+            const anchor = fragment ? iframe.contentDocument?.getElementById(fragment) : null
+            if (anchor)
+              container.scrollTop +=
+                iframe.getBoundingClientRect().top +
+                anchor.getBoundingClientRect().top -
+                container.getBoundingClientRect().top
+            else container.scrollTop = 0
+          }
+        } catch (error) {
+          chapterIndex = previousChapter
+          throw error
         } finally {
           navigating = false
           scheduleResize()
@@ -206,27 +265,19 @@ export async function openEpubSession(
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
-      position() {
-        const container = root.querySelector<HTMLElement>('.epub-container')
-        const iframe = root.querySelector('iframe')
-        if (!container || !iframe?.contentDocument) return undefined
-        const viewport = container.getBoundingClientRect()
-        const frameTop = iframe.getBoundingClientRect().top
-        const elements = [...iframe.contentDocument.querySelectorAll('[data-reader-node]')]
-        const element = elements.find((el) => {
-          const rect = el.getBoundingClientRect()
-          return (
-            rect.bottom + frameTop > viewport.top &&
-            rect.top + frameTop < viewport.bottom &&
-            ['p', 'h1', 'h2', 'h3', 'li', 'pre', 'td', 'figure'].includes(el.localName)
-          )
-        })
-        return {
-          node: element?.getAttribute('data-reader-node') ?? '',
-          offset: element ? element.getBoundingClientRect().top + frameTop - viewport.top : 0,
-          ratio: container.scrollTop / Math.max(1, container.scrollHeight - container.clientHeight),
-        }
+      typography(settings) {
+        if (destroyed || !rendition || navigating) return
+        const saved = capturePosition()
+        rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
+        // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
+        const contents = rendition.getContents() as unknown as Contents[]
+        contents.forEach((content) => rendition?.themes.add('papertrail-typography', content))
+        // Recalculate the existing view even when the viewport dimensions are unchanged.
+        if (root.clientWidth && root.clientHeight)
+          rendition.resize(root.clientWidth, root.clientHeight)
+        restorePosition(saved)
       },
+      position: capturePosition,
       appearance(dark) {
         if (!rendition || destroyed) return
         applyTheme(dark)

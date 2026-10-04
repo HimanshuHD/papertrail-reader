@@ -4,6 +4,12 @@
 
 **Owner merged the delivery; fresh formatted/resize browser evidence remains deferred to #28 release acceptance.** Final source `66ea167` passed [Frontend CI 37190427689](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37190427689). Browser E2E is deferred to reviewed release-to-main opening/readiness under the owner's policy. The runs and screenshots below record the earlier text-only implementation, not the current UI or formatted behavior. Fixed-layout/encrypted books, persistent CFI/identity, authored contents, typography controls, bookmarks and recent EPUB history remain outside this renderer increment.
 
+## #131 contents/typography validation
+
+The current increment adds EPUB 3 nav / EPUB 2 NCX fixtures, validated section anchors in both modes, unsafe/missing/duplicate target filtering, malformed/oversized/deep navigation fallback and optional resource CRC/cancellation coverage. Session/component tests check same-frame fragment navigation, numeric typography/reset, retained text-node offset and stale-source ownership. The suite contains 185 unit/component tests.
+
+Release browser fixtures cover authored contents, fragment scrolling/current marker, font size/line spacing/width/reset, mode changes, mounted frame identity, chapter navigation and narrow/light/dark captures. These fixtures are **not executed evidence** yet; #134/#28 own the final release run. No new screenshot is substituted for the historical captures below. Stable CFI/metadata remains #132/#133; #131 is open until reviewed merge.
+
 ## Historical text-only validation
 
 Application/test source `f1f76dae5457e676ec026e6ceeff22c1a5c95b29` passed [Frontend CI 37175969681](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37175969681): lint, formatting, types, 164 unit/component tests, 10 pipeline tests and production build. [Browser E2E 37176268989](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989) passed **107 cases**, eight intentional viewport-specific skips, no failures or retries.

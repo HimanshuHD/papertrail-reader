@@ -1,17 +1,25 @@
 # PaperTrail progress
 
+## Active EPUB enhancement — #131
+
+#131 implements bounded authored EPUB 3 nav / EPUB 2 NCX contents, accessible nested local chapter/fragment navigation, and session typography (font size, line spacing, reading width, reset). Verified chapter-order fallback keeps books readable when optional navigation is invalid. Original target IDs survive both modes; duplicate/reserved/removed targets cannot be navigated. Typography updates the mounted view and keeps a text-node offset where available; stable CFI remains #132.
+
+Only `feat/131-epub-contents-typography` is active. Progressive delivery: merge/deploy #131 first, then create #132 from updated main; repeat for #133 and #134. The owner is deleting unused pre-created later branches. Their names below are planned names, not active implementation branches. No later issue is started.
+
+Local regression coverage now includes 185 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
+
 ## Planned EPUB reader enhancements — 4 October 2026
 
-Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, all **type:enhancement / status:new** in EPUB milestone 3. Each has explicit acceptance, dependencies and its own branch from reconciled main. This planning creates no implementation or PR and starts no browser workflow.
+Parent [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) now has four separately tracked increments, **type:enhancement** (#131 in progress; #132–#134 new) in EPUB milestone 3. Each has explicit acceptance, dependencies and a planned branch name. #131 is the active implementation; full browser execution remains a release gate.
 
-| Issue                                                              | Enhancement                                             | Branch                              | Status |
-| ------------------------------------------------------------------ | ------------------------------------------------------- | ----------------------------------- | ------ |
-| [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography` | New    |
-| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | `feat/132-epub-stable-location`     | New    |
-| [#133](https://github.com/HimanshuHD/papertrail-reader/issues/133) | identity, saved positions, bookmarks and recent history | `feat/133-epub-reading-continuity`  | New    |
-| [#134](https://github.com/HimanshuHD/papertrail-reader/issues/134) | final format, security and browser release acceptance   | `test/134-epub-release-acceptance`  | New    |
+| Issue                                                              | Enhancement                                             | Branch                                      | Status      |
+| ------------------------------------------------------------------ | ------------------------------------------------------- | ------------------------------------------- | ----------- |
+| [#131](https://github.com/HimanshuHD/papertrail-reader/issues/131) | authored contents navigation and typography controls    | `feat/131-epub-contents-typography`         | In progress |
+| [#132](https://github.com/HimanshuHD/papertrail-reader/issues/132) | stable reading location through typography and resize   | Planned: `feat/132-epub-stable-location`    | New         |
+| [#133](https://github.com/HimanshuHD/papertrail-reader/issues/133) | identity, saved positions, bookmarks and recent history | Planned: `feat/133-epub-reading-continuity` | New         |
+| [#134](https://github.com/HimanshuHD/papertrail-reader/issues/134) | final format, security and browser release acceptance   | Planned: `test/134-epub-release-acceptance` | New         |
 
-Deliver #131 → #132 → #133 → #134. Refresh/rebase dependent branches from main after prerequisite merges before starting them. #134 owns EPUB-specific release evidence and coordinates the broader supported-browser gate #28; full browser execution stays on the reviewed release-to-main readiness workflow. EPUB milestone 3 remains open with five open and five closed issues. The old working branch is no longer needed; these new branches are independent of it.
+Deliver #131 → #132 → #133 → #134. Create each later branch from updated main after prerequisite merges/deployments. #134 owns EPUB-specific release evidence and coordinates broader supported-browser gate #28; full browser execution stays on reviewed release-to-main readiness. EPUB milestone 3 remains open with five open and five closed issues.
 
 ## EPUB renderer merge reconciliation — 4 October 2026
 

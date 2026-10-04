@@ -1,6 +1,10 @@
 import { Blob } from 'node:buffer'
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
-import { createEpubFixture, createFormattedEpubFixture } from '../fixtures/epub'
+import {
+  createEpubFixture,
+  createFormattedEpubFixture,
+  createContentsEpubFixture,
+} from '../fixtures/epub'
 import { openEpubSession } from '../../src/features/epub/epub-session'
 
 const mocks = vi.hoisted(() => ({
@@ -11,6 +15,8 @@ const mocks = vi.hoisted(() => ({
   override: vi.fn(),
   resize: vi.fn(),
   on: vi.fn(),
+  css: vi.fn(),
+  hook: vi.fn(),
 }))
 vi.mock('../../src/features/epub/scroll-layout', () => ({
   keepScrolledChapterMounted: () => vi.fn(),
@@ -23,7 +29,9 @@ vi.mock('epubjs', () => ({
       display: mocks.display,
       resize: mocks.resize,
       on: mocks.on,
-      themes: { default: vi.fn(), override: mocks.override },
+      hooks: { content: { register: mocks.hook } },
+      getContents: () => [],
+      themes: { default: vi.fn(), override: mocks.override, registerCss: mocks.css, add: vi.fn() },
     })),
   }),
 }))
@@ -186,4 +194,92 @@ it('opens the requested chapter and revokes formatted image URLs on session disp
   ).rejects.toThrow('engine rejected')
   expect(create).toHaveBeenCalledTimes(2)
   expect(revoke).toHaveBeenCalledTimes(2)
+})
+
+it('validates contents targets, reuses same-chapter rendering, and replaces typography on reset', async () => {
+  const target = document.createElement('div')
+  const session = await openEpubSession(
+    new Blob([createContentsEpubFixture()]) as unknown as globalThis.Blob,
+    target,
+    new AbortController().signal,
+    { typography: { fontSize: 20, lineSpacing: 1.8, readingWidth: 640 } },
+  )
+  expect(session.contentsSource).toBe('nav')
+  expect(mocks.hook).toHaveBeenCalledWith(expect.any(Function))
+  expect(mocks.css).toHaveBeenCalledWith(
+    'papertrail-typography',
+    expect.stringContaining('font-size:20px'),
+  )
+  const displays = mocks.display.mock.calls.length
+  await session.display(0, 'section-anchor')
+  expect(mocks.display).toHaveBeenCalledTimes(displays)
+  await expect(session.display(0, 'missing')).rejects.toThrow('target')
+  expect(mocks.display).toHaveBeenCalledTimes(displays)
+  await session.display(1, 'next')
+  expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
+  session.typography({ fontSize: null, lineSpacing: null, readingWidth: null })
+  expect(mocks.css).toHaveBeenLastCalledWith('papertrail-typography', ':root{}')
+  session.destroy()
+  const calls = mocks.css.mock.calls.length
+  session.typography({ fontSize: 32, lineSpacing: 2, readingWidth: 480 })
+  expect(mocks.css).toHaveBeenCalledTimes(calls)
+})
+
+it('keeps the text-node offset when typography reflows the mounted view', async () => {
+  const target = document.createElement('div')
+  document.body.append(target)
+  let container!: HTMLDivElement
+  let logicalTop = 85
+  const bounds = (top: number) => ({
+    top,
+    bottom: top + 40,
+    left: 0,
+    right: 400,
+    width: 400,
+    height: 40,
+    x: 0,
+    y: top,
+    toJSON() {},
+  })
+  mocks.render.mockImplementationOnce((root: HTMLElement) => {
+    Object.defineProperty(root, 'clientWidth', { value: 600 })
+    Object.defineProperty(root, 'clientHeight', { value: 400 })
+    container = document.createElement('div')
+    container.className = 'epub-container'
+    root.append(container)
+    const iframe = document.createElement('iframe')
+    container.append(iframe)
+    iframe.contentDocument!.body.innerHTML = '<p data-reader-node="pt-3">Visible reading text</p>'
+    container.getBoundingClientRect = () => bounds(0)
+    iframe.getBoundingClientRect = () => bounds(-container.scrollTop)
+    iframe.contentDocument!.querySelector('p')!.getBoundingClientRect = () => bounds(logicalTop)
+    return {
+      display: mocks.display,
+      resize: mocks.resize,
+      on: mocks.on,
+      hooks: { content: { register: mocks.hook } },
+      getContents: () => [],
+      themes: {
+        default: vi.fn(),
+        override: mocks.override,
+        add: vi.fn(),
+        registerCss(name: string, css: string) {
+          mocks.css(name, css)
+          if (css.includes('font-size:20px')) logicalTop = 120
+        },
+      },
+    }
+  })
+  try {
+    const session = await openEpubSession(file(), target, new AbortController().signal)
+    container.scrollTop = 100
+    expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
+    session.typography({ fontSize: 20, lineSpacing: null, readingWidth: null })
+    expect(container.scrollTop).toBe(135)
+    expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
+    expect(mocks.resize).toHaveBeenLastCalledWith(600, 400)
+    session.destroy()
+  } finally {
+    target.remove()
+  }
 })

@@ -23,3 +23,9 @@ The collapsible **Recent** section keeps the last 20 successfully opened PDFs on
 After selecting an accessible EPUB, PaperTrail opens supported reflowable chapters with local book formatting and illustrations. Choose a chapter from **Chapters**, or use the fixed previous/next icons at the sides of the reader. **Text-only view** starts unchecked; check it for simplified text without book styling/images. Switching modes retains your chapter and reading point where possible. Resize reflows after a 150 ms pause.
 
 Formatted mode supports common text styling, spacing, responsive images, tables and flex/grid layouts. Scripts, remote resources, embedded fonts, interactive links, media and fixed-layout/encrypted books are unsupported. Book colors remain authored in formatted view; text-only view follows Light/Dark mode. Invalid books show a recovery message and Retry action. Saved EPUB identity/CFI, typography controls, bookmarks and recent history follow later. No EPUB bytes are stored by the application.
+
+## EPUB contents and typography — #131
+
+Open **Contents** to browse the book's nested table of contents and select a chapter or section. If the book has no usable contents, chapter order is shown. The highlighted entry follows your selected destination/current chapter; precise reading-location tracking follows in #132. The Chapters dropdown and side icons remain available.
+
+Open **Typography** to choose font size (14–32 px), line spacing (1.2–2.2) or reading width (480/640/800 px, limited by available space). **Book default** preserves book text styling; **Full width** uses the available reading area. Explicit typography choices change text sizing and spacing while keeping book colors and illustrations. **Reset typography** restores the defaults. Controls work in formatted and Text-only view; settings remain through mode/chapter changes and reset when another book opens. They are session settings and are not saved after reload yet.

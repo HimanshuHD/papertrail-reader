@@ -11,6 +11,9 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   const position = { node: 'pt-3', offset: -10, ratio: 0.4 }
   const sessions: EpubSession[] = Array.from({ length: 3 }, () => ({
     title: 'Book',
+    contents: [],
+    contentsSource: 'spine',
+    typography: vi.fn(),
     chapters: [
       { label: 'One', href: 'one' },
       { label: 'Two', href: 'two' },
@@ -39,7 +42,7 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   expect(checkbox.element).toHaveProperty('checked', false)
   expect(mocked.open.mock.calls[0]![3]).toMatchObject({ textOnly: false, chapter: 0 })
   expect(wrapper.get('label[for="epub-chapter"]').text()).toBe('Chapters')
-  expect(wrapper.find('header button').exists()).toBe(false)
+  expect(wrapper.find('header button[aria-label="Next chapter"]').exists()).toBe(false)
   expect(
     wrapper.get('.epub-stage button[aria-label="Previous chapter"]').attributes('disabled'),
   ).toBeDefined()
@@ -48,7 +51,12 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   expect(sessions[0]!.display).toHaveBeenCalledWith(1)
   await checkbox.setValue(true)
   await flushPromises()
-  expect(mocked.open.mock.calls[1]![3]).toEqual({ textOnly: true, chapter: 1, position })
+  expect(mocked.open.mock.calls[1]![3]).toEqual({
+    textOnly: true,
+    chapter: 1,
+    position,
+    typography: { fontSize: null, lineSpacing: null, readingWidth: null },
+  })
   expect(sessions[0]!.destroy).toHaveBeenCalledOnce()
   expect(wrapper.get('select').element).toHaveProperty('value', '1')
   await wrapper.setProps({ document: book('other.epub') })
@@ -57,4 +65,77 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   expect(mocked.open.mock.calls[2]![3]).toMatchObject({ textOnly: false, chapter: 0 })
   wrapper.unmount()
   expect(sessions[2]!.destroy).toHaveBeenCalledOnce()
+})
+
+it('exposes nested contents/current location and keeps typography across modes but resets a new source', async () => {
+  const contents = [
+    {
+      id: 'group',
+      label: 'Part One',
+      chapter: null,
+      children: [
+        { id: 'section', label: 'Later section', chapter: 0, fragment: 'anchor', children: [] },
+      ],
+    },
+  ]
+  const sessions: EpubSession[] = Array.from({ length: 3 }, () => ({
+    title: 'Book',
+    chapters: [{ label: 'One', href: 'one' }],
+    contents,
+    contentsSource: 'nav',
+    typography: vi.fn(),
+    display: vi.fn(async () => {}),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  }))
+  for (const session of sessions) mocked.open.mockResolvedValueOnce(session)
+  const book = (name: string) => ({
+    id: name,
+    name,
+    format: 'EPUB' as const,
+    relativePath: name,
+    parentPath: '',
+    source: 'file-input' as const,
+    file: new File([], name),
+  })
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: { document: book('book.epub') },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  const section = wrapper.findAll('nav button').find((button) => button.text() === 'Later section')!
+  await section.trigger('click')
+  await flushPromises()
+  expect(sessions[0]!.display).toHaveBeenCalledWith(0, 'anchor')
+  expect(section.attributes('aria-current')).toBe('location')
+  const selects = wrapper.findAll('fieldset select')
+  await selects[0]!.setValue('22')
+  await selects[1]!.setValue('1.8')
+  await selects[2]!.setValue('640')
+  expect(sessions[0]!.typography).toHaveBeenLastCalledWith({
+    fontSize: 22,
+    lineSpacing: 1.8,
+    readingWidth: 640,
+  })
+  await wrapper.get('input[type="checkbox"]').setValue(true)
+  await flushPromises()
+  expect(mocked.open.mock.calls[1]![3]).toMatchObject({
+    typography: { fontSize: 22, lineSpacing: 1.8, readingWidth: 640 },
+  })
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Reset typography')!
+    .trigger('click')
+  expect(sessions[1]!.typography).toHaveBeenLastCalledWith({
+    fontSize: null,
+    lineSpacing: null,
+    readingWidth: null,
+  })
+  await selects[0]!.setValue('28')
+  await wrapper.setProps({ document: book('other.epub') })
+  await flushPromises()
+  expect(mocked.open.mock.calls[2]![3]).toMatchObject({
+    typography: { fontSize: null, lineSpacing: null, readingWidth: null },
+  })
+  wrapper.unmount()
 })

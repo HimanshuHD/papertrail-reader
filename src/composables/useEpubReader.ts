@@ -10,6 +10,7 @@ export function useEpubReader() {
   const busy = ref(false)
   const error = ref('')
   const chapter = ref(0)
+  const contentsEntry = ref<string | null>(null)
   let controller: AbortController | null = null
   let operation = 0
   function close() {
@@ -33,6 +34,7 @@ export function useEpubReader() {
     busy.value = true
     error.value = ''
     chapter.value = options.chapter ?? 0
+    contentsEntry.value = null
     try {
       const result = await openEpubSession(file, target, signal, options)
       if (owner !== operation) {
@@ -49,15 +51,17 @@ export function useEpubReader() {
       if (owner === operation) busy.value = false
     }
   }
-  async function go(index: number) {
+  async function go(index: number, fragment?: string, entryId?: string) {
     const current = session.value
     const owner = operation
     if (!current || busy.value || !current.chapters[index]) return
     busy.value = true
     try {
-      await current.display(index)
+      if (fragment) await current.display(index, fragment)
+      else await current.display(index)
       if (owner === operation) {
         chapter.value = index
+        contentsEntry.value = entryId ?? null
         error.value = ''
       }
     } catch {
@@ -68,5 +72,5 @@ export function useEpubReader() {
     }
   }
   onBeforeUnmount(close)
-  return { session, busy, error, chapter, open, go, close }
+  return { session, busy, error, chapter, contentsEntry, open, go, close }
 }

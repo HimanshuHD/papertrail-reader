@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
+import EpubContentsList from './EpubContentsList.vue'
+import { flattenContents, type EpubContentsEntry } from '../../features/epub/navigation'
+import {
+  DEFAULT_EPUB_TYPOGRAPHY,
+  EPUB_FONT_SIZES,
+  EPUB_LINE_SPACING,
+  EPUB_READING_WIDTHS,
+  type EpubTypography,
+} from '../../features/epub/typography'
 
 const props = defineProps<{ document: DiscoveredDocument }>()
 const emit = defineEmits<{ status: [message: string] }>()
@@ -10,6 +19,24 @@ const reader = useEpubReader()
 const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
+const typography = ref<EpubTypography>({ ...DEFAULT_EPUB_TYPOGRAPHY })
+const currentContentsId = computed(
+  () =>
+    reader.contentsEntry.value ??
+    flattenContents(reader.session.value?.contents ?? []).find(
+      (entry) => entry.chapter === reader.chapter.value,
+    )?.id,
+)
+function selectContents(entry: EpubContentsEntry) {
+  if (entry.chapter !== null) void reader.go(entry.chapter, entry.fragment, entry.id)
+}
+function applyTypography() {
+  reader.session.value?.typography(typography.value)
+}
+function resetTypography() {
+  typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
+  applyTypography()
+}
 async function open(preserve = false) {
   const file = props.document.file
   const chapter = preserve ? reader.chapter.value : 0
@@ -20,12 +47,14 @@ async function open(preserve = false) {
       textOnly: textOnly.value,
       chapter,
       position,
+      typography: typography.value,
     })
 }
 watch(
   () => props.document.file,
   () => {
     textOnly.value = false
+    typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
     void open()
   },
   { immediate: true },
@@ -83,6 +112,73 @@ watch(
           />
           Text-only view
         </label>
+      </div>
+      <div class="epub-settings">
+        <details class="epub-settings-section">
+          <summary class="cursor-pointer rounded py-2 text-sm">Contents</summary>
+          <p v-if="reader.session.value?.contentsSource === 'spine'" class="text-xs text-muted">
+            Chapter order
+          </p>
+          <nav aria-label="EPUB contents" class="epub-contents border border-line rounded text-sm">
+            <EpubContentsList
+              :entries="reader.session.value?.contents ?? []"
+              :current-id="currentContentsId"
+              :busy="reader.busy.value"
+              @select="selectContents"
+            />
+          </nav>
+        </details>
+        <details class="epub-settings-section">
+          <summary class="cursor-pointer rounded py-2 text-sm">Typography</summary>
+          <fieldset
+            class="epub-typography border border-line rounded p-2"
+            :disabled="reader.busy.value || !reader.session.value"
+          >
+            <legend class="sr-only">EPUB typography</legend>
+            <label
+              >Font size
+              <select
+                v-model="typography.fontSize"
+                class="rounded border border-line bg-panel p-2"
+                @change="applyTypography"
+              >
+                <option :value="null">Book default</option>
+                <option v-for="size in EPUB_FONT_SIZES" :key="size" :value="size">
+                  {{ size }} px
+                </option>
+              </select>
+            </label>
+            <label
+              >Line spacing
+              <select
+                v-model="typography.lineSpacing"
+                class="rounded border border-line bg-panel p-2"
+                @change="applyTypography"
+              >
+                <option :value="null">Book default</option>
+                <option v-for="spacing in EPUB_LINE_SPACING" :key="spacing" :value="spacing">
+                  {{ spacing }}
+                </option>
+              </select>
+            </label>
+            <label
+              >Reading width
+              <select
+                v-model="typography.readingWidth"
+                class="rounded border border-line bg-panel p-2"
+                @change="applyTypography"
+              >
+                <option :value="null">Full width</option>
+                <option v-for="width in EPUB_READING_WIDTHS" :key="width" :value="width">
+                  {{ width }} px
+                </option>
+              </select>
+            </label>
+            <button type="button" class="rounded border border-line p-2" @click="resetTypography">
+              Reset typography
+            </button>
+          </fieldset>
+        </details>
       </div>
     </header>
     <p v-if="reader.busy.value" class="p-3 text-sm text-muted" role="status">Opening EPUB…</p>
@@ -157,6 +253,48 @@ watch(
 .epub-controls select {
   flex: 1;
   max-width: 24rem;
+}
+.epub-reader > header {
+  flex-shrink: 0;
+  max-height: 50%;
+  overflow-y: auto;
+}
+.epub-settings {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 1rem;
+}
+.epub-settings-section {
+  min-width: 0;
+  flex: 1;
+  min-inline-size: min(100%, 12rem);
+}
+.epub-settings summary:focus-visible,
+.epub-typography button:focus-visible,
+.epub-typography select:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: -2px;
+}
+.epub-contents {
+  max-height: min(14rem, 28vh);
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.epub-typography {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
+  gap: 0.5rem;
+  min-width: 0;
+  font-size: 0.875rem;
+}
+.epub-typography label {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+}
+.epub-typography select {
+  min-width: 0;
+  max-width: 100%;
 }
 .epub-stage {
   position: relative;
