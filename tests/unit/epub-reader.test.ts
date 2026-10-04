@@ -1,4 +1,4 @@
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { h } from 'vue'
 import { expect, it, vi } from 'vitest'
 import type { EpubSession } from '../../src/features/epub/epub-session'
@@ -74,6 +74,7 @@ it('ignores stale navigation and clears the owned session on unmount', async () 
   const { reader, wrapper } = harness()
   await reader.open(new File([], 'book.epub'), document.createElement('div'), false)
   const navigation = reader.go(1)
+  await flushPromises()
   wrapper.unmount()
   finish()
   await navigation
@@ -107,6 +108,7 @@ it('ignores late contents navigation after source replacement and resets the sel
   const { reader, wrapper } = harness()
   await reader.open(new File([], 'one.epub'), document.createElement('div'), false)
   const pending = reader.go(1, 'anchor', 'selected')
+  await flushPromises()
   await reader.open(new File([], 'two.epub'), document.createElement('div'), false)
   finish()
   await pending

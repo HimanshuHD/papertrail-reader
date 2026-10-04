@@ -1,15 +1,18 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
+import LoadingState from '../LoadingState.vue'
+import type { EpubSession } from '../../features/epub/epub-session'
 import IconButton from '../IconButton.vue'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import EpubContentsList from './EpubContentsList.vue'
 import { flattenContents, type EpubContentsEntry } from '../../features/epub/navigation'
 import {
   DEFAULT_EPUB_TYPOGRAPHY,
-  EPUB_FONT_SIZES,
+  fontSteps,
+  readingWidthOptions,
   type EpubTypography,
 } from '../../features/epub/typography'
 
@@ -29,12 +32,74 @@ const lineOptions = [
   { label: 'Comfortable', value: 1.8 },
   { label: 'Spacious', value: 2 },
 ]
-const widthOptions = [
-  { label: 'Full width', value: null },
-  { label: 'Narrow', value: 480 },
-  { label: 'Medium', value: 640 },
-  { label: 'Wide', value: 800 },
-]
+const windowWidth = ref(globalThis.innerWidth)
+const widthOptions = computed(() => readingWidthOptions(windowWidth.value))
+const bookFontSize = ref(18)
+const steps = computed(() => fontSteps(bookFontSize.value))
+const fontIndex = computed(() =>
+  steps.value.findIndex((step) => step.value === typography.value.fontSize),
+)
+const metadata = shallowRef<Pick<
+  EpubSession,
+  'title' | 'chapters' | 'contents' | 'contentsSource'
+> | null>(null)
+const showLoader = ref(false)
+const restoringContentsEntry = ref<string | null>(null)
+let loaderTimer: ReturnType<typeof setTimeout> | undefined
+function updateWindowWidth() {
+  windowWidth.value = globalThis.innerWidth
+}
+watch(windowWidth, () => {
+  const previousWidth = typography.value.readingWidth
+  if (windowWidth.value < 640) typography.value.readingWidth = null
+  else if (windowWidth.value < 1024 && typography.value.readingWidth === 800)
+    typography.value.readingWidth = 640
+  if (previousWidth !== typography.value.readingWidth) applyTypography()
+})
+const frameDocuments = new Set<Document>()
+function onFramePointer() {
+  closeTypography(false)
+}
+function onFrameKey(event: KeyboardEvent) {
+  if (event.key === 'Escape' && typographyOpen.value) {
+    event.preventDefault()
+    closeTypography()
+  }
+}
+function clearFrameListeners() {
+  for (const doc of frameDocuments) {
+    doc.removeEventListener('pointerdown', onFramePointer, true)
+    doc.removeEventListener('keydown', onFrameKey, true)
+  }
+  frameDocuments.clear()
+}
+function bindFrameListeners() {
+  clearFrameListeners()
+  for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
+    const doc = frame.contentDocument
+    if (!doc) continue
+    doc.addEventListener('pointerdown', onFramePointer, true)
+    doc.addEventListener('keydown', onFrameKey, true)
+    frameDocuments.add(doc)
+  }
+}
+watch(
+  () => reader.busy.value,
+  async (busy) => {
+    clearTimeout(loaderTimer)
+    showLoader.value = false
+    if (busy)
+      loaderTimer = setTimeout(() => {
+        showLoader.value = true
+      }, 150)
+    else {
+      await nextTick()
+      bindFrameListeners()
+      bookFontSize.value = reader.session.value?.defaultFontSize?.() ?? 18
+    }
+  },
+  { immediate: true },
+)
 const unavailable = computed(() => reader.busy.value || !reader.session.value)
 function focusAction(label: string) {
   void nextTick(() =>
@@ -84,16 +149,19 @@ function onPointer(event: PointerEvent) {
 }
 onMounted(() => {
   globalThis.addEventListener('keydown', onKey)
-  globalThis.addEventListener('pointerdown', onPointer)
+  globalThis.addEventListener('pointerdown', onPointer, true)
+  globalThis.addEventListener('resize', updateWindowWidth)
 })
 onBeforeUnmount(() => {
   globalThis.removeEventListener('keydown', onKey)
-  globalThis.removeEventListener('pointerdown', onPointer)
+  globalThis.removeEventListener('pointerdown', onPointer, true)
+  globalThis.removeEventListener('resize', updateWindowWidth)
+  clearTimeout(loaderTimer)
+  clearFrameListeners()
 })
 function changeFont(delta: number) {
-  const index = EPUB_FONT_SIZES.findIndex((size) => size === (typography.value.fontSize ?? 18))
   typography.value.fontSize =
-    EPUB_FONT_SIZES[Math.max(0, Math.min(EPUB_FONT_SIZES.length - 1, index + delta))]!
+    steps.value[Math.max(0, Math.min(steps.value.length - 1, fontIndex.value + delta))]!.value
   applyTypography()
 }
 function setSpacing(value: number | null) {
@@ -108,7 +176,8 @@ const typography = ref<EpubTypography>({ ...DEFAULT_EPUB_TYPOGRAPHY })
 const currentContentsId = computed(
   () =>
     reader.contentsEntry.value ??
-    flattenContents(reader.session.value?.contents ?? []).find(
+    (reader.busy.value ? restoringContentsEntry.value : null) ??
+    flattenContents(metadata.value?.contents ?? []).find(
       (entry) => entry.chapter === reader.chapter.value,
     )?.id,
 )
@@ -122,22 +191,34 @@ function resetTypography() {
   typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
   applyTypography()
 }
+function toggleTextOnly() {
+  textOnly.value = !textOnly.value
+  void open(true)
+}
 async function open(preserve = false) {
   const file = props.document.file
   const chapter = preserve ? reader.chapter.value : 0
+  const contentsEntry = reader.contentsEntry.value
+  restoringContentsEntry.value = preserve ? contentsEntry : null
   const position = preserve ? reader.session.value?.position?.() : undefined
   await nextTick()
-  if (file === props.document.file && host.value)
+  if (file === props.document.file && host.value) {
     await reader.open(file, host.value, theme.resolvedTheme === 'dark', {
       textOnly: textOnly.value,
       chapter,
       position,
       typography: typography.value,
     })
+    if (preserve && file === props.document.file && reader.session.value)
+      reader.contentsEntry.value = contentsEntry
+  }
 }
 watch(
   () => props.document.file,
   () => {
+    restoringContentsEntry.value = null
+    metadata.value = null
+    bookFontSize.value = 18
     rightPanel.value = null
     typographyOpen.value = false
     textOnly.value = false
@@ -159,7 +240,15 @@ watch(
 watch(
   () => reader.session.value,
   (session) => {
-    if (session) emit('status', `Opened local EPUB: ${session.title}.`)
+    if (session) {
+      metadata.value = {
+        title: session.title,
+        chapters: session.chapters,
+        contents: session.contents,
+        contentsSource: session.contentsSource,
+      }
+      emit('status', `Opened local EPUB: ${session.title}.`)
+    }
   },
 )
 </script>
@@ -175,10 +264,10 @@ watch(
           class="truncate text-base font-semibold sm:text-lg"
           :title="document.name"
         >
-          {{ reader.session.value?.title || document.name }}
+          {{ metadata?.title || document.name }}
         </h2>
-        <p v-if="reader.session.value" class="mt-1 text-xs text-muted">
-          Chapter {{ reader.chapter.value + 1 }} of {{ reader.session.value.chapters.length }}
+        <p v-if="metadata" class="mt-1 text-xs text-muted">
+          Chapter {{ reader.chapter.value + 1 }} of {{ metadata.chapters.length }}
           <span v-if="textOnly"> · Text-only view</span>
         </p>
       </div>
@@ -186,10 +275,18 @@ watch(
         class="flex min-w-0 flex-wrap items-center justify-end gap-1"
         aria-label="EPUB reader controls"
       >
-        <label class="mr-2 flex items-center gap-2 text-xs">
-          <input v-model="textOnly" type="checkbox" :disabled="unavailable" @change="open(true)" />
-          Text-only view
-        </label>
+        <button
+          type="button"
+          role="switch"
+          aria-label="Text-only view"
+          :aria-checked="textOnly"
+          :disabled="unavailable"
+          class="epub-mode-switch"
+          @click="toggleTextOnly"
+        >
+          <span aria-hidden="true" class="epub-switch-track"><span /></span>
+          <span>Text-only view</span>
+        </button>
         <IconButton
           label="Typography"
           icon="typography"
@@ -235,16 +332,18 @@ watch(
                 <IconButton
                   label="Decrease font size"
                   icon="zoom-out"
-                  :disabled="unavailable || typography.fontSize === 14"
+                  :disabled="unavailable || fontIndex === 0"
                   @click="changeFont(-1)"
                 />
                 <output aria-label="Font size" class="text-sm font-medium" aria-live="polite">{{
-                  typography.fontSize === null ? 'Book default' : `${typography.fontSize} px`
+                  typography.fontSize === null
+                    ? `Book default (${bookFontSize} px)`
+                    : `${typography.fontSize} px`
                 }}</output>
                 <IconButton
                   label="Increase font size"
                   icon="zoom-in"
-                  :disabled="unavailable || typography.fontSize === 32"
+                  :disabled="unavailable || fontIndex === steps.length - 1"
                   @click="changeFont(1)"
                 />
               </div>
@@ -263,7 +362,7 @@ watch(
                 </button>
               </div>
             </div>
-            <div role="group" aria-label="Reading width">
+            <div v-if="widthOptions.length" role="group" aria-label="Reading width">
               <p class="mb-2 text-xs font-medium text-muted">Reading width</p>
               <div class="epub-segments">
                 <button
@@ -284,7 +383,7 @@ watch(
         </section>
       </Transition>
     </header>
-    <p v-if="reader.busy.value" class="p-3 text-sm text-muted" role="status">Opening EPUB…</p>
+
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
       <button class="mt-3 rounded border border-line px-3 py-2" @click="open()">
@@ -293,9 +392,24 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
-        <div ref="host" class="epub-host" :aria-busy="reader.busy.value" />
+        <div
+          ref="host"
+          class="epub-host"
+          :class="{ 'epub-host-loading': reader.busy.value }"
+          :aria-busy="reader.busy.value"
+          :inert="reader.busy.value || undefined"
+          @load.capture="bindFrameListeners"
+        />
+        <div v-if="reader.busy.value" class="epub-loading-cover" aria-busy="true">
+          <LoadingState
+            v-if="showLoader"
+            :label="metadata ? 'Loading chapter…' : 'Opening EPUB…'"
+            detail="Preparing your reading space"
+          />
+          <span v-else class="sr-only" role="status">Loading EPUB content…</span>
+        </div>
         <button
-          class="epub-step epub-previous rounded border border-line bg-panel disabled:opacity-40"
+          class="epub-step epub-previous disabled:opacity-40"
           aria-label="Previous chapter"
           title="Previous chapter"
           :disabled="reader.busy.value || !reader.session.value || reader.chapter.value === 0"
@@ -314,7 +428,7 @@ watch(
           </svg>
         </button>
         <button
-          class="epub-step epub-next rounded border border-line bg-panel disabled:opacity-40"
+          class="epub-step epub-next disabled:opacity-40"
           aria-label="Next chapter"
           title="Next chapter"
           :disabled="
@@ -352,15 +466,12 @@ watch(
             <h3 class="text-sm font-semibold">Contents</h3>
             <IconButton label="Close utility panel" icon="close" @click="closePanel" />
           </div>
-          <p
-            v-if="reader.session.value?.contentsSource === 'spine'"
-            class="px-3 pt-3 text-xs text-muted"
-          >
+          <p v-if="metadata?.contentsSource === 'spine'" class="px-3 pt-3 text-xs text-muted">
             Chapter order
           </p>
           <nav aria-label="EPUB contents" class="epub-contents p-3 text-sm">
             <EpubContentsList
-              :entries="reader.session.value?.contents ?? []"
+              :entries="metadata?.contents ?? []"
               :current-id="currentContentsId"
               :busy="reader.busy.value"
               @select="selectContents"
@@ -373,6 +484,73 @@ watch(
 </template>
 
 <style scoped>
+.epub-mode-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-right: 0.5rem;
+  font-size: 0.75rem;
+  min-height: 44px;
+}
+.epub-mode-switch:disabled {
+  opacity: 0.5;
+}
+.epub-mode-switch:focus-visible {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+.epub-switch-track {
+  display: flex;
+  align-items: center;
+  width: 2.25rem;
+  height: 1.25rem;
+  padding: 2px;
+  border-radius: 1rem;
+  background: var(--pt-line);
+}
+.epub-switch-track span {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 50%;
+  background: var(--pt-panel);
+  transition: transform 150ms ease;
+}
+.epub-mode-switch[aria-checked='true'] .epub-switch-track {
+  background: var(--pt-brand);
+}
+.epub-mode-switch[aria-checked='true'] .epub-switch-track span {
+  transform: translateX(1rem);
+}
+.epub-host-loading {
+  visibility: hidden;
+}
+.epub-loading-cover {
+  position: absolute;
+  inset: 0 40px;
+  z-index: 2;
+  background: var(--pt-canvas);
+}
+.epub-header > [aria-label='EPUB reader controls'] :deep(.icon-button:hover),
+.epub-header > [aria-label='EPUB reader controls'] :deep(.icon-button:focus-visible) {
+  z-index: 60;
+}
+.epub-step {
+  border: 0;
+  background: transparent;
+  border-radius: 50%;
+  color: var(--pt-muted);
+  transition:
+    color 150ms ease,
+    transform 150ms ease;
+}
+.epub-step:hover:not(:disabled) {
+  color: var(--pt-brand);
+  transform: translateY(-50%) scale(1.12);
+}
+.epub-step:active:not(:disabled) {
+  transform: translateY(-50%) scale(0.95);
+}
 .epub-reader {
   display: flex;
   flex-direction: column;
@@ -495,6 +673,10 @@ watch(
   opacity: 0;
 }
 @media (prefers-reduced-motion: reduce) {
+  .epub-step,
+  .epub-switch-track span {
+    transition: none;
+  }
   .utility-panel-enter-active,
   .utility-panel-leave-active,
   .utility-popover-enter-active,

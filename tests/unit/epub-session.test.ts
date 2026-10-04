@@ -272,6 +272,12 @@ it('keeps the text-node offset when typography reflows the mounted view', async 
   })
   try {
     const session = await openEpubSession(file(), target, new AbortController().signal)
+    const iframe = target.querySelector('iframe')!
+    iframe.contentDocument!.querySelector('p')!.style.fontSize = '16px'
+    ;(mocks.hook.mock.calls.at(-1)![0] as (content: { document: Document }) => void)({
+      document: iframe.contentDocument!,
+    })
+    expect(session.defaultFontSize!()).toBe(16)
     container.scrollTop = 100
     expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
     session.typography({ fontSize: 20, lineSpacing: null, readingWidth: null })

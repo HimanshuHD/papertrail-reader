@@ -6,7 +6,7 @@
 
 Only `feat/131-epub-contents-typography` is active. Progressive delivery: merge/deploy #131 first, then create #132 from updated main; repeat for #133 and #134. The owner is deleting unused pre-created later branches. Their names below are planned names, not active implementation branches. No later issue is started.
 
-Local regression coverage now includes 186 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
+Local regression coverage now includes 189 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
 
 ## Planned EPUB reader enhancements — 4 October 2026
 
@@ -92,3 +92,7 @@ Multiple-document tabs, session restoration/resource limits, comparison and port
 ## #131 UI refinement in PR #135
 
 Replaces the duplicate Chapters dropdown with Contents alone. The PDF-style utility bar uses shared icon buttons; Contents toggles a right utility panel (docked on wide reader areas, overlay on narrow ones). Typography opens a compact popover with font −/+, segmented spacing/width choices and Reset. Escape/close focus restoration, outside-popover dismissal and reduced-motion/inert transitions are covered by component regressions; mode/source ownership and fixed side chapter controls remain. Later Bookmarks/features extend this utility area under #133. Release browser fixtures use the revised controls; execution remains deferred to #134/#28.
+
+## #131 review observations: loading and controls
+
+Chapter/mode loading is contained in a fixed reading-stage overlay with a 150ms delayed loader; Contents metadata remains visible and stable. Book default shows the measured chapter text size and its numerical duplicate is excluded from font stepping. Width choices use mobile/tablet/desktop-style measures: Narrow at 50% capped to 480px, Medium at 70% capped to 768px, Wide at 90% capped to 1100px. Mobile windows below 640px have no width choices; tablet windows below 1024px omit Wide. Full width remains distinct. Iframe pointer/Escape listeners dismiss Typography and are cleaned up; top utility tooltips stack above the popover. Text-only is an accessible switch, and fixed chapter controls are borderless icons with subtle hover/focus interaction. Unit regressions and deferred browser fixtures track these observations; full visual execution remains the release gate.

@@ -1,6 +1,25 @@
 export const EPUB_FONT_SIZES = [14, 16, 18, 20, 22, 24, 28, 32] as const
 export const EPUB_LINE_SPACING = [1.2, 1.4, 1.6, 1.8, 2, 2.2] as const
 export const EPUB_READING_WIDTHS = [480, 640, 800] as const
+export function readingWidthOptions(viewportWidth: number) {
+  if (viewportWidth < 640) return []
+  const choices = [
+    { label: 'Full width', value: null },
+    { label: 'Narrow', value: 480 },
+    { label: 'Medium', value: 640 },
+  ]
+  if (viewportWidth >= 1024) choices.push({ label: 'Wide', value: 800 })
+  return choices
+}
+export function fontSteps(defaultSize: number) {
+  return [
+    { size: defaultSize, value: null },
+    ...EPUB_FONT_SIZES.filter((size) => size !== defaultSize).map((size) => ({
+      size,
+      value: size as number | null,
+    })),
+  ].sort((a, b) => a.size - b.size)
+}
 export interface EpubTypography {
   fontSize: number | null
   lineSpacing: number | null
@@ -33,10 +52,17 @@ export function typographyCSS(settings: EpubTypography): string {
     )
   }
   if (safe.lineSpacing) rules.push(`body,body *{line-height:${safe.lineSpacing}!important}`)
-  if (safe.readingWidth)
+  if (safe.readingWidth) {
+    const measure =
+      safe.readingWidth === 480
+        ? 'min(50%,480px)'
+        : safe.readingWidth === 640
+          ? 'min(70%,768px)'
+          : 'min(90%,1100px)'
     rules.push(
-      `body{max-width:min(100%,${safe.readingWidth}px)!important;margin-left:auto!important;margin-right:auto!important}`,
+      `body{max-width:${measure}!important;margin-left:auto!important;margin-right:auto!important}`,
     )
+  }
   // A nonempty sheet lets the engine clear previous explicit settings on reset.
   return rules.join('\n') || ':root{}'
 }

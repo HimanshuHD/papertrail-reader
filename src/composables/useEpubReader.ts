@@ -1,4 +1,4 @@
-import { onBeforeUnmount, ref, shallowRef } from 'vue'
+import { nextTick, onBeforeUnmount, ref, shallowRef } from 'vue'
 import {
   openEpubSession,
   type EpubSession,
@@ -56,6 +56,8 @@ export function useEpubReader() {
     const owner = operation
     if (!current || busy.value || !current.chapters[index]) return
     busy.value = true
+    await nextTick()
+    if (owner !== operation) return
     try {
       if (fragment) await current.display(index, fragment)
       else await current.display(index)

@@ -55,6 +55,6 @@ defineEmits<{ select: [entry: EpubContentsEntry] }>()
   outline-offset: -2px;
 }
 .epub-toc-link:disabled {
-  opacity: 0.4;
+  cursor: wait;
 }
 </style>

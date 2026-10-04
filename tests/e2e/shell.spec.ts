@@ -133,7 +133,7 @@ test('EPUB reflows during live resizing without scroll and stays within the read
   await expect
     .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
     .toBe(true)
-  await reader.getByRole('checkbox', { name: 'Text-only view' }).check()
+  await reader.getByRole('switch', { name: 'Text-only view' }).click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await page.setViewportSize({ width: 320, height: 700 })
   await expect
@@ -161,9 +161,9 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
   await page.getByRole('button', { name: 'Hide library' }).click()
   const reader = page.getByRole('region', { name: 'EPUB reader' })
   const frame = reader.frameLocator('iframe')
-  const toggle = reader.getByRole('checkbox', { name: 'Text-only view' })
+  const toggle = reader.getByRole('switch', { name: 'Text-only view' })
   await expect(frame.getByRole('heading', { name: 'Formatted chapter' })).toBeVisible()
-  await expect(toggle).not.toBeChecked()
+  await expect(toggle).toHaveAttribute('aria-checked', 'false')
   await expect(frame.locator('.intro')).toHaveCSS('text-align', 'center')
   await expect(frame.locator('body')).toHaveCSS('color', 'rgb(18, 52, 86)')
   await expect(frame.locator('.intro')).toHaveCSS('padding-top', '12px')
@@ -192,7 +192,7 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
       offset: el.getBoundingClientRect().top - top,
     }
   })
-  await toggle.check()
+  await toggle.click()
   await expect(frame.locator('img')).toHaveCount(0)
   await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
   await expect
@@ -209,7 +209,7 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
     .toBeCloseTo(anchor.offset, 0)
   await next.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
-  await toggle.uncheck()
+  await toggle.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await expect(reader.locator('header')).toContainText('Chapter 2 of 2')
   await reader.getByRole('button', { name: 'Previous chapter' }).click()
@@ -262,32 +262,40 @@ for (const kind of ['nav', 'ncx'] as const) {
     await contents.getByRole('button', { name: 'Introduction' }).click()
     await reader.getByRole('button', { name: 'Close utility panel' }).click()
     await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+    await expect(reader.getByLabel('Font size', { exact: true })).toContainText(
+      'Book default (16 px)',
+    )
+    await reader.getByRole('button', { name: 'Increase font size' }).click()
     await reader.getByRole('button', { name: 'Increase font size' }).click()
     await reader.getByRole('button', { name: 'Increase font size' }).click()
     await reader
       .getByRole('group', { name: 'Line spacing' })
       .getByRole('button', { name: 'Spacious' })
       .click()
-    await reader
-      .getByRole('group', { name: 'Reading width' })
-      .getByRole('button', { name: 'Narrow' })
-      .click()
+    if (page.viewportSize()!.width >= 640) {
+      await reader
+        .getByRole('group', { name: 'Reading width' })
+        .getByRole('button', { name: 'Narrow' })
+        .click()
+    } else await expect(reader.getByRole('group', { name: 'Reading width' })).toHaveCount(0)
     await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
     await expect(frame.locator('p').first()).toHaveCSS('line-height', '44px')
     await expect(frame.locator('p').first()).toHaveCSS('color', 'rgb(18, 52, 86)')
     await expect(reader.locator('iframe')).toHaveAttribute('data-typography-owner', 'original')
-    await expect
-      .poll(() => frame.locator('body').evaluate((el) => el.getBoundingClientRect().width))
-      .toBeLessThanOrEqual(481)
-    await reader.getByRole('button', { name: 'Close typography' }).click()
-    await reader.getByRole('checkbox', { name: 'Text-only view' }).check()
+    if (page.viewportSize()!.width >= 640)
+      await expect
+        .poll(() => frame.locator('body').evaluate((el) => el.getBoundingClientRect().width))
+        .toBeLessThanOrEqual(481)
+    await frame.locator('p').first().click()
+    await expect(reader.getByRole('heading', { name: 'Typography', exact: true })).toHaveCount(0)
+    await reader.getByRole('switch', { name: 'Text-only view' }).click()
     await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
     await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
     await reader.getByRole('button', { name: 'Contents', exact: true }).click()
     await contents.getByRole('button', { name: 'Later section' }).click()
     await reader.getByRole('button', { name: 'Close utility panel' }).click()
     await expect(frame.getByRole('heading', { name: 'Later section' })).toBeVisible()
-    await reader.getByRole('checkbox', { name: 'Text-only view' }).uncheck()
+    await reader.getByRole('switch', { name: 'Text-only view' }).click()
     await expect(frame.locator('p').first()).toHaveCSS('font-size', '22px')
     await reader.getByRole('button', { name: 'Typography', exact: true }).click()
     await reader.getByRole('button', { name: 'Reset typography' }).click()

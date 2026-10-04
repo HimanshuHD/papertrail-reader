@@ -24,6 +24,7 @@ export interface EpubSession {
   contentsSource: 'nav' | 'ncx' | 'spine'
   display(index: number, fragment?: string): Promise<void>
   typography(settings: EpubTypography): void
+  defaultFontSize?(): number
   position?(): EpubPosition | undefined
   appearance(dark: boolean): void
   destroy(): void
@@ -204,9 +205,17 @@ export async function openEpubSession(
       'papertrail-typography',
       typographyCSS(normalizeTypography(options.typography ?? {})),
     )
-    rendition.hooks.content.register((contents: Contents) =>
-      rendition?.themes.add('papertrail-typography', contents),
-    )
+    const defaultSizes = new WeakMap<Document, number>()
+    rendition.hooks.content.register((contents: Contents) => {
+      const doc = contents.document
+      const sample = doc.querySelector('p,li') ?? doc.body
+      const size =
+        sample && doc.defaultView
+          ? parseFloat(doc.defaultView.getComputedStyle(sample).fontSize)
+          : NaN
+      defaultSizes.set(doc, Number.isFinite(size) && size > 0 ? Math.round(size * 10) / 10 : 18)
+      rendition?.themes.add('papertrail-typography', contents)
+    })
     applyTheme(false)
     rendition.on('displayed', () => {
       if (!destroyed)
@@ -276,6 +285,10 @@ export async function openEpubSession(
         if (root.clientWidth && root.clientHeight)
           rendition.resize(root.clientWidth, root.clientHeight)
         restorePosition(saved)
+      },
+      defaultFontSize() {
+        const doc = root.querySelector('iframe')?.contentDocument
+        return doc ? (defaultSizes.get(doc) ?? 18) : 18
       },
       position: capturePosition,
       appearance(dark) {
