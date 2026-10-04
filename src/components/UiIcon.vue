@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   name:
+    | 'clock'
     | 'refresh'
     | 'plus'
     | 'close'
@@ -19,6 +20,8 @@ defineProps<{
     | 'help'
 }>()
 const paths = {
+  // Lucide clock; existing library license in docs/licenses/lucide.txt.
+  clock: 'M12 6v6l4 2',
   refresh: 'M20 7v5h-5M4 17v-5h5M6 8a7 7 0 0 1 12-2l2 2M4 16l2 2a7 7 0 0 0 12-2',
   plus: 'M12 5v14M5 12h14',
   close: 'M6 6l12 12M18 6 6 18',
@@ -52,6 +55,7 @@ const paths = {
     class="h-5 w-5"
   >
     <circle v-if="name === 'zoom-in' || name === 'zoom-out'" cx="11" cy="11" r="8" />
+    <circle v-if="name === 'clock'" cx="12" cy="12" r="10" />
     <path :d="paths[name]" />
   </svg>
 </template>

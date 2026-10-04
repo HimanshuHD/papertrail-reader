@@ -74,3 +74,5 @@ Choose a category below. The repository [README](../README.md) links here; each 
 - [Changelog](../CHANGELOG.md).
 
 Old guide paths contain migration pointers; add new links to canonical paths. Follow [documentation conventions](development/documentation-conventions.md) for future additions.
+
+- [Recent PDFs and library search evidence](evidence/recent-library.md)

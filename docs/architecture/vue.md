@@ -241,3 +241,11 @@ PR #101 merged as 77b8f311a638ba616a19dea0102833167a5453fa. #89 is completed. Ma
 ---
 
 [Previous](overview.md) · [Documentation home](../README.md) · [Next](reader-shell.md)
+
+## Recent PDFs and library filtering (#14)
+
+Library search filters the selected PDF/EPUB listing by Unicode-normalized filename, extracted title, path and format. All query terms must match; clearing search restores the tree and its expansion state. This is separate from PDF text search. Cached library results remain visible while access needs renewal.
+
+Recent PDFs are recorded only after successful rendering and unambiguous document identity resolution. `recent-documents.ts` validates and bounds metadata to 20 entries in a separate IndexedDB database; it never copies file bytes or additional handles. `useRecentDocuments` serializes writes and ignores unmounted completions. Removing an entry or clearing recent history preserves positions and bookmarks in the reading database. `ReaderView` cancels stale reopen attempts on source changes or manual selections; `matchRecent` verifies full content fingerprints against accessible selected files, including renamed files. Missing, changed or unreadable files offer source reselection rather than opening an unrelated path. EPUB recent reading history follows the EPUB reader in #12; EPUB listing search works now. Storage errors remain visible and retryable without stopping reading.
+
+Recent history presentation is isolated in `RecentDocuments.vue`: native disclosure button, leading Lucide clock, trailing count, focus recovery and persistent error/retry feedback. Library filtering remains independent in the header-adjacent search field with an accessible name and screen-reader-only result count.

@@ -28,9 +28,53 @@ import { useWorkspaceContinuity } from '../composables/useWorkspaceContinuity'
 import { cacheLibraryDocuments, type WorkspaceSnapshot } from '../services/workspace-storage'
 import { revalidateWorkspace } from '../services/workspace-revalidation'
 
+import { useRecentDocuments } from '../composables/useRecentDocuments'
+import { matchRecent, type RecentDocument } from '../services/recent-documents'
+
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
 const workspace = useWorkspaceContinuity()
+const recents = useRecentDocuments()
+const recentMessage = ref('')
+const recentOpening = ref(false)
+let recentController: AbortController | null = null
+function cancelRecent() {
+  recentController?.abort()
+  recentOpening.value = false
+}
+function rememberRecent(identity: { id: string; fingerprint: string }) {
+  const item = activePdfDocument.value
+  if (item)
+    void recents.remember({
+      ...identity,
+      name: item.name,
+      title: item.title,
+      relativePath: item.relativePath,
+      openedAt: Date.now(),
+    })
+}
+async function openRecent(entry: RecentDocument) {
+  cancelRecent()
+  const controller = new AbortController()
+  recentController = controller
+  recentOpening.value = true
+  recentMessage.value = 'Checking recent document access…'
+  try {
+    const item = await matchRecent(entry, discoveredDocuments.value, controller.signal)
+    if (controller.signal.aborted) return
+    if (item) {
+      selectLibraryDocument(item.id)
+      recentMessage.value = ''
+    } else
+      recentMessage.value =
+        'This recent PDF is unavailable or changed. Use + to reselect its source, then try it again.'
+  } catch {
+    if (!controller.signal.aborted)
+      recentMessage.value = 'Recent PDF access could not be checked. Use + to reselect its source.'
+  } finally {
+    if (recentController === controller) recentOpening.value = false
+  }
+}
 const sidebarWidth = ref(308)
 const reconnecting = ref(false)
 let workspaceOperation = 0
@@ -73,6 +117,7 @@ let discoveryController: AbortController | null = null
 let metadataController: AbortController | null = null
 onBeforeUnmount(() => {
   workspaceOperation += 1
+  cancelRecent()
   discoveryController?.abort()
   metadataController?.abort()
 })
@@ -141,6 +186,7 @@ function selectLibraryDocument(id: string, restoring = false) {
 
   if (!restoring) {
     workspaceOperation += 1
+    cancelRecent()
     reconnecting.value = false
   }
   const sameActive =
@@ -269,6 +315,7 @@ async function reconnect(
 async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
   const saved = workspace.snapshot.value
   const owner = ++workspaceOperation
+  cancelRecent()
   const label = librarySelectionLabel(selection)
   if (saved && cached.value && saved.label === label && saved.source === selection.source) {
     workspace.patch({ handle: selection.kind === 'directory' ? selection.handle : null })
@@ -301,6 +348,7 @@ async function resumeWorkspace() {
   const saved = workspace.snapshot.value
   if (!saved || reconnecting.value) return
   const owner = ++workspaceOperation
+  cancelRecent()
   const access = await workspace.resume()
   if (owner !== workspaceOperation) return
   if (access?.status === 'granted') await reconnect(access.selection, saved, owner)
@@ -310,6 +358,7 @@ async function resumeWorkspace() {
 
 async function forgetWorkspace() {
   workspaceOperation += 1
+  cancelRecent()
   discoveryController?.abort()
   metadataController?.abort()
   discoveryController = null
@@ -351,6 +400,7 @@ onMounted(async () => {
 
 async function refreshLibrary() {
   workspaceOperation += 1
+  cancelRecent()
   reconnecting.value = false
   workspace.patch({ activePath: null, activeFingerprint: null })
   const selection = librarySelection.value
@@ -363,6 +413,7 @@ async function refreshLibrary() {
 
 function cancelDiscovery() {
   workspaceOperation += 1
+  cancelRecent()
   reconnecting.value = false
   discoveryController?.abort()
   discoveryPhase.value = 'cancelled'
@@ -435,6 +486,9 @@ async function closeSidebarAndRestoreFocus() {
       <template #sidebar>
         <LibrarySidebar
           :library-documents="displayDocuments"
+          :recent-documents="recents.entries.value"
+          :recent-message="recentMessage || recents.notice.value"
+          :recent-busy="recentOpening || recents.busy.value"
           :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
           :scroll-position="workspace.snapshot.value?.libraryScroll"
           :cached="cached"
@@ -449,6 +503,10 @@ async function closeSidebarAndRestoreFocus() {
           :discovery-summary="discoverySummary"
           :discovery-busy="discoveryPhase === 'indexing' && !cached"
           :discovery-problem-count="discoveryProblems.length"
+          @open-recent="openRecent"
+          @remove-recent="recents.remove($event)"
+          @clear-recents="recents.remove()"
+          @retry-recents="recents.reload()"
           @toggle-folder="toggleFolder"
           @library-scroll="workspace.patch({ libraryScroll: $event })"
           @resume-workspace="resumeWorkspace"
@@ -470,6 +528,7 @@ async function closeSidebarAndRestoreFocus() {
         "
         @status="announcement = $event"
         @identity="workspace.patch({ activeFingerprint: $event })"
+        @recent-ready="rememberRecent"
       />
       <ReaderWorkspace
         v-else

@@ -28,6 +28,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   status: [message: string]
   identity: [fingerprint: string]
+  recentReady: [identity: { id: string; fingerprint: string }]
   utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | null, query: string]
 }>()
 
@@ -391,6 +392,11 @@ async function handleRendered(pageNumber: number, scale: number) {
     if (sequence !== openSequence || phase.value !== 'restoring') return
     phase.value = 'ready'
     if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
+    if (continuity.documentId.value && continuity.fingerprint.value)
+      emit('recentReady', {
+        id: continuity.documentId.value,
+        fingerprint: continuity.fingerprint.value,
+      })
     saveReadingPoint()
     if (props.initialPanel === 'search' && props.initialSearchQuery) {
       searchQuery.value = props.initialSearchQuery

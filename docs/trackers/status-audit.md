@@ -43,3 +43,13 @@ PR #98 merged as 376323ce2171eb17f45ecded2f266cf431baa07e. #86/#87 are completed
 ## Bookmark merge and next increment — 4 October 2026
 
 #120 merged as `0b2b5c1`; owner confirmed validation. #115 is completed and its active status label is removed. PDF increments #114/#117/#118/#115 are completed; #13 stays open only for separate format acceptance after #12. Preparation milestone 1 is confirmed closed through #100’s embedded milestone metadata. Reading continuity milestone 2 stays open for #14 and unfinished format scope. Next branch: `feat/14-recent-library-search`, from reconciled main. Prior pending-review/milestone-closure statements are historical and superseded.
+
+## #14 review evidence — 4 October 2026
+
+PR #121 implements recent PDFs/library filtering; source `f6d6349` passed Frontend CI 37145713723 (121 unit/component, 10 pipeline) and Browser E2E 37145782531 (102 passed, eight intentional skips, no retries). Mobile/desktop captures were inspected and preserved. #14 stays open/in-review until owner acceptance and merge. Preparation is verified closed; #115 completed; #13 stays open only for separate format acceptance.
+
+## Owner scope and sidebar reconciliation — 4 October 2026
+
+#13 is closed completed: PDF identity, positions, view/anchor restoration and bookmarks are accepted in merged #116/#119/#120. EPUB/CFI and format-specific persistence remain owned by #12 in EPUB milestone 3; they do not block #13. Earlier notes retaining #13 for EPUB are historical and superseded. Reading continuity milestone 2 stays open for #14 only.
+
+#14 owner feedback remains in PR #121: Recent is a collapsible component with a leading clock icon and trailing count; search sits immediately below the Library header with exact `Search documents...` placeholder and a search icon. Visible search label/help and empty recent-history copy are removed; accessible naming/live result count and recovery actions remain. Owner-feedback source `ead6e5e` passed Frontend CI 37149532676 (122 unit/component, 10 pipeline) and Browser E2E 37149606676 (102 passed, eight intentional skips, no retries). Reference comparison and light/dark captures were inspected. #121 is ready for owner review/merge; do not start the next item before owner acceptance.

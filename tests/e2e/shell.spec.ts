@@ -1138,7 +1138,7 @@ test('PDF reading positions survive reload and rename without matching changed c
       .setInputFiles({ name, mimeType: 'application/pdf', buffer })
     await page
       .getByRole('region', { name: 'Library documents', exact: true })
-      .getByRole('button', { name: new RegExp(name.replaceAll('.', '\\.')) })
+      .getByRole('button', { name: new RegExp('^PDF: ' + name.replaceAll('.', '\\.') + '$') })
       .click()
     await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
       'aria-busy',
@@ -1609,4 +1609,104 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
     await expect(panel.getByLabel('Bookmark name', { exact: true })).toHaveValue('Keep this draft')
     expect(await records()).toEqual([])
   }
+})
+
+test('library filtering and recent PDF recovery preserve document metadata', async ({
+  page,
+}, info) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error') errors.push(message.text())
+  })
+  await page.goto('./#/app')
+  const bytes = createPdfFixture(3, 'Recent guide')
+  const show = async () => {
+    const opener = page.getByRole('button', { name: 'Show library' })
+    if (await opener.isVisible()) await opener.click()
+  }
+  const library = page.getByRole('region', { name: 'Library documents', exact: true })
+  await page.locator('input[accept*=".pdf"]').setInputFiles([
+    { name: 'guide.pdf', mimeType: 'application/pdf', buffer: bytes },
+    { name: 'other.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(2) },
+  ])
+  await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).click()
+  await expect(
+    library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
+  ).toBeEnabled()
+  await page.getByLabel('Search library', { exact: true }).fill('other')
+  await expect(page.getByRole('status').filter({ hasText: '1 matching documents' })).toBeVisible()
+  await expect(library.getByRole('button', { name: 'PDF: Recent guide', exact: true })).toHaveCount(
+    0,
+  )
+  await page.getByRole('button', { name: 'Clear library search' }).click()
+  const recentToggle = library.getByRole('button', { name: /^Recent\s*1$/ })
+  await recentToggle.click()
+  await expect(recentToggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(
+    library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
+  ).toBeHidden()
+  await recentToggle.focus()
+  await page.keyboard.press('Enter')
+  await expect(recentToggle).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByPlaceholder('Search documents...', { exact: true })).toBeVisible()
+  await noOverflow(page)
+  const searchBox = await page.getByLabel('Search library', { exact: true }).boundingBox()
+  const headerBox = await page.locator('.library-panel > header').boundingBox()
+  const recentBox = await recentToggle.boundingBox()
+  expect(
+    searchBox &&
+      headerBox &&
+      recentBox &&
+      searchBox.y >= headerBox.y + headerBox.height &&
+      searchBox.y < recentBox.y,
+  ).toBeTruthy()
+  await expect(page.getByText('PDFs you open will appear here.', { exact: true })).toHaveCount(0)
+  await expect(
+    page.getByText(
+      'Filters library filenames, titles and paths. Search inside a PDF from its reader toolbar.',
+      { exact: true },
+    ),
+  ).toHaveCount(0)
+  await capture(page, info, 'recent-library')
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await capture(page, info, 'recent-library-dark')
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await page.reload()
+  await show()
+  await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
+  await expect(
+    library.getByRole('status').filter({ hasText: 'unavailable or changed' }),
+  ).toBeVisible()
+  await page
+    .locator('input[accept*=".pdf"]')
+    .setInputFiles({ name: 'renamed.pdf', mimeType: 'application/pdf', buffer: bytes })
+  await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).waitFor()
+  await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
+    'aria-busy',
+    'false',
+  )
+  await expect(
+    library.getByRole('button', { name: 'Open recent PDF renamed.pdf', exact: true }),
+  ).toBeEnabled()
+  await library.getByRole('button', { name: 'Clear recent history' }).click()
+  await expect(library.getByTestId('recent-count')).toHaveText('0')
+  await expect(library.getByRole('button', { name: /^Open recent PDF/ })).toHaveCount(0)
+  const readingCount = await page.evaluate(
+    async () =>
+      new Promise<number>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-reading', 1)
+        request.onerror = () => reject(request.error)
+        request.onsuccess = () => {
+          const db = request.result
+          const transaction = db.transaction('documents')
+          const count = transaction.objectStore('documents').count()
+          count.onsuccess = () => resolve(count.result)
+          transaction.oncomplete = () => db.close()
+        }
+      }),
+  )
+  expect(readingCount).toBeGreaterThan(0)
+  expect(errors).toEqual([])
 })

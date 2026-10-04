@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
+import RecentDocuments from './RecentDocuments.vue'
 import LoadingState from '../LoadingState.vue'
 import UiIcon from '../UiIcon.vue'
 import type {
@@ -9,6 +10,8 @@ import type {
   LibraryRefreshAction,
 } from '../../features/library/browser-selection'
 import type { LibraryDocumentMetadata } from '../../features/library/discovery'
+
+import { filterLibrary, type RecentDocument } from '../../services/recent-documents'
 
 const props = defineProps<{
   libraryDocuments: readonly LibraryDocumentMetadata[]
@@ -26,6 +29,9 @@ const props = defineProps<{
   workspaceMessage?: string
   canResume?: boolean
   hasWorkspace?: boolean
+  recentDocuments?: readonly RecentDocument[]
+  recentMessage?: string
+  recentBusy?: boolean
 }>()
 
 defineEmits<{
@@ -38,7 +44,13 @@ defineEmits<{
   libraryScroll: [position: number]
   resumeWorkspace: []
   forgetWorkspace: []
+  openRecent: [entry: RecentDocument]
+  removeRecent: [id: string]
+  clearRecents: []
+  retryRecents: []
 }>()
+const query = ref('')
+const filtered = computed(() => filterLibrary(props.libraryDocuments, query.value))
 const list = ref<HTMLElement | null>(null)
 watch(
   [() => props.scrollPosition, () => props.libraryDocuments, list],
@@ -66,6 +78,34 @@ watch(
         @close="$emit('close')"
       />
     </header>
+
+    <div class="shrink-0 border-b border-line px-3 py-3">
+      <div class="relative">
+        <UiIcon
+          name="search"
+          class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted"
+        />
+        <input
+          id="library-filter"
+          v-model="query"
+          type="search"
+          maxlength="200"
+          placeholder="Search documents..."
+          aria-label="Search library"
+          class="min-h-11 w-full rounded-lg border border-line bg-canvas py-2 pr-10 pl-10 text-sm outline-none focus:border-brand focus:ring-1 focus:ring-brand"
+        />
+        <button
+          v-if="query"
+          type="button"
+          aria-label="Clear library search"
+          class="absolute top-1/2 right-2 -translate-y-1/2 rounded p-1 text-muted hover:text-brand"
+          @click="query = ''"
+        >
+          <UiIcon name="close" />
+        </button>
+      </div>
+      <p v-if="query" role="status" class="sr-only">{{ filtered.length }} matching documents</p>
+    </div>
 
     <div v-if="hasWorkspace" class="shrink-0 border-b border-line px-3 py-2 text-xs">
       <p v-if="workspaceMessage" role="status" class="mb-2 text-muted">{{ workspaceMessage }}</p>
@@ -135,6 +175,16 @@ watch(
         </p>
       </section>
 
+      <RecentDocuments
+        :documents="recentDocuments ?? []"
+        :message="recentMessage"
+        :busy="recentBusy"
+        @open="$emit('openRecent', $event)"
+        @remove="$emit('removeRecent', $event)"
+        @clear="$emit('clearRecents')"
+        @retry="$emit('retryRecents')"
+      />
+
       <section v-if="showLibraryResults" class="space-y-3" aria-labelledby="local-library-title">
         <div class="flex items-start justify-between gap-3">
           <div class="min-w-0">
@@ -153,19 +203,21 @@ watch(
 
         <div class="mt-3">
           <LibraryTree
-            v-if="libraryDocuments.length > 0"
-            :documents="libraryDocuments"
+            v-if="filtered.length > 0"
+            :documents="filtered"
             :selected-id="selectedLibraryDocumentId"
-            :collapsed-paths="collapsedPaths"
+            :collapsed-paths="query.trim() ? [] : collapsedPaths"
             :disabled="cached"
-            @toggle="(path, expanded) => $emit('toggleFolder', path, expanded)"
+            @toggle="(path, expanded) => !query.trim() && $emit('toggleFolder', path, expanded)"
             @select="$emit('selectLibraryDocument', $event)"
           />
           <div
             v-else
             class="rounded-xl border border-dashed border-line bg-canvas px-4 py-5 text-center"
           >
-            <p class="text-sm font-medium">No supported documents found</p>
+            <p class="text-sm font-medium">
+              {{ query ? 'No matching documents' : 'No supported documents found' }}
+            </p>
             <p class="mt-1 text-xs leading-relaxed text-muted">
               Choose another source with PDF or EPUB files.
             </p>
