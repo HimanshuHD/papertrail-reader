@@ -14,6 +14,7 @@ defineProps<{
     | 'fit-page'
     | 'bookmark'
     | 'contents'
+    | 'typography'
     | 'search'
     | 'fullscreen'
     | 'fullscreen-exit'
@@ -34,6 +35,7 @@ const paths = {
   'fit-width': 'M4 7h16M4 12h16M4 17h16M2 7l2-2 2 2M22 17l-2 2-2-2',
   'fit-page': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
   bookmark: 'M6 3h12v18l-6-4-6 4z',
+  typography: 'M4 19 10 5l6 14M6 15h8M17 11h5M19.5 11v8',
   contents: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
   search: 'm21 21-4.3-4.3M10.8 18a7.2 7.2 0 1 1 0-14.4 7.2 7.2 0 0 1 0 14.4Z',
   fullscreen:

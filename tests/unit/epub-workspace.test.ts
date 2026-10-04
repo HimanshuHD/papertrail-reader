@@ -41,7 +41,8 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   const checkbox = wrapper.get('input[type="checkbox"]')
   expect(checkbox.element).toHaveProperty('checked', false)
   expect(mocked.open.mock.calls[0]![3]).toMatchObject({ textOnly: false, chapter: 0 })
-  expect(wrapper.get('label[for="epub-chapter"]').text()).toBe('Chapters')
+  expect(wrapper.find('select').exists()).toBe(false)
+  expect(wrapper.get('button[aria-label="Contents"]').attributes('aria-expanded')).toBe('false')
   expect(wrapper.find('header button[aria-label="Next chapter"]').exists()).toBe(false)
   expect(
     wrapper.get('.epub-stage button[aria-label="Previous chapter"]').attributes('disabled'),
@@ -58,7 +59,7 @@ it('opens formatted by default, keeps side navigation outside the header and ret
     typography: { fontSize: null, lineSpacing: null, readingWidth: null },
   })
   expect(sessions[0]!.destroy).toHaveBeenCalledOnce()
-  expect(wrapper.get('select').element).toHaveProperty('value', '1')
+  expect(wrapper.get('header').text()).toContain('Chapter 2 of 2')
   await wrapper.setProps({ document: book('other.epub') })
   await flushPromises()
   expect(checkbox.element).toHaveProperty('checked', false)
@@ -103,15 +104,23 @@ it('exposes nested contents/current location and keeps typography across modes b
     global: { plugins: [createPinia()] },
   })
   await flushPromises()
+  await wrapper.get('button[aria-label="Contents"]').trigger('click')
   const section = wrapper.findAll('nav button').find((button) => button.text() === 'Later section')!
   await section.trigger('click')
   await flushPromises()
   expect(sessions[0]!.display).toHaveBeenCalledWith(0, 'anchor')
   expect(section.attributes('aria-current')).toBe('location')
-  const selects = wrapper.findAll('fieldset select')
-  await selects[0]!.setValue('22')
-  await selects[1]!.setValue('1.8')
-  await selects[2]!.setValue('640')
+  await wrapper.get('button[aria-label="Typography"]').trigger('click')
+  await wrapper.get('button[aria-label="Increase font size"]').trigger('click')
+  await wrapper.get('button[aria-label="Increase font size"]').trigger('click')
+  await wrapper
+    .findAll('[role="group"][aria-label="Line spacing"] button')
+    .find((button) => button.text() === 'Comfortable')!
+    .trigger('click')
+  await wrapper
+    .findAll('[role="group"][aria-label="Reading width"] button')
+    .find((button) => button.text() === 'Medium')!
+    .trigger('click')
   expect(sessions[0]!.typography).toHaveBeenLastCalledWith({
     fontSize: 22,
     lineSpacing: 1.8,
@@ -131,11 +140,64 @@ it('exposes nested contents/current location and keeps typography across modes b
     lineSpacing: null,
     readingWidth: null,
   })
-  await selects[0]!.setValue('28')
+  await wrapper.get('button[aria-label="Increase font size"]').trigger('click')
   await wrapper.setProps({ document: book('other.epub') })
   await flushPromises()
   expect(mocked.open.mock.calls[2]![3]).toMatchObject({
     typography: { fontSize: null, lineSpacing: null, readingWidth: null },
   })
+  wrapper.unmount()
+})
+
+it('dismisses utility surfaces with Escape and outside pointers, restores focus and preserves the session', async () => {
+  const session: EpubSession = {
+    title: 'Book',
+    chapters: [{ label: 'One', href: 'one' }],
+    contents: [{ id: 'one', label: 'One', chapter: 0, children: [] }],
+    contentsSource: 'spine',
+    typography: vi.fn(),
+    display: vi.fn(async () => {}),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  }
+  mocked.open.mockResolvedValueOnce(session)
+  const wrapper = mount(EpubReaderWorkspace, {
+    attachTo: document.body,
+    props: {
+      document: {
+        id: 'focus',
+        name: 'focus.epub',
+        format: 'EPUB',
+        relativePath: 'focus.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'focus.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  await wrapper.get('button[aria-label="Contents"]').trigger('click')
+  await flushPromises()
+  expect(document.activeElement).toBe(
+    wrapper.get('button[aria-label="Close utility panel"]').element,
+  )
+  await wrapper
+    .get('button[aria-label="Close utility panel"]')
+    .trigger('keydown', { key: 'Escape' })
+  await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get('button[aria-label="Contents"]').element)
+  expect(wrapper.find('aside').exists()).toBe(false)
+  await wrapper.get('button[aria-label="Typography"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('button[aria-label="Close typography"]').trigger('keydown', { key: 'Escape' })
+  await flushPromises()
+  expect(document.activeElement).toBe(wrapper.get('button[aria-label="Typography"]').element)
+  await wrapper.get('button[aria-label="Typography"]').trigger('click')
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.find('#epub-typography').exists()).toBe(false)
+  expect(mocked.open).toHaveBeenCalledTimes(1)
+  expect(session.destroy).not.toHaveBeenCalled()
   wrapper.unmount()
 })

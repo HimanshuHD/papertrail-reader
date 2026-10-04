@@ -6,7 +6,7 @@
 
 Only `feat/131-epub-contents-typography` is active. Progressive delivery: merge/deploy #131 first, then create #132 from updated main; repeat for #133 and #134. The owner is deleting unused pre-created later branches. Their names below are planned names, not active implementation branches. No later issue is started.
 
-Local regression coverage now includes 185 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
+Local regression coverage now includes 186 unit/component tests. Full Browser E2E and screenshots are deferred to #134 / #28 at reviewed release-to-main readiness; the new fixtures are not recorded as executed browser evidence. This PR has no EPUB metadata persistence.
 
 ## Planned EPUB reader enhancements — 4 October 2026
 
@@ -88,3 +88,7 @@ Multiple-document tabs, session restoration/resource limits, comparison and port
 #13 is closed completed: PDF identity, positions, view/anchor restoration and bookmarks are accepted in merged #116/#119/#120. EPUB/CFI and format-specific persistence remain owned by #12 in EPUB milestone 3; they do not block #13. Earlier notes retaining #13 for EPUB are historical and superseded. Reading continuity milestone 2 stays open for #14 only.
 
 #14 owner feedback remains in PR #121: Recent is a collapsible component with a leading clock icon and trailing count; search sits immediately below the Library header with exact `Search documents...` placeholder and a search icon. Visible search label/help and empty recent-history copy are removed; accessible naming/live result count and recovery actions remain. Owner-feedback source `ead6e5e` passed Frontend CI 37149532676 (122 unit/component, 10 pipeline) and Browser E2E 37149606676 (102 passed, eight intentional skips, no retries). Reference comparison and light/dark captures were inspected. #121 is ready for owner review/merge; do not start the next item before owner acceptance.
+
+## #131 UI refinement in PR #135
+
+Replaces the duplicate Chapters dropdown with Contents alone. The PDF-style utility bar uses shared icon buttons; Contents toggles a right utility panel (docked on wide reader areas, overlay on narrow ones). Typography opens a compact popover with font −/+, segmented spacing/width choices and Reset. Escape/close focus restoration, outside-popover dismissal and reduced-motion/inert transitions are covered by component regressions; mode/source ownership and fixed side chapter controls remain. Later Bookmarks/features extend this utility area under #133. Release browser fixtures use the revised controls; execution remains deferred to #134/#28.

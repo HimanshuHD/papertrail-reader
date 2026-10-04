@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
+import IconButton from '../IconButton.vue'
+import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import EpubContentsList from './EpubContentsList.vue'
 import { flattenContents, type EpubContentsEntry } from '../../features/epub/navigation'
 import {
   DEFAULT_EPUB_TYPOGRAPHY,
   EPUB_FONT_SIZES,
-  EPUB_LINE_SPACING,
-  EPUB_READING_WIDTHS,
   type EpubTypography,
 } from '../../features/epub/typography'
 
@@ -19,6 +19,91 @@ const reader = useEpubReader()
 const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
+const root = ref<HTMLElement | null>(null)
+const rightPanel = ref<'contents' | null>(null)
+const typographyOpen = ref(false)
+const popover = ref<HTMLElement | null>(null)
+const lineOptions = [
+  { label: 'Book default', value: null },
+  { label: 'Compact', value: 1.4 },
+  { label: 'Comfortable', value: 1.8 },
+  { label: 'Spacious', value: 2 },
+]
+const widthOptions = [
+  { label: 'Full width', value: null },
+  { label: 'Narrow', value: 480 },
+  { label: 'Medium', value: 640 },
+  { label: 'Wide', value: 800 },
+]
+const unavailable = computed(() => reader.busy.value || !reader.session.value)
+function focusAction(label: string) {
+  void nextTick(() =>
+    root.value
+      ?.querySelector<HTMLButtonElement>(`button[aria-label="${label}"]`)
+      ?.focus({ preventScroll: true }),
+  )
+}
+function closeTypography(focus = true) {
+  typographyOpen.value = false
+  if (focus) focusAction('Typography')
+}
+function closePanel() {
+  rightPanel.value = null
+  focusAction('Contents')
+}
+async function togglePanel() {
+  closeTypography(false)
+  if (rightPanel.value) return closePanel()
+  rightPanel.value = 'contents'
+  await nextTick()
+  root.value
+    ?.querySelector<HTMLButtonElement>('button[aria-label="Close utility panel"]')
+    ?.focus({ preventScroll: true })
+}
+async function toggleTypography() {
+  if (typographyOpen.value) return closeTypography()
+  typographyOpen.value = true
+  await nextTick()
+  popover.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
+}
+function onKey(event: KeyboardEvent) {
+  if (event.key !== 'Escape' || !root.value?.contains(event.target as Node)) return
+  if (typographyOpen.value) closeTypography()
+  else if (rightPanel.value) closePanel()
+  else return
+  event.preventDefault()
+}
+function onPointer(event: PointerEvent) {
+  const target = event.target as Node
+  if (
+    typographyOpen.value &&
+    !popover.value?.contains(target) &&
+    !root.value?.querySelector('button[aria-label="Typography"]')?.contains(target)
+  )
+    closeTypography(false)
+}
+onMounted(() => {
+  globalThis.addEventListener('keydown', onKey)
+  globalThis.addEventListener('pointerdown', onPointer)
+})
+onBeforeUnmount(() => {
+  globalThis.removeEventListener('keydown', onKey)
+  globalThis.removeEventListener('pointerdown', onPointer)
+})
+function changeFont(delta: number) {
+  const index = EPUB_FONT_SIZES.findIndex((size) => size === (typography.value.fontSize ?? 18))
+  typography.value.fontSize =
+    EPUB_FONT_SIZES[Math.max(0, Math.min(EPUB_FONT_SIZES.length - 1, index + delta))]!
+  applyTypography()
+}
+function setSpacing(value: number | null) {
+  typography.value.lineSpacing = value
+  applyTypography()
+}
+function setWidth(value: number | null) {
+  typography.value.readingWidth = value
+  applyTypography()
+}
 const typography = ref<EpubTypography>({ ...DEFAULT_EPUB_TYPOGRAPHY })
 const currentContentsId = computed(
   () =>
@@ -53,6 +138,8 @@ async function open(preserve = false) {
 watch(
   () => props.document.file,
   () => {
+    rightPanel.value = null
+    typographyOpen.value = false
     textOnly.value = false
     typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
     void open()
@@ -78,108 +165,124 @@ watch(
 </script>
 
 <template>
-  <section class="epub-reader min-w-0 bg-canvas" aria-label="EPUB reader">
-    <header class="border-b border-line bg-panel p-3">
-      <div class="epub-heading">
-        <h2 id="reader-title" class="truncate text-sm font-semibold">
+  <section ref="root" class="epub-reader min-w-0 bg-canvas" aria-label="EPUB reader">
+    <header
+      class="epub-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
+    >
+      <div class="min-w-0 flex-1 basis-40">
+        <h2
+          id="reader-title"
+          class="truncate text-base font-semibold sm:text-lg"
+          :title="document.name"
+        >
           {{ reader.session.value?.title || document.name }}
         </h2>
-        <p v-if="textOnly" class="my-2 text-xs text-muted">Book images and styling are omitted.</p>
+        <p v-if="reader.session.value" class="mt-1 text-xs text-muted">
+          Chapter {{ reader.chapter.value + 1 }} of {{ reader.session.value.chapters.length }}
+          <span v-if="textOnly"> · Text-only view</span>
+        </p>
       </div>
-      <div class="epub-controls">
-        <label for="epub-chapter" class="text-sm">Chapters</label>
-        <select
-          id="epub-chapter"
-          class="min-w-0 rounded border border-line bg-panel p-2 text-sm"
-          :value="reader.chapter.value"
-          :disabled="reader.busy.value || !reader.session.value"
-          @change="reader.go(Number(($event.target as HTMLSelectElement).value))"
-        >
-          <option
-            v-for="(chapter, index) in reader.session.value?.chapters"
-            :key="chapter.href"
-            :value="index"
-          >
-            {{ chapter.label }}
-          </option>
-        </select>
-        <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="textOnly"
-            type="checkbox"
-            :disabled="reader.busy.value || !reader.session.value"
-            @change="open(true)"
-          />
+      <div
+        class="flex min-w-0 flex-wrap items-center justify-end gap-1"
+        aria-label="EPUB reader controls"
+      >
+        <label class="mr-2 flex items-center gap-2 text-xs">
+          <input v-model="textOnly" type="checkbox" :disabled="unavailable" @change="open(true)" />
           Text-only view
         </label>
+        <IconButton
+          label="Typography"
+          icon="typography"
+          :disabled="unavailable"
+          :active="typographyOpen"
+          :aria-expanded="typographyOpen"
+          aria-controls="epub-typography"
+          @click="toggleTypography"
+        />
+        <IconButton
+          label="Contents"
+          icon="contents"
+          :disabled="unavailable"
+          :active="rightPanel === 'contents'"
+          :aria-expanded="rightPanel === 'contents'"
+          aria-controls="epub-utility-panel"
+          @click="togglePanel"
+        />
       </div>
-      <div class="epub-settings">
-        <details class="epub-settings-section">
-          <summary class="cursor-pointer rounded py-2 text-sm">Contents</summary>
-          <p v-if="reader.session.value?.contentsSource === 'spine'" class="text-xs text-muted">
-            Chapter order
-          </p>
-          <nav aria-label="EPUB contents" class="epub-contents border border-line rounded text-sm">
-            <EpubContentsList
-              :entries="reader.session.value?.contents ?? []"
-              :current-id="currentContentsId"
-              :busy="reader.busy.value"
-              @select="selectContents"
-            />
-          </nav>
-        </details>
-        <details class="epub-settings-section">
-          <summary class="cursor-pointer rounded py-2 text-sm">Typography</summary>
-          <fieldset
-            class="epub-typography border border-line rounded p-2"
-            :disabled="reader.busy.value || !reader.session.value"
-          >
+      <Transition
+        name="utility-popover"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
+      >
+        <section
+          v-if="typographyOpen"
+          id="epub-typography"
+          ref="popover"
+          class="epub-popover rounded-2xl border border-line bg-panel p-4 shadow-2xl"
+          aria-labelledby="epub-typography-title"
+        >
+          <div class="mb-3 flex items-center justify-between gap-2">
+            <h3 id="epub-typography-title" class="text-sm font-semibold">Typography</h3>
+            <IconButton label="Close typography" icon="close" @click="closeTypography()" />
+          </div>
+          <fieldset class="space-y-4" :disabled="unavailable">
             <legend class="sr-only">EPUB typography</legend>
-            <label
-              >Font size
-              <select
-                v-model="typography.fontSize"
-                class="rounded border border-line bg-panel p-2"
-                @change="applyTypography"
+            <div>
+              <p class="mb-2 text-xs font-medium text-muted">Font size</p>
+              <div
+                class="flex items-center justify-between rounded-lg border border-line bg-canvas p-1"
               >
-                <option :value="null">Book default</option>
-                <option v-for="size in EPUB_FONT_SIZES" :key="size" :value="size">
-                  {{ size }} px
-                </option>
-              </select>
-            </label>
-            <label
-              >Line spacing
-              <select
-                v-model="typography.lineSpacing"
-                class="rounded border border-line bg-panel p-2"
-                @change="applyTypography"
-              >
-                <option :value="null">Book default</option>
-                <option v-for="spacing in EPUB_LINE_SPACING" :key="spacing" :value="spacing">
-                  {{ spacing }}
-                </option>
-              </select>
-            </label>
-            <label
-              >Reading width
-              <select
-                v-model="typography.readingWidth"
-                class="rounded border border-line bg-panel p-2"
-                @change="applyTypography"
-              >
-                <option :value="null">Full width</option>
-                <option v-for="width in EPUB_READING_WIDTHS" :key="width" :value="width">
-                  {{ width }} px
-                </option>
-              </select>
-            </label>
-            <button type="button" class="rounded border border-line p-2" @click="resetTypography">
+                <IconButton
+                  label="Decrease font size"
+                  icon="zoom-out"
+                  :disabled="unavailable || typography.fontSize === 14"
+                  @click="changeFont(-1)"
+                />
+                <output aria-label="Font size" class="text-sm font-medium" aria-live="polite">{{
+                  typography.fontSize === null ? 'Book default' : `${typography.fontSize} px`
+                }}</output>
+                <IconButton
+                  label="Increase font size"
+                  icon="zoom-in"
+                  :disabled="unavailable || typography.fontSize === 32"
+                  @click="changeFont(1)"
+                />
+              </div>
+            </div>
+            <div role="group" aria-label="Line spacing">
+              <p class="mb-2 text-xs font-medium text-muted">Line spacing</p>
+              <div class="epub-segments">
+                <button
+                  v-for="option in lineOptions"
+                  :key="option.label"
+                  type="button"
+                  :aria-pressed="typography.lineSpacing === option.value"
+                  @click="setSpacing(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+            <div role="group" aria-label="Reading width">
+              <p class="mb-2 text-xs font-medium text-muted">Reading width</p>
+              <div class="epub-segments">
+                <button
+                  v-for="option in widthOptions"
+                  :key="option.label"
+                  type="button"
+                  :aria-pressed="typography.readingWidth === option.value"
+                  @click="setWidth(option.value)"
+                >
+                  {{ option.label }}
+                </button>
+              </div>
+            </div>
+            <button type="button" class="epub-reset" @click="resetTypography">
               Reset typography
             </button>
           </fieldset>
-        </details>
-      </div>
+        </section>
+      </Transition>
     </header>
     <p v-if="reader.busy.value" class="p-3 text-sm text-muted" role="status">Opening EPUB…</p>
     <div v-if="reader.error.value" class="p-4" role="alert">
@@ -188,50 +291,83 @@ watch(
         Retry opening EPUB
       </button>
     </div>
-    <div class="epub-stage">
-      <div ref="host" class="epub-host" :aria-busy="reader.busy.value" />
-      <button
-        class="epub-step epub-previous rounded border border-line bg-panel disabled:opacity-40"
-        aria-label="Previous chapter"
-        title="Previous chapter"
-        :disabled="reader.busy.value || !reader.session.value || reader.chapter.value === 0"
-        @click="reader.go(reader.chapter.value - 1)"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          width="20"
-          height="20"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
+    <div class="epub-body">
+      <div class="epub-stage">
+        <div ref="host" class="epub-host" :aria-busy="reader.busy.value" />
+        <button
+          class="epub-step epub-previous rounded border border-line bg-panel disabled:opacity-40"
+          aria-label="Previous chapter"
+          title="Previous chapter"
+          :disabled="reader.busy.value || !reader.session.value || reader.chapter.value === 0"
+          @click="reader.go(reader.chapter.value - 1)"
         >
-          <path d="m15 6-6 6 6 6" />
-        </svg>
-      </button>
-      <button
-        class="epub-step epub-next rounded border border-line bg-panel disabled:opacity-40"
-        aria-label="Next chapter"
-        title="Next chapter"
-        :disabled="
-          reader.busy.value ||
-          !reader.session.value ||
-          reader.chapter.value >= reader.session.value.chapters.length - 1
-        "
-        @click="reader.go(reader.chapter.value + 1)"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          width="20"
-          height="20"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          aria-hidden="true"
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="m15 6-6 6 6 6" />
+          </svg>
+        </button>
+        <button
+          class="epub-step epub-next rounded border border-line bg-panel disabled:opacity-40"
+          aria-label="Next chapter"
+          title="Next chapter"
+          :disabled="
+            reader.busy.value ||
+            !reader.session.value ||
+            reader.chapter.value >= reader.session.value.chapters.length - 1
+          "
+          @click="reader.go(reader.chapter.value + 1)"
         >
-          <path d="m9 6 6 6-6 6" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            aria-hidden="true"
+          >
+            <path d="m9 6 6 6-6 6" />
+          </svg>
+        </button>
+      </div>
+      <Transition
+        name="utility-panel"
+        @before-enter="restoreTransitionSurface"
+        @before-leave="hideTransitionSurface"
+      >
+        <aside
+          v-if="rightPanel"
+          id="epub-utility-panel"
+          class="epub-side-panel border-l border-line bg-panel"
+          aria-label="EPUB utility panel"
+        >
+          <div class="flex items-center justify-between gap-2 border-b border-line p-3">
+            <h3 class="text-sm font-semibold">Contents</h3>
+            <IconButton label="Close utility panel" icon="close" @click="closePanel" />
+          </div>
+          <p
+            v-if="reader.session.value?.contentsSource === 'spine'"
+            class="px-3 pt-3 text-xs text-muted"
+          >
+            Chapter order
+          </p>
+          <nav aria-label="EPUB contents" class="epub-contents p-3 text-sm">
+            <EpubContentsList
+              :entries="reader.session.value?.contents ?? []"
+              :current-id="currentContentsId"
+              :busy="reader.busy.value"
+              @select="selectContents"
+            />
+          </nav>
+        </aside>
+      </Transition>
     </div>
   </section>
 </template>
@@ -244,59 +380,130 @@ watch(
   min-height: 0;
   overflow: hidden;
 }
-.epub-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
+.epub-reader {
+  container-type: inline-size;
 }
-.epub-controls select {
-  flex: 1;
-  max-width: 24rem;
-}
-.epub-reader > header {
+.epub-header {
   flex-shrink: 0;
-  max-height: 50%;
-  overflow-y: auto;
 }
-.epub-settings {
+.epub-body {
+  position: relative;
   display: flex;
-  flex-wrap: wrap;
-  column-gap: 1rem;
-}
-.epub-settings-section {
-  min-width: 0;
   flex: 1;
-  min-inline-size: min(100%, 12rem);
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
-.epub-settings summary:focus-visible,
-.epub-typography button:focus-visible,
-.epub-typography select:focus-visible {
-  outline: 2px solid currentColor;
-  outline-offset: -2px;
+.epub-popover {
+  position: absolute;
+  top: 100%;
+  right: 0.75rem;
+  z-index: 50;
+  margin-top: 0.5rem;
+  width: min(22rem, calc(100% - 1.5rem));
+  max-height: min(32rem, 65dvh);
+  overflow: auto;
+}
+.epub-segments {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.25rem;
+  border: 1px solid var(--pt-line);
+  border-radius: 0.75rem;
+  padding: 0.25rem;
+  background: var(--pt-canvas);
+}
+.epub-segments button,
+.epub-reset {
+  min-height: 2.5rem;
+  border-radius: 0.5rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.epub-segments button[aria-pressed='true'] {
+  background: var(--pt-panel);
+  color: var(--pt-brand);
+  box-shadow: 0 0 0 1px var(--pt-line);
+}
+.epub-segments button:hover,
+.epub-reset:hover {
+  background: var(--pt-panel);
+}
+.epub-segments button:focus-visible,
+.epub-reset:focus-visible {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: 2px;
+}
+.epub-reset {
+  width: 100%;
+  border: 1px solid var(--pt-line);
+}
+.epub-popover fieldset:disabled {
+  opacity: 0.5;
+}
+.epub-side-panel {
+  position: absolute;
+  z-index: 10;
+  inset: 0 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  width: min(20rem, 100%);
+  min-width: 0;
+  box-shadow: -8px 0 24px #0002;
 }
 .epub-contents {
-  max-height: min(14rem, 28vh);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  overscroll-behavior: contain;
 }
-.epub-typography {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 8rem), 1fr));
-  gap: 0.5rem;
-  min-width: 0;
-  font-size: 0.875rem;
+@container (min-width: 900px) {
+  .epub-side-panel {
+    position: relative;
+    flex: 0 0 19rem;
+    box-shadow: none;
+  }
 }
-.epub-typography label {
-  display: grid;
-  gap: 0.25rem;
-  min-width: 0;
+.utility-panel-leave-active {
+  position: absolute;
+  inset: 0 0 0 auto;
+  pointer-events: none;
 }
-.epub-typography select {
-  min-width: 0;
-  max-width: 100%;
+.utility-panel-enter-active,
+.utility-panel-leave-active {
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+}
+.utility-panel-enter-from,
+.utility-panel-leave-to {
+  transform: translateX(100%);
+  opacity: 0;
+}
+.utility-popover-enter-active,
+.utility-popover-leave-active {
+  transition:
+    transform 180ms ease,
+    opacity 180ms ease;
+  transform-origin: top right;
+}
+.utility-popover-enter-from,
+.utility-popover-leave-to {
+  transform: translateY(-0.5rem);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .utility-panel-enter-active,
+  .utility-panel-leave-active,
+  .utility-popover-enter-active,
+  .utility-popover-leave-active {
+    transition: none;
+  }
 }
 .epub-stage {
+  min-width: 0;
   position: relative;
   flex: 1;
   min-height: 0;

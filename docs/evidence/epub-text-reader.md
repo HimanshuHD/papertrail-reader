@@ -6,7 +6,7 @@
 
 ## #131 contents/typography validation
 
-The current increment adds EPUB 3 nav / EPUB 2 NCX fixtures, validated section anchors in both modes, unsafe/missing/duplicate target filtering, malformed/oversized/deep navigation fallback and optional resource CRC/cancellation coverage. Session/component tests check same-frame fragment navigation, numeric typography/reset, retained text-node offset and stale-source ownership. The suite contains 185 unit/component tests.
+The current increment adds EPUB 3 nav / EPUB 2 NCX fixtures, validated section anchors in both modes, unsafe/missing/duplicate target filtering, malformed/oversized/deep navigation fallback and optional resource CRC/cancellation coverage. Session/component tests check same-frame fragment navigation, numeric typography/reset, retained text-node offset and stale-source ownership. The suite contains 186 unit/component tests.
 
 Release browser fixtures cover authored contents, fragment scrolling/current marker, font size/line spacing/width/reset, mode changes, mounted frame identity, chapter navigation and narrow/light/dark captures. These fixtures are **not executed evidence** yet; #134/#28 own the final release run. No new screenshot is substituted for the historical captures below. Stable CFI/metadata remains #132/#133; #131 is open until reviewed merge.
 
@@ -39,3 +39,7 @@ An earlier browser run targeted the departing inert sidebar input during source 
 ---
 
 [Previous](recent-library.md) · [Documentation home](../README.md) · [Evidence index](README.md)
+
+## #131 UI refinement in PR #135
+
+Replaces the duplicate Chapters dropdown with Contents alone. The PDF-style utility bar uses shared icon buttons; Contents toggles a right utility panel (docked on wide reader areas, overlay on narrow ones). Typography opens a compact popover with font −/+, segmented spacing/width choices and Reset. Escape/close focus restoration, outside-popover dismissal and reduced-motion/inert transitions are covered by component regressions; mode/source ownership and fixed side chapter controls remain. Later Bookmarks/features extend this utility area under #133. Release browser fixtures use the revised controls; execution remains deferred to #134/#28.
