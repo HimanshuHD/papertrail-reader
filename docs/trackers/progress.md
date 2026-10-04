@@ -1,5 +1,10 @@
 # PaperTrail progress
 
+## Merge reconciliation — 4 October 2026
+
+PR #121 merged as `1218f27b907f0fdb0d909314f3c2ad1b33f843ca`; [main Frontend CI 37172696181](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37172696181) passed. Owner feedback source `ead6e5e` passed 122 unit/component, 10 pipeline and 102 Chromium browser cases (eight intentional skips, no retries). #14 is completed; all six Reading continuity issues (#13/#14/#114/#115/#117/#118) are closed. Milestone 2 has zero open issues and six closed issues: delivery is complete, GitHub milestone remains open for owner closure. EPUB/CFI stays in milestone 3 under #12. Earlier pending review/format statements are historical and superseded. Roadmap #78 remains open; next active task is #12.
+
+
 ## Reading continuity implementation (#114 / #117 / #118)
 
 PR #116 is merged. Its accepted application source `3dd5b3e93ca2122dc292f14d4ffba0cfcb124010` passed [Frontend CI 37124839688](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124839688) and [Browser E2E 37124902731](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37124902731). #114 and #117 are completed; #13 remains open for its remaining acceptance.
