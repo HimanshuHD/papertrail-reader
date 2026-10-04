@@ -1,10 +1,9 @@
 name: Browser E2E
 
 on:
-  workflow_dispatch:
   pull_request:
     branches: [main]
-    types: [ready_for_review]
+    types: [opened, ready_for_review]
     paths-ignore:
       - 'docs/**'
       - 'README'
@@ -28,7 +27,11 @@ concurrency:
 
 jobs:
   browser:
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.base.ref == 'main' &&
+      (github.event.pull_request.head.ref == 'release' ||
+      startsWith(github.event.pull_request.head.ref, 'release/'))
     name: Explicit Chromium acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 20

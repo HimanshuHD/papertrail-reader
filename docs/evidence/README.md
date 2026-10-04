@@ -9,3 +9,5 @@ Read guides in the following order. Return to [Documentation home](../README.md)
 - [Named PDF bookmarks — #115](pdf-bookmarks.md)
 
 - [Recent PDFs and library search — #14](recent-library.md)
+
+- [Verified local EPUB text reader — #124](epub-text-reader.md)

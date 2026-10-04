@@ -1,4 +1,5 @@
 import test from 'node:test'
+import vm from 'node:vm'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -27,12 +28,34 @@ test('required frontend CI remains unconditional and automatic publication depen
   assert.match(ci, /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/)
 })
 
-test('browser filters preserve manual acceptance, readiness-only events and whole-PR application changes', () => {
+test('browser filters permit reviewed release-to-main PRs only and preserve whole-PR path filtering', () => {
   const browser = read('.github/workflows/browser-e2e.yml')
-  assert.match(browser, /types: \[ready_for_review\]/)
-  assert.match(browser, /workflow_dispatch:/)
+  assert.match(browser, /types: \[opened, ready_for_review\]/)
+  assert.ok(!browser.includes('workflow_dispatch:'))
+  assert.match(browser, /branches: \[main\]/)
+  assert.match(browser, /github.event.pull_request.base.ref == 'main'/)
+  assert.match(browser, /github.event.pull_request.head.ref == 'release'/)
+  assert.match(browser, /startsWith\(github.event.pull_request.head.ref, 'release\/'\)/)
   assert.match(browser, /github.event.pull_request.draft == false/)
   assert.ok(!browser.includes('\n  push:'))
+  const guard = browser.match(/ {4}if: >-\n([\s\S]*?) {4}name:/)[1].trim()
+  for (const [head, base, draft, expected] of [
+    ['release/1.1.0', 'main', false, true],
+    ['release', 'main', false, true],
+    ['feat/epub', 'main', false, false],
+    ['release/1.1.0', 'staging', false, false],
+    ['release/1.1.0', 'main', true, false],
+    ['releases/1.1.0', 'main', false, false],
+  ]) {
+    assert.equal(
+      vm.runInNewContext(guard, {
+        github: { event: { pull_request: { head: { ref: head }, base: { ref: base }, draft } } },
+        startsWith: (value, prefix) => value.startsWith(prefix),
+      }),
+      expected,
+    )
+  }
+
   const patterns = [...browser.matchAll(/^ {6}- '([^']+)'$/gm)].map((m) => m[1])
   const ignored = (p) =>
     patterns.some((pattern) => {

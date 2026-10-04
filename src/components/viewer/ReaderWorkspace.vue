@@ -22,37 +22,18 @@ defineProps<{
         saved separately.
       </p>
     </article>
-    <div v-else-if="selectedDocument?.format === 'EPUB'" class="document-stage">
-      <article class="welcome-page epub-state rounded-card border border-line bg-panel shadow-xl">
-        <div class="flex items-center justify-between gap-4">
-          <p class="text-xs font-semibold tracking-[0.18em] text-brand uppercase">EPUB document</p>
-          <span class="rounded-full border border-line px-2.5 py-1 text-[11px] text-muted"
-            >Roadmap 2</span
-          >
-        </div>
-
-        <div class="my-7 h-px bg-line"></div>
-
-        <p class="text-sm text-muted">Selected from your local library</p>
-        <h2
-          id="reader-title"
-          class="mt-3 break-words font-serif text-3xl leading-tight sm:text-4xl"
-        >
-          {{ selectedDocument.name }}
-        </h2>
-        <p class="mt-6 max-w-xl leading-relaxed text-muted">
-          EPUB reading is not available in this release yet. The file stays in your library, and you
-          can open any PDF now without changing your selection source.
-        </p>
-
-        <div class="mt-8 rounded-xl border border-line bg-canvas px-4 py-4">
-          <p class="text-sm font-medium">Coming after the first release</p>
-          <p class="mt-1 text-xs leading-relaxed text-muted">
-            Reflowable EPUB reading and typography controls are planned in PaperTrail Roadmap 2.
-          </p>
-        </div>
-      </article>
-    </div>
+    <article
+      v-else-if="selectedDocument?.format === 'EPUB'"
+      class="welcome-page rounded-card border border-line bg-panel p-6 shadow-xl"
+    >
+      <p class="text-xs font-semibold text-brand">Saved document</p>
+      <h2 id="reader-title" class="mt-3 break-words font-serif text-3xl">
+        {{ selectedDocument.name }}
+      </h2>
+      <p class="mt-4 text-sm text-muted">
+        Reconnect your library or reselect the source to open this EPUB.
+      </p>
+    </article>
 
     <div v-else class="document-stage">
       <article class="welcome-page rounded-card border border-line bg-panel shadow-xl">
@@ -117,7 +98,7 @@ defineProps<{
             <p class="mt-1 text-xs leading-relaxed text-muted">
               {{
                 hasLibrarySelection
-                  ? 'Select a PDF on the left to open it in this reading space.'
+                  ? 'Select a PDF or EPUB on the left to open it in this reading space.'
                   : 'Use the + button in Library to add a folder or select PDF / EPUB files.'
               }}
             </p>

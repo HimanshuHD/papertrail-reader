@@ -1,5 +1,21 @@
 # PaperTrail progress
 
+## EPUB review feedback — #126 / #127 / #128 — 4 October 2026
+
+[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) implements the remaining #124 feedback: trailing **150 ms** container resize debounce with mounted-frame reflow, one vertical scroll owner and horizontal-scroll suppression; fixed side chapter icons in reserved gutters; a visible **Chapters** label; and **Text-only view**, unchecked by default. The checkbox switches between sanitized local author formatting/images and simplified text, retaining chapter and a generated text-node reading anchor where available. New sources reset to formatted view.
+
+Local lint, formatting, strict types, 172 unit/component tests, 10 pipeline tests and production build pass. Browser regressions cover live resize without scrolling, iframe identity, authored colors/spacing/images, mode anchors and stationary side controls. Current-source browser/owner acceptance is pending; the historical text-only screenshots/run do not validate these changes. #124/#126/#127/#128 remain in progress until acceptance and merge. Parent #12 and EPUB milestone 3 remain open for authored contents, typography controls, persisted CFI/identity, bookmarks and recent EPUB history.
+
+Browser E2E runs only when a reviewed `release` or `release/*` PR targeting `main` is opened or becomes ready. Feature work proceeds with ordinary CI; final release validation records browser evidence. #129/#130 remain status:new in next-roadmap Preparation planning; staging deployment behavior has not changed.
+
+## Milestone closure verified — 4 October 2026
+
+Reading continuity milestone 2 is closed (`closed_at: 2026-10-04T03:10:34Z`), with zero open and six closed issues. Preparation milestone 1 is also closed. Earlier pending-closure statements below are historical and superseded. EPUB milestone 3 and parent #12 remain open for their remaining format acceptance.
+
+## EPUB renderer review handoff — 4 October 2026
+
+#124 is ready for owner review in [PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125), branch `feat/12-epub-rendering`. Application/test source `f1f76da` passed [Frontend CI 37175969681](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37175969681) (164 unit/component and 10 pipeline tests, lint, formatting, types and production build) and [Browser E2E 37176268989](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989) (107 passed, eight intentional skips, no failures/retries). Mobile/desktop light/dark captures were inspected; opener/title spacing, navigation, invalid-book recovery and source disposal passed. [Evidence](../evidence/epub-text-reader.md). Foundation #122 is completed in merged #123 (`d5fdbdf`). Parent #12 and milestone 3 remain open for authored contents, typography/reflow controls, CFI persistence, bookmarks and recent EPUB history.
+
 ## Active EPUB work — 4 October 2026
 
 #12 is in progress on `feat/12-epub-reading`. First increment [#122](https://github.com/HimanshuHD/papertrail-reader/issues/122) adds bounded local archive preflight; rendering/reflow/CFI acceptance remains in the parent. See [EPUB architecture](../architecture/epub.md). No EPUB reader completion is claimed.

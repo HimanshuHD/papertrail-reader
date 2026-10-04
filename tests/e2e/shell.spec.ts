@@ -1,5 +1,222 @@
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo } from '@playwright/test'
+import { createEpubFixture, createFormattedEpubFixture } from '../fixtures/epub'
+
+test('EPUB text reader sanitizes local chapters, navigates and disposes on source changes', async ({
+  page,
+}, info) => {
+  const errors: string[] = []
+  const external: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('request', (request) => {
+    if (request.url().includes('evil.invalid')) external.push(request.url())
+  })
+  await page.goto('./#/app')
+  const chapter =
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>First chapter</title><link rel="stylesheet" href="https://evil.invalid/style"/></head><body onload="window.parent.epubAttack=1"><h1>First chapter</h1><p>Local reading text.</p><script>window.parent.epubAttack=1</script><img src="https://evil.invalid/image"/><iframe src="https://evil.invalid/frame"/><style>@import url(https://evil.invalid/style);</style><a href="https://evil.invalid/link">External link text</a></body></html>'
+  const good = {
+    name: 'safe.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createEpubFixture({ chapter })),
+  }
+  const broken = {
+    name: 'broken.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from('not a book'),
+  }
+  await page.locator('input[accept*=".pdf"]').setInputFiles([good, broken])
+  const library = page.locator('section[aria-labelledby="local-library-title"]')
+  await expect(library.getByRole('button', { name: /safe.epub/ })).toBeVisible()
+  await library.getByRole('button', { name: /safe.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  await expect(reader.getByRole('heading', { name: 'Local test book' })).toBeVisible()
+  const openerBounds = await page.getByRole('button', { name: 'Show library' }).boundingBox()
+  const titleBounds = await reader.getByRole('heading', { name: 'Local test book' }).boundingBox()
+  expect(titleBounds!.x).toBeGreaterThanOrEqual(openerBounds!.x + openerBounds!.width + 12)
+  const frame = reader.frameLocator('iframe')
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
+  expect(await frame.locator('script,img,iframe,style[src],link[href^="https:"]').count()).toBe(0)
+  expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
+  await reader.getByRole('button', { name: 'Next chapter' }).click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await reader.getByRole('combobox', { name: 'Chapters' }).selectOption('0')
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  await capture(page, info, 'epub-text-reader-light')
+  await page.getByRole('button', { name: 'Dark mode' }).click()
+  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(231, 233, 238)')
+  await capture(page, info, 'epub-text-reader')
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await library.getByRole('button', { name: /broken.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(reader.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
+  await expect(reader.locator('iframe')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await library.getByRole('button', { name: /safe.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  // Replacing the source tears down the current engine and its iframe.
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await page
+    .getByRole('complementary', { name: 'Document library' })
+    .locator('input[accept*=".pdf"]')
+    .setInputFiles({
+      name: 'replacement.pdf',
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(),
+    })
+  await expect(page.locator('.epub-host iframe')).toHaveCount(0)
+  await noOverflow(page)
+  expect(external).toEqual([])
+  expect(errors).toEqual([])
+})
+
+test('EPUB reflows during live resizing without scroll and stays within the reader', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./#/app')
+  const text =
+    'Responsive chapter text should wrap immediately when the reading space changes. '.repeat(40)
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Resize chapter</title></head><body><h1>Resize chapter</h1><p>${text}</p><pre>${'long-token-'.repeat(100)}</pre></body></html>`
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'resize.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createEpubFixture({ chapter })),
+  })
+  await page
+    .locator('section[aria-labelledby="local-library-title"]')
+    .getByRole('button', { name: /resize.epub/ })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  const frame = reader.frameLocator('iframe')
+  await expect(frame.getByRole('heading', { name: 'Resize chapter' })).toBeVisible()
+  await reader.locator('iframe').evaluate((el) => el.setAttribute('data-resize-owner', 'original'))
+  const heights: number[] = []
+  for (const width of [1024, 320, 900, 375]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(frame.getByRole('heading', { name: 'Resize chapter' })).toBeVisible()
+    await expect
+      .poll(async () => {
+        const availableWidth = await reader
+          .locator('.epub-container')
+          .evaluate((el) => el.clientWidth)
+        const iframe = await reader.locator('iframe').boundingBox()
+        return iframe ? Math.abs(availableWidth - iframe.width) : 10000
+      })
+      .toBeLessThanOrEqual(2)
+    await expect
+      .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+      .toBe(true)
+    await expect(reader.locator('iframe')).toHaveAttribute('data-resize-owner', 'original')
+    await expect
+      .poll(() =>
+        reader.locator('.epub-container').evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      )
+      .toBe(true)
+    heights.push(await frame.locator('p').evaluate((el) => el.getBoundingClientRect().height))
+    await noOverflow(page)
+  }
+  expect(heights[1]!).toBeGreaterThan(heights[0]!)
+  expect(heights[2]!).toBeLessThan(heights[1]!)
+  await reader.getByRole('button', { name: 'Next chapter' }).click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await page.setViewportSize({ width: 768, height: 700 })
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
+  await reader.getByRole('checkbox', { name: 'Text-only view' }).check()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await page.setViewportSize({ width: 320, height: 700 })
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
+  await expect(reader.locator('.epub-container')).toHaveCSS('overflow-x', 'hidden')
+  await expect(page.locator('.reader-content')).toHaveCSS('overflow-x', 'hidden')
+  await expect(frame.locator('html')).toHaveCSS('overflow-x', 'hidden')
+  expect(errors).toEqual([])
+})
+
+test('EPUB preserves local formatting by default and keeps mode anchors and side controls', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'formatted.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createFormattedEpubFixture()),
+  })
+  await page
+    .locator('section[aria-labelledby="local-library-title"]')
+    .getByRole('button', { name: /formatted.epub/ })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  const frame = reader.frameLocator('iframe')
+  const toggle = reader.getByRole('checkbox', { name: 'Text-only view' })
+  await expect(frame.getByRole('heading', { name: 'Formatted chapter' })).toBeVisible()
+  await expect(toggle).not.toBeChecked()
+  await expect(frame.locator('.intro')).toHaveCSS('text-align', 'center')
+  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(18, 52, 86)')
+  await expect(frame.locator('.intro')).toHaveCSS('padding-top', '12px')
+  await expect(frame.locator('img')).toBeVisible()
+  await expect
+    .poll(() =>
+      frame.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0),
+    )
+    .toBe(true)
+  const next = reader.getByRole('button', { name: 'Next chapter' })
+  const before = await next.boundingBox()
+  await reader.locator('.epub-container').evaluate((el) => {
+    el.scrollTop = 500
+  })
+  await expect
+    .poll(() => reader.locator('.epub-container').evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(100)
+  expect((await next.boundingBox())!.y).toBe(before!.y)
+  const anchor = await frame.locator('p').evaluateAll((els) => {
+    const iframe = window.frameElement!
+    const container = iframe.closest('.epub-container')!
+    const top = container.getBoundingClientRect().top - iframe.getBoundingClientRect().top
+    const el = els.find((el) => el.getBoundingClientRect().bottom > top)!
+    return {
+      id: el.getAttribute('data-reader-node')!,
+      offset: el.getBoundingClientRect().top - top,
+    }
+  })
+  await toggle.check()
+  await expect(frame.locator('img')).toHaveCount(0)
+  await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
+  await expect
+    .poll(() =>
+      frame.locator(`[data-reader-node="${anchor.id}"]`).evaluate((el) => {
+        const iframe = window.frameElement!
+        return (
+          el.getBoundingClientRect().top +
+          iframe.getBoundingClientRect().top -
+          iframe.closest('.epub-container')!.getBoundingClientRect().top
+        )
+      }),
+    )
+    .toBeCloseTo(anchor.offset, 0)
+  await next.click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await toggle.uncheck()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await expect(reader.getByRole('combobox', { name: 'Chapters' })).toHaveValue('1')
+  await reader.getByRole('button', { name: 'Previous chapter' }).click()
+  await expect(frame.locator('img')).toBeVisible()
+  await page.setViewportSize({ width: 320, height: 700 })
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
+  await expect(next).toBeVisible()
+  await noOverflow(page)
+})
 
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -214,7 +431,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await book.click()
   await expect(book).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('#reader-title')).toHaveText('book.epub')
-  await expect(page.getByText('EPUB reading is not available in this release yet.')).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
 
   await page.getByRole('button', { name: 'Refresh folder' }).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')
@@ -395,6 +612,7 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
   await localLibrary.getByRole('button', { name: /document-00.pdf/ }).click()
   const pdf = page.getByRole('region', { name: 'PDF pages', exact: true })
   await expect(pdf).toBeVisible()
+  await expect(page.getByTestId('recent-count')).toHaveText('1')
   await expect
     .poll(() =>
       page.evaluate(

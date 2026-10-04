@@ -16,6 +16,7 @@ export class EpubArchiveError extends Error {
 }
 
 export interface EpubArchiveEntry {
+  crc: number
   path: string
   method: 0 | 8
   compressedBytes: number
@@ -273,7 +274,8 @@ export async function preflightEpubArchive(
     'EPUB container metadata is missing.',
   )
   signal?.throwIfAborted()
-  return entries.map(({ path, method, compressedBytes, expandedBytes, dataOffset }) => ({
+  return entries.map(({ path, method, compressedBytes, expandedBytes, dataOffset, crc }) => ({
+    crc,
     path,
     method,
     compressedBytes,

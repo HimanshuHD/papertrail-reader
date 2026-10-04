@@ -186,6 +186,9 @@ onBeforeUnmount(() => {
 .opener-visible :deep(.sample-toolbar) {
   padding-left: 76px;
 }
+.opener-visible :deep(.epub-heading) {
+  padding-left: 64px;
+}
 @media (max-width: 1023px) {
   .opener-visible :deep(.reader-welcome) {
     padding-left: 76px;
@@ -196,6 +199,11 @@ onBeforeUnmount(() => {
   min-height: 0;
   overflow: auto;
   overscroll-behavior: contain;
+}
+/* EPUB owns vertical scrolling inside its frame manager. Avoid a second outer
+   scrollbar while its fixed stage width catches up after a window resize. */
+.reader-content:has(.epub-reader) {
+  overflow: hidden;
 }
 .library-slide-enter-active,
 .library-slide-leave-active {

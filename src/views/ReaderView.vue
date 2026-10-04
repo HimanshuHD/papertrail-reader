@@ -8,6 +8,7 @@ import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
 import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
+import EpubReaderWorkspace from '../components/viewer/EpubReaderWorkspace.vue'
 import {
   describeLibrarySelection,
   librarySelectionLabel,
@@ -99,6 +100,12 @@ const workspaceMessage = computed(
 )
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
+const activeEpubDocument = computed(
+  () =>
+    discoveredDocuments.value.find(
+      (item) => item.id === selectedLibraryDocumentId.value && item.format === 'EPUB',
+    ) ?? null,
+)
 const sidebarOpen = ref(true)
 watch(sidebarOpen, (value) => workspace.patch({ sidebarOpen: value }))
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
@@ -205,7 +212,7 @@ function selectLibraryDocument(id: string, restoring = false) {
   }
 
   activePdfDocument.value = null
-  announcement.value = `Selected local EPUB: ${document.name}. EPUB reading is planned for Roadmap 2.`
+  announcement.value = `Opening local EPUB: ${document.name}.`
 }
 
 function restoreLibrarySelection(
@@ -457,7 +464,7 @@ async function closeSidebarAndRestoreFocus() {
           activePdfDocument
             ? 'PDF reader'
             : selectedLibraryDocument?.format === 'EPUB'
-              ? 'EPUB · planned'
+              ? 'EPUB reader'
               : 'Reader workspace'
         }}</span>
       </div>
@@ -529,6 +536,11 @@ async function closeSidebarAndRestoreFocus() {
         @status="announcement = $event"
         @identity="workspace.patch({ activeFingerprint: $event })"
         @recent-ready="rememberRecent"
+      />
+      <EpubReaderWorkspace
+        v-else-if="activeEpubDocument"
+        :document="activeEpubDocument"
+        @status="announcement = $event"
       />
       <ReaderWorkspace
         v-else
