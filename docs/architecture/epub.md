@@ -2,7 +2,7 @@
 
 ## Current renderer — #124 / #126 / #127 / #128
 
-PR #125 builds on merged archive-preflight PR #123. Supported local reflowable EPUB 2/3 books open in formatted mode by default. The **Text-only view** checkbox removes author styles and illustrations; it starts unchecked for each source. The **Chapters** dropdown follows linear spine order. Previous/next icon buttons occupy 40px side gutters outside the scroll container, remain visible while chapters scroll, and provide accessible names, focus indication and first/last disabled states.
+PR #125 is merged as `f9c1703`, completing #124/#126/#127/#128 on top of archive-preflight PR #123. Source `66ea167` passed CI 37190427689 (172 unit/component and 10 pipeline tests, lint/format/types/build). Supported local reflowable EPUB 2/3 books open in formatted mode by default. The **Text-only view** checkbox removes author styles and illustrations; it starts unchecked for each source. The **Chapters** dropdown follows linear spine order. Previous/next icon buttons occupy 40px side gutters outside the scroll container, remain visible while chapters scroll, and provide accessible names, focus indication and first/last disabled states.
 
 `publication.ts` verifies consumed ZIP resources' actual sizes and CRC32 through bounded streaming before decoding. Container/package/chapter XML limits are 256 KiB / 1 MiB / 4 MiB, with 32 MiB total chapter input/output. Invalid UTF-8, entities, internal subsets, unsupported/missing spine resources and excessive structure fail before engine insertion. Fixed-layout and encrypted/obfuscated books remain unsupported.
 
@@ -16,7 +16,7 @@ Generated chapters carry restrictive CSP (`default-src 'none'`, sanitized inline
 
 `useEpubReader` coordinates abort/generation ownership, source changes, mode reopening, navigation and errors. Mode changes snapshot chapter and generated text-node/offset (scroll ratio fallback); new sources reset the mode and reading point. Aborting during archive opening hides the old root, then releases it when opening settles; stale results never replace the new session. PDF storage/permissions/rendering remain independent. No EPUB bytes, CFI or EPUB identity are persisted here.
 
-Unit/component fixtures cover sanitization, formatting/text modes, image ownership on cancellation/failure, mode/source lifecycle and debounce. Browser fixtures cover security, layout/resize and fixed controls, but current-source browser/owner acceptance remains pending. The earlier `f1f76da` text-only run passed 107 Chromium cases; it does not validate later resize or formatted rendering. See [evidence](../evidence/epub-text-reader.md). Parent #12 and EPUB milestone 3 remain open for authored contents, typography controls, persisted identity/CFI, bookmarks and recent EPUB history.
+Unit/component fixtures cover sanitization, formatting/text modes, image ownership on cancellation/failure, mode/source lifecycle and debounce. Browser fixtures cover security, layout/resize and fixed controls, with fresh current-source browser evidence deferred to release #28 and parent #12. Owner merged the delivery; no new browser run is implied. The earlier `f1f76da` text-only run passed 107 Chromium cases; it does not validate later resize or formatted rendering. See [evidence](../evidence/epub-text-reader.md). Parent #12 and EPUB milestone 3 remain open for authored contents, typography controls, persisted identity/CFI, bookmarks and recent EPUB history.
 
 ## First increment: archive preflight — #122
 
@@ -28,12 +28,11 @@ The bounded metadata check does **not** decompress resources, verify resource CR
 
 ZIP fields follow [PKWARE APPNOTE](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT). Container identity follows [W3C EPUB 3.3 OCF](https://www.w3.org/TR/epub-33/#sec-ocf). Reference implementation APIs: [epub.js README](https://github.com/futurepress/epub.js/blob/master/README.md). Dependencies are not added in the preflight increment.
 
-## Remaining integration sequence
+## Remaining parent integration sequence
 
-1. Introduce a lazy epub.js adapter, independent of Vue, with explicit open/destroy lifecycle and cancellation ownership. Enforce decompression output budgets and XML/package validity before rendering.
-2. Constrain archive resource resolution, block remote fetches and document navigation, remove active content and apply a restrictive iframe sandbox/CSP before document insertion. Disabling scripts alone does not block remote images/styles or nested active content. Verify these boundaries with hostile fixtures and request interception.
-3. Use a composable for async ownership, source changes and disposal. Present the adapter through a dedicated EPUB workspace component; keep PDF behavior and storage independent. Chapter/contents navigation and reflow controls belong to EPUB presentation.
-4. Persist content identity, CFI and typography in versioned EPUB metadata services. Retain the same reading point after font/viewport changes; validate renamed/changed/unavailable files before reopen. Integrate format-specific bookmarks and recent history without saving EPUB bytes.
-5. Validate representative EPUB 2/3 books, malformed archives and security fixtures at existing browser widths. Add other-browser acceptance when the supported-browser gate is reached. Keep #12 open until all format acceptance is met.
+1. Add authored contents navigation and typography settings with explicit format/UI ownership.
+2. Stabilize CFI across font/window changes; persist EPUB content identity, CFI and settings in independent versioned metadata services, with file revalidation.
+3. Integrate EPUB bookmarks and recent history without saving document bytes.
+4. Execute representative EPUB 2/3, security and supported-browser release acceptance in #28; record current screenshots and tested versions. Keep #12 and EPUB milestone 3 open until remaining acceptance is met.
 
 The initial archive unit suite uses adversarial byte fixtures and bounded read/cancellation assertions. There is no browser or EPUB reading acceptance claim for this foundation-only increment.

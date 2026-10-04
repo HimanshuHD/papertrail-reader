@@ -1,26 +1,28 @@
 # Product Roadmap 2
 
-## EPUB review feedback — #126 / #127 / #128 — 4 October 2026
+## EPUB renderer merge reconciliation — 4 October 2026
 
-[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) implements the remaining #124 feedback: trailing **150 ms** container resize debounce with mounted-frame reflow, one vertical scroll owner and horizontal-scroll suppression; fixed side chapter icons in reserved gutters; a visible **Chapters** label; and **Text-only view**, unchecked by default. The checkbox switches between sanitized local author formatting/images and simplified text, retaining chapter and a generated text-node reading anchor where available. New sources reset to formatted view.
+[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) merged as `f9c170329109f9c7ed7ffbff9df0a41e265135b8` at 14:42:21 Asia/Kolkata. Owner deleted `feat/12-epub-rendering`. #124/#126/#127/#128 are completed; stale active labels and pending-merge checklist entries are removed. Source `66ea167` passed [Frontend CI 37190427689](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37190427689): 172 unit/component tests, 10 pipeline tests, lint, formatting, strict types and production build.
 
-Implementation and unit/component coverage are present. Browser regressions cover live resize without scrolling, iframe identity, authored colors/spacing/images, mode anchors and stationary side controls. Current-source browser/owner acceptance is pending; the historical text-only screenshots/run do not validate these changes. #124/#126/#127/#128 remain in progress until acceptance and merge. Parent #12 and EPUB milestone 3 remain open for authored contents, typography controls, persisted CFI/identity, bookmarks and recent EPUB history.
+Delivered: formatted local styles/images by default, an unchecked **Text-only view** option retaining chapter/reading point where available, fixed side chapter icons, visible **Chapters** label, and mounted-frame resize with a trailing **150 ms** debounce and one vertical scroll owner. No further feature implementation is started by this reconciliation.
 
-Browser E2E runs only when a reviewed `release` or `release/*` PR targeting `main` is opened or becomes ready. Feature work proceeds with ordinary CI; final release validation records browser evidence. #129/#130 remain status:new in next-roadmap Preparation planning; staging deployment behavior has not changed.
+| Issue | Delivery                                               | Status            |
+| ----- | ------------------------------------------------------ | ----------------- |
+| #124  | Verified local renderer and session lifecycle          | Completed in #125 |
+| #126  | Resize/reflow and horizontal-scroll correction         | Completed in #125 |
+| #127  | Fixed side icons and Chapters label                    | Completed in #125 |
+| #128  | Formatted default and optional text-only mode          | Completed in #125 |
+| #12   | Contents, typography, CFI/identity and EPUB continuity | In progress       |
 
-## Milestone closure verified — 4 October 2026
+Fresh browser evidence for these corrections is deferred to [release acceptance #28](https://github.com/HimanshuHD/papertrail-reader/issues/28) and parent #12. That checklist retains both-mode resize/overflow, fixed-control/focus layout, representative EPUB 2/3 styles/images, mode anchors, hostile resources and mobile/desktop light/dark captures. Historical text-only screenshots/run do not validate current formatted/resize behavior. Browser E2E executes only on reviewed `release` or `release/*` → `main` opening/readiness; feature work uses ordinary CI.
 
-Reading continuity milestone 2 is closed (`closed_at: 2026-10-04T03:10:34Z`), with zero open and six closed issues. Preparation milestone 1 is also closed. Earlier pending-closure statements below are historical and superseded. EPUB milestone 3 and parent #12 remain open for their remaining format acceptance.
+EPUB milestone 3 is verified **open**, with one open issue (#12) and five closed issues. Preparation milestone 1 and Reading continuity milestone 2 are closed. Roadmap #78 remains open for subsequent EPUB, annotations, reliability/browser and delivery scope.
 
-## EPUB renderer review handoff — 4 October 2026
+#129 was unintentionally closed by a negated closing-keyword reference in #125's description; it is reopened/status:new per owner instruction. The merged workflow prototype does not complete its formal release/staging event acceptance. #130 staging delivery remains new/unimplemented. Both remain Roadmap 3 #107 Preparation planning; actual milestone assignment is pending identification/creation. No staging deployment behavior has changed.
 
-#124 is ready for owner review in [PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125), branch `feat/12-epub-rendering`. Application/test source `f1f76da` passed [Frontend CI 37175969681](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37175969681) (164 unit/component and 10 pipeline tests, lint, formatting, types and production build) and [Browser E2E 37176268989](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989) (107 passed, eight intentional skips, no failures/retries). Mobile/desktop light/dark captures were inspected; opener/title spacing, navigation, invalid-book recovery and source disposal passed. [Evidence](../evidence/epub-text-reader.md). Foundation #122 is completed in merged #123 (`d5fdbdf`). Parent #12 and milestone 3 remain open for authored contents, typography/reflow controls, CFI persistence, bookmarks and recent EPUB history.
+Earlier entries below preserve historical checkpoints and are superseded by this current reconciliation.
 
-## Active EPUB work — 4 October 2026
-
-#12 is in progress on `feat/12-epub-reading`. First increment [#122](https://github.com/HimanshuHD/papertrail-reader/issues/122) adds bounded local archive preflight; rendering/reflow/CFI acceptance remains in the parent. See [EPUB architecture](../architecture/epub.md). No EPUB reader completion is claimed.
-
-## Merge reconciliation — 4 October 2026
+## Historical merge reconciliation — PR #121
 
 PR #121 merged as `1218f27b907f0fdb0d909314f3c2ad1b33f843ca`; [main Frontend CI 37172696181](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37172696181) passed. Owner feedback source `ead6e5e` passed 122 unit/component, 10 pipeline and 102 Chromium browser cases (eight intentional skips, no retries). #14 is completed; all six Reading continuity issues (#13/#14/#114/#115/#117/#118) are closed. Milestone 2 has zero open issues and six closed issues: delivery is complete, GitHub milestone remains open for owner closure. EPUB/CFI stays in milestone 3 under #12. Earlier pending review/format statements are historical and superseded. Roadmap #78 remains open; next active task is #12.
 

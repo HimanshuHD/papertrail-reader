@@ -1,8 +1,8 @@
-# Verified local EPUB text reader — #124
+# Verified local EPUB reader — merged #124 / #125
 
-[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) now implements #126 resize/overflow correction, #127 fixed side icons and Chapters label, and #128 formatted-by-default rendering with Text-only view. Local lint, formatting, strict types, 172 unit/component tests, 10 pipeline tests and production build pass. Tests cover safe local styles/images, URL disposal, mode/chapter ownership and 150 ms debounce. Browser regressions have been added for authored colors/spacing/images, retained mode anchors and stationary controls.
+[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) merged as `f9c1703`, completing #124 and implementing #126 resize/overflow correction, #127 fixed side icons and Chapters label, and #128 formatted-by-default rendering with Text-only view. Local lint, formatting, strict types, 172 unit/component tests, 10 pipeline tests and production build pass. Tests cover safe local styles/images, URL disposal, mode/chapter ownership and 150 ms debounce. Browser regressions have been added for authored colors/spacing/images, retained mode anchors and stationary controls.
 
-**Current formatted/resize source has no new browser or owner acceptance yet.** Browser E2E is deferred to reviewed release-to-main opening/readiness under the owner's policy. The runs and screenshots below record the earlier text-only implementation, not the current UI or formatted behavior. Fixed-layout/encrypted books, persistent CFI/identity, authored contents, typography controls, bookmarks and recent EPUB history remain outside this renderer increment.
+**Owner merged the delivery; fresh formatted/resize browser evidence remains deferred to #28 release acceptance.** Final source `66ea167` passed [Frontend CI 37190427689](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37190427689). Browser E2E is deferred to reviewed release-to-main opening/readiness under the owner's policy. The runs and screenshots below record the earlier text-only implementation, not the current UI or formatted behavior. Fixed-layout/encrypted books, persistent CFI/identity, authored contents, typography controls, bookmarks and recent EPUB history remain outside this renderer increment.
 
 ## Historical text-only validation
 
@@ -28,7 +28,7 @@ An earlier browser run targeted the departing inert sidebar input during source 
 
 ## Review gate
 
-#124 remains open until owner review and merge. #12 and EPUB milestone 3 remain open for the remaining format acceptance. Preparation and Reading continuity milestones are closed. Current implementation acceptance remains pending; historical evidence above must not be used to close the new review feedback.
+#124/#126/#127/#128 are completed by owner merge of #125; their delivery/checklists are reconciled. #12 and EPUB milestone 3 remain open (one open, five closed issues) for remaining EPUB scope. Preparation and Reading continuity milestones are closed. Fresh browser/screenshots gates are explicitly retained in #28 and #12; historical evidence above is not current formatted/resize acceptance.
 
 ---
 
