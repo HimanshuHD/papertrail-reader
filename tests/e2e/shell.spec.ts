@@ -6,6 +6,10 @@ import {
   createContentsEpubFixture,
 } from '../fixtures/epub'
 
+test.beforeEach(({ browser }, info) => {
+  info.annotations.push({ type: 'browser-version', description: browser.version() })
+})
+
 test('EPUB text reader sanitizes local chapters, navigates and disposes on source changes', async ({
   page,
 }, info) => {
@@ -418,7 +422,7 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
       .setInputFiles({ name, mimeType: 'application/epub+zip', buffer })
     await page
       .locator('section[aria-labelledby="local-library-title"]')
-      .getByRole('button', { name: new RegExp(name.replace('.', '\\.')) })
+      .getByRole('button', { name: `EPUB: ${name}`, exact: true })
       .click()
   }
   await pick('saved.epub')
@@ -503,6 +507,93 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
   await reader.getByRole('button', { name: 'Bookmarks', exact: true }).click()
   await expect(reader.getByRole('button', { name: 'Go to bookmark Renamed place' })).toHaveCount(0)
   await noOverflow(page)
+})
+
+for (const version of ['2.0', '3.0'] as const) {
+  test(`EPUB ${version} RTL tables and layouts stay bounded in both modes`, async ({
+    page,
+  }, info) => {
+    const requests: string[] = []
+    page.on('request', (request) => {
+      if (request.url().includes('evil.invalid')) requests.push(request.url())
+    })
+    await page.goto('./#/app')
+    const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>RTL layout</title><style>.layout{display:grid;grid-template-columns:1fr 1fr;gap:12px}td{color:#123456}</style></head><body dir="rtl"><h1>RTL layout</h1><div class="layout"><p>مرحبا بالعالم</p><p>Local layout text</p></div><table style="width:1400px"><tr><td>${'LongCell'.repeat(80)}</td><td>Table text</td></tr></table><p>${'نص طويل للقراءة '.repeat(100)}</p><img src="https://evil.invalid/image"/></body></html>`
+    await page.locator('input[accept*=".pdf"]').setInputFiles({
+      name: 'rtl.epub',
+      mimeType: 'application/epub+zip',
+      buffer: Buffer.from(createEpubFixture({ version, chapter })),
+    })
+    await page.getByRole('button', { name: 'EPUB: rtl.epub', exact: true }).click()
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    const reader = page.getByRole('region', { name: 'EPUB reader' })
+    const frame = reader.frameLocator('iframe')
+    await expect(frame.getByRole('heading', { name: 'RTL layout' })).toBeVisible()
+    await expect(frame.locator('body')).toHaveAttribute('dir', 'rtl')
+    await expect(frame.locator('.layout')).toHaveCSS('display', 'grid')
+    for (const mode of [false, true]) {
+      if (mode) await reader.getByRole('switch', { name: 'Text-only view' }).click()
+      await expect(frame.getByRole('heading', { name: 'RTL layout' })).toBeVisible()
+      await expect
+        .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+        .toBe(true)
+      await expect(reader.getByRole('button', { name: 'Previous chapter' })).toBeDisabled()
+      await expect(reader.getByRole('button', { name: 'Next chapter' })).toBeEnabled()
+      await noOverflow(page)
+      await capture(page, info, `epub-${version}-${mode ? 'text' : 'formatted'}-rtl-light`)
+    }
+    await page.getByRole('button', { name: 'Dark mode' }).click()
+    await capture(page, info, `epub-${version}-rtl-dark`)
+    expect(requests).toEqual([])
+  })
+}
+
+test('EPUB storage failure and unsupported books recover without remote access', async ({
+  page,
+}) => {
+  await page.addInitScript(() => {
+    const open = indexedDB.open.bind(indexedDB)
+    indexedDB.open = (name, version) => {
+      if (name === 'papertrail-epub-reading')
+        throw new DOMException('Storage unavailable', 'QuotaExceededError')
+      return version === undefined ? open(name) : open(name, version)
+    }
+  })
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles([
+    {
+      name: 'good.epub',
+      mimeType: 'application/epub+zip',
+      buffer: Buffer.from(createEpubFixture()),
+    },
+    {
+      name: 'fixed.epub',
+      mimeType: 'application/epub+zip',
+      buffer: Buffer.from(createEpubFixture({ fixed: true })),
+    },
+    {
+      name: 'encrypted.epub',
+      mimeType: 'application/epub+zip',
+      buffer: Buffer.from(createEpubFixture({ encrypted: true })),
+    },
+  ])
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  await page.getByRole('button', { name: 'EPUB: good.epub', exact: true }).click()
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'First chapter' }),
+  ).toBeVisible()
+  await expect(
+    reader.getByRole('status').filter({ hasText: 'storage is unavailable' }),
+  ).toBeVisible()
+  for (const name of ['fixed.epub', 'encrypted.epub']) {
+    await page.getByRole('button', { name: `EPUB: ${name}`, exact: true }).click()
+    await expect(reader.getByRole('alert')).toBeVisible()
+    await expect(reader.locator('iframe')).toHaveCount(0)
+    await page.getByRole('button', { name: 'EPUB: good.epub', exact: true }).click()
+    await expect(
+      reader.frameLocator('iframe').getByRole('heading', { name: 'First chapter' }),
+    ).toBeVisible()
+  }
 })
 
 async function noOverflow(page: Page) {
@@ -1969,7 +2060,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     await page.getByRole('button', { name: 'Show library' }).click()
     await expect(
       page.getByText(
-        'The previously opened PDF changed or is unavailable. Select a document to continue.',
+        'The previously opened document changed or is unavailable. Select a document to continue.',
         { exact: true },
       ),
     ).toBeVisible()

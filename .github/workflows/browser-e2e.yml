@@ -35,6 +35,8 @@ jobs:
     name: Explicit Chromium acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      E2E_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -47,6 +49,8 @@ jobs:
       - run: npm run build
       - name: Install Chromium for explicit acceptance
         run: npx playwright install --with-deps chromium
+      - name: Record exact browser and candidate identity
+        run: node scripts/browser-evidence.mjs
       - run: npm run test:e2e
       - name: Upload browser evidence
         if: always()
@@ -56,5 +60,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+            browser-evidence/
           if-no-files-found: ignore
           retention-days: 7
