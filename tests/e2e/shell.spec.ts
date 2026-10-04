@@ -72,6 +72,56 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   expect(errors).toEqual([])
 })
 
+test('EPUB reflows during live resizing without scroll and stays within the reader', async ({
+  page,
+}) => {
+  const errors: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  await page.goto('./#/app')
+  const text =
+    'Responsive chapter text should wrap immediately when the reading space changes. '.repeat(40)
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Resize chapter</title></head><body><h1>Resize chapter</h1><p>${text}</p><pre>${'long-token-'.repeat(100)}</pre></body></html>`
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'resize.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createEpubFixture({ chapter })),
+  })
+  await page
+    .locator('section[aria-labelledby="local-library-title"]')
+    .getByRole('button', { name: /resize.epub/ })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  const frame = reader.frameLocator('iframe')
+  const heights: number[] = []
+  for (const width of [1024, 320, 900, 375]) {
+    await page.setViewportSize({ width, height: 900 })
+    await expect(frame.getByRole('heading', { name: 'Resize chapter' })).toBeVisible()
+    await expect
+      .poll(async () => {
+        const host = await reader.locator('.epub-host').boundingBox()
+        const iframe = await reader.locator('iframe').boundingBox()
+        return host && iframe ? Math.abs(host.width - iframe.width) : 10000
+      })
+      .toBeLessThanOrEqual(2)
+    await expect
+      .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+      .toBe(true)
+    heights.push(await frame.locator('p').evaluate((el) => el.getBoundingClientRect().height))
+    await noOverflow(page)
+  }
+  expect(heights[1]!).toBeGreaterThan(heights[0]!)
+  expect(heights[2]!).toBeLessThan(heights[1]!)
+  await reader.getByRole('button', { name: 'Next chapter' }).click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await page.setViewportSize({ width: 768, height: 700 })
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
+  expect(errors).toEqual([])
+})
+
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

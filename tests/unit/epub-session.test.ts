@@ -1,5 +1,5 @@
 import { Blob } from 'node:buffer'
-import { expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 import { createEpubFixture } from '../fixtures/epub'
 import { openEpubSession } from '../../src/features/epub/epub-session'
 
@@ -9,6 +9,8 @@ const mocks = vi.hoisted(() => ({
   destroy: vi.fn(),
   render: vi.fn(),
   override: vi.fn(),
+  resize: vi.fn(),
+  on: vi.fn(),
 }))
 vi.mock('epubjs', () => ({
   default: () => ({
@@ -16,10 +18,22 @@ vi.mock('epubjs', () => ({
     destroy: mocks.destroy,
     renderTo: mocks.render.mockImplementation(() => ({
       display: mocks.display,
+      resize: mocks.resize,
+      on: mocks.on,
       themes: { default: vi.fn(), override: mocks.override },
     })),
   }),
 }))
+beforeEach(() => {
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe() {}
+      disconnect() {}
+    },
+  )
+})
+afterEach(() => vi.unstubAllGlobals())
 const file = () => new Blob([createEpubFixture()]) as unknown as globalThis.File
 
 it('owns an isolated root, renders inert text and disposes once without deleting siblings', async () => {
@@ -95,4 +109,60 @@ it('releases the root and engine while a navigation promise is still pending', a
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
   finish()
   await expect(navigation).rejects.toThrow()
+})
+
+it('reflows on container resize, ignores zero sizes and cancels pending work on disposal', async () => {
+  let notify!: ResizeObserverCallback
+  const disconnect = vi.fn()
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        notify = callback
+      }
+      observe() {}
+      disconnect = disconnect
+    },
+  )
+  let scheduled: FrameRequestCallback | null = null
+  const cancel = vi.fn(() => {
+    scheduled = null
+  })
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    scheduled = callback
+    return 1
+  })
+  vi.stubGlobal('cancelAnimationFrame', cancel)
+  try {
+    const target = document.createElement('div')
+    const session = await openEpubSession(file(), target, new AbortController().signal)
+    const root = target.firstElementChild!
+    let width = 600
+    Object.defineProperty(root, 'clientWidth', { get: () => width })
+    Object.defineProperty(root, 'clientHeight', { get: () => 400 })
+    const flush = () => {
+      const callback = scheduled
+      scheduled = null
+      callback?.(0)
+    }
+    flush()
+    expect(mocks.resize).toHaveBeenLastCalledWith(600, 400)
+    width = 320
+    notify([], {} as ResizeObserver)
+    flush()
+    expect(mocks.resize).toHaveBeenLastCalledWith(320, 400)
+    width = 0
+    notify([], {} as ResizeObserver)
+    flush()
+    expect(mocks.resize).toHaveBeenCalledTimes(2)
+    width = 800
+    notify([], {} as ResizeObserver)
+    session.destroy()
+    expect(disconnect).toHaveBeenCalledOnce()
+    expect(cancel).toHaveBeenCalledOnce()
+    flush()
+    expect(mocks.resize).toHaveBeenCalledTimes(2)
+  } finally {
+    vi.unstubAllGlobals()
+  }
 })

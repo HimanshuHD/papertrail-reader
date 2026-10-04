@@ -1,5 +1,11 @@
 # PaperTrail progress
 
+## Live EPUB resize correction — #126
+
+PR #125 now observes the actual reader container and resizes the epub.js rendition on the next animation frame. Zero-size/unchanged layouts are ignored, resize work is deferred during explicit chapter navigation, and observer/pending-frame ownership ends on disposal. Chapter box sizing includes padding within available width; preformatted text wraps. The engine uses its current CFI when redisplaying after resize; persistent CFI storage remains later #12 scope.
+
+Local checks passed: 165 unit/component and 10 pipeline tests, lint, formatting, strict types and production build. A browser regression narrows/widens the window without a scroll event and asserts iframe/container alignment, content overflow, paragraph reflow and retained chapter navigation. Fresh CI/browser acceptance is pending; the prior `f1f76da` run does not validate this revision. #126 stays open until browser acceptance and merge; #127/#128 remain pending, so #124/PR #125 are not yet complete.
+
 ## Milestone closure verified — 4 October 2026
 
 Reading continuity milestone 2 is closed (`closed_at: 2026-10-04T03:10:34Z`), with zero open and six closed issues. Preparation milestone 1 is also closed. Earlier pending-closure statements below are historical and superseded. EPUB milestone 3 and parent #12 remain open for their remaining format acceptance.

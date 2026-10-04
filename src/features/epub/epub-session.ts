@@ -23,12 +23,39 @@ export async function openEpubSession(
     requestMethod: () => Promise.reject(new Error('External EPUB requests are disabled.')),
   })
   const root = document.createElement('div')
-  Object.assign(root.style, { position: 'absolute', inset: '0', width: '100%', height: '100%' })
+  Object.assign(root.style, {
+    position: 'absolute',
+    inset: '0',
+    width: '100%',
+    height: '100%',
+    overflow: 'hidden',
+  })
   target.append(root)
   let rendition: Rendition | null = null
   let destroyed = false
   let disposed = false
   let opening = true
+  let observer: ResizeObserver | null = null
+  let resizeFrame: number | null = null
+  let width = 0
+  let height = 0
+  let chapterIndex = 0
+  let navigating = false
+  function scheduleResize() {
+    if (destroyed || resizeFrame !== null || navigating) return
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = null
+      if (destroyed || navigating || !rendition) return
+      const nextWidth = root.clientWidth
+      const nextHeight = root.clientHeight
+      // Hidden panels must not replace the last usable layout with a zero-sized one.
+      if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
+      width = nextWidth
+      height = nextHeight
+      // epub.js redisplays its current CFI after resizing; no synthetic scroll is needed.
+      rendition.resize(width, height)
+    })
+  }
   function cleanup() {
     if (!destroyed || opening || disposed) return
     disposed = true
@@ -39,6 +66,10 @@ export async function openEpubSession(
   function destroy() {
     if (destroyed) return
     destroyed = true
+    observer?.disconnect()
+    observer = null
+    if (resizeFrame !== null) cancelAnimationFrame(resizeFrame)
+    resizeFrame = null
     signal.removeEventListener('abort', destroy)
     root.style.visibility = 'hidden'
     cleanup()
@@ -62,15 +93,27 @@ export async function openEpubSession(
         'font-size': '18px',
         'line-height': '1.7',
         padding: '24px !important',
+        'box-sizing': 'border-box !important',
+        margin: '0 !important',
       },
-      '*': { 'max-width': '100%', 'overflow-wrap': 'anywhere' },
+      '*': { 'max-width': '100%', 'overflow-wrap': 'anywhere', 'box-sizing': 'border-box' },
+      pre: { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
       table: { 'table-layout': 'fixed', width: '100%' },
+    })
+    rendition.on('displayed', () => {
+      if (!destroyed)
+        root
+          .querySelector('iframe')
+          ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     })
     await rendition.display(publication.chapters[0]!.href)
     signal.throwIfAborted()
     root
       .querySelector('iframe')
       ?.setAttribute('title', `EPUB chapter: ${publication.chapters[0]!.label}`)
+    observer = new ResizeObserver(scheduleResize)
+    observer.observe(target)
+    scheduleResize()
     return {
       title: publication.title,
       chapters: publication.chapters,
@@ -78,7 +121,14 @@ export async function openEpubSession(
         signal.throwIfAborted()
         const chapter = publication.chapters[index]
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
-        await rendition.display(chapter.href)
+        chapterIndex = index
+        navigating = true
+        try {
+          await rendition.display(chapter.href)
+        } finally {
+          navigating = false
+          scheduleResize()
+        }
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
