@@ -1,5 +1,13 @@
 # PaperTrail progress
 
+## In-place EPUB resize and release acceptance policy — 4 October 2026
+
+The previous resize revision `c504c5f` passed CI but failed Browser E2E 37180276140: ten EPUB cases failed, 102 existing cases passed and eight were skipped. The engine resize path cleared the iframe before a location existed, leaving a blank chapter. This is a real regression; earlier pending/success wording below does not accept that revision.
+
+The revised adapter uses fixed initial stage dimensions and an isolated epub.js 0.3.93 bridge to update the mounted scrolling view instead of clearing/redisplaying it. Available chapter width excludes the stable vertical scrollbar gutter, and resizing preserves visible text where a caret anchor is available. Regression coverage checks iframe identity across live resize, frame/body/container width and navigation. #126 remains open for release browser/owner acceptance.
+
+#129 changes Browser E2E execution to reviewed `release` or `release/*` PRs targeting `main`, on opening or readiness transition only. Feature PR/browser dispatch no longer execute E2E. Major implementation continues with ordinary CI; final release acceptance records browser evidence. #127/#128 are still pending. Staging branches, preview restrictions and a stable staging deployment are proposed only; no staging deployment behavior has changed.
+
 ## Live EPUB resize correction — #126
 
 PR #125 now observes the actual reader container and resizes the epub.js rendition on the next animation frame. Zero-size/unchanged layouts are ignored, resize work is deferred during explicit chapter navigation, and observer/pending-frame ownership ends on disposal. Chapter box sizing includes padding within available width; preformatted text wraps. The engine uses its current CFI when redisplaying after resize; persistent CFI storage remains later #12 scope.

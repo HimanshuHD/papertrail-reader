@@ -1,6 +1,7 @@
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
 import { prepareTextPublication } from './publication'
+import { keepScrolledChapterMounted } from './scroll-layout'
 
 export interface EpubSession {
   title: string
@@ -41,6 +42,7 @@ export async function openEpubSession(
   let height = 0
   let chapterIndex = 0
   let navigating = false
+  let restoreResize: (() => void) | null = null
   function scheduleResize() {
     if (destroyed || resizeFrame !== null || navigating) return
     resizeFrame = requestAnimationFrame(() => {
@@ -52,13 +54,15 @@ export async function openEpubSession(
       if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
       width = nextWidth
       height = nextHeight
-      // epub.js redisplays its current CFI after resizing; no synthetic scroll is needed.
+      // Update the mounted chapter in place; do not clear/reload its iframe.
       rendition.resize(width, height)
     })
   }
   function cleanup() {
     if (!destroyed || opening || disposed) return
     disposed = true
+    restoreResize?.()
+    restoreResize = null
     book.destroy()
     rendition = null
     root.remove()
@@ -81,8 +85,9 @@ export async function openEpubSession(
     cleanup()
     signal.throwIfAborted()
     rendition = book.renderTo(root, {
-      width: '100%',
-      height: '100%',
+      width: root.clientWidth || 1,
+      height: root.clientHeight || 1,
+      resizeOnOrientationChange: false,
       flow: 'scrolled-doc',
       spread: 'none',
       allowScriptedContent: false,
@@ -111,6 +116,7 @@ export async function openEpubSession(
     root
       .querySelector('iframe')
       ?.setAttribute('title', `EPUB chapter: ${publication.chapters[0]!.label}`)
+    restoreResize = keepScrolledChapterMounted(rendition, root)
     observer = new ResizeObserver(scheduleResize)
     observer.observe(target)
     scheduleResize()

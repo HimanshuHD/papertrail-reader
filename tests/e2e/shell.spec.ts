@@ -93,19 +93,29 @@ test('EPUB reflows during live resizing without scroll and stays within the read
   await page.getByRole('button', { name: 'Hide library' }).click()
   const reader = page.getByRole('region', { name: 'EPUB reader' })
   const frame = reader.frameLocator('iframe')
+  await expect(frame.getByRole('heading', { name: 'Resize chapter' })).toBeVisible()
+  await reader.locator('iframe').evaluate((el) => el.setAttribute('data-resize-owner', 'original'))
   const heights: number[] = []
   for (const width of [1024, 320, 900, 375]) {
     await page.setViewportSize({ width, height: 900 })
     await expect(frame.getByRole('heading', { name: 'Resize chapter' })).toBeVisible()
     await expect
       .poll(async () => {
-        const host = await reader.locator('.epub-host').boundingBox()
+        const availableWidth = await reader
+          .locator('.epub-container')
+          .evaluate((el) => el.clientWidth)
         const iframe = await reader.locator('iframe').boundingBox()
-        return host && iframe ? Math.abs(host.width - iframe.width) : 10000
+        return iframe ? Math.abs(availableWidth - iframe.width) : 10000
       })
       .toBeLessThanOrEqual(2)
     await expect
       .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+      .toBe(true)
+    await expect(reader.locator('iframe')).toHaveAttribute('data-resize-owner', 'original')
+    await expect
+      .poll(() =>
+        reader.locator('.epub-container').evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      )
       .toBe(true)
     heights.push(await frame.locator('p').evaluate((el) => el.getBoundingClientRect().height))
     await noOverflow(page)

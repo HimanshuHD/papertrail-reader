@@ -12,6 +12,9 @@ const mocks = vi.hoisted(() => ({
   resize: vi.fn(),
   on: vi.fn(),
 }))
+vi.mock('../../src/features/epub/scroll-layout', () => ({
+  keepScrolledChapterMounted: () => vi.fn(),
+}))
 vi.mock('epubjs', () => ({
   default: () => ({
     open: mocks.open,
