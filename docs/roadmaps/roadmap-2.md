@@ -1,8 +1,12 @@
 # Product Roadmap 2
 
-## Active EPUB renderer — 4 October 2026
+## Milestone closure verified — 4 October 2026
 
-#124 implements the first local text renderer on `feat/12-epub-rendering`, building on merged foundation PR #123. Archive verification, safe text preparation, isolated engine lifecycle and chapter controls are implemented; full acceptance is running. #12 stays open for authored contents/reflow controls/CFI/bookmarks/recent EPUB history. See [EPUB architecture](../architecture/epub.md).
+Reading continuity milestone 2 is closed (`closed_at: 2026-10-04T03:10:34Z`), with zero open and six closed issues. Preparation milestone 1 is also closed. Earlier pending-closure statements below are historical and superseded. EPUB milestone 3 and parent #12 remain open for their remaining format acceptance.
+
+## EPUB renderer review handoff — 4 October 2026
+
+#124 is ready for owner review in [PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125), branch `feat/12-epub-rendering`. Application/test source `f1f76da` passed [Frontend CI 37175969681](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37175969681) (164 unit/component and 10 pipeline tests, lint, formatting, types and production build) and [Browser E2E 37176268989](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989) (107 passed, eight intentional skips, no failures/retries). Mobile/desktop light/dark captures were inspected; opener/title spacing, navigation, invalid-book recovery and source disposal passed. [Evidence](../evidence/epub-text-reader.md). Foundation #122 is completed in merged #123 (`d5fdbdf`). Parent #12 and milestone 3 remain open for authored contents, typography/reflow controls, CFI persistence, bookmarks and recent EPUB history.
 
 ## Active EPUB work — 4 October 2026
 
