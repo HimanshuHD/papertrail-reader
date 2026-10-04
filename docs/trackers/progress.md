@@ -1,5 +1,9 @@
 # PaperTrail progress
 
+## Active EPUB work — 4 October 2026
+
+#12 is in progress on `feat/12-epub-reading`. First increment [#122](https://github.com/HimanshuHD/papertrail-reader/issues/122) adds bounded local archive preflight; rendering/reflow/CFI acceptance remains in the parent. See [EPUB architecture](../architecture/epub.md). No EPUB reader completion is claimed.
+
 ## Merge reconciliation — 4 October 2026
 
 PR #121 merged as `1218f27b907f0fdb0d909314f3c2ad1b33f843ca`; [main Frontend CI 37172696181](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37172696181) passed. Owner feedback source `ead6e5e` passed 122 unit/component, 10 pipeline and 102 Chromium browser cases (eight intentional skips, no retries). #14 is completed; all six Reading continuity issues (#13/#14/#114/#115/#117/#118) are closed. Milestone 2 has zero open issues and six closed issues: delivery is complete, GitHub milestone remains open for owner closure. EPUB/CFI stays in milestone 3 under #12. Earlier pending review/format statements are historical and superseded. Roadmap #78 remains open; next active task is #12.
@@ -70,7 +74,7 @@ Updated: 3 October 2026 (Asia/Kolkata). Latest merged documentation: #104 / 6422
 | [#9](https://github.com/HimanshuHD/papertrail-reader/issues/9)   | Web           | Browser document discovery and directory tree                         | Completed                                              |
 | [#10](https://github.com/HimanshuHD/papertrail-reader/issues/10) | Web           | PDF.js reader, navigation and zoom                                    | Completed                                              |
 | [#11](https://github.com/HimanshuHD/papertrail-reader/issues/11) | Web           | PDF search, contents and reader shortcuts                             | Completed                                              |
-| [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | New — planned; implementation not started              |
+| [#12](https://github.com/HimanshuHD/papertrail-reader/issues/12) | Web           | EPUB reader and reflow controls                                       | In progress — archive foundation #122                  |
 | [#13](https://github.com/HimanshuHD/papertrail-reader/issues/13) | Web           | Browser document identity, saved positions and bookmarks              | Completed                                              |
 | [#14](https://github.com/HimanshuHD/papertrail-reader/issues/14) | Web           | Recent documents and library search                                   | Completed                                              |
 | [#15](https://github.com/HimanshuHD/papertrail-reader/issues/15) | Web           | Annotations, highlights and reading statistics                        | New — planned; implementation not started              |
