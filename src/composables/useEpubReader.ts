@@ -1,4 +1,5 @@
 import { nextTick, onBeforeUnmount, ref, shallowRef } from 'vue'
+import type { EpubLocation } from '../features/epub/location'
 import {
   openEpubSession,
   type EpubSession,
@@ -13,6 +14,7 @@ export function useEpubReader() {
   const contentsEntry = ref<string | null>(null)
   let controller: AbortController | null = null
   let operation = 0
+  let activeFile: File | null = null
   function close() {
     ++operation
     controller?.abort()
@@ -20,6 +22,7 @@ export function useEpubReader() {
     session.value?.destroy()
     session.value = null
     busy.value = false
+    activeFile = null
   }
   async function open(
     file: File,
@@ -28,6 +31,7 @@ export function useEpubReader() {
     options: EpubOpenOptions = {},
   ) {
     close()
+    activeFile = file
     const owner = operation
     controller = new AbortController()
     const signal = controller.signal
@@ -73,6 +77,44 @@ export function useEpubReader() {
       if (owner === operation) busy.value = false
     }
   }
+  async function reopen(file: File, target: HTMLElement, dark: boolean, options: EpubOpenOptions) {
+    const current = file === activeFile ? session.value : null
+    const location = current?.location?.()
+    const selected = current ? contentsEntry.value : null
+    const chapterIndex = current ? chapter.value : 0
+    const position = current?.position?.()
+    const owner = operation + 1
+    await open(file, target, dark, {
+      ...options,
+      chapter: chapterIndex,
+      position,
+      ...(location ? { location } : {}),
+    })
+    if (owner === operation && session.value) contentsEntry.value = selected
+  }
+  async function restore(location: EpubLocation) {
+    const current = session.value
+    const owner = operation
+    if (!current?.restore || busy.value) return false
+    busy.value = true
+    await nextTick()
+    if (owner !== operation) return false
+    try {
+      const restored = await current.restore(location)
+      if (owner !== operation) return false
+      if (restored) {
+        chapter.value = location.chapter
+        contentsEntry.value = null
+        error.value = ''
+      }
+      return restored
+    } catch {
+      if (owner === operation) error.value = 'This reading location could not be restored.'
+      return false
+    } finally {
+      if (owner === operation) busy.value = false
+    }
+  }
   onBeforeUnmount(close)
-  return { session, busy, error, chapter, contentsEntry, open, go, close }
+  return { session, busy, error, chapter, contentsEntry, open, reopen, restore, go, close }
 }

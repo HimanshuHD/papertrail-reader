@@ -18,7 +18,11 @@ interface ScrollManager {
   resize(width?: number, height?: number): void
 }
 
-export function keepScrolledChapterMounted(rendition: Rendition, root: HTMLElement): () => void {
+export function keepScrolledChapterMounted(
+  rendition: Rendition,
+  root: HTMLElement,
+  anchor?: { capture(): unknown; restore(saved: unknown): void },
+): () => void {
   const manager = (rendition as unknown as { manager: ScrollManager }).manager
   const originalResize = manager.resize
   manager.container.style.setProperty('overflow-x', 'hidden', 'important')
@@ -26,19 +30,21 @@ export function keepScrolledChapterMounted(rendition: Rendition, root: HTMLEleme
   manager.container.style.scrollbarGutter = 'stable'
   manager.resize = (width = root.clientWidth, height = root.clientHeight) => {
     if (!width || !height) return
+    const saved = anchor?.capture()
     const iframe = root.querySelector('iframe')
     const doc = iframe?.contentDocument
     const frameBounds = iframe?.getBoundingClientRect()
     const viewport = manager.container.getBoundingClientRect()
     // Retain the visible text rather than recreating the chapter at its start.
     const caret =
+      !anchor &&
       doc &&
       frameBounds &&
       doc.caretRangeFromPoint?.(
         Math.min(32, frameBounds.width / 2),
         Math.max(0, viewport.top - frameBounds.top) + 8,
       )
-    const before = caret?.getBoundingClientRect().top
+    const before = caret ? caret.getBoundingClientRect().top : undefined
     manager.stage.settings.width = width
     manager.stage.settings.height = height
     manager.stage.size(width, height)
@@ -50,6 +56,7 @@ export function keepScrolledChapterMounted(rendition: Rendition, root: HTMLEleme
     manager.views.forEach((view) => view.size(contentWidth, contentHeight))
     manager.layout.calculate(contentWidth, contentHeight)
     manager.setLayout(manager.layout)
+    if (anchor) anchor.restore(saved)
     if (caret && before !== undefined) {
       manager.container.scrollTop += caret.getBoundingClientRect().top - before
     }

@@ -41,3 +41,7 @@ On mobile windows, reading-width controls are hidden and the book uses the avail
 ## #135 accepted delivery and next increment
 
 Owner verified #131 and its seven review fixes, then merged #135 as `e9d59f4`. Accepted source `4be9aa0` passed Frontend CI 37217580155 (189 unit/component and 10 pipeline tests, lint/format/types/build). The controls described here are delivered; #132 is now active for stable session text/CFI restoration, followed by #133 persistence. Full current-source browser evidence remains deferred to #134/#28 release readiness.
+
+## Keeping your EPUB reading point
+
+Typography, window/library width changes and the Text-only switch retain the visible text and its position within the reading area where the rebuilt content permits. At a chapter's end the reader stays at the bottom. A switch that omits an image retains its source location at alternate text. This is session behavior; saved EPUB positions, bookmarks and recent EPUB history are planned in #133.

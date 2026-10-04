@@ -225,7 +225,13 @@ it('validates contents targets, reuses same-chapter rendering, and replaces typo
   expect(mocks.css).toHaveBeenCalledTimes(calls)
 })
 
-it('keeps the text-node offset when typography reflows the mounted view', async () => {
+it('keeps the text-node offset and cancels deferred corrections on input, navigation and disposal', async () => {
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+    frames.push(callback)
+    return frames.length
+  })
+  vi.stubGlobal('cancelAnimationFrame', vi.fn())
   const target = document.createElement('div')
   document.body.append(target)
   let container!: HTMLDivElement
@@ -278,13 +284,27 @@ it('keeps the text-node offset when typography reflows the mounted view', async 
       document: iframe.contentDocument!,
     })
     expect(session.defaultFontSize!()).toBe(16)
+    Object.defineProperty(container, 'scrollHeight', { get: () => 1000 })
+    Object.defineProperty(container, 'clientHeight', { get: () => 400 })
     container.scrollTop = 100
     expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
     session.typography({ fontSize: 20, lineSpacing: null, readingWidth: null })
     expect(container.scrollTop).toBe(135)
     expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
     expect(mocks.resize).toHaveBeenLastCalledWith(600, 400)
+    const saved = session.location!()!
+    container.dispatchEvent(new Event('wheel'))
+    container.scrollTop = 250
+    frames.splice(0).forEach((frame) => frame(0))
+    expect(container.scrollTop).toBe(250)
+    expect(await session.restore!({ ...saved, chapter: 99 })).toBe(false)
+    expect(await session.restore!(saved)).toBe(true)
+    await session.display(1)
+    frames.splice(0).forEach((frame) => frame(0))
+    expect(container.scrollTop).toBe(0)
     session.destroy()
+    frames.splice(0).forEach((frame) => frame(0))
+    expect(await session.restore!(saved)).toBe(false)
   } finally {
     target.remove()
   }

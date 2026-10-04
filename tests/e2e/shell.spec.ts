@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import type { Page, TestInfo } from '@playwright/test'
+import type { Page, TestInfo, Locator } from '@playwright/test'
 import {
   createEpubFixture,
   createFormattedEpubFixture,
@@ -182,31 +182,11 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
     .poll(() => reader.locator('.epub-container').evaluate((el) => el.scrollTop))
     .toBeGreaterThan(100)
   expect((await next.boundingBox())!.y).toBe(before!.y)
-  const anchor = await frame.locator('p').evaluateAll((els) => {
-    const iframe = window.frameElement!
-    const container = iframe.closest('.epub-container')!
-    const top = container.getBoundingClientRect().top - iframe.getBoundingClientRect().top
-    const el = els.find((el) => el.getBoundingClientRect().bottom > top)!
-    return {
-      id: el.getAttribute('data-reader-node')!,
-      offset: el.getBoundingClientRect().top - top,
-    }
-  })
+  const anchor = await epubTextPoint(reader)
   await toggle.click()
   await expect(frame.locator('img')).toHaveCount(0)
   await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
-  await expect
-    .poll(() =>
-      frame.locator(`[data-reader-node="${anchor.id}"]`).evaluate((el) => {
-        const iframe = window.frameElement!
-        return (
-          el.getBoundingClientRect().top +
-          iframe.getBoundingClientRect().top -
-          iframe.closest('.epub-container')!.getBoundingClientRect().top
-        )
-      }),
-    )
-    .toBeCloseTo(anchor.offset, 0)
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
   await next.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await toggle.click()
@@ -317,6 +297,114 @@ for (const kind of ['nav', 'ncx'] as const) {
     expect(requests).toEqual([])
   })
 }
+
+async function epubTextPoint(reader: Locator) {
+  return reader.locator('iframe').evaluate((frame: HTMLIFrameElement) => {
+    const doc = frame.contentDocument!
+    const container = frame.closest('.epub-container')!
+    const top = container.getBoundingClientRect().top - frame.getBoundingClientRect().top
+    const caret = doc.caretRangeFromPoint(32, Math.max(0, top + 8))!
+    const element = caret.startContainer.parentElement!.closest('[data-reader-node]')!
+    const walker = doc.createTreeWalker(element, 4)
+    let character = caret.startOffset
+    let node: Node | null
+    while ((node = walker.nextNode()) && node !== caret.startContainer) {
+      if (!node.parentElement?.closest('[data-reader-image]')) character += node.textContent!.length
+    }
+    const range = doc.createRange()
+    range.setStart(caret.startContainer, caret.startOffset)
+    range.setEnd(
+      caret.startContainer,
+      Math.min(caret.startOffset + 1, caret.startContainer.textContent!.length),
+    )
+    return {
+      id: element.getAttribute('data-reader-node')!,
+      character,
+      offset: range.getBoundingClientRect().top - top,
+    }
+  })
+}
+async function epubTextOffset(
+  reader: Locator,
+  anchor: { id: string; character: number; offset: number },
+) {
+  return reader.locator('iframe').evaluate((frame: HTMLIFrameElement, saved) => {
+    const doc = frame.contentDocument!
+    const element = doc.querySelector(`[data-reader-node="${saved.id}"]`)!
+    const walker = doc.createTreeWalker(element, 4)
+    let character = saved.character
+    let node: Node | null
+    while ((node = walker.nextNode())) {
+      if (node.parentElement?.closest('[data-reader-image]')) continue
+      if (character < node.textContent!.length) break
+      character -= node.textContent!.length
+    }
+    const range = doc.createRange()
+    range.setStart(node!, character)
+    range.setEnd(node!, Math.min(character + 1, node!.textContent!.length))
+    return (
+      range.getBoundingClientRect().top +
+      frame.getBoundingClientRect().top -
+      frame.closest('.epub-container')!.getBoundingClientRect().top
+    )
+  }, anchor)
+}
+
+test('EPUB retains a character inside a long paragraph through typography, panels, resize and modes', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Long chapter</title></head><body><h1>Long chapter</h1><p>${'Long paragraph reading location with several words. '.repeat(500)}</p></body></html>`
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'location.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createEpubFixture({ chapter })),
+  })
+  await page
+    .locator('section[aria-labelledby="local-library-title"]')
+    .getByRole('button', { name: /location.epub/ })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'Long chapter' }),
+  ).toBeVisible()
+  await reader.locator('.epub-container').evaluate((el) => {
+    el.scrollTop = 600
+    el.dispatchEvent(new Event('scroll'))
+  })
+  const anchor = await epubTextPoint(reader)
+  expect(anchor.character).toBeGreaterThan(0)
+  await reader
+    .locator('iframe')
+    .evaluate((el) => el.setAttribute('data-location-owner', 'original'))
+  await reader.getByRole('button', { name: 'Typography', exact: true }).click()
+  await reader.getByRole('button', { name: 'Increase font size' }).click()
+  await reader
+    .getByRole('group', { name: 'Line spacing' })
+    .getByRole('button', { name: 'Spacious' })
+    .click()
+  if (page.viewportSize()!.width >= 640)
+    await reader
+      .getByRole('group', { name: 'Reading width' })
+      .getByRole('button', { name: 'Narrow' })
+      .click()
+  await reader.getByRole('button', { name: 'Close typography' }).click()
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await expect(reader.locator('iframe')).toHaveAttribute('data-location-owner', 'original')
+  await reader.getByRole('button', { name: 'Contents', exact: true }).click()
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await reader.getByRole('button', { name: 'Close utility panel' }).click()
+  await page.setViewportSize({ width: 375, height: 700 })
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await expect(reader.locator('iframe')).toHaveAttribute('data-location-owner', 'original')
+  await reader.getByRole('switch', { name: 'Text-only view' }).click()
+  await expect(
+    reader.frameLocator('iframe').getByRole('heading', { name: 'Long chapter' }),
+  ).toBeVisible()
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await noOverflow(page)
+})
 
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(

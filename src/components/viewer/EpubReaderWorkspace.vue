@@ -197,18 +197,20 @@ function toggleTextOnly() {
 }
 async function open(preserve = false) {
   const file = props.document.file
-  const chapter = preserve ? reader.chapter.value : 0
   const contentsEntry = reader.contentsEntry.value
   restoringContentsEntry.value = preserve ? contentsEntry : null
-  const position = preserve ? reader.session.value?.position?.() : undefined
   await nextTick()
   if (file === props.document.file && host.value) {
-    await reader.open(file, host.value, theme.resolvedTheme === 'dark', {
-      textOnly: textOnly.value,
-      chapter,
-      position,
-      typography: typography.value,
-    })
+    await (preserve ? reader.reopen : reader.open)(
+      file,
+      host.value,
+      theme.resolvedTheme === 'dark',
+      {
+        ...(!preserve ? { chapter: 0 } : {}),
+        textOnly: textOnly.value,
+        typography: typography.value,
+      },
+    )
     if (preserve && file === props.document.file && reader.session.value)
       reader.contentsEntry.value = contentsEntry
   }
