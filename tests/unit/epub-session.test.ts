@@ -114,7 +114,7 @@ it('releases the root and engine while a navigation promise is still pending', a
   await expect(navigation).rejects.toThrow()
 })
 
-it('debounces resize for 500ms after the last change and cancels queued work on disposal', async () => {
+it('debounces resize for 150ms after the last change and cancels queued work on disposal', async () => {
   let notify!: ResizeObserverCallback
   const disconnect = vi.fn()
   vi.stubGlobal(
@@ -136,26 +136,26 @@ it('debounces resize for 500ms after the last change and cancels queued work on 
     Object.defineProperty(root, 'clientWidth', { get: () => width })
     Object.defineProperty(root, 'clientHeight', { get: () => 400 })
     notify([], {} as ResizeObserver)
-    vi.advanceTimersByTime(499)
+    vi.advanceTimersByTime(149)
     expect(mocks.resize).not.toHaveBeenCalled()
     width = 320
     notify([], {} as ResizeObserver)
-    vi.advanceTimersByTime(499)
+    vi.advanceTimersByTime(149)
     expect(mocks.resize).not.toHaveBeenCalled()
     vi.advanceTimersByTime(1)
     expect(mocks.resize).toHaveBeenCalledExactlyOnceWith(320, 400)
     notify([], {} as ResizeObserver)
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(150)
     expect(mocks.resize).toHaveBeenCalledTimes(1)
     width = 0
     notify([], {} as ResizeObserver)
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(150)
     expect(mocks.resize).toHaveBeenCalledTimes(1)
     width = 800
     notify([], {} as ResizeObserver)
     session.destroy()
     expect(disconnect).toHaveBeenCalledOnce()
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(150)
     expect(mocks.resize).toHaveBeenCalledTimes(1)
   } finally {
     vi.useRealTimers()

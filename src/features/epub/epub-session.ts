@@ -59,7 +59,7 @@ export async function openEpubSession(
     resizeTimer = setTimeout(() => {
       resizeTimer = null
       applyResize()
-    }, 500)
+    }, 150)
   }
   function cleanup() {
     if (!destroyed || opening || disposed) return
