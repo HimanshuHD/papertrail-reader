@@ -1,18 +1,12 @@
 # Product Roadmap 2
 
-## In-place EPUB resize and release acceptance policy — 4 October 2026
+## EPUB review feedback — #126 / #127 / #128 — 4 October 2026
 
-The previous resize revision `c504c5f` passed CI but failed Browser E2E 37180276140: ten EPUB cases failed, 102 existing cases passed and eight were skipped. The engine resize path cleared the iframe before a location existed, leaving a blank chapter. This is a real regression; earlier pending/success wording below does not accept that revision.
+[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) implements the remaining #124 feedback: trailing **150 ms** container resize debounce with mounted-frame reflow, one vertical scroll owner and horizontal-scroll suppression; fixed side chapter icons in reserved gutters; a visible **Chapters** label; and **Text-only view**, unchecked by default. The checkbox switches between sanitized local author formatting/images and simplified text, retaining chapter and a generated text-node reading anchor where available. New sources reset to formatted view.
 
-The revised adapter uses fixed initial stage dimensions and an isolated epub.js 0.3.93 bridge to update the mounted scrolling view instead of clearing/redisplaying it. Available chapter width excludes the stable vertical scrollbar gutter, and resizing preserves visible text where a caret anchor is available. Regression coverage checks iframe identity across live resize, frame/body/container width and navigation. #126 remains open for release browser/owner acceptance.
+Implementation and unit/component coverage are present. Browser regressions cover live resize without scrolling, iframe identity, authored colors/spacing/images, mode anchors and stationary side controls. Current-source browser/owner acceptance is pending; the historical text-only screenshots/run do not validate these changes. #124/#126/#127/#128 remain in progress until acceptance and merge. Parent #12 and EPUB milestone 3 remain open for authored contents, typography controls, persisted CFI/identity, bookmarks and recent EPUB history.
 
-#129 changes Browser E2E execution to reviewed `release` or `release/*` PRs targeting `main`, on opening or readiness transition only. Feature PR/browser dispatch no longer execute E2E. Major implementation continues with ordinary CI; final release acceptance records browser evidence. #127/#128 are still pending. Staging branches, preview restrictions and a stable staging deployment are proposed only; no staging deployment behavior has changed.
-
-## Live EPUB resize correction — #126
-
-PR #125 now observes the actual reader container and resizes the epub.js rendition on the next animation frame. Zero-size/unchanged layouts are ignored, resize work is deferred during explicit chapter navigation, and observer/pending-frame ownership ends on disposal. Chapter box sizing includes padding within available width; preformatted text wraps. The engine uses its current CFI when redisplaying after resize; persistent CFI storage remains later #12 scope.
-
-Local checks passed: 165 unit/component and 10 pipeline tests, lint, formatting, strict types and production build. A browser regression narrows/widens the window without a scroll event and asserts iframe/container alignment, content overflow, paragraph reflow and retained chapter navigation. Fresh CI/browser acceptance is pending; the prior `f1f76da` run does not validate this revision. #126 stays open until browser acceptance and merge; #127/#128 remain pending, so #124/PR #125 are not yet complete.
+Browser E2E runs only when a reviewed `release` or `release/*` PR targeting `main` is opened or becomes ready. Feature work proceeds with ordinary CI; final release validation records browser evidence. #129/#130 remain status:new in next-roadmap Preparation planning; staging deployment behavior has not changed.
 
 ## Milestone closure verified — 4 October 2026
 

@@ -174,7 +174,7 @@ describe('home and product shell', () => {
 
     expect(document.activeElement).toBe(book.element)
     expect(wrapper.get('#reader-title').text()).toBe('book.epub')
-    expect(wrapper.text()).toContain('Text reader · Book images and styling are omitted.')
+    expect(wrapper.get('input[type="checkbox"]').element).toHaveProperty('checked', false)
     expect(wrapper.text()).not.toContain('Demonstration workspace')
     expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe(
       'Opening local EPUB: book.epub.',
@@ -271,7 +271,7 @@ describe('home and product shell', () => {
     expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
     expect(pdfSessionMocks.close).toHaveBeenCalled()
     expect(wrapper.get('#reader-title').text()).toBe('book.epub')
-    expect(wrapper.text()).toContain('Text reader · Book images and styling are omitted.')
+    expect(wrapper.get('input[type="checkbox"]').element).toHaveProperty('checked', false)
 
     const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
     await reselect.trigger('click')

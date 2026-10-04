@@ -22,6 +22,7 @@
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "css-tree": "3.2.1",
     "epubjs": "0.3.93",
     "fflate": "0.8.2",
     "pdfjs-dist": "6.3.289",

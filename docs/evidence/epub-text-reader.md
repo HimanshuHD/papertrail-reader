@@ -1,8 +1,10 @@
 # Verified local EPUB text reader — #124
 
-[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) adds a first local reflowable EPUB text reader with previous/next chapter buttons and a chapter selector. It builds on merged archive-preflight PR #123. Original images, author styling and external links are omitted, as explained in the reader. Fixed-layout and encrypted publications are rejected. EPUB CFI persistence, typography/reflow controls, authored contents, bookmarks and recent history remain parent #12 and milestone 3 scope.
+[PR #125](https://github.com/HimanshuHD/papertrail-reader/pull/125) now implements #126 resize/overflow correction, #127 fixed side icons and Chapters label, and #128 formatted-by-default rendering with Text-only view. Local lint, formatting, strict types, 172 unit/component tests, 10 pipeline tests and production build pass. Tests cover safe local styles/images, URL disposal, mode/chapter ownership and 150 ms debounce. Browser regressions have been added for authored colors/spacing/images, retained mode anchors and stationary controls.
 
-## Validation
+**Current formatted/resize source has no new browser or owner acceptance yet.** Browser E2E is deferred to reviewed release-to-main opening/readiness under the owner's policy. The runs and screenshots below record the earlier text-only implementation, not the current UI or formatted behavior. Fixed-layout/encrypted books, persistent CFI/identity, authored contents, typography controls, bookmarks and recent EPUB history remain outside this renderer increment.
+
+## Historical text-only validation
 
 Application/test source `f1f76dae5457e676ec026e6ceeff22c1a5c95b29` passed [Frontend CI 37175969681](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37175969681): lint, formatting, types, 164 unit/component tests, 10 pipeline tests and production build. [Browser E2E 37176268989](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989) passed **107 cases**, eight intentional viewport-specific skips, no failures or retries.
 
@@ -10,7 +12,7 @@ Unit fixtures cover stored/deflated resources, actual decompression limits, decl
 
 Browser fixtures exercise EPUB chapter navigation, light/dark appearance, hostile content with no external requests/script execution, malformed-book recovery and source replacement at 320/375/768/1024/1440px. Existing PDF reading, bookmarks, recent history, workspace restoration and independent scrolling regressions run in the same suite. This is Chromium fixture acceptance; supported-browser and owner preview acceptance remain separate gates.
 
-## Inspected screenshots
+## Historical inspected screenshots
 
 Light/dark captures at 320px and 1440px were inspected. The Library opener has reserved heading space; title/caption and chapter controls remain readable without horizontal overflow. The complete report is [artifact 11293427377](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37176268989/artifacts/11293427377), retained through 11 October 2026.
 
@@ -26,7 +28,7 @@ An earlier browser run targeted the departing inert sidebar input during source 
 
 ## Review gate
 
-#124 remains open until owner review and merge. #12 and EPUB milestone 3 remain open for the remaining format acceptance. Preparation and Reading continuity milestones are closed. Final evidence/image changes are documentation only; the application/test source above remains unchanged.
+#124 remains open until owner review and merge. #12 and EPUB milestone 3 remain open for the remaining format acceptance. Preparation and Reading continuity milestones are closed. Current implementation acceptance remains pending; historical evidence above must not be used to close the new review feedback.
 
 ---
 

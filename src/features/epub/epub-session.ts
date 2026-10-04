@@ -1,28 +1,53 @@
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
-import { prepareTextPublication } from './publication'
+import { preparePublication } from './publication'
 import { keepScrolledChapterMounted } from './scroll-layout'
 
+export interface EpubPosition {
+  node: string
+  offset: number
+  ratio: number
+}
+export interface EpubOpenOptions {
+  textOnly?: boolean
+  chapter?: number
+  position?: EpubPosition
+}
 export interface EpubSession {
   title: string
   chapters: readonly { label: string; href: string }[]
   display(index: number): Promise<void>
+  position?(): EpubPosition | undefined
   appearance(dark: boolean): void
   destroy(): void
 }
 
-/** One engine book per component; all untrusted content is removed before engine open. */
+/** One engine book per component; active content is removed before engine open. */
 export async function openEpubSession(
   file: Blob,
   target: HTMLElement,
   signal: AbortSignal,
+  options: EpubOpenOptions = {},
 ): Promise<EpubSession> {
-  const publication = await prepareTextPublication(file, signal)
-  const { default: ePub } = await import('epubjs')
-  signal.throwIfAborted()
-  const book: Book = ePub({
-    requestMethod: () => Promise.reject(new Error('External EPUB requests are disabled.')),
-  })
+  const publication = await preparePublication(file, signal, options.textOnly ?? false)
+  let engine: typeof import('epubjs')
+  try {
+    engine = await import('epubjs')
+    signal.throwIfAborted()
+  } catch (error) {
+    publication.dispose()
+    throw error
+  }
+  const { default: ePub } = engine
+  let book: Book
+  try {
+    book = ePub({
+      requestMethod: () => Promise.reject(new Error('External EPUB requests are disabled.')),
+    })
+  } catch (error) {
+    publication.dispose()
+    throw error
+  }
   const root = document.createElement('div')
   Object.assign(root.style, {
     position: 'absolute',
@@ -40,7 +65,7 @@ export async function openEpubSession(
   let resizeTimer: ReturnType<typeof setTimeout> | null = null
   let width = 0
   let height = 0
-  let chapterIndex = 0
+  let chapterIndex = Math.max(0, Math.min(options.chapter ?? 0, publication.chapters.length - 1))
   let navigating = false
   let restoreResize: (() => void) | null = null
   function applyResize() {
@@ -66,9 +91,13 @@ export async function openEpubSession(
     disposed = true
     restoreResize?.()
     restoreResize = null
-    book.destroy()
-    rendition = null
-    root.remove()
+    try {
+      book.destroy()
+    } finally {
+      publication.dispose()
+      rendition = null
+      root.remove()
+    }
   }
   function destroy() {
     if (destroyed) return
@@ -95,37 +124,70 @@ export async function openEpubSession(
       spread: 'none',
       allowScriptedContent: false,
     })
-    rendition.themes.default({
-      html: { 'overflow-x': 'hidden !important' },
-      body: {
-        'font-family': 'Georgia, serif',
-        'font-size': '18px',
-        'line-height': '1.7',
-        padding: '24px !important',
-        'box-sizing': 'border-box !important',
-        margin: '0 !important',
-        'overflow-x': 'hidden !important',
-      },
-      '*': { 'max-width': '100%', 'overflow-wrap': 'anywhere', 'box-sizing': 'border-box' },
-      pre: { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
-      table: { 'table-layout': 'fixed', width: '100%' },
-    })
+    function applyTheme(dark: boolean) {
+      rendition?.themes.default({
+        html: { 'overflow-x': 'hidden !important' },
+        ':where(body)': {
+          'font-family': 'Georgia, serif',
+          'font-size': '18px',
+          'line-height': '1.7',
+          color: dark ? '#e7e9ee' : '#202636',
+          'background-color': dark ? '#151b27' : '#ffffff',
+          margin: '0',
+          padding: '24px',
+        },
+        body: { 'box-sizing': 'border-box !important', 'overflow-x': 'hidden !important' },
+        '*': {
+          'max-width': '100% !important',
+          'min-width': '0 !important',
+          'overflow-wrap': 'anywhere',
+          'box-sizing': 'border-box',
+        },
+        pre: { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
+        table: { 'table-layout': 'fixed', 'max-width': '100%' },
+        img: { 'max-width': '100% !important', height: 'auto' },
+      })
+      if (options.textOnly) {
+        rendition?.themes.override('color', dark ? '#e7e9ee' : '#202636', true)
+        rendition?.themes.override('background-color', dark ? '#151b27' : '#ffffff', true)
+      }
+    }
+    applyTheme(false)
     rendition.on('displayed', () => {
       if (!destroyed)
         root
           .querySelector('iframe')
           ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     })
-    await rendition.display(publication.chapters[0]!.href)
+    await rendition.display(publication.chapters[chapterIndex]!.href)
     signal.throwIfAborted()
     root
       .querySelector('iframe')
-      ?.setAttribute('title', `EPUB chapter: ${publication.chapters[0]!.label}`)
+      ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     restoreResize = keepScrolledChapterMounted(rendition, root)
     observer = new ResizeObserver(scheduleResize)
     observer.observe(target)
     // Fit the first chapter immediately; subsequent changes wait for resize to settle.
     applyResize()
+    if (options.position) {
+      const container = root.querySelector<HTMLElement>('.epub-container')
+      const iframe = root.querySelector('iframe')
+      const saved = options.position
+      const element = /^pt-\d+$/u.test(saved.node)
+        ? iframe?.contentDocument?.querySelector(`[data-reader-node="${saved.node}"]`)
+        : null
+      if (container && iframe) {
+        if (element)
+          container.scrollTop +=
+            iframe.getBoundingClientRect().top +
+            element.getBoundingClientRect().top -
+            container.getBoundingClientRect().top -
+            saved.offset
+        else
+          container.scrollTop =
+            saved.ratio * Math.max(0, container.scrollHeight - container.clientHeight)
+      }
+    }
     return {
       title: publication.title,
       chapters: publication.chapters,
@@ -144,10 +206,30 @@ export async function openEpubSession(
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
+      position() {
+        const container = root.querySelector<HTMLElement>('.epub-container')
+        const iframe = root.querySelector('iframe')
+        if (!container || !iframe?.contentDocument) return undefined
+        const viewport = container.getBoundingClientRect()
+        const frameTop = iframe.getBoundingClientRect().top
+        const elements = [...iframe.contentDocument.querySelectorAll('[data-reader-node]')]
+        const element = elements.find((el) => {
+          const rect = el.getBoundingClientRect()
+          return (
+            rect.bottom + frameTop > viewport.top &&
+            rect.top + frameTop < viewport.bottom &&
+            ['p', 'h1', 'h2', 'h3', 'li', 'pre', 'td', 'figure'].includes(el.localName)
+          )
+        })
+        return {
+          node: element?.getAttribute('data-reader-node') ?? '',
+          offset: element ? element.getBoundingClientRect().top + frameTop - viewport.top : 0,
+          ratio: container.scrollTop / Math.max(1, container.scrollHeight - container.clientHeight),
+        }
+      },
       appearance(dark) {
         if (!rendition || destroyed) return
-        rendition.themes.override('color', dark ? '#e7e9ee' : '#202636', true)
-        rendition.themes.override('background-color', dark ? '#151b27' : '#ffffff', true)
+        applyTheme(dark)
       },
       destroy,
     }

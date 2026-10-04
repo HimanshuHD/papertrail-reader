@@ -1,6 +1,6 @@
 import { Blob } from 'node:buffer'
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
-import { createEpubFixture } from '../fixtures/epub'
+import { createEpubFixture, createFormattedEpubFixture } from '../fixtures/epub'
 import { openEpubSession } from '../../src/features/epub/epub-session'
 
 const mocks = vi.hoisted(() => ({
@@ -44,7 +44,7 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   const sibling = document.createElement('span')
   target.append(sibling)
   const controller = new AbortController()
-  const session = await openEpubSession(file(), target, controller.signal)
+  const session = await openEpubSession(file(), target, controller.signal, { textOnly: true })
   expect(mocks.open).toHaveBeenCalledWith(expect.any(ArrayBuffer), 'binary')
   expect(mocks.render).toHaveBeenCalledWith(
     expect.any(HTMLElement),
@@ -161,4 +161,29 @@ it('debounces resize for 150ms after the last change and cancels queued work on 
     vi.useRealTimers()
     vi.unstubAllGlobals()
   }
+})
+
+it('opens the requested chapter and revokes formatted image URLs on session disposal and engine failure', async () => {
+  const create = vi.fn(() => 'blob:owned-image')
+  const revoke = vi.fn()
+  vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: revoke })
+  const source = () => new Blob([createFormattedEpubFixture()]) as unknown as globalThis.Blob
+  const session = await openEpubSession(
+    source(),
+    document.createElement('div'),
+    new AbortController().signal,
+    { chapter: 1 },
+  )
+  expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
+  session.appearance(true)
+  expect(mocks.override).not.toHaveBeenCalled()
+  session.destroy()
+  session.destroy()
+  expect(revoke).toHaveBeenCalledExactlyOnceWith('blob:owned-image')
+  mocks.open.mockRejectedValueOnce(new Error('engine rejected'))
+  await expect(
+    openEpubSession(source(), document.createElement('div'), new AbortController().signal),
+  ).rejects.toThrow('engine rejected')
+  expect(create).toHaveBeenCalledTimes(2)
+  expect(revoke).toHaveBeenCalledTimes(2)
 })

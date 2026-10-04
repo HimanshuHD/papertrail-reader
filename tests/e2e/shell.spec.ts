@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo } from '@playwright/test'
-import { createEpubFixture } from '../fixtures/epub'
+import { createEpubFixture, createFormattedEpubFixture } from '../fixtures/epub'
 
 test('EPUB text reader sanitizes local chapters, navigates and disposes on source changes', async ({
   page,
@@ -41,7 +41,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
   await reader.getByRole('button', { name: 'Next chapter' }).click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
-  await reader.getByRole('combobox', { name: 'Chapter' }).selectOption('0')
+  await reader.getByRole('combobox', { name: 'Chapters' }).selectOption('0')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await capture(page, info, 'epub-text-reader-light')
   await page.getByRole('button', { name: 'Dark mode' }).click()
@@ -129,10 +129,93 @@ test('EPUB reflows during live resizing without scroll and stays within the read
   await expect
     .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
     .toBe(true)
+  await reader.getByRole('checkbox', { name: 'Text-only view' }).check()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await page.setViewportSize({ width: 320, height: 700 })
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
   await expect(reader.locator('.epub-container')).toHaveCSS('overflow-x', 'hidden')
   await expect(page.locator('.reader-content')).toHaveCSS('overflow-x', 'hidden')
   await expect(frame.locator('html')).toHaveCSS('overflow-x', 'hidden')
   expect(errors).toEqual([])
+})
+
+test('EPUB preserves local formatting by default and keeps mode anchors and side controls', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'formatted.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createFormattedEpubFixture()),
+  })
+  await page
+    .locator('section[aria-labelledby="local-library-title"]')
+    .getByRole('button', { name: /formatted.epub/ })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  const frame = reader.frameLocator('iframe')
+  const toggle = reader.getByRole('checkbox', { name: 'Text-only view' })
+  await expect(frame.getByRole('heading', { name: 'Formatted chapter' })).toBeVisible()
+  await expect(toggle).not.toBeChecked()
+  await expect(frame.locator('.intro')).toHaveCSS('text-align', 'center')
+  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(18, 52, 86)')
+  await expect(frame.locator('.intro')).toHaveCSS('padding-top', '12px')
+  await expect(frame.locator('img')).toBeVisible()
+  await expect
+    .poll(() =>
+      frame.locator('img').evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth > 0),
+    )
+    .toBe(true)
+  const next = reader.getByRole('button', { name: 'Next chapter' })
+  const before = await next.boundingBox()
+  await reader.locator('.epub-container').evaluate((el) => {
+    el.scrollTop = 500
+  })
+  await expect
+    .poll(() => reader.locator('.epub-container').evaluate((el) => el.scrollTop))
+    .toBeGreaterThan(100)
+  expect((await next.boundingBox())!.y).toBe(before!.y)
+  const anchor = await frame.locator('p').evaluateAll((els) => {
+    const iframe = window.frameElement!
+    const container = iframe.closest('.epub-container')!
+    const top = container.getBoundingClientRect().top - iframe.getBoundingClientRect().top
+    const el = els.find((el) => el.getBoundingClientRect().bottom > top)!
+    return {
+      id: el.getAttribute('data-reader-node')!,
+      offset: el.getBoundingClientRect().top - top,
+    }
+  })
+  await toggle.check()
+  await expect(frame.locator('img')).toHaveCount(0)
+  await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
+  await expect
+    .poll(() =>
+      frame.locator(`[data-reader-node="${anchor.id}"]`).evaluate((el) => {
+        const iframe = window.frameElement!
+        return (
+          el.getBoundingClientRect().top +
+          iframe.getBoundingClientRect().top -
+          iframe.closest('.epub-container')!.getBoundingClientRect().top
+        )
+      }),
+    )
+    .toBeCloseTo(anchor.offset, 0)
+  await next.click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await toggle.uncheck()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await expect(reader.getByRole('combobox', { name: 'Chapters' })).toHaveValue('1')
+  await reader.getByRole('button', { name: 'Previous chapter' }).click()
+  await expect(frame.locator('img')).toBeVisible()
+  await page.setViewportSize({ width: 320, height: 700 })
+  await expect
+    .poll(() => frame.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth + 1))
+    .toBe(true)
+  await expect(next).toBeVisible()
+  await noOverflow(page)
 })
 
 async function noOverflow(page: Page) {

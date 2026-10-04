@@ -1,5 +1,9 @@
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
-import { openEpubSession, type EpubSession } from '../features/epub/epub-session'
+import {
+  openEpubSession,
+  type EpubSession,
+  type EpubOpenOptions,
+} from '../features/epub/epub-session'
 
 export function useEpubReader() {
   const session = shallowRef<EpubSession | null>(null)
@@ -16,20 +20,26 @@ export function useEpubReader() {
     session.value = null
     busy.value = false
   }
-  async function open(file: File, target: HTMLElement, dark: boolean) {
+  async function open(
+    file: File,
+    target: HTMLElement,
+    dark: boolean,
+    options: EpubOpenOptions = {},
+  ) {
     close()
     const owner = operation
     controller = new AbortController()
     const signal = controller.signal
     busy.value = true
     error.value = ''
-    chapter.value = 0
+    chapter.value = options.chapter ?? 0
     try {
-      const result = await openEpubSession(file, target, signal)
+      const result = await openEpubSession(file, target, signal, options)
       if (owner !== operation) {
         result.destroy()
         return
       }
+      chapter.value = Math.max(0, Math.min(chapter.value, result.chapters.length - 1))
       session.value = result
       result.appearance(dark)
     } catch (reason) {
