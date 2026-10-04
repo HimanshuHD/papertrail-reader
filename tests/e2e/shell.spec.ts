@@ -1,5 +1,68 @@
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo } from '@playwright/test'
+import { createEpubFixture } from '../fixtures/epub'
+
+test('EPUB text reader sanitizes local chapters, navigates and disposes on source changes', async ({
+  page,
+}, info) => {
+  const errors: string[] = []
+  const external: string[] = []
+  page.on('pageerror', (error) => errors.push(error.message))
+  page.on('request', (request) => {
+    if (request.url().includes('evil.invalid')) external.push(request.url())
+  })
+  await page.goto('./#/app')
+  const chapter =
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>First chapter</title><link rel="stylesheet" href="https://evil.invalid/style"/></head><body onload="window.parent.epubAttack=1"><h1>First chapter</h1><p>Local reading text.</p><script>window.parent.epubAttack=1</script><img src="https://evil.invalid/image"/><iframe src="https://evil.invalid/frame"/><style>@import url(https://evil.invalid/style);</style><a href="https://evil.invalid/link">External link text</a></body></html>'
+  const good = {
+    name: 'safe.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(createEpubFixture({ chapter })),
+  }
+  const broken = {
+    name: 'broken.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from('not a book'),
+  }
+  await page.locator('input[accept*=".pdf"]').setInputFiles([good, broken])
+  const library = page.locator('section[aria-labelledby="local-library-title"]')
+  await expect(library.getByRole('button', { name: /safe.epub/ })).toBeVisible()
+  await library.getByRole('button', { name: /safe.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  await expect(reader.getByRole('heading', { name: 'Local test book' })).toBeVisible()
+  const frame = reader.frameLocator('iframe')
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
+  expect(await frame.locator('script,img,iframe,style[src],link[href^="https:"]').count()).toBe(0)
+  expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
+  await reader.getByRole('button', { name: 'Next chapter' }).click()
+  await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
+  await reader.getByRole('combobox', { name: 'Chapter' }).selectOption('0')
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  await page.getByRole('button', { name: 'Dark mode' }).click()
+  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(231, 233, 238)')
+  await capture(page, info, 'epub-text-reader')
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await library.getByRole('button', { name: /broken.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(reader.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
+  await expect(reader.locator('iframe')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Show library' }).click()
+  await library.getByRole('button', { name: /safe.epub/ }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
+  // Replacing the source tears down the current engine and its iframe.
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'replacement.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(),
+  })
+  await expect(page.locator('.epub-host iframe')).toHaveCount(0)
+  await noOverflow(page)
+  expect(external).toEqual([])
+  expect(errors).toEqual([])
+})
 
 async function noOverflow(page: Page) {
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
@@ -214,7 +277,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await book.click()
   await expect(book).toHaveAttribute('aria-pressed', 'true')
   await expect(page.locator('#reader-title')).toHaveText('book.epub')
-  await expect(page.getByText('EPUB reading is not available in this release yet.')).toBeVisible()
+  await expect(page.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
 
   await page.getByRole('button', { name: 'Refresh folder' }).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')

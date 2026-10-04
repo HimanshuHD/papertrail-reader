@@ -17,3 +17,7 @@ Password entry is not supported in v1.0.0. Consult the [release support and limi
 Use **Search documents...** to filter filenames, titles, paths and formats in the current listing. This does not search PDF page text; use the reader’s Search button for that. Clear the library query to restore the full tree.
 
 The collapsible **Recent** section keeps the last 20 successfully opened PDFs on this browser. Choose an entry to reopen matching content in your accessible selected files. If access is missing or the file changed, use **+** to reselect its source and try again. Renaming the same content preserves its reading identity. Removing a recent entry or **Clear recent history** leaves reading positions and bookmarks intact. **Forget library** clears workspace access but preserves recent history and reading metadata. Clearing site storage clears saved metadata. EPUB reading history follows the upcoming EPUB reader.
+
+## EPUB text reading — initial increment
+
+After selecting an accessible EPUB, PaperTrail opens supported reflowable chapter text. Use Previous chapter, Next chapter or the Chapter selector to move through the book; appearance follows Light/Dark mode. The first reader omits book images, author styling and interactive/external links. Fixed-layout and encrypted/obfuscated books are unsupported. Invalid books display a recovery message and Retry action; you can choose another document. Saved EPUB CFI, typography, bookmarks and recent history follow in later increments. No EPUB bytes are stored by the application.
