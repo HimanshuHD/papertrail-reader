@@ -183,11 +183,9 @@ onBeforeUnmount(() => {
   overflow: hidden;
 }
 .opener-visible :deep(.pdf-header),
+.opener-visible :deep(.epub-header),
 .opener-visible :deep(.sample-toolbar) {
   padding-left: 76px;
-}
-.opener-visible :deep(.epub-heading) {
-  padding-left: 64px;
 }
 @media (max-width: 1023px) {
   .opener-visible :deep(.reader-welcome) {
