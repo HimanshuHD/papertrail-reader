@@ -480,8 +480,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-page {
+  isolation: isolate;
+}
 .pdf-saved-overlay {
   z-index: 1;
+  mix-blend-mode: multiply;
 }
 .pdf-saved-group {
   opacity: 0.55;
@@ -524,6 +528,7 @@ onBeforeUnmount(() => {
  */
 .textLayer {
   z-index: 2;
+  mix-blend-mode: multiply;
   color-scheme: only light;
   text-align: initial;
   line-height: 1;
@@ -556,6 +561,9 @@ onBeforeUnmount(() => {
 .textLayer :deep(span::selection) {
   background: rgb(147 197 253 / 35%);
   color: transparent;
+}
+.textLayer :deep(br::selection) {
+  background: transparent;
 }
 .textLayer :deep(.markedContent) {
   display: contents;

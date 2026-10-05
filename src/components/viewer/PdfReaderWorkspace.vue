@@ -74,12 +74,14 @@ const persistenceNotice = continuity.notice
 const bookmarks = usePdfBookmarks(continuity.documentId)
 const highlights = usePdfHighlights(continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+let selectingHighlight = false
 const selectedHighlight = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
 const resolutionFailures = ref<Record<string, boolean>>({})
 watch(
   continuity.fingerprint,
   () => {
+    selectingHighlight = false
     pendingHighlight.value = null
     selectedHighlight.value = ''
     resolutionFailures.value = {}
@@ -90,10 +92,25 @@ const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
 )
 function clearPendingHighlight(event: PointerEvent) {
+  selectingHighlight =
+    event.target instanceof Element &&
+    !!event.target.closest('.textLayer') &&
+    !!viewport.value?.contains(event.target)
   if (!(event.target instanceof Element) || !event.target.closest('[aria-label="PDF highlights"]'))
     pendingHighlight.value = null
 }
+function finishHighlightSelection() {
+  if (!selectingHighlight) return
+  selectingHighlight = false
+  captureSelection()
+}
+function cancelHighlightSelection() {
+  selectingHighlight = false
+  pendingHighlight.value = null
+}
 function captureSelection() {
+  // Native selection paints continuously; measuring every drag update stalls it.
+  if (selectingHighlight) return
   if (phase.value !== 'ready' || !viewport.value) return
   const selection = document.getSelection()
   if (selection?.isCollapsed || !selection?.rangeCount) {
@@ -829,6 +846,9 @@ onMounted(() => {
   globalThis.addEventListener('keydown', handlePopoverKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
   document.addEventListener('selectionchange', captureSelection)
+  globalThis.addEventListener('pointerup', finishHighlightSelection)
+  globalThis.addEventListener('pointercancel', cancelHighlightSelection)
+  globalThis.addEventListener('blur', cancelHighlightSelection)
 })
 
 watch(
@@ -849,6 +869,9 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('keydown', handlePopoverKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
   document.removeEventListener('selectionchange', captureSelection)
+  globalThis.removeEventListener('pointerup', finishHighlightSelection)
+  globalThis.removeEventListener('pointercancel', cancelHighlightSelection)
+  globalThis.removeEventListener('blur', cancelHighlightSelection)
   if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
   void closeCurrentSession()
 })

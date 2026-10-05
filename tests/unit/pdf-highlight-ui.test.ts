@@ -130,6 +130,10 @@ it('exposes keyboard reachable highlight/color/delete controls and keeps mutatio
   document.dispatchEvent(new Event('selectionchange'))
   await wrapper.vm.$nextTick()
   document.dispatchEvent(new Event('selectionchange'))
+  await wrapper.vm.$nextTick()
+  expect(button.attributes('disabled')).toBeDefined()
+  await wrapper.get('.textLayer').trigger('pointerup')
+  expect(button.attributes('disabled')).toBeUndefined()
   mocks.add.mockImplementation(async () => {
     annotations.value = [annotation]
     return true
