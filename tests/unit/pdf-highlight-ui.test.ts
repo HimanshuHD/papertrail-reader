@@ -120,6 +120,15 @@ it('exposes keyboard reachable highlight/color/delete controls and keeps mutatio
   const button = wrapper.findAll('button').find((b) => b.text() === 'Highlight selection')!
   expect(button.attributes('disabled')).toBeUndefined()
   button.element.focus()
+  await wrapper.get('.textLayer').trigger('pointerdown')
+  await wrapper.vm.$nextTick()
+  expect(button.attributes('disabled')).toBeDefined()
+  const freshRange = document.createRange()
+  freshRange.selectNodeContents(text)
+  document.getSelection()!.removeAllRanges()
+  document.getSelection()!.addRange(freshRange)
+  document.dispatchEvent(new Event('selectionchange'))
+  await wrapper.vm.$nextTick()
   document.dispatchEvent(new Event('selectionchange'))
   mocks.add.mockImplementation(async () => {
     annotations.value = [annotation]

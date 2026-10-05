@@ -89,6 +89,10 @@ watch(
 const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
 )
+function clearPendingHighlight(event: PointerEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="PDF highlights"]'))
+    pendingHighlight.value = null
+}
 function captureSelection() {
   if (phase.value !== 'ready' || !viewport.value) return
   const selection = document.getSelection()
@@ -851,7 +855,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
+  <div
+    ref="readerRoot"
+    class="pdf-reader min-w-0 bg-canvas"
+    @pointerdown.capture="clearPendingHighlight"
+  >
     <p
       v-if="persistenceNotice"
       role="status"
