@@ -206,3 +206,23 @@ it('never publishes stale loading or mutation results after document switching',
   expect(state.loading.value).toBe(false)
   wrapper.unmount()
 })
+
+it('joins overlapping and adjacent runs without bridging lines or columns', () => {
+  const root = setupDom()
+  const { shell, layer } = page(root, 1, ['Paragraph'])
+  const range = pdfTextRange(layer, 0, 9)!
+  Object.defineProperty(range, 'getClientRects', {
+    value: () => [
+      { left: 5, top: 10, right: 30, bottom: 20 },
+      { left: 5, top: 10.1, right: 30, bottom: 20.1 },
+      { left: 32, top: 10, right: 45, bottom: 20 },
+      { left: 70, top: 10, right: 90, bottom: 20 },
+      { left: 5, top: 25, right: 45, bottom: 35 },
+    ],
+  })
+  const rectangles = capturePdfRectangles(range, shell.querySelector('.pdf-page')!, layer)
+  expect(rectangles).toHaveLength(3)
+  expect(rectangles[0]).toMatchObject({ x: 0.05, y: 0.05, width: 0.4 })
+  expect(rectangles.some((rect) => rect.x === 0.7)).toBe(true)
+  expect(rectangles.some((rect) => rect.y === 0.125)).toBe(true)
+})

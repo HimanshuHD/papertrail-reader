@@ -38,7 +38,31 @@ export function capturePdfRectangles(
   const box = page.getBoundingClientRect()
   if (!box.width || !box.height || !range.getClientRects) return []
   const inverse = ((360 - rotation(layer)) % 360) as 0 | 90 | 180 | 270
-  const rectangles = [...range.getClientRects()].flatMap((rect) => {
+  const fragments = [...range.getClientRects()]
+    .map((rect) => ({
+      left: rect.left,
+      top: rect.top,
+      right: rect.right,
+      bottom: rect.bottom,
+    }))
+    .filter((rect) => rect.right > rect.left && rect.bottom > rect.top)
+  // Join neighboring glyph runs, but preserve line breaks and column gutters.
+  const lines: typeof fragments = []
+  for (const rect of fragments.sort((a, b) => a.top - b.top || a.left - b.left)) {
+    const height = rect.bottom - rect.top
+    const line = lines.find((other) => {
+      const overlap = Math.min(other.bottom, rect.bottom) - Math.max(other.top, rect.top)
+      const gap = Math.max(other.left, rect.left) - Math.min(other.right, rect.right)
+      return overlap >= Math.min(height, other.bottom - other.top) * 0.8 && gap <= height * 0.5
+    })
+    if (line) {
+      line.left = Math.min(line.left, rect.left)
+      line.top = Math.min(line.top, rect.top)
+      line.right = Math.max(line.right, rect.right)
+      line.bottom = Math.max(line.bottom, rect.bottom)
+    } else lines.push({ ...rect })
+  }
+  const rectangles = lines.flatMap((rect) => {
     const left = Math.max(box.left, rect.left),
       top = Math.max(box.top, rect.top)
     const right = Math.min(box.right, rect.right),
@@ -131,8 +155,8 @@ export function capturePdfHighlight(
 }
 
 export const PDF_HIGHLIGHT_COLORS = {
-  yellow: '#facc15',
-  green: '#4ade80',
-  blue: '#60a5fa',
-  pink: '#f472b6',
+  yellow: '#fde68a',
+  green: '#bbf7d0',
+  blue: '#bfdbfe',
+  pink: '#fbcfe8',
 } as const

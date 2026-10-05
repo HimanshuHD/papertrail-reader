@@ -425,20 +425,26 @@ onBeforeUnmount(() => {
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
       <div class="pdf-saved-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
-        <span
-          v-for="(rect, index) in savedRects"
-          :key="`${rect.id}:${index}`"
-          class="pdf-saved-highlight"
-          :class="{ active: rect.id === activeHighlight }"
-          :data-highlight-id="rect.id"
-          :style="{
-            left: `${rect.x * 100}%`,
-            top: `${rect.y * 100}%`,
-            width: `${rect.width * 100}%`,
-            height: `${rect.height * 100}%`,
-            backgroundColor: rect.color,
-          }"
-        />
+        <div
+          v-for="id in [...new Set(savedRects.map((rect) => rect.id))]"
+          :key="id"
+          class="pdf-saved-group absolute inset-0"
+        >
+          <span
+            v-for="(rect, index) in savedRects.filter((rect) => rect.id === id)"
+            :key="`${rect.id}:${index}`"
+            class="pdf-saved-highlight"
+            :class="{ active: rect.id === activeHighlight }"
+            :data-highlight-id="rect.id"
+            :style="{
+              left: `${rect.x * 100}%`,
+              top: `${rect.y * 100}%`,
+              width: `${rect.width * 100}%`,
+              height: `${rect.height * 100}%`,
+              backgroundColor: rect.color,
+            }"
+          />
+        </div>
       </div>
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
         <span
@@ -477,14 +483,15 @@ onBeforeUnmount(() => {
 .pdf-saved-overlay {
   z-index: 1;
 }
+.pdf-saved-group {
+  opacity: 0.55;
+}
 .pdf-saved-highlight {
   position: absolute;
-  opacity: 0.4;
   border-radius: 2px;
 }
 .pdf-saved-highlight.active {
   outline: 2px solid #334155;
-  opacity: 0.6;
 }
 .pdf-match-overlay {
   z-index: 3;
@@ -547,7 +554,7 @@ onBeforeUnmount(() => {
   transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 .textLayer :deep(span::selection) {
-  background: Highlight;
+  background: rgb(147 197 253 / 35%);
   color: transparent;
 }
 .textLayer :deep(.markedContent) {

@@ -722,7 +722,7 @@ test('PDF highlights persist across wrapped pages, reload and changed-file isola
   await page.getByRole('combobox', { name: 'Highlight color' }).selectOption('pink')
   await expect(page.locator('#pdf-page-2 .pdf-saved-highlight').first()).toHaveCSS(
     'background-color',
-    'rgb(244, 114, 182)',
+    'rgb(251, 207, 232)',
   )
   await capture(page, info, 'pdf-persistent-highlights')
   await page.reload()
@@ -737,7 +737,7 @@ test('PDF highlights persist across wrapped pages, reload and changed-file isola
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
   await expect(page.locator('#pdf-page-1 .pdf-saved-highlight').first()).toHaveCSS(
     'background-color',
-    'rgb(244, 114, 182)',
+    'rgb(251, 207, 232)',
   )
   await select('changed.pdf', createPdfFixture(3))
   await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(

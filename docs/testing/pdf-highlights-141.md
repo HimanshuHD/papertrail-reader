@@ -17,3 +17,7 @@ This increment adds a compact PDF highlight bar below the existing controls. Sel
 Unit/component tests exercise canonical text/geometry mapping, complete selection capture, intrinsic rotation, page overlay rerendering, UI actions, stale loads/mutations and persistence failure recovery. Release Browser E2E cases exercise real PDF.js and native IndexedDB, including reload, changed content and rotated pages. They are added now but run only at the reviewed release-branch-to-main gate (#145/#28); no feature-branch browser bypass is used. Screenshot/real-browser acceptance must be recorded against the release candidate before claiming those gates complete.
 
 The full annotation/notes panel follows in #143. EPUB highlights follow in #142. Architecture/storage details are in [Annotation foundation](../architecture/annotations.md).
+
+### PDF highlight visual corrections — #149, #150, #151
+
+PR #148 also joins nearby text fragments per line while preserving column gutters, composites each annotation once at a constant opacity, and uses pastel Yellow/Green/Blue/Pink. Active outlines do not darken the fill. Native selection uses translucent blue so canvas text remains visible. Regression checks cover overlapping fragments, line boundaries and column separation. Owner visual acceptance remains pending; verify wrapped paragraphs, selection legibility, active/inactive color consistency, zoom and rotated pages after deployment. Release Browser E2E remains tracked in #145/#28.

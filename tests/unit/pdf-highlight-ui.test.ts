@@ -187,7 +187,7 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   } as DOMRect)
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(1)
-  expect(wrapper.get('.pdf-saved-highlight').attributes('style')).toContain('rgb(96, 165, 250)')
+  expect(wrapper.get('.pdf-saved-highlight').attributes('style')).toContain('rgb(191, 219, 254)')
   await wrapper.setProps({ availableWidth: 150 })
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(1)
