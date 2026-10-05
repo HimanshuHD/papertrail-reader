@@ -85,13 +85,20 @@ function rectangle(value: unknown): PdfAnnotationRect | undefined {
     ![v.x, v.y, v.width, v.height].every(Number.isFinite) ||
     v.x < 0 ||
     v.y < 0 ||
+    v.x >= 1 ||
+    v.y >= 1 ||
     v.width <= 0 ||
     v.height <= 0 ||
     v.x + v.width > 1.000000001 ||
     v.y + v.height > 1.000000001
   )
     return
-  return { x: v.x, y: v.y, width: v.width, height: v.height }
+  return {
+    x: v.x,
+    y: v.y,
+    width: Math.min(v.width, 1 - v.x),
+    height: Math.min(v.height, 1 - v.y),
+  }
 }
 export function normalizeAnnotationSelector(value: unknown): AnnotationSelector | undefined {
   if (!value || typeof value !== 'object') return
@@ -163,7 +170,9 @@ export function captureTextSelector(text: string, start: number, end: number): T
 
 /** PDF.js adapters convert viewport rectangles with the actual crop box/viewport transform. */
 export function projectPdfRectangle(rect: PdfAnnotationRect, rotation: 0 | 90 | 180 | 270) {
-  if (!rectangle(rect)) throw new RangeError('Invalid annotation rectangle.')
+  const safe = rectangle(rect)
+  if (!safe) throw new RangeError('Invalid annotation rectangle.')
+  rect = safe
   switch (rotation) {
     case 0:
       return { ...rect }

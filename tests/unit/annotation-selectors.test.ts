@@ -98,6 +98,10 @@ it('projects unrotated geometry for all rotations independently of zoom', () => 
     const restored = projectPdfRectangle(rotated, inverse)
     for (const key of ['x', 'y', 'width', 'height'] as const)
       expect(restored[key]).toBeCloseTo(rect[key])
+    const edge = projectPdfRectangle({ x: 0.8, y: 0.8, width: 0.2, height: 0.2 }, rotation)
+    expect(edge.x).toBeGreaterThanOrEqual(0)
+    expect(edge.y).toBeGreaterThanOrEqual(0)
+    expect(() => projectPdfRectangle(edge, inverse)).not.toThrow()
   }
 })
 it('validates EPUB CFI offsets against text and falls back across mode/DOM differences', () => {
