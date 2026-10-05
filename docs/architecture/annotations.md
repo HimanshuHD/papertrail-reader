@@ -33,3 +33,11 @@ Limits: 1,000 annotations/document; 100 PDF segments and 1,000 rectangles/annota
 ## Validation boundary
 
 Unit tests cover selectors/geometry, quote and CFI verification, changed files, ambiguous matches, metadata migration/preservation, CRUD/reload, concurrent edits, stale generations and transaction failures. Storage tests use a serialized commit/rollback-aware seam; they do not claim native IndexedDB or cross-browser acceptance. Native renderer/storage behavior is validated with #141/#142 and final #145/#28 acceptance. Full Browser E2E follows the existing reviewed release-branch-to-main gate, with no feature-branch bypass.
+
+## PDF highlight integration (#141)
+
+PDF highlighting now uses `usePdfHighlights` to open the fingerprint-scoped annotation record, coordinate CRUD and discard late results after document switches. It locks editing after persistence/refresh failures until explicit retry. The existing reader controls and utility panel modes remain available; a compact keyboard-accessible highlight bar supports selection, color, saved-highlight navigation and deletion. The shared notes panel remains #143.
+
+`features/pdf/highlights.ts` maps complete selections across ready text layers to the existing PDF canonical text index. Partial selections spanning an unloaded/image-only page are rejected, rather than saving only visible fragments. Native range rectangles are clipped to the current crop page and unrotated before storage. On rendering, each saved page segment is quote/context-verified and measured in the current text DOM. This rebuilds geometry after zoom, intrinsic page rotation, resize and virtualization, and avoids reusing stale persisted rectangles. Unresolved rendered segments are marked in the saved-highlight selector. No document file is rewritten.
+
+Verification instructions and the boundary between passing unit/component tests and pending release-native acceptance are in [PDF highlight verification](../testing/pdf-highlights-141.md).

@@ -630,7 +630,12 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
-function createPdfFixture(pageCount = 2, title?: string, searchFixture = false): Buffer {
+function createPdfFixture(
+  pageCount = 2,
+  title?: string,
+  searchFixture = false,
+  rotation = 0,
+): Buffer {
   const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
     '<< /Type /Catalog /Pages 2 0 R >>',
@@ -644,7 +649,7 @@ function createPdfFixture(pageCount = 2, title?: string, searchFixture = false):
         ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
         : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
     )
     objects.push(
       `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
@@ -671,6 +676,138 @@ function createPdfFixture(pageCount = 2, title?: string, searchFixture = false):
 
   return Buffer.from(pdf, 'ascii')
 }
+
+test('PDF highlights persist across wrapped pages, reload and changed-file isolation', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  const select = async (name: string, buffer: Buffer) => {
+    const show = page.getByRole('button', { name: 'Show library' })
+    if (await show.isVisible()) await show.click()
+    await page
+      .locator('input[accept*=".pdf"]')
+      .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    await page
+      .getByRole('region', { name: 'Library documents', exact: true })
+      .getByRole('button', { name: `PDF: ${name}`, exact: true })
+      .click()
+    await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
+      'aria-busy',
+      'false',
+    )
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    await expect(page.getByRole('combobox', { name: 'Highlight color' })).toBeEnabled()
+  }
+  const bytes = createPdfFixture(2, undefined, true)
+  await select('highlights.pdf', bytes)
+  await page.locator('#pdf-page-2').scrollIntoViewIfNeeded()
+  await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await page.evaluate(() => {
+    const first = document.querySelector('#pdf-page-1 .textLayer span')!.firstChild!
+    const last = [...document.querySelectorAll('#pdf-page-2 .textLayer span')].at(-1)!.firstChild!
+    const range = document.createRange()
+    range.setStart(first, 0)
+    range.setEnd(last, last.textContent!.length)
+    document.getSelection()!.removeAllRanges()
+    document.getSelection()!.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+  await expect(page.getByRole('button', { name: 'Highlight selection', exact: true })).toBeEnabled()
+  await page.getByRole('button', { name: 'Highlight selection', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
+    'Highlights (1)',
+  )
+  await expect(page.locator('#pdf-page-2 .pdf-saved-highlight').first()).toBeVisible()
+  await page.getByRole('combobox', { name: 'Highlight color' }).selectOption('pink')
+  await expect(page.locator('#pdf-page-2 .pdf-saved-highlight').first()).toHaveCSS(
+    'background-color',
+    'rgb(244, 114, 182)',
+  )
+  await capture(page, info, 'pdf-persistent-highlights')
+  await page.reload()
+  await select('renamed-highlights.pdf', bytes)
+  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
+    'Highlights (1)',
+  )
+  const saved = page.getByRole('combobox', { name: 'Saved highlights' })
+  const id = await saved.locator('option').nth(1).getAttribute('value')
+  await saved.selectOption(id!)
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('#pdf-page-1 .pdf-saved-highlight').first()).toHaveCSS(
+    'background-color',
+    'rgb(244, 114, 182)',
+  )
+  await select('changed.pdf', createPdfFixture(3))
+  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
+    'Highlights (0)',
+  )
+  await select('original-again.pdf', bytes)
+  await expect(saved).toContainText('Highlights (1)')
+  await saved.selectOption(id!)
+  await page.getByRole('button', { name: 'Delete highlight', exact: true }).click()
+  await expect(saved).toContainText('Highlights (0)')
+  await page.reload()
+  await select('deleted.pdf', bytes)
+  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
+    'Highlights (0)',
+  )
+  await select('changed.pdf', createPdfFixture(3))
+  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
+    'Highlights (0)',
+  )
+  await noOverflow(page)
+})
+
+test('PDF highlights align on rotated pages and rebuild after virtualized rendering', async ({
+  page,
+}, info) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'rotated.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(8, undefined, false, 90),
+  })
+  await page
+    .getByRole('region', { name: 'Library documents', exact: true })
+    .getByRole('button', { name: 'PDF: rotated.pdf', exact: true })
+    .click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  const layer = page.locator('#pdf-page-1 .textLayer')
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.getByRole('combobox', { name: 'Highlight color' })).toBeEnabled()
+  await layer.evaluate((element) => {
+    const range = document.createRange()
+    range.selectNodeContents(element.querySelector('span')!)
+    document.getSelection()!.removeAllRanges()
+    document.getSelection()!.addRange(range)
+    document.dispatchEvent(new Event('selectionchange'))
+  })
+  await page.getByRole('button', { name: 'Highlight selection', exact: true }).click()
+  const overlay = page.locator('#pdf-page-1 .pdf-saved-highlight').first()
+  await expect(overlay).toBeVisible()
+  const aligned = async () => {
+    const expected = await layer.locator('span').first().boundingBox(),
+      actual = await overlay.boundingBox()
+    expect(Math.abs(actual!.x - expected!.x)).toBeLessThan(3)
+    expect(Math.abs(actual!.y - expected!.y)).toBeLessThan(3)
+  }
+  await aligned()
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await aligned()
+  await page.getByRole('spinbutton', { name: 'Current page', exact: true }).fill('8')
+  await page.getByRole('spinbutton', { name: 'Current page', exact: true }).press('Tab')
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'pending')
+  await page.getByRole('spinbutton', { name: 'Current page', exact: true }).fill('1')
+  await page.getByRole('spinbutton', { name: 'Current page', exact: true }).press('Tab')
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(overlay).toBeVisible()
+  await aligned()
+  await capture(page, info, 'pdf-rotated-highlight')
+  await noOverflow(page)
+})
 
 test('home and app respond in both themes without overflow', async ({ page }, info) => {
   const errors: string[] = []

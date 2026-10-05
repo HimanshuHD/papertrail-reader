@@ -1,5 +1,13 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import type { Annotation } from '../../services/annotation-storage'
+import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
+import {
+  pdfTextIndex,
+  pdfTextRange,
+  capturePdfRectangles,
+  PDF_HIGHLIGHT_COLORS,
+} from '../../features/pdf/highlights'
 import { textLayerMatchRanges } from '../../features/pdf/search-text'
 import {
   resolvePdfScale,
@@ -18,12 +26,17 @@ const props = defineProps<{
   searchQuery?: string
   selectedOccurrence?: number | null
   selectionRequest?: number
+  annotations?: Annotation[]
+  fingerprint?: string | null
+  activeHighlight?: string | null
 }>()
 
 const emit = defineEmits<{
   visibility: [pageNumber: number, ratio: number]
   rendered: [pageNumber: number, scale: number]
   error: [message: string]
+  highlightSelected: [id: string]
+  highlightResolution: [id: string, resolved: boolean, page: number]
 }>()
 
 const root = ref<HTMLElement | null>(null)
@@ -39,6 +52,68 @@ const highlightRects = ref<
     occurrence: number
   }[]
 >([])
+const savedRects = ref<
+  { id: string; color: string; x: number; y: number; width: number; height: number }[]
+>([])
+function selectSavedHighlight(event: PointerEvent) {
+  if (!textLayer.value?.ownerDocument.getSelection()?.isCollapsed) return
+  const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
+  if (!box) return
+  const hit = savedRects.value.find(
+    (rect) =>
+      event.clientX >= box.left + rect.x * box.width &&
+      event.clientX <= box.left + (rect.x + rect.width) * box.width &&
+      event.clientY >= box.top + rect.y * box.height &&
+      event.clientY <= box.top + (rect.y + rect.height) * box.height,
+  )
+  if (hit) emit('highlightSelected', hit.id)
+}
+function updateSavedHighlights() {
+  savedRects.value = []
+  const layer = textLayer.value
+  const page = root.value?.querySelector<HTMLElement>('.pdf-page')
+  if (!layer || !page || !rendered.value || rendering.value || !props.fingerprint) return
+  const text = pdfTextIndex(layer).text
+  const identity = { format: 'PDF' as const, fingerprint: props.fingerprint }
+  const rotation = Number(layer.dataset.mainRotation ?? 0) as 0 | 90 | 180 | 270
+  for (const annotation of props.annotations ?? []) {
+    if (annotation.selector.format !== 'PDF') continue
+    const segments = annotation.selector.segments.filter(
+      (segment) => segment.page === props.pageNumber,
+    )
+    if (!segments.length) continue
+    const result = resolvePdfAnnotation(
+      identity,
+      identity,
+      { ...annotation.selector, segments },
+      new Map([[props.pageNumber, text]]),
+    )
+    if (result.status !== 'resolved') {
+      emit('highlightResolution', annotation.id, false, props.pageNumber)
+      continue
+    }
+    let visible = false
+    for (const segment of result.value) {
+      // Always measure verified text in the current layer, including rotated glyphs/crop boxes.
+      const range = pdfTextRange(layer, segment.start, segment.end)
+      if (!range) continue
+      for (const rectangle of capturePdfRectangles(range, page, layer)) {
+        const rect = projectPdfRectangle(rectangle, rotation)
+        savedRects.value.push({
+          ...rect,
+          id: annotation.id,
+          color: PDF_HIGHLIGHT_COLORS[annotation.color],
+        })
+        visible = true
+      }
+    }
+    emit('highlightResolution', annotation.id, visible, props.pageNumber)
+  }
+}
+watch(
+  () => [props.annotations, props.fingerprint],
+  () => void nextTick(updateSavedHighlights),
+)
 let lastScrolledRequest = 0
 function updateHighlights() {
   highlightRects.value = []
@@ -139,6 +214,7 @@ async function renderPage() {
   const sequence = ++renderSequence
   rendering.value = true
   highlightRects.value = []
+  savedRects.value = []
   dirty = false
 
   try {
@@ -186,7 +262,10 @@ async function renderPage() {
     pendingCanvas.height = 0
     pendingBitmap = null
     rendering.value = false
-    void nextTick(updateHighlights)
+    void nextTick(() => {
+      updateHighlights()
+      updateSavedHighlights()
+    })
     if (!nearViewport) releaseBitmap()
     if (dirty && nearViewport && !disposed) void renderPage()
   }
@@ -209,6 +288,7 @@ function releaseBitmap() {
   displayed.width = 0
   displayed.height = 0
   highlightRects.value = []
+  savedRects.value = []
   textLayer.value?.replaceChildren()
   rendered.value = false
   previewed.value = false
@@ -322,6 +402,7 @@ onBeforeUnmount(() => {
     ref="root"
     class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
     :aria-label="`PDF page ${pageNumber}`"
+    :data-pdf-page="pageNumber"
     :data-render-state="rendering ? 'rendering' : rendered ? 'ready' : 'pending'"
   >
     <div
@@ -343,6 +424,22 @@ onBeforeUnmount(() => {
         }"
         :aria-label="`Rendered PDF page ${pageNumber}`"
       ></canvas>
+      <div class="pdf-saved-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
+        <span
+          v-for="(rect, index) in savedRects"
+          :key="`${rect.id}:${index}`"
+          class="pdf-saved-highlight"
+          :class="{ active: rect.id === activeHighlight }"
+          :data-highlight-id="rect.id"
+          :style="{
+            left: `${rect.x * 100}%`,
+            top: `${rect.y * 100}%`,
+            width: `${rect.width * 100}%`,
+            height: `${rect.height * 100}%`,
+            backgroundColor: rect.color,
+          }"
+        />
+      </div>
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
         <span
           v-for="(rect, index) in highlightRects"
@@ -363,6 +460,7 @@ onBeforeUnmount(() => {
         class="textLayer absolute top-0 left-0 overflow-hidden"
         :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
+        @pointerup="selectSavedHighlight"
       ></div>
       <div
         v-if="!rendered && !previewed"
@@ -376,6 +474,18 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-saved-overlay {
+  z-index: 1;
+}
+.pdf-saved-highlight {
+  position: absolute;
+  opacity: 0.4;
+  border-radius: 2px;
+}
+.pdf-saved-highlight.active {
+  outline: 2px solid #334155;
+  opacity: 0.6;
+}
 .pdf-match-overlay {
   z-index: 3;
 }
