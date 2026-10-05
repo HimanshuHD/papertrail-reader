@@ -1,5 +1,9 @@
 # Product Roadmap 2
 
+## Current checkpoint — PR #148 merged; #152 selection gaps active
+
+Owner merged PR #148 as `a4d756b1c92d5122bb51221ac206287e5eaae202`. #141 and #149–#151 are closed with stale active labels removed. The remaining blank-line native selection defect stays #152/In progress on `fix/152-pdf-selection-gaps`, created from main `fc87455a51bc3c7fb9db8c7f19bed096a0205658`. Parent #15 remains in progress; #142–#145 remain new. Earlier pending-merge #141 checkpoints are superseded. The independent fix restores PDF.js native selection guards and a text cursor across the text-layer surface; browser visual acceptance stays #145/#28 at the reviewed release gate.
+
 ## Active PDF highlights — 5 October 2026
 
 Owner merged PR #147 as `45c8c8cf8d5955edd896330bc5ad1097e03f2df8`; #140 is closed/completed and its stale active label is removed. #141 is in progress on `feat/141-pdf-highlights`, created from main `4ffdc1c`. Parent #15 remains in progress; #142–#145 remain new. This increment adds PDF text selection/highlights, colors, deletion, local restoration and current-layer overlay geometry. See [app verification](../testing/pdf-highlights-141.md). Local checks pass: 234 unit/component tests, 10 pipeline tests, lint, formatting, type checks and production build. Native Browser E2E acceptance remains the reviewed release gate, with two new cases added but not run on this feature branch. Implemented in [PR #148](https://github.com/HimanshuHD/papertrail-reader/pull/148), initial application/test source `be20b5845333c8f368eed6a6b7f741180dd6965c`. The final selection-focus regression is included; final revision/CI evidence is maintained in the PR. CI evidence is maintained on #141 and the PR. Earlier #140 pending-merge and #141-new checkpoints are superseded.

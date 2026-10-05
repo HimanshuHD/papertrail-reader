@@ -25,3 +25,7 @@ PR #148 also joins nearby text fragments per line while preserving column gutter
 ### Highlight text contrast and selection follow-up — #151 / #152
 
 PR #148 now uses multiply blending within an isolated PDF page so pastel highlights and native selection preserve dark canvas glyphs. Line-break selection blocks are transparent. Pointer drags defer annotation geometry capture until release (including release outside the reader); keyboard selection remains available. Pointer cancellation, blur and document changes clear drag state. Component regression coverage checks that Save stays disabled during a drag and enables after release. Owner visual verification of contrast and drag smoothness remains pending under #145/#28.
+
+### #152 blank-space selection checks
+
+Drag forwards and backwards across line gaps and paragraph margins: the cursor should remain a text cursor and the selection endpoint should follow nearby text rather than jump to unrelated content. Repeat with wrapped/cross-page selections, zoom and rotated pages. Release outside the reader, cancel the pointer or blur the window; the guard must reset. Rerender/virtualize pages and repeat. The low-level PDF.js text layer now receives the viewer selection guard; the guard contains no text and does not enter saved quotes/search offsets. Native visual acceptance remains pending at the release gate #145/#28.

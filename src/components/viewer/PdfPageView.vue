@@ -8,6 +8,7 @@ import {
   capturePdfRectangles,
   PDF_HIGHLIGHT_COLORS,
 } from '../../features/pdf/highlights'
+import { bindPdfTextSelection } from '../../features/pdf/text-selection'
 import { textLayerMatchRanges } from '../../features/pdf/search-text'
 import {
   resolvePdfScale,
@@ -187,6 +188,7 @@ let disposed = false
 let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
+let releaseTextSelection: (() => void) | undefined
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || disposed) return
@@ -236,7 +238,9 @@ async function renderPage() {
     context.drawImage(pendingCanvas, 0, 0)
     currentTextLayer.style.cssText = pendingText.style.cssText
     currentTextLayer.dataset.mainRotation = pendingText.dataset.mainRotation ?? '0'
+    releaseTextSelection?.()
     currentTextLayer.replaceChildren(...pendingText.childNodes)
+    releaseTextSelection = bindPdfTextSelection(currentTextLayer)
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -289,6 +293,8 @@ function releaseBitmap() {
   displayed.height = 0
   highlightRects.value = []
   savedRects.value = []
+  releaseTextSelection?.()
+  releaseTextSelection = undefined
   textLayer.value?.replaceChildren()
   rendered.value = false
   previewed.value = false
@@ -527,6 +533,7 @@ onBeforeUnmount(() => {
  * https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.css
  */
 .textLayer {
+  cursor: text;
   z-index: 2;
   mix-blend-mode: multiply;
   color-scheme: only light;
@@ -552,6 +559,7 @@ onBeforeUnmount(() => {
 }
 .textLayer :deep(> :not(.markedContent)),
 .textLayer :deep(.markedContent span:not(.markedContent)) {
+  z-index: 1;
   --font-height: 0;
   font-size: calc(var(--text-scale-factor) * var(--font-height));
   --scale-x: 1;
@@ -564,6 +572,18 @@ onBeforeUnmount(() => {
 }
 .textLayer :deep(br::selection) {
   background: transparent;
+}
+.textLayer :deep(.endOfContent) {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: text;
+  user-select: none;
+  -moz-user-select: none;
+}
+.textLayer.selecting :deep(.endOfContent) {
+  top: 0;
 }
 .textLayer :deep(.markedContent) {
   display: contents;
