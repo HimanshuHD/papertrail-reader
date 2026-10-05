@@ -36,3 +36,9 @@ Initial browser run 37226881578 had 133 passed, 16 failed, three flaky and eight
 This is headless Linux Chromium with viewport emulation. It does not certify Chrome, Edge, Firefox, Safari, mobile operating systems or real devices; broader version/capability acceptance remains #28. Reflowable local EPUB 2/3 is supported. Fixed-layout/encrypted books, embedded fonts, active/media/remote content and complete EPUB conformance remain outside the supported subset. Page-exit metadata persistence is best effort. EPUB CFIs refer to generated sanitized chapters.
 
 #134 acceptance is evidenced and ready for owner review/merge in #138. #12 and milestone 3 stay open until that merge; the milestone has two open (#12/#134) and eight completed issues. The owner closes the milestone afterward. #129/#130 and later roadmap work remain separate.
+
+## Owner merge / next-work reconciliation — 5 October 2026
+
+Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
+
+Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.

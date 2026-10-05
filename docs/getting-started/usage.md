@@ -63,3 +63,9 @@ Owner merged #137 as `d7afbf58cf9448749bbd226018956035c5576076`. Accepted source
 ## Final EPUB release acceptance — #134
 
 Release PR #138 records current formatted/text-only, Contents, typography, stable locations, identity, persisted positions/settings/bookmarks and shared PDF/library acceptance. Source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). Final light/dark captures were inspected; see [evidence and supported boundary](../evidence/epub-release-acceptance.md). This supersedes earlier pending implementation/browser checkpoints. Owner merge remains pending; #12/#134 and EPUB milestone 3 stay open until then.
+
+## Owner merge / next-work reconciliation — 5 October 2026
+
+Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
+
+Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.

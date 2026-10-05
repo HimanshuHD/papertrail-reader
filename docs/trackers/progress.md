@@ -1,5 +1,15 @@
 # PaperTrail progress
 
+## Current post-EPUB roadmap plan — 5 October 2026
+
+Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
+
+[Bug intake #139](https://github.com/HimanshuHD/papertrail-reader/issues/139) is **new**, linked to roadmap #78 and reliability #16 in milestone 6. The owner will add observations later; no defects, severities or fixes are assumed. Triage reproducible observations into independent fixes and resolve release blockers before promotion. This intake stays separate from completed EPUB implementation.
+
+Roadmap 2 itself remains open for #15 annotations/insights, #139/#16/#28 reliability/browser acceptance and #19/#26/#32/#44 release delivery. Preparation and Reading continuity milestones are closed. Next product work is to refine #15 into progressive increments: persistent PDF text highlights/notes, EPUB selectors/restoration, then local statistics. Create one fresh implementation branch from updated main per increment, merging/deploying before starting the next. Full browser acceptance stays on reviewed release-to-main readiness.
+
+Roadmap 3 #107 and #129/#130 remain new. Owner milestone action: close EPUB milestone 3; create/identify Roadmap 3 Preparation and move #129 from the obsolete milestone 6 assignment, then assign #130. No milestone mutation is performed. Earlier next-task/pending-merge checkpoints below are historical and superseded.
+
 ## Current release acceptance — #134
 
 Release PR [#138](https://github.com/HimanshuHD/papertrail-reader/pull/138) is ready for owner review/merge. Source `3e4fef13c7934aec32903bfe4a5dd9109f894a30` passed [Frontend CI 37229583694](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229583694): 206 unit/component and 10 pipeline tests, lint/format/types/build. [Browser E2E 37229662269](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229662269) passed 152 cases with zero failed/flaky cases and eight intentional duplicate long-PDF/native-handle skips. All 50 EPUB cases passed at five widths; final light/dark screenshots were inspected and curated originals retained. See [current evidence](../evidence/epub-release-acceptance.md).
