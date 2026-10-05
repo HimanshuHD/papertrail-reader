@@ -7,7 +7,11 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 2 : undefined,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  reporter: [
+    ['list'],
+    ['html', { open: 'never' }],
+    ['json', { outputFile: 'browser-evidence/results.json' }],
+  ],
   use: {
     baseURL: `http://127.0.0.1:4174${base}`,
     trace: 'retain-on-failure',

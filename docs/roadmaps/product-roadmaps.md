@@ -1,5 +1,11 @@
 # PaperTrail release roadmaps
 
+## Current release acceptance — #134
+
+Release PR [#138](https://github.com/HimanshuHD/papertrail-reader/pull/138) is ready for owner review/merge. Source `3e4fef13c7934aec32903bfe4a5dd9109f894a30` passed [Frontend CI 37229583694](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229583694): 206 unit/component and 10 pipeline tests, lint/format/types/build. [Browser E2E 37229662269](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37229662269) passed 152 cases with zero failed/flaky cases and eight intentional duplicate long-PDF/native-handle skips. All 50 EPUB cases passed at five widths; final light/dark screenshots were inspected and curated originals retained. See [current evidence](../evidence/epub-release-acceptance.md).
+
+#131/#132/#133 are merged and reconciled. #134 acceptance is complete, pending owner merge. Milestone 3 remains open with two open (#12/#134) and eight completed issues; merge #138 closes the two remaining issues and permits owner milestone closure. Roadmap #78 and broader browser/device gate #28 remain open. Earlier counts and pending checkpoints below are historical and superseded by this section.
+
 ## EPUB contents/typography merge reconciliation — #135
 
 Owner verified the controls and seven review observations, then merged [PR #135](https://github.com/HimanshuHD/papertrail-reader/pull/135) as `e9d59f424c78e62a94be316dc68a860d0fe8c27f`. #131 is completed/closed; its stale active label is removed. Accepted source `4be9aa0` passed [Frontend CI 37217580155](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37217580155): 189 unit/component tests, 10 pipeline tests, lint/format/types/build. Merge automation reconciled main as `3d5b97a`; owner verification is recorded separately from deferred release browser evidence.

@@ -292,7 +292,30 @@ it('keeps the text-node offset and cancels deferred corrections on input, naviga
     expect(container.scrollTop).toBe(135)
     expect(session.position!()).toMatchObject({ node: 'pt-3', offset: -15 })
     expect(mocks.resize).toHaveBeenLastCalledWith(600, 400)
+    // Recapturing the newly visible line would replace the restored character.
+    const doc = iframe.contentDocument!
+    const createRange = doc.createRange.bind(doc)
+    let visibleCharacter = 7
+    doc.createRange = () => {
+      const range = createRange()
+      range.getBoundingClientRect = () => bounds(logicalTop)
+      return range
+    }
+    doc.caretRangeFromPoint = () => {
+      const range = doc.createRange()
+      range.setStart(doc.querySelector('p')!.firstChild!, visibleCharacter)
+      range.collapse(true)
+      return range
+    }
+    container.dispatchEvent(new Event('wheel'))
+    container.dispatchEvent(new Event('scroll'))
     const saved = session.location!()!
+    expect(saved.character).toBe(7)
+    expect(await session.restore!(saved)).toBe(true)
+    visibleCharacter = 4
+    frames.splice(0).forEach((frame) => frame(0))
+    frames.splice(0).forEach((frame) => frame(0))
+    expect(session.location!()).toEqual(saved)
     container.dispatchEvent(new Event('wheel'))
     container.scrollTop = 250
     frames.splice(0).forEach((frame) => frame(0))

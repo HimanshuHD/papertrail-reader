@@ -80,3 +80,7 @@ Local validation passes 206 unit/component tests, 10 pipeline tests, lint/format
 ## #137 merged; final EPUB acceptance — #134
 
 Owner merged #137 as `d7afbf58cf9448749bbd226018956035c5576076`. Accepted source `ec4f995` passed Frontend CI 37225710749: 206 unit/component and 10 pipeline tests, lint/format/types/build. #133 is completed and its stale active label is removed. #134 now owns final reviewed release-candidate checks and current evidence. EPUB milestone 3 remains open: two open (#12/#134), eight completed. #12 and the milestone remain open until the remaining acceptance is verified. Broader Chrome/Edge/Firefox/Safari capability declarations stay in #28. Earlier pending merge and active-increment checkpoints are historical.
+
+## Logical anchor ownership — #134
+
+After reflow, retain the restored logical character and its viewport offset rather than recapturing the first character on the newly wrapped line. User scrolling replaces that anchor. Session snapshots for mode changes and metadata persistence use the retained location, so sequential font/spacing/width changes do not accumulate line-sized drift. The location service owns scroll anchoring; the container disables competing native scroll anchoring. See [final release evidence](../evidence/epub-release-acceptance.md).

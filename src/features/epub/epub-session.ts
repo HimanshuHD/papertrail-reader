@@ -117,6 +117,7 @@ export async function openEpubSession(
     const owner = restorationEpoch
     restoring = true
     const applied = restoreLocation(root, saved, mode, bridge())
+    if (applied) lastLocation = saved
     let frames = 0
     function settle() {
       if (destroyed || navigating || owner !== restorationEpoch) return
@@ -125,7 +126,9 @@ export async function openEpubSession(
       else {
         restoring = false
         restorationFrame = 0
-        lastLocation = currentLocation()
+        // Reflow can put an earlier character on the same visible line.
+        // Keep the original logical point until user scrolling replaces it.
+        lastLocation = applied ? saved : currentLocation()
       }
     }
     restorationFrame = requestAnimationFrame(settle)
@@ -155,7 +158,7 @@ export async function openEpubSession(
       doc.addEventListener('keydown', userInput, true)
       inputDocuments.add(doc)
     }
-    lastLocation = currentLocation()
+    if (!restoring) lastLocation = currentLocation()
   }
   let restoreResize: (() => void) | null = null
   function restorePosition(saved: EpubPosition | undefined) {
@@ -400,7 +403,7 @@ export async function openEpubSession(
         const doc = root.querySelector('iframe')?.contentDocument
         return doc ? (defaultSizes.get(doc) ?? 18) : 18
       },
-      location: currentLocation,
+      location: () => lastLocation ?? currentLocation(),
       async restore(value) {
         const saved = normalizeLocation(value, publication.chapters.length)
         if (!saved || destroyed || navigating) return false

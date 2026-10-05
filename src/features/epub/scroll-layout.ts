@@ -28,6 +28,9 @@ export function keepScrolledChapterMounted(
   manager.container.style.setProperty('overflow-x', 'hidden', 'important')
   manager.container.style.setProperty('overflow-y', 'auto', 'important')
   manager.container.style.scrollbarGutter = 'stable'
+  // The location service owns anchoring; native anchoring can add a second
+  // line-sized correction after an iframe expands during reflow.
+  manager.container.style.overflowAnchor = 'none'
   manager.resize = (width = root.clientWidth, height = root.clientHeight) => {
     if (!width || !height) return
     const saved = anchor?.capture()
