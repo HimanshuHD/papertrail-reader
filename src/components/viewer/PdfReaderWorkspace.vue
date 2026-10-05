@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { usePdfHighlights } from '../../composables/usePdfHighlights'
+import { capturePdfHighlight } from '../../features/pdf/highlights'
+import type { AnnotationSelector } from '../../features/annotations/selectors'
+import type { AnnotationColor } from '../../services/annotation-storage'
 import LoadingState from '../LoadingState.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
@@ -68,6 +72,95 @@ const pageDraft = ref('1')
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
 const bookmarks = usePdfBookmarks(continuity.documentId)
+const highlights = usePdfHighlights(continuity.fingerprint)
+const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+let selectingHighlight = false
+const selectedHighlight = ref('')
+const highlightColor = ref<AnnotationColor>('yellow')
+const resolutionFailures = ref<Record<string, boolean>>({})
+watch(
+  continuity.fingerprint,
+  () => {
+    selectingHighlight = false
+    pendingHighlight.value = null
+    selectedHighlight.value = ''
+    resolutionFailures.value = {}
+  },
+  { flush: 'sync' },
+)
+const highlightList = computed(() =>
+  highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
+)
+function clearPendingHighlight(event: PointerEvent) {
+  selectingHighlight =
+    event.target instanceof Element &&
+    !!event.target.closest('.textLayer') &&
+    !!viewport.value?.contains(event.target)
+  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="PDF highlights"]'))
+    pendingHighlight.value = null
+}
+function finishHighlightSelection() {
+  if (!selectingHighlight) return
+  selectingHighlight = false
+  captureSelection()
+}
+function cancelHighlightSelection() {
+  selectingHighlight = false
+  pendingHighlight.value = null
+}
+function captureSelection() {
+  // Native selection paints continuously; measuring every drag update stalls it.
+  if (selectingHighlight) return
+  if (phase.value !== 'ready' || !viewport.value) return
+  const selection = document.getSelection()
+  if (selection?.isCollapsed || !selection?.rangeCount) {
+    if (document.activeElement?.closest('[aria-label="PDF highlights"]')) return
+    pendingHighlight.value = null
+    return
+  }
+  const next = capturePdfHighlight(viewport.value, selection)
+  pendingHighlight.value = next ?? null
+  if (next) selectedHighlight.value = ''
+}
+async function saveHighlight() {
+  const next = pendingHighlight.value
+  if (!next || phase.value !== 'ready') return
+  const sequence = openSequence
+  if ((await highlights.add(next, highlightColor.value)) && sequence === openSequence) {
+    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
+    pendingHighlight.value = null
+    document.getSelection()?.removeAllRanges()
+  }
+}
+function activateHighlight(id: string) {
+  pendingHighlight.value = null
+  selectedHighlight.value = id
+  const annotation = highlightList.value.find((h) => h.id === id)
+  if (annotation) highlightColor.value = annotation.color
+  return annotation
+}
+async function chooseHighlight(id: string) {
+  const annotation = activateHighlight(id)
+  if (annotation?.selector.format === 'PDF') await goToPage(annotation.selector.segments[0]!.page)
+}
+watch(highlights.highlights, (items) => {
+  if (!selectedHighlight.value) return
+  const selected = items.find((h) => h.id === selectedHighlight.value)
+  if (selected) highlightColor.value = selected.color
+  else selectedHighlight.value = ''
+})
+async function recolorHighlight() {
+  if (selectedHighlight.value)
+    await highlights.recolor(selectedHighlight.value, highlightColor.value)
+}
+async function deleteHighlight() {
+  const id = selectedHighlight.value,
+    sequence = openSequence
+  if (id && (await highlights.remove(id)) && sequence === openSequence) selectedHighlight.value = ''
+}
+function highlightResolution(id: string, resolved: boolean, page: number) {
+  resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: !resolved }
+}
 let pendingBookmark: PdfBookmark | null = null
 const totalPages = ref(0)
 const zoom = ref(1)
@@ -695,6 +788,10 @@ function handleShortcut(event: KeyboardEvent) {
     return
   }
 
+  if (event.shiftKey || event.altKey || event.ctrlKey || event.metaKey) return
+  if (event.target instanceof Element && event.target.closest('[aria-label="PDF highlights"]'))
+    return
+
   if (isTypingTarget(event.target)) {
     if (event.key === 'Escape') {
       closePopover(true)
@@ -748,6 +845,10 @@ onMounted(() => {
   globalThis.addEventListener('pointerdown', handlePopoverPointer)
   globalThis.addEventListener('keydown', handlePopoverKeydown)
   document.addEventListener('fullscreenchange', handleFullscreenChange)
+  document.addEventListener('selectionchange', captureSelection)
+  globalThis.addEventListener('pointerup', finishHighlightSelection)
+  globalThis.addEventListener('pointercancel', cancelHighlightSelection)
+  globalThis.addEventListener('blur', cancelHighlightSelection)
 })
 
 watch(
@@ -767,13 +868,21 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('pointerdown', handlePopoverPointer)
   globalThis.removeEventListener('keydown', handlePopoverKeydown)
   document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  document.removeEventListener('selectionchange', captureSelection)
+  globalThis.removeEventListener('pointerup', finishHighlightSelection)
+  globalThis.removeEventListener('pointercancel', cancelHighlightSelection)
+  globalThis.removeEventListener('blur', cancelHighlightSelection)
   if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
   void closeCurrentSession()
 })
 </script>
 
 <template>
-  <div ref="readerRoot" class="pdf-reader min-w-0 bg-canvas">
+  <div
+    ref="readerRoot"
+    class="pdf-reader min-w-0 bg-canvas"
+    @pointerdown.capture="clearPendingHighlight"
+  >
     <p
       v-if="persistenceNotice"
       role="status"
@@ -979,6 +1088,80 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </header>
+    <div
+      v-if="phase === 'ready'"
+      class="highlight-bar flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2"
+      aria-label="PDF highlights"
+    >
+      <button
+        type="button"
+        class="highlight-action"
+        :disabled="!pendingHighlight || !highlights.handle.value || highlights.busy.value"
+        @click="saveHighlight"
+      >
+        Highlight selection
+      </button>
+      <label class="sr-only" for="pdf-highlight-color">Highlight color</label>
+      <select
+        id="pdf-highlight-color"
+        v-model="highlightColor"
+        class="highlight-input"
+        :disabled="highlights.busy.value || !highlights.handle.value"
+        @change="recolorHighlight"
+      >
+        <option value="yellow">Yellow</option>
+        <option value="green">Green</option>
+        <option value="blue">Blue</option>
+        <option value="pink">Pink</option>
+      </select>
+      <label class="sr-only" for="pdf-highlight-list">Saved highlights</label>
+      <select
+        id="pdf-highlight-list"
+        class="highlight-input max-w-60"
+        :value="selectedHighlight"
+        :disabled="highlights.busy.value"
+        @change="chooseHighlight(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">Highlights ({{ highlightList.length }})</option>
+        <option v-for="h in highlightList" :key="h.id" :value="h.id">
+          {{
+            h.selector.format === 'PDF'
+              ? `Page ${h.selector.segments[0]?.page} · ${h.selector.segments[0]?.text.exact.slice(0, 45)}`
+              : ''
+          }}{{
+            Object.entries(resolutionFailures).some(
+              ([key, failed]) => failed && key.startsWith(`${h.id}:`),
+            )
+              ? ' · Unresolved'
+              : ''
+          }}
+        </option>
+      </select>
+      <button
+        type="button"
+        class="highlight-action"
+        :disabled="!selectedHighlight || highlights.busy.value || !highlights.handle.value"
+        @click="deleteHighlight"
+      >
+        Delete highlight
+      </button>
+      <button
+        v-if="highlights.notice.value && !highlights.handle.value"
+        type="button"
+        class="highlight-action"
+        @click="((pendingHighlight = null), highlights.reload())"
+      >
+        Retry highlights
+      </button>
+      <span class="text-xs text-muted" role="status">{{
+        highlights.loading.value
+          ? 'Loading highlights…'
+          : highlights.notice.value ||
+            (pendingHighlight
+              ? 'Text selected.'
+              : 'Select PDF text to highlight. Image-only pages cannot be highlighted.')
+      }}</span>
+    </div>
 
     <div class="pdf-body relative flex min-h-0 flex-1">
       <section
@@ -1026,6 +1209,9 @@ onBeforeUnmount(() => {
             :available-width="availableWidth"
             :available-height="availableHeight"
             :scroll-root="viewport"
+            :annotations="highlights.highlights.value"
+            :fingerprint="continuity.fingerprint.value"
+            :active-highlight="selectedHighlight"
             :search-query="completedSearchQuery"
             :selected-occurrence="
               selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.occurrence : null
@@ -1033,6 +1219,9 @@ onBeforeUnmount(() => {
             :selection-request="
               selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
             "
+            @highlight-selected="activateHighlight"
+            @highlight-resolution="highlightResolution"
+            @pointerup="captureSelection"
             @visibility="handleVisibility"
             @rendered="handleRendered"
             @error="handleRenderError"
@@ -1193,6 +1382,27 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.highlight-action,
+.highlight-input {
+  min-height: 2.25rem;
+  border: 1px solid var(--pt-line);
+  border-radius: 0.5rem;
+  background: var(--pt-canvas);
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+.highlight-action:disabled {
+  opacity: 0.45;
+}
+.highlight-action:focus-visible,
+.highlight-input:focus-visible {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: 2px;
+}
+.highlight-bar {
+  max-height: 35%;
+  overflow-y: auto;
+}
 .search-excerpt {
   white-space: normal;
   overflow-wrap: anywhere;

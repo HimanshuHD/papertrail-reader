@@ -33,3 +33,19 @@ Limits: 1,000 annotations/document; 100 PDF segments and 1,000 rectangles/annota
 ## Validation boundary
 
 Unit tests cover selectors/geometry, quote and CFI verification, changed files, ambiguous matches, metadata migration/preservation, CRUD/reload, concurrent edits, stale generations and transaction failures. Storage tests use a serialized commit/rollback-aware seam; they do not claim native IndexedDB or cross-browser acceptance. Native renderer/storage behavior is validated with #141/#142 and final #145/#28 acceptance. Full Browser E2E follows the existing reviewed release-branch-to-main gate, with no feature-branch bypass.
+
+## PDF highlight integration (#141)
+
+PDF highlighting now uses `usePdfHighlights` to open the fingerprint-scoped annotation record, coordinate CRUD and discard late results after document switches. It locks editing after persistence/refresh failures until explicit retry. The existing reader controls and utility panel modes remain available; a compact keyboard-accessible highlight bar supports selection, color, saved-highlight navigation and deletion. The shared notes panel remains #143.
+
+`features/pdf/highlights.ts` maps complete selections across ready text layers to the existing PDF canonical text index. Partial selections spanning an unloaded/image-only page are rejected, rather than saving only visible fragments. Native range rectangles are clipped to the current crop page and unrotated before storage. On rendering, each saved page segment is quote/context-verified and measured in the current text DOM. This rebuilds geometry after zoom, intrinsic page rotation, resize and virtualization, and avoids reusing stale persisted rectangles. Unresolved rendered segments are marked in the saved-highlight selector. No document file is rewritten.
+
+Verification instructions and the boundary between passing unit/component tests and pending release-native acceptance are in [PDF highlight verification](../testing/pdf-highlights-141.md).
+
+### PDF highlight visual corrections — #149, #150, #151
+
+PR #148 also joins nearby text fragments per line while preserving column gutters, composites each annotation once at a constant opacity, and uses pastel Yellow/Green/Blue/Pink. Active outlines do not darken the fill. Native selection uses translucent blue so canvas text remains visible. Regression checks cover overlapping fragments, line boundaries and column separation. Owner visual acceptance remains pending; verify wrapped paragraphs, selection legibility, active/inactive color consistency, zoom and rotated pages after deployment. Release Browser E2E remains tracked in #145/#28.
+
+### Highlight text contrast and selection follow-up — #151 / #152
+
+PR #148 now uses multiply blending within an isolated PDF page so pastel highlights and native selection preserve dark canvas glyphs. Line-break selection blocks are transparent. Pointer drags defer annotation geometry capture until release (including release outside the reader); keyboard selection remains available. Pointer cancellation, blur and document changes clear drag state. Component regression coverage checks that Save stays disabled during a drag and enables after release. Owner visual verification of contrast and drag smoothness remains pending under #145/#28.
