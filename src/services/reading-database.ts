@@ -34,7 +34,13 @@ export class ReadingMetadataDatabase {
         transaction.oncomplete = () => resolve(result)
         transaction.onabort = () =>
           reject(transaction.error ?? new Error('Reading storage transaction aborted.'))
-        transaction.onerror = () => reject(transaction.error)
+        transaction.onerror = (event) =>
+          // A request error bubbles before transaction.error is necessarily populated.
+          reject(
+            (event.target as IDBRequest | null)?.error ??
+              transaction.error ??
+              new Error('Reading storage request failed.'),
+          )
         try {
           run(transaction.objectStore('documents'), (value) => {
             result = value
