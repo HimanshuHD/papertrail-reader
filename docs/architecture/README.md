@@ -4,5 +4,6 @@ Read guides in the following order. Return to [Documentation home](../README.md)
 
 - [Browser-first architecture](overview.md)
 - [Vue application architecture](vue.md)
+- [Annotation identity, selectors and storage (#140)](annotations.md)
 - [Reader shell and home entry (#42/#49)](reader-shell.md)
 - [Deployment architecture](deployment.md)

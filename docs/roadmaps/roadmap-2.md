@@ -1,5 +1,9 @@
 # Product Roadmap 2
 
+## Active annotation foundation — 5 October 2026
+
+#140 is in progress on `feat/140-annotation-foundation`, created from main `0f1ba7f`. Parent #15 is in progress; #141–#145 remain new. EPUB milestone 3 is closed. This increment adds independent PDF/EPUB selectors, fingerprint-scoped local CRUD, known-schema migrations, explicit unresolved anchors, bounded metadata and stale-generation protection. Renderer/highlight UI integration follows in #141/#142. See [annotation architecture](../architecture/annotations.md). Local validation passed: 227 unit/component tests, 10 pipeline tests, lint, formatting, type checks and production build. The new storage tests use transaction/protocol seams; native browser acceptance remains #145/#28 through the release gate. PR/CI evidence follows; #140 stays in progress pending owner acceptance and merge. Earlier statements that #15 has not started are superseded.
+
 ## Current planning decision — 5 October 2026
 
 EPUB milestone 3 is closed with zero open and ten completed issues. Roadmap 2 #78 continues with annotations parent #15 and new children #140 (storage/anchors), #141 (PDF highlights), #142 (EPUB highlights), #143 (notes/panel), #144 (local statistics) and #145 (acceptance), all assigned to milestone 4. Implement one branch at a time from updated main, in that order.
