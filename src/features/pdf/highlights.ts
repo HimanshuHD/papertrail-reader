@@ -1,9 +1,11 @@
 import { indexPdfText } from './search-text'
+import { scrollHighlightRange } from '../annotations/highlight-navigation'
 import {
   ANNOTATION_LIMITS,
   captureTextSelector,
   normalizeAnnotationSelector,
   projectPdfRectangle,
+  resolvePdfAnnotation,
   type AnnotationSelector,
   type PdfAnnotationRect,
   type PdfAnnotationSegment,
@@ -160,3 +162,28 @@ export const PDF_HIGHLIGHT_COLORS = {
   blue: '#bfdbfe',
   pink: '#fbcfe8',
 } as const
+
+/** Rebuild the first segment in a ready text layer; never jump using stale saved rectangles. */
+export function revealPdfHighlight(
+  root: HTMLElement,
+  fingerprint: string,
+  selector: AnnotationSelector,
+): boolean {
+  if (selector.format !== 'PDF') return false
+  const first = selector.segments[0]
+  if (!first) return false
+  const shell = root.querySelector<HTMLElement>(`article[data-pdf-page="${first.page}"]`)
+  const layer = shell?.querySelector<HTMLElement>('.textLayer')
+  if (!layer || shell?.dataset.renderState !== 'ready') return false
+  const identity = { format: 'PDF' as const, fingerprint }
+  const resolved = resolvePdfAnnotation(
+    identity,
+    identity,
+    { ...selector, segments: [first] },
+    new Map([[first.page, pdfTextIndex(layer).text]]),
+  )
+  if (resolved.status !== 'resolved') return false
+  const segment = resolved.value[0]!
+  const range = pdfTextRange(layer, segment.start, segment.end)
+  return !!range && scrollHighlightRange(root, range)
+}

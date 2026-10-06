@@ -2,7 +2,7 @@
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { usePdfHighlights } from '../../composables/usePdfHighlights'
-import { capturePdfHighlight } from '../../features/pdf/highlights'
+import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/highlights'
 import type { AnnotationSelector } from '../../features/annotations/selectors'
 import type { AnnotationColor } from '../../services/annotation-storage'
 import LoadingState from '../LoadingState.vue'
@@ -139,9 +139,46 @@ function activateHighlight(id: string) {
   if (annotation) highlightColor.value = annotation.color
   return annotation
 }
+let pendingHighlightNavigation: {
+  id: string
+  page: number
+  sequence: number
+  operation: number
+} | null = null
+function revealSelectedHighlight() {
+  const request = pendingHighlightNavigation
+  if (!request) return
+  if (
+    request.sequence !== openSequence ||
+    request.operation !== layoutOperation ||
+    selectedHighlight.value !== request.id
+  ) {
+    pendingHighlightNavigation = null
+    return
+  }
+  const annotation = highlightList.value.find((item) => item.id === request.id)
+  if (
+    annotation &&
+    viewport.value &&
+    continuity.fingerprint.value &&
+    revealPdfHighlight(viewport.value, continuity.fingerprint.value, annotation.selector)
+  ) {
+    pendingHighlightNavigation = null
+    saveReadingPoint()
+  }
+}
 async function chooseHighlight(id: string) {
+  pendingHighlightNavigation = null
   const annotation = activateHighlight(id)
-  if (annotation?.selector.format === 'PDF') await goToPage(annotation.selector.segments[0]!.page)
+  if (annotation?.selector.format !== 'PDF') return
+  pendingHighlightNavigation = {
+    id,
+    page: annotation.selector.segments[0]!.page,
+    sequence: openSequence,
+    operation: layoutOperation + 1,
+  }
+  await goToPage(pendingHighlightNavigation.page)
+  revealSelectedHighlight()
 }
 watch(highlights.highlights, (items) => {
   if (!selectedHighlight.value) return
@@ -160,6 +197,10 @@ async function deleteHighlight() {
 }
 function highlightResolution(id: string, resolved: boolean, page: number) {
   resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: !resolved }
+  if (pendingHighlightNavigation?.id === id && pendingHighlightNavigation.page === page) {
+    if (resolved) void nextTick(revealSelectedHighlight)
+    else pendingHighlightNavigation = null
+  }
 }
 let pendingBookmark: PdfBookmark | null = null
 const totalPages = ref(0)

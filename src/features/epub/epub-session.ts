@@ -12,6 +12,7 @@ import {
   type CfiBridge,
 } from './location'
 import { keepScrolledChapterMounted } from './scroll-layout'
+import { scrollHighlightRange } from '../annotations/highlight-navigation'
 
 export interface EpubPosition {
   node: string
@@ -25,6 +26,12 @@ export interface EpubOpenOptions {
   typography?: EpubTypography
   location?: EpubLocation
 }
+export interface EpubAnnotationContext {
+  document: Document
+  chapter: number
+  mode: 'formatted' | 'text'
+  cfiFromRange?: (range: Range) => string
+}
 export interface EpubSession {
   title: string
   chapters: readonly { label: string; href: string }[]
@@ -32,6 +39,8 @@ export interface EpubSession {
   contentsSource: 'nav' | 'ncx' | 'spine'
   display(index: number, fragment?: string): Promise<void>
   typography(settings: EpubTypography): void
+  annotationContext?(): EpubAnnotationContext | undefined
+  revealRange?(range: Range): boolean
   defaultFontSize?(): number
   location?(): EpubLocation | undefined
   restore?(location: EpubLocation): Promise<boolean>
@@ -398,6 +407,29 @@ export async function openEpubSession(
           rendition.resize(root.clientWidth, root.clientHeight)
         if (savedLocation) keepLocation(savedLocation)
         else restorePosition(saved)
+      },
+      annotationContext() {
+        if (destroyed || navigating) return
+        const document = root.querySelector('iframe')?.contentDocument
+        if (!document?.body) return
+        const current = bridge()
+        return {
+          document,
+          chapter: chapterIndex,
+          mode,
+          ...(current ? { cfiFromRange: (range: Range) => current.cfiFromRange(range) } : {}),
+        }
+      },
+      revealRange(range) {
+        if (destroyed || navigating) return false
+        const container = root.querySelector<HTMLElement>('.epub-container')
+        const frame = root.querySelector('iframe')
+        if (!container || !frame) return false
+        // An explicit highlight jump replaces any earlier resize/location restoration.
+        cancelRestoration()
+        if (!scrollHighlightRange(container, range, frame)) return false
+        lastLocation = currentLocation()
+        return true
       },
       defaultFontSize() {
         const doc = root.querySelector('iframe')?.contentDocument

@@ -3,10 +3,22 @@ import { createPinia } from 'pinia'
 import { expect, it, vi } from 'vitest'
 import EpubReaderWorkspace from '../../src/components/viewer/EpubReaderWorkspace.vue'
 import type { EpubBookmark } from '../../src/services/epub-reading-storage'
+import type {
+  Annotation,
+  AnnotationHandle,
+  AnnotationColor,
+} from '../../src/services/annotation-storage'
+import type {
+  AnnotationIdentity,
+  AnnotationSelector,
+} from '../../src/features/annotations/selectors'
 import type { EpubSession } from '../../src/features/epub/epub-session'
 
 const mocked = vi.hoisted(() => ({
   open: vi.fn(),
+  highlightOpen: vi.fn(),
+  highlightCreate: vi.fn(),
+  highlightUpdate: vi.fn(),
   resolve: vi.fn(),
   save: vi.fn(async () => undefined),
   load: vi.fn(async () => [] as EpubBookmark[]),
@@ -15,6 +27,46 @@ const mocked = vi.hoisted(() => ({
   remove: vi.fn(async () => []),
 }))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
+
+vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/services/annotation-storage')>()
+  return {
+    ...actual,
+    IndexedDbAnnotationStorage: class {
+      records: Annotation[] = []
+      async open(identity: AnnotationIdentity) {
+        mocked.highlightOpen(identity)
+        return { handle: { identity, generation: 'g' }, annotations: this.records }
+      }
+      async list() {
+        return [...this.records]
+      }
+      async create(handle: AnnotationHandle, selector: AnnotationSelector, color: AnnotationColor) {
+        mocked.highlightCreate(handle, selector, color)
+        const entry: Annotation = {
+          version: 2,
+          id: 'highlight-one',
+          selector,
+          color,
+          note: '',
+          createdAt: 1,
+          updatedAt: 1,
+        }
+        this.records.push(entry)
+        return entry
+      }
+      async update(_handle: AnnotationHandle, id: string, patch: { color: AnnotationColor }) {
+        const entry = this.records.find((item) => item.id === id)!
+        mocked.highlightUpdate(id, patch)
+        entry.color = patch.color
+        return entry
+      }
+      async remove(_handle: AnnotationHandle, id: string) {
+        this.records = this.records.filter((item) => item.id !== id)
+      }
+    },
+  }
+})
 vi.mock('../../src/services/document-identity', () => ({
   fingerprintDocument: vi.fn(async () => 'sha256-chunks-v1:' + 'a'.repeat(64)),
 }))
@@ -86,7 +138,7 @@ it('opens formatted by default, keeps side navigation outside the header and ret
   const checkbox = wrapper.get('button[role="switch"]')
   expect(checkbox.attributes('aria-checked')).toBe('false')
   expect(mocked.open.mock.calls[0]![3]).toMatchObject({ textOnly: false, chapter: 0 })
-  expect(wrapper.find('select').exists()).toBe(false)
+  expect(wrapper.find('header select').exists()).toBe(false)
   expect(wrapper.get('button[aria-label="Contents"]').attributes('aria-expanded')).toBe('false')
   expect(wrapper.find('header button[aria-label="Next chapter"]').exists()).toBe(false)
   expect(
@@ -487,4 +539,87 @@ it('restores saved mode, typography and chapter before opening, and flushes prog
     'epub:other.epub',
     expect.objectContaining({ location, textOnly: false }),
   )
+})
+
+it('captures iframe selections and saves, recolors and deletes fingerprint-scoped EPUB highlights', async () => {
+  let frameDoc: Document
+  const revealRange = vi.fn(() => true)
+  mocked.open.mockImplementationOnce(async (_file, target: HTMLElement) => {
+    const frame = document.createElement('iframe')
+    target.append(frame)
+    frameDoc = frame.contentDocument!
+    frameDoc.body.innerHTML = '<p>Hello <em>world</em>.</p>'
+    return {
+      title: 'Highlights',
+      chapters: [{ label: 'One', href: 'one' }],
+      contents: [],
+      contentsSource: 'spine',
+      display: vi.fn(async () => undefined),
+      typography: vi.fn(),
+      appearance: vi.fn(),
+      destroy: () => frame.remove(),
+      annotationContext: () => ({ document: frameDoc, chapter: 0, mode: 'formatted' }),
+      revealRange,
+    }
+  })
+  const wrapper = mount(EpubReaderWorkspace, {
+    attachTo: document.body,
+    props: {
+      document: {
+        id: 'highlights',
+        name: 'highlights.epub',
+        format: 'EPUB',
+        relativePath: 'highlights.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'highlights.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  const range = frameDoc!.createRange()
+  range.selectNodeContents(frameDoc!.querySelector('p')!)
+  frameDoc!.getSelection()!.addRange(range)
+  frameDoc!.dispatchEvent(new Event('pointerup'))
+  await wrapper.vm.$nextTick()
+  const save = wrapper.findAll('button').find((button) => button.text() === 'Highlight selection')!
+  expect(save.attributes('disabled')).toBeUndefined()
+  await wrapper.get('#epub-highlight-color').setValue('pink')
+  await save.trigger('click')
+  await flushPromises()
+  expect(mocked.highlightOpen).toHaveBeenLastCalledWith({
+    format: 'EPUB',
+    fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64),
+  })
+  expect(mocked.highlightCreate).toHaveBeenLastCalledWith(
+    expect.objectContaining({ identity: expect.objectContaining({ format: 'EPUB' }) }),
+    expect.objectContaining({
+      format: 'EPUB',
+      text: expect.objectContaining({ exact: 'Hello world.' }),
+    }),
+    'pink',
+  )
+  expect(wrapper.text()).toContain('Highlights (1)')
+  await wrapper.get('#epub-highlight-color').setValue('green')
+  await flushPromises()
+  expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', { color: 'green' })
+  const edits = mocked.highlightUpdate.mock.calls.length
+  frameDoc!.getSelection()!.addRange(range)
+  frameDoc!.dispatchEvent(new Event('pointerup'))
+  await wrapper.vm.$nextTick()
+  await wrapper.get('#epub-highlight-color').setValue('blue')
+  await flushPromises()
+  expect(mocked.highlightUpdate).toHaveBeenCalledTimes(edits)
+  await wrapper.get('#epub-saved-highlights').setValue('highlight-one')
+  await flushPromises()
+  expect(revealRange).toHaveBeenCalledOnce()
+  expect((revealRange.mock.calls[0] as unknown as [Range])[0].toString()).toBe('Hello world.')
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Delete highlight')!
+    .trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('Highlights (0)')
+  wrapper.unmount()
 })

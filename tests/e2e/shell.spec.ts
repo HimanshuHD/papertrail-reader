@@ -2466,3 +2466,80 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
   expect(readingCount).toBeGreaterThan(0)
   expect(errors).toEqual([])
 })
+
+test('EPUB highlights persist across view changes, reload and local edits', async ({
+  page,
+}, info) => {
+  const book = {
+    name: 'highlight.epub',
+    mimeType: 'application/epub+zip',
+    buffer: Buffer.from(
+      createEpubFixture({
+        chapter:
+          '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>First chapter</title></head><body><h1>First chapter</h1><p id="highlight-text">Persistent <em>EPUB</em> selection.</p></body></html>',
+      }),
+    ),
+  }
+  const open = async () => {
+    await page.locator('input[accept*=".pdf"]').setInputFiles(book)
+    await page
+      .locator('section[aria-labelledby="local-library-title"]')
+      .getByRole('button', { name: /highlight.epub/ })
+      .click()
+    const hide = page.getByRole('button', { name: 'Hide library' })
+    if (await hide.isVisible()) await hide.click()
+  }
+  await page.goto('./#/app')
+  await open()
+  const reader = page.getByRole('region', { name: 'EPUB reader' })
+  const paragraph = reader.frameLocator('iframe').locator('#highlight-text')
+  await expect(paragraph).toBeVisible()
+  await paragraph.evaluate((element) => {
+    const doc = element.ownerDocument
+    const range = doc.createRange()
+    range.selectNodeContents(element)
+    const selection = doc.getSelection()!
+    selection.removeAllRanges()
+    selection.addRange(range)
+    element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
+  })
+  await reader.locator('#epub-highlight-color').selectOption('pink')
+  await reader.getByRole('button', { name: 'Highlight selection', exact: true }).click()
+  await expect(reader.getByText('Highlights (1)', { exact: true })).toBeVisible()
+  const painted = async () => {
+    await expect
+      .poll(() =>
+        reader
+          .frameLocator('iframe')
+          .locator('body')
+          .evaluate((element) => {
+            const view = element.ownerDocument.defaultView as unknown as {
+              CSS: { highlights: Map<string, Set<Range>> }
+            }
+            return view.CSS.highlights.get('papertrail-pink')?.size ?? 0
+          }),
+      )
+      .toBe(1)
+  }
+  await painted()
+  await page.getByRole('switch', { name: 'Text-only view' }).click()
+  await expect(paragraph).toBeVisible()
+  await painted()
+  await reader.getByRole('button', { name: 'Next chapter' }).click()
+  await reader.getByRole('button', { name: 'Previous chapter' }).click()
+  await expect(paragraph).toBeVisible()
+  await painted()
+  await page.reload()
+  await open()
+  await expect(reader.getByText('Highlights (1)', { exact: true })).toBeVisible()
+  await painted()
+  const saved = reader.locator('#epub-saved-highlights')
+  await saved.selectOption({ index: 1 })
+  await reader.locator('#epub-highlight-color').selectOption('green')
+  await reader.getByRole('button', { name: 'Delete highlight' }).click()
+  await expect(reader.getByText('Highlights (0)', { exact: true })).toBeVisible()
+  await capture(page, info, 'epub-highlights')
+  await page.reload()
+  await open()
+  await expect(reader.getByText('Highlights (0)', { exact: true })).toBeVisible()
+})
