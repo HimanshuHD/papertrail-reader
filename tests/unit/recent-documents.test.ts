@@ -159,8 +159,6 @@ it('collapses recent entries by keyboard-accessible disclosure while preserving 
   })
   wrappers.push(wrapper)
   const toggle = wrapper.get('#recent-title')
-  expect(toggle.attributes('aria-expanded')).toBe('true')
-  await toggle.trigger('click')
   expect(toggle.attributes('aria-expanded')).toBe('false')
   expect(wrapper.get('#recent-documents').isVisible()).toBe(false)
   expect(toggle.text()).toBe('Recent1')

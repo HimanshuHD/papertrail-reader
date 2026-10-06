@@ -4,12 +4,12 @@ Parent #15; native release acceptance #145/#28. Notes are plain text attached to
 
 ## Highlight with note workflow — option 2 (#156)
 
-1. Select real document text. The anchored toolbar shows pastel colors, an Add highlight icon with hover/focus tooltip, and Add note.
+1. Select real document text. The anchored toolbar shows pastel color previews (no automatic save), an Add highlight icon with hover/focus tooltip, and Add note.
 2. Add note expands the composer below the controls with a reversible slide transition. It opens no drawer and performs no storage write. Choose a color, type the note and press **Save highlight with note** to persist one annotation containing both selection and note in a single transaction. Empty notes cannot be submitted.
-3. Add highlight independently saves without a note. If used while the composer is open, the saved highlight remains and the editor's primary action becomes **Save note**. Color choices then recolor that saved record.
+3. Add highlight independently saves without a note. If used while the composer is open, the saved highlight remains and the editor's primary action becomes **Save note**. Color choices remain pending until Save note explicitly commits the color and note together.
 4. Cancel or the back arrow discards only the note draft and collapses the composer. A saved highlight remains; an unsaved selection/color remains available for Add highlight. A failed save keeps its draft and exposes retry inside the composer.
-5. Highlights with notes show a margin speech-bubble indicator in PDF and EPUB. Hover/keyboard focus previews plain text; activation opens Annotations, selects and reveals the matching entry. Unresolved ranges and highlights without notes have no marker.
-6. In the drawer, the entry's menu provides Add/Edit note. This replaces that menu's actions with its editor, back arrow, Save note, Cancel and Delete note. It never appends a form to the panel bottom. Back/Cancel restores the menu; Save returns after a successful commit. Delete note retains the highlight; Delete highlight and note removes both.
+5. Highlights with notes show a margin note-document indicator in PDF and EPUB. Hover/keyboard focus previews plain text; activation opens Annotations, selects and reveals the matching entry. Unresolved ranges and highlights without notes have no marker.
+6. In the drawer, the entry's menu provides Add/Edit note. This replaces that menu's actions with its editor, back arrow, Save note, Cancel and Delete note. It never appends a form to the panel bottom. Back/Cancel restores the menu; Save closes the popup after a successful commit. Delete note retains the highlight; Delete highlight and note removes both.
 7. Notes remain local plain-text metadata, bounded to 4,000 UTF-16 units. Source files are unchanged. Save before switching selections or closing a composer.
 
 ## App checks
@@ -35,3 +35,32 @@ Verify slide-down/reverse transitions and reduced-motion behavior; no automatic 
 ## Shared interaction theme follow-up
 
 Verify hovered, pressed, selected/open and keyboard-focused icons/buttons across library, PDF/EPUB utilities, popovers, menus, typography, theme picker and landing CTA. Match the Annotations reference's inset accent outline; filled/light controls must use contrasting text/icons. Confirm disabled controls have no hover/selected treatment, highlight swatches retain their colors, rings do not shift layout, and reduced motion removes transitions. Native visual comparison remains pending at the agreed owner/release gate.
+
+## #157 follow-up verification
+
+1. In both formats, pick each color without saving: the selection preview changes and no saved record appears. Add highlight saves once; Add note then Save highlight with note saves both fields once. Check the toast, reload persistence and failed-save recovery.
+2. Long quotes display the first 100 characters plus `...`; search text beyond that boundary still finds the record and navigation resolves the full anchor.
+3. Open each utility from its toolbar icon. Only its panel heading/content appears, without a tab strip. PDF Search keeps input, pending/error status and results in one panel.
+4. Open annotation actions near each viewport edge, then Add/Edit note. Confirm larger editor width, even padding, icons, shadows and action order; the list does not scroll or grow. Outside click and Escape close the popup; the next Escape closes the panel. Back/Cancel restores actions, successful saves/recolors close, failures retain the editor.
+5. Click saved document highlights with a tiny pointer movement: matching annotation selects/reveals without stray native text selection. Drag across text remains normal selection. Margin note indicators preview plain text and open the same entry.
+6. Verify narrow/wide layouts, both themes, native fullscreen, keyboard focus and reduced motion. Annotation/bookmark list items retain their list styling; controls show the 2px bottom accent without movement.
+
+Native browser execution remains at #145/#28; local tests do not certify viewport appearance.
+
+## #158 owner-observation follow-up
+
+Verify reader note markers align with the highlight's original vertical location, inside the document's right edge with 40px padded buttons. Marker positioning attributes must reach the button even while its preview is open. Check stronger popover edges/shadows in both themes, real 2px active/hover control bottom borders, 14px/1.45 annotation excerpts, color-only Filters hover and library row hover without outlines (selected documents retain their border). Successful saves appear in toasts without an extra message above annotation search; loading/storage failures remain visible.
+
+## Additional #158 verification
+
+Check visible normal/hover/active bottom borders for both dark and filled light controls; selected library documents have a 2px bottom border without hover outlines. Note actions/markers share the note-document icon; the marker touches the document right edge with square right corners and rounded left corners. Hover only freshly verified saved text for a pointer and Show highlighted text hint. Confirm compact filter-to-list spacing, action-button clearance, empty-list top spacing, bookmark header without duplicate intro and Recent collapsed on every new mount/reload.
+
+PDF page edits clamp to 1..total immediately, permit clearing during typing and restore the current page on empty commit. Dark theme adapts PDF display pixels with inversion/hue rotation, so image colors may differ; switching to light restores the original display. EPUB dark mode adapts authored foreground/background colors while retaining chapter text, layout and images; returning to light removes its owned stylesheet. Verify saved highlight/native selection legibility in both dark readers and theme switches after chapter navigation. Source documents and annotation anchors are unchanged. Native coordinate/color validation remains #145/#28.
+
+Dark-mode viewport regression: page filters/opacity must target PDF descendants, never the application root. Compiled Vue CSS regression coverage checks explicit and system-dark selectors. Verify the toolbar, library and overlays remain at normal opacity when toggling themes.
+
+Control-state correction: idle controls reserve a transparent bottom border; hover/active keeps its contrasting accent. Only selected library rows receive the list bottom border, never annotations. Highlight swatches are excluded from shared button styling and retain only the selected outer circle. All note affordances use the message-callout icon.
+
+Screenshot corrections: normal popover/disabled controls retain complete borders; hover-only accents no longer overwrite idle bottoms. Note markers have no right border and use a left accent on direct or associated-text hover. Save actions keep stable borders, note textareas have four sides, selected color circles enlarge with an outer ring, and note icons use the supplied lined callout reference. Check theme picker in light mode and homepage CTA in both themes.
+
+Screenshot recheck: theme picker, annotation menu/editor actions and Add note now use explicit framed-control borders, with a complete normal outline and contrasting 2px hover bottom. Save buttons retain their outline unchanged. Note-marker styling explicitly resets its normal bottom and right edges on hover; the icon exactly reuses the lined callout silhouette. Selected swatches grow to 24px inside 36px targets, including the outside ring. Compiled component-style cascade checks cover normal/hover/save/textarea edges and linked note-marker hover.

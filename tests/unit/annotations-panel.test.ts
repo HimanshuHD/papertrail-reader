@@ -1,3 +1,5 @@
+import { config } from '@vue/test-utils'
+config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 import AnnotationsPanel from '../../src/components/viewer/AnnotationsPanel.vue'
@@ -74,6 +76,7 @@ it('renders notes safely, labels unresolved anchors and delegates navigation and
   expect(wrapper.text()).toContain('Unresolved')
   await wrapper.get('[data-annotation-id="first"]').trigger('click')
   expect(wrapper.emitted('navigate')).toEqual([['first']])
+  await wrapper.get('[data-menu-id="first"]').trigger('click')
   await wrapper.get('#epub-annotations-color-first').setValue('green')
   expect(recolor).toHaveBeenCalledWith('first', 'green')
 })
@@ -106,7 +109,7 @@ it('retains failed drafts, enforces the note bound and restores list focus on ca
     .trigger('click')
   await flushPromises()
   expect(wrapper.find('textarea').exists()).toBe(false)
-  expect(document.activeElement?.getAttribute('data-note-action')).toBe('first')
+  expect(document.activeElement?.getAttribute('data-menu-id')).toBe('first')
 })
 it('clears only the note or explicitly deletes its highlight, and locks failed storage until retry', async () => {
   const { wrapper, saveNote, remove } = await panel()
@@ -159,4 +162,33 @@ it('preserves a dirty draft on color refresh and shows a useful empty state', as
   await wrapper.setProps({ annotations: [], selectedId: '' })
   expect(wrapper.find('textarea').exists()).toBe(false)
   expect(wrapper.text()).toContain('save a highlight to add your first note')
+})
+
+it('truncates only the displayed quote and keeps full text searchable', async () => {
+  const { wrapper } = await panel()
+  const exact = 'a'.repeat(100) + ' a hidden ending'
+  const record = structuredClone(records[0]!)
+  if (record.selector.format === 'EPUB') record.selector.text.exact = exact
+  await wrapper.setProps({ annotations: [record] })
+  expect(wrapper.get('.annotation-quote').text()).toBe('“' + 'a'.repeat(100) + '...”')
+  await wrapper.get('#epub-annotations-filter').setValue('hidden ending')
+  expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(1)
+})
+it('opens the note editor without changing list scroll and dismisses actions outside', async () => {
+  const { wrapper } = await panel()
+  wrapper.element.scrollTop = 80
+  await wrapper.get('textarea').setValue('Draft')
+  expect(wrapper.element.scrollTop).toBe(80)
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  await flushPromises()
+  expect(wrapper.find('textarea').exists()).toBe(false)
+  expect(wrapper.get('[data-menu-id="first"]').attributes('aria-expanded')).toBe('false')
+})
+
+it('selects the editor entry without requesting reader navigation', async () => {
+  const { wrapper } = await panel()
+  wrapper.vm.editNote('second')
+  await flushPromises()
+  expect(wrapper.emitted('select')).toEqual([['second']])
+  expect(wrapper.emitted('navigate')).toBeUndefined()
 })

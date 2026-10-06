@@ -127,6 +127,27 @@ describe('PDF reader utility workspace', () => {
     expect(wrapper.text()).toContain('Page 1 of 3')
   })
 
+  it('clamps page edits immediately to the document bounds and retains the current page for empty edits', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('input[aria-label="Current page"]')
+    await input.trigger('focus')
+    input.element.value = '999'
+    await input.trigger('input')
+    expect(input.element.value).toBe('3')
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 3 of 3')
+    input.element.value = ''
+    await input.trigger('change')
+    await flushPromises()
+    expect(input.element.value).toBe('3')
+    input.element.value = '0'
+    await input.trigger('input')
+    expect(input.element.value).toBe('1')
+  })
+
   it('truncates a long filename while preserving the full name for assistive and hover access', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)
@@ -155,11 +176,11 @@ describe('PDF reader utility workspace', () => {
 
     expect(wrapper.get('[aria-label="PDF search results panel"]').text()).toContain('Matching text')
     expect(wrapper.findAll('[aria-label="PDF search results panel"] li')).toHaveLength(1)
-    expect(wrapper.find('input[aria-label="Search PDF text"]').exists()).toBe(false)
+    expect(wrapper.find('input[aria-label="Search PDF text"]').exists()).toBe(true)
     expect(wrapper.findAll('li')).toHaveLength(1)
   })
 
-  it('closes the search popover on Escape and returns focus to its toolbar control', async () => {
+  it('closes the search panel on Escape and returns focus to its toolbar control', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)
     await flushPromises()
@@ -174,7 +195,7 @@ describe('PDF reader utility workspace', () => {
     expect(document.activeElement).toBe(searchButton.element)
     expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(false)
   })
-  it('keeps search in its popover until results arrive and shows a loading submit control', async () => {
+  it('keeps search input and pending results together in its panel and shows a loading submit control', async () => {
     let finish!: (value: unknown) => void
     pdfSession.searchText.mockImplementationOnce(
       () =>
@@ -186,19 +207,19 @@ describe('PDF reader utility workspace', () => {
     wrappers.push(wrapper)
     await flushPromises()
     await wrapper.get('button[aria-label="Search PDF"]').trigger('click')
-    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(true)
     await wrapper.get('input[aria-label="Search PDF text"]').setValue('matching')
     await wrapper.get('form').trigger('submit')
     expect(wrapper.get('button[type="submit"]').attributes('aria-busy')).toBe('true')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('.search-spinner').exists()).toBe(true)
-    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(true)
     finish({ matches: [], textPageCount: 1, truncated: false })
     await flushPromises()
     expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(true)
   })
 
-  it('keeps failed searches in the popover without opening a results panel', async () => {
+  it('keeps failed searches and retry in the search panel', async () => {
     pdfSession.searchText.mockRejectedValueOnce(new Error('search failed'))
     const wrapper = mountReader()
     wrappers.push(wrapper)
@@ -207,7 +228,7 @@ describe('PDF reader utility workspace', () => {
     await wrapper.get('input[aria-label="Search PDF text"]').setValue('matching')
     await wrapper.get('form').trigger('submit')
     await flushPromises()
-    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="PDF search results panel"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Please try again.')
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })

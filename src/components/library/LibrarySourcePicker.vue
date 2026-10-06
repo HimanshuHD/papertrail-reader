@@ -204,7 +204,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         <button
           type="button"
           role="menuitem"
-          class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
+          class="pt-list-entry min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
           @click="chooseFolder"
         >
           Choose folder
@@ -212,7 +212,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         <button
           type="button"
           role="menuitem"
-          class="min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
+          class="pt-list-entry min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
           @click="chooseFiles"
         >
           Choose PDF / EPUB files

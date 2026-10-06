@@ -1,3 +1,5 @@
+import { config } from '@vue/test-utils'
+config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { expect, it, vi } from 'vitest'
@@ -590,13 +592,15 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   await wrapper.vm.$nextTick()
   Object.defineProperty(frameDoc!.defaultView!.Range.prototype, 'getClientRects', {
     configurable: true,
-    value: () => [{ left: 100, top: 200, width: 80, height: 20 }],
+    value: () => [{ left: 100, top: 200, right: 180, bottom: 220, width: 80, height: 20 }],
   })
   frameDoc!.dispatchEvent(new Event('pointerup'))
   await wrapper.vm.$nextTick()
   const save = wrapper.get('button[aria-label="Highlight pink"]')
   expect(save.attributes('disabled')).toBeUndefined()
   await save.trigger('click')
+  expect(mocked.highlightCreate).not.toHaveBeenCalled()
+  await wrapper.get('[aria-label="Add highlight"]').trigger('click')
   await flushPromises()
   expect(mocked.highlightOpen).toHaveBeenLastCalledWith({
     format: 'EPUB',
@@ -612,6 +616,7 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   )
   await wrapper.get('button[aria-label="Annotations"]').trigger('click')
   expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(1)
+  await wrapper.get('[data-menu-id="highlight-one"]').trigger('click')
   await wrapper.get('#epub-annotations-color-highlight-one').setValue('green')
   await flushPromises()
   expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', { color: 'green' })
@@ -635,10 +640,26 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
     note: 'A local EPUB note',
   })
   expect(wrapper.text()).toContain('A local EPUB note')
+  frameDoc!.getSelection()!.removeAllRanges()
+  frameDoc!.getSelection()!.addRange(range)
+  frameDoc!.dispatchEvent(
+    new MouseEvent('pointerdown', { clientX: 110, clientY: 210, bubbles: true }),
+  )
+  frameDoc!.dispatchEvent(
+    new MouseEvent('pointerup', { clientX: 111, clientY: 210, bubbles: true, cancelable: true }),
+  )
+  await flushPromises()
+  expect(frameDoc!.getSelection()!.rangeCount).toBe(0)
+  expect(wrapper.get('[data-annotation-id="highlight-one"]').attributes('aria-pressed')).toBe(
+    'true',
+  )
+  expect(wrapper.find('[aria-label="EPUB highlights"]').exists()).toBe(false)
+
   await wrapper.get('button[aria-label="Close utility panel"]').trigger('click')
   await flushPromises()
   expect(document.activeElement?.getAttribute('aria-label')).toBe('Annotations')
   await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-menu-id="highlight-one"]').trigger('click')
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete highlight and note')!

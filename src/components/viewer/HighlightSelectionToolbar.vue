@@ -16,6 +16,7 @@ const emit = defineEmits<{
   highlight: [color: AnnotationColor, keepOpen: boolean]
   saveNote: [note: string, color: AnnotationColor]
   retry: []
+  color: [color: AnnotationColor]
 }>()
 const root = ref<HTMLElement | null>(null)
 const textarea = ref<HTMLTextAreaElement | null>(null)
@@ -50,6 +51,19 @@ const position = computed(() =>
     globalThis.innerHeight,
   ),
 )
+const tooltipPosition = computed(() => ({
+  left: position.value.left + 'px',
+  top:
+    Math.max(
+      8,
+      Math.min(
+        position.value.top > 48
+          ? position.value.top - 40
+          : position.value.top + size.value.height + 8,
+        globalThis.innerHeight - 40,
+      ),
+    ) + 'px',
+}))
 const colors: AnnotationColor[] = ['yellow', 'green', 'blue', 'pink']
 async function openNote() {
   editing.value = true
@@ -64,7 +78,7 @@ async function cancelNote() {
 }
 function pickColor(next: AnnotationColor) {
   color.value = next
-  if (!editing.value) emit('highlight', next, false)
+  emit('color', next)
 }
 function submitNote() {
   if (!props.disabled && draft.value.trim() && draft.value.length <= ANNOTATION_LIMITS.note)
@@ -91,7 +105,7 @@ function preserveSelection(event: PointerEvent) {
         v-for="shade in colors"
         :key="shade"
         type="button"
-        class="color-action"
+        class="color-action pt-color-swatch"
         :aria-label="`Highlight ${shade}`"
         :aria-pressed="color === shade"
         :title="`Highlight ${shade}`"
@@ -108,7 +122,10 @@ function preserveSelection(event: PointerEvent) {
         :disabled="disabled || saved"
         @click="emit('highlight', color, editing)"
       >
-        <UiIcon name="highlight" /><span role="tooltip" class="highlight-tooltip"
+        <UiIcon name="highlight" /><span
+          role="tooltip"
+          class="highlight-tooltip"
+          :style="tooltipPosition"
           >Add highlight</span
         >
       </button>
@@ -116,12 +133,12 @@ function preserveSelection(event: PointerEvent) {
       <button
         ref="noteButton"
         type="button"
-        class="toolbar-action note-action"
+        class="toolbar-action note-action pt-framed-control"
         aria-label="Add note"
         :disabled="disabled"
         @click="openNote"
       >
-        <UiIcon name="annotations" /><span>Add note</span>
+        <UiIcon name="note" /><span>Add note</span>
       </button>
     </div>
     <Transition name="note-expand" @after-enter="measure" @after-leave="measure">
@@ -154,11 +171,16 @@ function preserveSelection(event: PointerEvent) {
         </p>
         <div class="composer-footer">
           <span class="composer-count">{{ draft.length }} / {{ ANNOTATION_LIMITS.note }}</span
-          ><button type="button" class="composer-cancel" :disabled="disabled" @click="cancelNote">
+          ><button
+            type="button"
+            class="composer-cancel pt-framed-control"
+            :disabled="disabled"
+            @click="cancelNote"
+          >
             Cancel</button
           ><button
             type="submit"
-            class="composer-save pt-button-filled"
+            class="composer-save pt-button-filled pt-stable-border"
             :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
           >
             {{ saved ? 'Save note' : 'Save highlight with note' }}
@@ -168,17 +190,22 @@ function preserveSelection(event: PointerEvent) {
     </Transition>
   </div>
 </template>
+
 <style scoped>
 .selection-toolbar {
   position: fixed;
   z-index: 40;
-  padding: 5px 8px;
+  padding: 12px;
   max-width: calc(100vw - 16px);
-  border: 1px solid var(--pt-line);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--pt-ink) 35%, var(--pt-line));
   border-radius: 16px;
   background: var(--pt-panel);
   color: var(--pt-ink);
-  box-shadow: 0 8px 24px #0003;
+  box-shadow:
+    0 18px 48px #0006,
+    0 4px 12px #0003;
   transition:
     top 180ms ease,
     width 180ms ease;
@@ -198,7 +225,7 @@ function preserveSelection(event: PointerEvent) {
   justify-content: center;
   gap: 8px;
   min-height: 38px;
-  min-width: 32px;
+  min-width: 36px;
   border-radius: 8px;
 }
 .note-action {
@@ -206,8 +233,7 @@ function preserveSelection(event: PointerEvent) {
   white-space: nowrap;
   font-size: 14px;
 }
-.toolbar-action:hover,
-.color-action:hover {
+.toolbar-action:hover {
   background: var(--pt-canvas);
 }
 button:focus-visible,
@@ -227,6 +253,8 @@ button:disabled {
 .color-action[aria-pressed='true'] .color-swatch {
   outline: 1px solid var(--pt-ink);
   outline-offset: 2px;
+  width: 24px;
+  height: 24px;
 }
 .swatch-yellow {
   background: #ffe58a;
@@ -247,10 +275,7 @@ button:disabled {
   background: var(--pt-line);
 }
 .highlight-tooltip {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   width: max-content;
   padding: 6px 10px;
   border: 1px solid var(--pt-line);
@@ -265,9 +290,9 @@ button:disabled {
   visibility: visible;
 }
 .note-composer {
-  padding: 8px 4px 6px;
+  padding: 16px 0 0;
   border-top: 1px solid var(--pt-line);
-  margin-top: 5px;
+  margin-top: 12px;
   overflow: hidden;
 }
 .composer-heading {
@@ -276,8 +301,10 @@ button:disabled {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
+  margin-bottom: 12px;
 }
 textarea {
+  box-sizing: border-box;
   display: block;
   width: 100%;
   border: 1px solid var(--pt-line);
@@ -287,6 +314,8 @@ textarea {
   padding: 10px;
   font-size: 14px;
   resize: vertical;
+  min-height: 100px;
+  max-height: 30vh;
 }
 .composer-footer {
   display: flex;
@@ -336,5 +365,42 @@ textarea {
   .note-expand-leave-active {
     transition: none;
   }
+}
+
+.color-action {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+textarea {
+  border: 1px solid var(--pt-line);
+}
+.color-swatch {
+  transition:
+    width 150ms ease,
+    height 150ms ease;
+}
+.composer-save:hover {
+  background: var(--pt-filled-hover);
+}
+
+.color-action {
+  width: 36px;
+  flex: 0 0 36px;
+  padding: 4px;
+  border-radius: 50%;
+}
+.composer-save:is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-line);
+  box-shadow: none;
+}
+
+.pt-framed-control:not(:disabled):is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-control-edge);
+  border-bottom: 2px solid var(--pt-control-edge);
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
+  box-shadow: none;
 }
 </style>

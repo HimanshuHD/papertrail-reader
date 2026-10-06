@@ -721,8 +721,8 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await page.locator('#pdf-page-2 .reader-note-indicator').click()
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('A persistent PDF note')
-  await panel.locator('.annotation-menu summary').first().click()
-  await panel.locator('.annotation-menu select').first().selectOption('pink')
+  await panel.locator('[data-menu-id]').first().click()
+  await page.locator('.floating-popover select').first().selectOption('pink')
   await capture(page, info, 'pdf-annotation-notes')
   await page.reload()
   await select('renamed-highlights.pdf', bytes)
@@ -730,9 +730,14 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
   await entries.first().click()
-  await panel.locator('.annotation-menu summary').first().click()
-  await panel.getByRole('button', { name: 'Edit note', exact: true }).click()
-  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue('A persistent PDF note')
+  await panel.locator('[data-menu-id]').first().click()
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Edit note', exact: true })
+    .click()
+  await expect(page.locator('.floating-popover').getByLabel('Note', { exact: true })).toHaveValue(
+    'A persistent PDF note',
+  )
   await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
@@ -746,8 +751,11 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await select('original-again.pdf', bytes)
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await panel.locator('.annotation-menu summary').first().click()
-  await panel.getByRole('button', { name: 'Delete highlight and note', exact: true }).click()
+  await panel.locator('[data-menu-id]').first().click()
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Delete highlight and note', exact: true })
+    .click()
   await expect(entries).toHaveCount(0)
   await page.reload()
   await select('deleted.pdf', bytes)
@@ -1085,11 +1093,11 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   const searchInput = page.getByRole('searchbox', { name: 'Search PDF text' })
   await expect(searchInput).toBeFocused()
   await searchInput.fill('Second')
-  const searchPanel = page.locator('section[aria-labelledby="pdf-search-title"]')
+  const searchPanel = page.locator('[aria-label="PDF search results panel"]')
   await searchPanel.getByRole('search').getByRole('button', { name: 'Search' }).click()
   const resultsPanel = page.locator('[aria-label="PDF search results panel"]')
   await expect(resultsPanel.getByRole('status')).toContainText('1 match across searchable text.')
-  await expect(searchPanel.getByRole('button', { name: /Page 2.*Second page/ })).toHaveCount(0)
+  await expect(searchPanel.getByRole('searchbox')).toBeVisible()
   await expect(resultsPanel.getByRole('button', { name: /Page 2.*Second page/ })).toBeVisible()
   await resultsPanel.getByRole('button', { name: /Page 2.*Second page/ }).click()
   await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
@@ -1640,20 +1648,17 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     await contents.click()
     const panel = page.locator('.pdf-side-panel')
     await expect(panel).toHaveCSS('opacity', '1')
-    const active = panel.getByRole('button', { name: 'Contents', exact: true })
-    const inactive = panel.getByRole('button', { name: 'Search results', exact: true })
-    await expect(active).toHaveAttribute('aria-pressed', 'true')
-    const activeColor = await active.evaluate((el) => getComputedStyle(el).backgroundColor)
-    expect(activeColor).not.toBe(
-      await inactive.evaluate((el) => getComputedStyle(el).backgroundColor),
-    )
-    await inactive.click()
-    await expect(inactive).toHaveAttribute('aria-pressed', 'true')
-    await expect(active).toHaveAttribute('aria-pressed', 'false')
-    await expect(inactive).toHaveCSS('font-weight', '700')
+    await expect(panel.getByRole('heading', { name: 'Contents', exact: true })).toBeVisible()
+    await expect(panel.locator('.utility-tab')).toHaveCount(0)
+    await expect(contents).toHaveAttribute('aria-pressed', 'true')
+    const searchControl = page.getByRole('button', { name: 'Search PDF', exact: true })
+    await searchControl.click()
+    await expect(searchControl).toHaveAttribute('aria-pressed', 'true')
+    await expect(contents).toHaveAttribute('aria-pressed', 'false')
+    await expect(panel.getByRole('heading', { name: 'Search', exact: true })).toBeVisible()
     await capture(page, info, `reader-polish-${theme}`)
     await page.keyboard.press('Escape')
-    await expect(contents).toBeFocused()
+    await expect(searchControl).toBeFocused()
     await expect(page.locator('.pdf-side-panel')).toHaveCount(0)
     await noOverflow(page)
   }
@@ -1688,9 +1693,9 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
   const popoverDuration = await search.evaluate(async (button) => {
     ;(button as HTMLButtonElement).click()
     await Promise.resolve()
-    return getComputedStyle(document.querySelector('[aria-label="PDF search"]')!).transitionDuration
+    return getComputedStyle(document.querySelector('.pdf-side-panel')!).transitionDuration
   })
-  expect(popoverDuration).toBe('0.24s, 0.24s')
+  expect(popoverDuration).toBe('0.32s, 0.32s')
   await expect(page.getByRole('searchbox')).toBeFocused()
   await page.keyboard.press('Escape')
   await expect(search).toBeFocused()
@@ -2382,6 +2387,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     { name: 'other.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(2) },
   ])
   await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).click()
+  await library.getByRole('button', { name: /^Recent\s*1$/ }).click()
   await expect(
     library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
   ).toBeEnabled()
@@ -2425,6 +2431,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await page.reload()
   await show()
+  await library.getByRole('button', { name: /^Recent\s*1$/ }).click()
   await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
   await expect(
     library.getByRole('status').filter({ hasText: 'unavailable or changed' }),
@@ -2499,6 +2506,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
   await reader.getByRole('button', { name: 'Highlight pink', exact: true }).click()
+  await reader.getByRole('button', { name: 'Add highlight', exact: true }).click()
   const painted = async () => {
     await expect
       .poll(() =>
@@ -2530,11 +2538,17 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   const saved = panel.locator('[data-annotation-id]')
   await expect(saved).toHaveCount(1)
   await saved.first().click()
-  await panel.locator('.annotation-menu summary').first().click()
-  await panel.getByRole('button', { name: 'Add note', exact: true }).click()
+  await panel.locator('[data-menu-id]').first().click()
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Add note', exact: true })
+    .click()
   const note = 'A local note <img src=x onerror=alert(1)>'
-  await panel.getByLabel('Note', { exact: true }).fill(note)
-  await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+  await page.locator('.floating-popover').getByLabel('Note', { exact: true }).fill(note)
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Save note', exact: true })
+    .click()
   await expect(panel.getByText('Note saved.', { exact: true })).toBeVisible()
   await expect(panel.locator('img')).toHaveCount(0)
   await capture(page, info, 'epub-annotation-notes')
@@ -2544,17 +2558,31 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await open()
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await saved.first().click()
-  await panel.locator('.annotation-menu summary').first().click()
-  await panel.getByRole('button', { name: 'Edit note', exact: true }).click()
-  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue(note)
-  await panel.getByRole('button', { name: 'Delete note', exact: true }).click()
-  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue('')
+  await panel.locator('[data-menu-id]').first().click()
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Edit note', exact: true })
+    .click()
+  await expect(page.locator('.floating-popover').getByLabel('Note', { exact: true })).toHaveValue(
+    note,
+  )
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Delete note', exact: true })
+    .click()
+  await expect(page.locator('.floating-popover').getByLabel('Note', { exact: true })).toHaveValue(
+    '',
+  )
   await expect(saved).toHaveCount(1)
-  await panel.getByRole('button', { name: 'Back to annotation actions', exact: true }).click()
-  await panel.locator('.annotation-menu select').first().selectOption('green')
-  await panel
-    .locator('.annotation-menu')
-    .first()
+  await page
+    .locator('.floating-popover')
+    .getByRole('button', { name: 'Back to annotation actions', exact: true })
+    .click()
+  await page.locator('.floating-popover select').first().selectOption('green')
+  await expect(page.locator('.floating-popover')).toHaveCount(0)
+  await panel.locator('[data-menu-id]').first().click()
+  await page
+    .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
     .click()
   await expect(saved).toHaveCount(0)

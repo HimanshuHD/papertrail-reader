@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { bindHighlightHover } from '../../features/annotations/highlight-hover'
 import NoteIndicator from './NoteIndicator.vue'
 import type { Annotation } from '../../services/annotation-storage'
 import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
@@ -55,6 +56,7 @@ const highlightRects = ref<
     occurrence: number
   }[]
 >([])
+const hoveredHighlight = ref<string | null>(null)
 const savedRects = ref<
   { id: string; color: string; x: number; y: number; width: number; height: number }[]
 >([])
@@ -66,8 +68,20 @@ const noteIndicators = computed(() =>
       return rect ? [{ id: item.id, note: item.note, top: rect.y }] : []
     }),
 )
+let savedPointerStart: { x: number; y: number } | null = null
+function startSavedPointer(event: PointerEvent) {
+  savedPointerStart =
+    event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+      ? { x: event.clientX, y: event.clientY }
+      : null
+}
 function selectSavedHighlight(event: PointerEvent) {
-  if (!textLayer.value?.ownerDocument.getSelection()?.isCollapsed) return
+  if (
+    !savedPointerStart ||
+    Math.hypot(event.clientX - savedPointerStart.x, event.clientY - savedPointerStart.y) > 4
+  )
+    return
+  savedPointerStart = null
   const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
   if (!box) return
   const hit = savedRects.value.find(
@@ -77,7 +91,11 @@ function selectSavedHighlight(event: PointerEvent) {
       event.clientY >= box.top + rect.y * box.height &&
       event.clientY <= box.top + (rect.y + rect.height) * box.height,
   )
-  if (hit) emit('highlightSelected', hit.id)
+  if (hit) {
+    event.preventDefault()
+    textLayer.value?.ownerDocument.getSelection()?.removeAllRanges()
+    emit('highlightSelected', hit.id)
+  }
 }
 function updateSavedHighlights() {
   savedRects.value = []
@@ -199,6 +217,7 @@ let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
 let releaseTextSelection: (() => void) | undefined
+let releaseHighlightHover: (() => void) | undefined
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || disposed) return
@@ -251,6 +270,25 @@ async function renderPage() {
     releaseTextSelection?.()
     currentTextLayer.replaceChildren(...pendingText.childNodes)
     releaseTextSelection = bindPdfTextSelection(currentTextLayer)
+    releaseHighlightHover?.()
+    releaseHighlightHover = bindHighlightHover(
+      currentTextLayer,
+      () => {
+        const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
+        return box
+          ? savedRects.value.map((rect) => ({
+              id: rect.id,
+              left: box.left + rect.x * box.width,
+              right: box.left + (rect.x + rect.width) * box.width,
+              top: box.top + rect.y * box.height,
+              bottom: box.top + (rect.y + rect.height) * box.height,
+            }))
+          : []
+      },
+      (id) => {
+        hoveredHighlight.value = id
+      },
+    )
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -305,6 +343,8 @@ function releaseBitmap() {
   savedRects.value = []
   releaseTextSelection?.()
   releaseTextSelection = undefined
+  releaseHighlightHover?.()
+  releaseHighlightHover = undefined
   textLayer.value?.replaceChildren()
   rendered.value = false
   previewed.value = false
@@ -466,8 +506,9 @@ onBeforeUnmount(() => {
         v-for="item in noteIndicators"
         :key="item.id"
         :note="item.note"
+        :highlighted="hoveredHighlight === item.id"
         :label="`Open note on page ${pageNumber}: ${item.note.slice(0, 80)}`"
-        :style="{ left: 'calc(100% + 1px)', top: `${item.top * 100}%` }"
+        :style="{ left: 'calc(100% - 40px)', top: `${item.top * 100}%` }"
         @activate="emit('noteSelected', item.id)"
       />
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -490,6 +531,7 @@ onBeforeUnmount(() => {
         class="textLayer absolute top-0 left-0 overflow-hidden"
         :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
+        @pointerdown="startSavedPointer"
         @pointerup="selectSavedHighlight"
       ></div>
       <div
@@ -585,7 +627,7 @@ onBeforeUnmount(() => {
   transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 .textLayer :deep(span::selection) {
-  background: rgb(147 197 253 / 35%);
+  background: var(--pt-selection-color, rgb(147 197 253 / 35%));
   color: transparent;
 }
 .textLayer :deep(br::selection) {
@@ -614,5 +656,46 @@ onBeforeUnmount(() => {
 }
 .textLayer[data-main-rotation='270'] {
   transform: rotate(270deg) translateX(-100%);
+}
+</style>
+
+<style>
+:root[data-theme='dark'] .pdf-page {
+  background: var(--pt-canvas);
+}
+:root[data-theme='dark'] .pdf-page canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+:root[data-theme='dark'] .pdf-saved-overlay {
+  mix-blend-mode: normal;
+}
+:root[data-theme='dark'] .pdf-saved-group {
+  opacity: 0.25;
+}
+:root[data-theme='dark'] .pdf-saved-highlight.active {
+  outline-color: #e4edf3;
+}
+:root[data-theme='dark'] .textLayer span::selection {
+  background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) .pdf-page {
+    background: var(--pt-canvas);
+  }
+  :root:not([data-theme]) .pdf-page canvas {
+    filter: invert(0.9) hue-rotate(180deg);
+  }
+  :root:not([data-theme]) .pdf-saved-overlay {
+    mix-blend-mode: normal;
+  }
+  :root:not([data-theme]) .pdf-saved-group {
+    opacity: 0.25;
+  }
+  :root:not([data-theme]) .pdf-saved-highlight.active {
+    outline-color: #e4edf3;
+  }
+  :root:not([data-theme]) .textLayer span::selection {
+    background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
+  }
 }
 </style>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { RouterView, useRoute } from 'vue-router'
 const route = useRoute()
+import ToastHost from './components/ToastHost.vue'
 import BuildFooter from './components/BuildFooter.vue'
 </script>
 
@@ -13,6 +14,7 @@ import BuildFooter from './components/BuildFooter.vue'
   >
     <div class="min-h-0 flex-1"><RouterView /></div>
     <BuildFooter />
+    <ToastHost />
   </div>
 </template>
 

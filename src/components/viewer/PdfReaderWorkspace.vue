@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
+import { SELECTION_COLORS } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { usePdfHighlights } from '../../composables/usePdfHighlights'
 import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/highlights'
@@ -130,7 +131,8 @@ function cancelHighlightSelection() {
   selectingHighlight = false
   pendingHighlight.value = null
 }
-function captureSelection() {
+function captureSelection(event?: Event) {
+  if (event?.defaultPrevented) return
   // Native selection paints continuously; measuring every drag update stalls it.
   if (selectingHighlight) return
   if (phase.value !== 'ready' || !viewport.value) return
@@ -213,9 +215,10 @@ async function openNote(id: string) {
     annotationsPanel.value?.revealAnnotation(id)
 }
 async function openHighlight(id: string) {
-  rightPanel.value = 'annotations'
-  await nextTick()
-  await chooseHighlight(id)
+  pendingHighlight.value = null
+  toolbarSavedId.value = ''
+  document.getSelection()?.removeAllRanges()
+  await openNote(id)
 }
 async function chooseHighlight(id: string) {
   pendingHighlightNavigation = null
@@ -705,9 +708,23 @@ function beginPageEdit() {
   pageDraft.value = String(currentPage.value)
 }
 
-function handlePageInput(event: Event) {
+function limitPageDraft(event: Event) {
   const input = event.currentTarget as HTMLInputElement
-  void goToPage(Number(input.value))
+  if (!input.value) {
+    pageDraft.value = ''
+    return
+  }
+  const numeric = Number(input.value)
+  const next = Number.isFinite(numeric) ? clampPage(numeric) : currentPage.value
+  pageDraft.value = String(next)
+  input.value = pageDraft.value
+}
+function handlePageInput(event: Event) {
+  limitPageDraft(event)
+  const next = pageDraft.value ? Number(pageDraft.value) : currentPage.value
+  pageDraft.value = String(next)
+  ;(event.currentTarget as HTMLInputElement).value = pageDraft.value
+  void goToPage(next)
 }
 
 async function loadOutline() {
@@ -773,7 +790,7 @@ function closeRightPanel() {
   void nextTick(() => {
     readerRoot.value
       ?.querySelector<HTMLButtonElement>(
-        `button[aria-label="${closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
+        `button[aria-label="${closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : closing === 'search' ? 'Search PDF' : 'Contents'}"]`,
       )
       ?.focus()
   })
@@ -785,11 +802,14 @@ function toggleRightPanel(next: Exclude<UtilityPanel, null>) {
 }
 
 async function openPopover(next: Exclude<UtilityPopover, null>) {
-  popover.value = popover.value === next ? null : next
-  if (popover.value === 'search') {
+  if (next === 'search') {
+    popover.value = null
+    rightPanel.value = 'search'
     await nextTick()
-    searchInput.value?.focus()
+    searchInput.value?.focus({ preventScroll: true })
+    return
   }
+  popover.value = popover.value === next ? null : next
 }
 
 function closePopover(restoreFocus = false) {
@@ -809,6 +829,11 @@ function handlePopoverPointer(event: PointerEvent) {
 }
 
 function handlePopoverKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape' && rightPanel.value === 'search') {
+    event.preventDefault()
+    closeRightPanel()
+    return
+  }
   if (event.key === 'Escape' && popover.value) {
     event.preventDefault()
     closePopover(true)
@@ -889,7 +914,11 @@ function isTypingTarget(target: EventTarget | null): boolean {
 
 function handleShortcut(event: KeyboardEvent) {
   if (phase.value !== 'ready') return
-  if (event.target instanceof Element && event.target.closest('#document-sidebar')) return
+  if (
+    event.target instanceof Element &&
+    event.target.closest('#document-sidebar, .floating-popover')
+  )
+    return
 
   if ((event.ctrlKey || event.metaKey) && event.key.toLocaleLowerCase() === 'f') {
     event.preventDefault()
@@ -990,6 +1019,7 @@ onBeforeUnmount(() => {
   <div
     ref="readerRoot"
     class="pdf-reader min-w-0 bg-canvas"
+    :style="{ '--pt-selection-color': SELECTION_COLORS[highlightColor] }"
     @pointerdown.capture="clearPendingHighlight"
   >
     <p
@@ -1044,7 +1074,7 @@ onBeforeUnmount(() => {
           class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
           @focus="beginPageEdit"
-          @input="pageDraft = ($event.target as HTMLInputElement).value"
+          @input="limitPageDraft"
           @blur="pageEditing = false"
           @change="handlePageInput"
         />
@@ -1074,8 +1104,8 @@ onBeforeUnmount(() => {
           data-reader-action="search"
           label="Search PDF"
           icon="search"
-          :active="popover === 'search'"
-          :aria-pressed="popover === 'search'"
+          :active="rightPanel === 'search'"
+          :aria-pressed="rightPanel === 'search'"
           @click="openPopover('search')"
         />
         <IconButton
@@ -1127,60 +1157,7 @@ onBeforeUnmount(() => {
           class="absolute top-full right-3 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-4 shadow-2xl ring-1 ring-line/30"
           :aria-label="popover === 'search' ? 'PDF search' : 'Keyboard help'"
         >
-          <section v-if="popover === 'search'" aria-labelledby="pdf-search-title">
-            <div class="flex items-center justify-between gap-3">
-              <h3 id="pdf-search-title" class="font-semibold">Search PDF</h3>
-              <IconButton label="Close search" icon="close" @click="closePopover(true)" />
-            </div>
-            <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
-              <input
-                ref="searchInput"
-                v-model="searchQuery"
-                type="search"
-                class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
-                placeholder="Search PDF text"
-                aria-label="Search PDF text"
-              />
-              <button
-                type="submit"
-                class="pt-button-filled inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
-                :aria-busy="searchBusy"
-                :disabled="searchBusy || !searchQuery.trim()"
-              >
-                <svg
-                  v-if="searchBusy"
-                  class="search-spinner h-4 w-4"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <circle
-                    cx="12"
-                    cy="12"
-                    r="9"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    opacity="0.3"
-                  />
-                  <path
-                    d="M12 3a9 9 0 0 1 9 9"
-                    stroke="currentColor"
-                    stroke-width="3"
-                    stroke-linecap="round"
-                  />
-                </svg>
-                {{ searchBusy ? 'Searching…' : 'Search' }}
-              </button>
-            </form>
-            <p class="mt-2 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
-              {{ searchSummary }}
-            </p>
-            <p v-if="searchCompleted" class="mt-1 text-xs text-muted">
-              Results are shown in the Search results panel.
-            </p>
-          </section>
-
-          <section v-else aria-labelledby="pdf-help-title">
+          <section aria-labelledby="pdf-help-title">
             <div class="flex items-center justify-between gap-3">
               <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
               <IconButton label="Close keyboard help" icon="close" @click="closePopover(true)" />
@@ -1213,6 +1190,7 @@ onBeforeUnmount(() => {
       :saved="!!toolbarSavedId"
       :notice="highlights.notice.value"
       :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
+      @color="highlightColor = $event"
       @highlight="createHighlight"
       @retry="highlights.reload"
       @save-note="saveSelectionNote"
@@ -1318,45 +1296,17 @@ onBeforeUnmount(() => {
           <div
             class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
           >
-            <div
-              v-if="rightPanel !== 'annotations'"
-              class="flex min-w-0 flex-wrap items-center gap-1"
-              aria-label="PDF utility panel mode"
-            >
-              <button
-                type="button"
-                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
-                :aria-pressed="rightPanel === 'contents'"
-                @click="((rightPanel = 'contents'), loadOutline())"
-              >
-                Contents
-              </button>
-              <button
-                type="button"
-                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
-                :aria-pressed="rightPanel === 'search'"
-                @click="rightPanel = 'search'"
-              >
-                Search results
-              </button>
-              <button
-                type="button"
-                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
-                :aria-pressed="rightPanel === 'bookmarks'"
-                @click="rightPanel = 'bookmarks'"
-              >
-                Bookmarks
-              </button>
-              <button
-                type="button"
-                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
-                :aria-pressed="false"
-                @click="rightPanel = 'annotations'"
-              >
-                Annotations
-              </button>
-            </div>
-            <h3 v-if="rightPanel === 'annotations'" class="text-base font-semibold">Annotations</h3>
+            <h3 class="text-base font-semibold">
+              {{
+                rightPanel === 'contents'
+                  ? 'Contents'
+                  : rightPanel === 'search'
+                    ? 'Search'
+                    : rightPanel === 'bookmarks'
+                      ? 'Bookmarks'
+                      : 'Annotations'
+              }}
+            </h3>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
           </div>
 
@@ -1410,6 +1360,7 @@ onBeforeUnmount(() => {
             :save-note="highlights.saveNote"
             :recolor="highlights.recolor"
             :remove="highlights.remove"
+            @select="selectedHighlight = $event"
             @navigate="chooseHighlight"
             @retry="highlights.reload"
           />
@@ -1434,16 +1385,52 @@ onBeforeUnmount(() => {
             class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
             aria-labelledby="pdf-search-results-title"
           >
-            <h3 id="pdf-search-results-title" class="mb-2 text-sm font-semibold">Search results</h3>
-            <p
-              v-if="searchCompleted"
-              class="mb-2 text-xs leading-relaxed text-muted"
-              role="status"
-              aria-live="polite"
-            >
+            <h3 id="pdf-search-results-title" class="sr-only">Search results</h3>
+            <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
+              <input
+                ref="searchInput"
+                v-model="searchQuery"
+                type="search"
+                class="min-h-10 min-w-0 flex-1 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+                placeholder="Search PDF text"
+                aria-label="Search PDF text"
+              />
+              <button
+                type="submit"
+                class="pt-button-filled inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
+                :aria-busy="searchBusy"
+                :disabled="searchBusy || !searchQuery.trim()"
+              >
+                <svg
+                  v-if="searchBusy"
+                  class="search-spinner h-4 w-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  aria-hidden="true"
+                >
+                  <circle
+                    cx="12"
+                    cy="12"
+                    r="9"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    opacity="0.3"
+                  />
+                  <path
+                    d="M12 3a9 9 0 0 1 9 9"
+                    stroke="currentColor"
+                    stroke-width="3"
+                    stroke-linecap="round"
+                  />
+                </svg>
+                {{ searchBusy ? 'Searching…' : 'Search' }}
+              </button>
+            </form>
+
+            <p class="my-3 text-xs leading-relaxed text-muted" role="status" aria-live="polite">
               {{ searchSummary }}
             </p>
-            <p v-else class="text-sm text-muted">Open search to find text in this PDF.</p>
+
             <ul v-if="searchMatches.length > 0" class="space-y-2">
               <li v-for="match in searchMatches" :key="`${match.pageNumber}-${match.occurrence}`">
                 <button
@@ -1544,24 +1531,6 @@ onBeforeUnmount(() => {
   transform: translateX(100%);
   opacity: 0;
 }
-.utility-tab {
-  color: var(--pt-muted);
-  border: 1px solid transparent;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    border-color 180ms ease;
-}
-.utility-tab:hover {
-  background: var(--pt-canvas);
-}
-.utility-tab[aria-pressed='true'] {
-  color: var(--pt-ink);
-  background: color-mix(in srgb, var(--pt-brand) 16%, var(--pt-panel));
-  border-color: var(--pt-brand);
-  box-shadow: inset 0 -2px 0 var(--pt-brand);
-  font-weight: 700;
-}
 [aria-label='PDF reader controls'] :deep(.icon-button:nth-child(-n + 3) .icon-tooltip) {
   left: 0;
   right: auto;
@@ -1599,8 +1568,7 @@ onBeforeUnmount(() => {
   .utility-popover-enter-active,
   .utility-popover-leave-active,
   .utility-panel-enter-active,
-  .utility-panel-leave-active,
-  .utility-tab {
+  .utility-panel-leave-active {
     transition: none;
   }
   .search-spinner {

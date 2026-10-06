@@ -114,7 +114,11 @@ button:disabled,
     box-shadow 150ms ease;
 }
 /* Scoped component/utility rules must not give individual controls competing colors. */
-:is(button, [role='button'], summary, .pt-button):not(:disabled):not([aria-disabled='true']):is(
+:is(button, [role='button'], summary, .pt-button):not(.pt-framed-control):not(.pt-note-marker):not(
+    .pt-stable-border
+  ):not(.pt-list-entry):not(.pt-text-action):not(.pt-color-swatch):not(:disabled):not(
+    [aria-disabled='true']
+  ):is(
     :hover,
     :active,
     :focus-visible,
@@ -125,12 +129,15 @@ button:disabled,
     [data-active='true'],
     [aria-current]:not([aria-current='false'])
   ),
-details[open] > summary {
+details[open] > summary:not(.pt-text-action):not(.pt-color-swatch) {
   background-color: var(--pt-button-surface, var(--pt-control-surface)) !important;
   color: var(--pt-button-ink, var(--pt-control-ink)) !important;
   border-color: var(--pt-button-edge, var(--pt-control-edge)) !important;
+  border-bottom-width: 2px !important;
+  border-bottom-style: solid !important;
   box-shadow:
     inset 0 0 0 1px var(--pt-button-edge, var(--pt-control-edge)),
+    inset 0 -2px 0 var(--pt-button-edge, var(--pt-control-edge)),
     inset 0 -3px 8px var(--pt-control-inset) !important;
 }
 .pt-button-filled:not(:disabled):not([aria-disabled='true']):active {
@@ -140,4 +147,40 @@ details[open] > summary {
   :where(button, [role='button'], summary, .pt-button) {
     transition: none;
   }
+}
+
+.pt-text-action:hover,
+.pt-text-action:active,
+.pt-text-action:focus-visible {
+  color: var(--pt-control-ink);
+}
+
+.pt-library-entry[aria-pressed='true'],
+.pt-library-entry[aria-selected='true'] {
+  border-bottom: 2px solid var(--pt-brand) !important;
+}
+
+/* Framed controls own their complete outline; never inherit the generic inset ring. */
+.pt-framed-control {
+  box-sizing: border-box;
+  border: 1px solid var(--pt-line);
+  background: var(--pt-panel);
+}
+.pt-framed-control:not(:disabled):is(:hover, :active, :focus-visible, [aria-pressed='true']) {
+  border: 1px solid var(--pt-control-edge);
+  border-bottom: 2px solid var(--pt-control-edge);
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
+  box-shadow: none;
+}
+.pt-button-filled {
+  border: 1px solid var(--pt-brand);
+}
+.pt-button-filled:not(.pt-stable-border):not(:disabled):is(:hover, :active, :focus-visible) {
+  border-color: var(--pt-button-surface) !important;
+  border-bottom-color: var(--pt-on-brand) !important;
+}
+.pt-stable-border:is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-line);
+  box-shadow: none;
 }

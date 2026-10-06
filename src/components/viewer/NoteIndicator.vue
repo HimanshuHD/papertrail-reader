@@ -1,22 +1,42 @@
 <script setup lang="ts">
+import { ref, useId } from 'vue'
 import UiIcon from '../UiIcon.vue'
-defineProps<{ note: string; label: string }>()
-defineEmits<{ activate: [] }>()
+import FloatingPopover from '../FloatingPopover.vue'
+defineProps<{ note: string; label: string; highlighted?: boolean }>()
+const emit = defineEmits<{ activate: [] }>()
+const trigger = ref<HTMLButtonElement | null>(null)
+const preview = ref(false)
+const tooltipId = useId()
+function activate() {
+  preview.value = false
+  emit('activate')
+}
 </script>
 <template>
   <button
+    ref="trigger"
     type="button"
-    class="reader-note-indicator"
+    class="reader-note-indicator pt-note-marker"
+    :class="{ highlighted }"
     :aria-label="label"
-    @pointerdown.stop
-    @click.stop="$emit('activate')"
+    :aria-describedby="preview ? tooltipId : undefined"
+    title="View highlight note"
+    @pointerdown.stop.prevent
+    @mouseenter="preview = true"
+    @mouseleave="preview = false"
+    @focus="preview = true"
+    @blur="preview = false"
+    @click.stop="activate"
   >
-    <UiIcon name="annotations" />
-    <span role="tooltip" class="reader-note-preview"
-      >{{ note.slice(0, 240) }}{{ note.length > 240 ? '…' : '' }}</span
-    >
+    <UiIcon name="note" />
+    <FloatingPopover v-if="preview" :anchor="trigger" @close="preview = false">
+      <p :id="tooltipId" role="tooltip" class="reader-note-preview">
+        {{ note.slice(0, 240) }}{{ note.length > 240 ? '…' : '' }}
+      </p>
+    </FloatingPopover>
   </button>
 </template>
+
 <style scoped>
 .reader-note-indicator {
   position: absolute;
@@ -24,45 +44,38 @@ defineEmits<{ activate: [] }>()
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 28px;
-  border-radius: 6px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
+  border-radius: 8px 0 0 8px;
   color: var(--pt-brand);
   background: var(--pt-panel);
-  border: 1px solid var(--pt-line);
-}
-.reader-note-indicator:hover {
-  color: var(--pt-ink);
+  box-sizing: border-box;
+  border: 1px solid var(--pt-brand);
+  border-right: 0;
+  box-shadow: 0 3px 10px #0002;
 }
 .reader-note-indicator:focus-visible {
   outline: 2px solid var(--pt-brand);
   outline-offset: 2px;
 }
 .reader-note-preview {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  width: min(260px, 70vw);
-  max-height: 160px;
-  overflow: auto;
-  padding: 10px 12px;
-  border-radius: 8px;
-  border: 1px solid var(--pt-line);
-  background: var(--pt-panel);
-  color: var(--pt-ink);
-  box-shadow: 0 6px 18px #0002;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.6;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-align: left;
-  visibility: hidden;
-  opacity: 0;
-  pointer-events: none;
 }
-.reader-note-indicator:hover .reader-note-preview,
-.reader-note-indicator:focus-visible .reader-note-preview {
-  visibility: visible;
-  opacity: 1;
+
+.reader-note-indicator {
+  border-right: 0;
+}
+.reader-note-indicator:is(:hover, :active, :focus-visible, .highlighted) {
+  border: 1px solid var(--pt-brand);
+  border-left: 2px solid var(--pt-brand);
+  border-right: 0;
+  box-shadow: 0 3px 10px #0002;
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
 }
 </style>

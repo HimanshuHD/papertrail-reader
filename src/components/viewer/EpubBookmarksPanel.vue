@@ -57,10 +57,7 @@ async function removeBookmark(id: string) {
     class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
     aria-labelledby="epub-bookmarks-title"
   >
-    <h3 id="epub-bookmarks-title" class="mb-2 text-sm font-semibold">Bookmarks</h3>
-    <p class="mb-3 text-xs leading-relaxed text-muted">
-      Save a place in this EPUB and return to it later.
-    </p>
+    <h3 id="epub-bookmarks-title" class="sr-only">Bookmarks</h3>
     <p v-if="loading" role="status" class="mb-3 text-sm text-muted">Loading bookmarks…</p>
     <p
       v-if="notice"
@@ -151,7 +148,7 @@ async function removeBookmark(id: string) {
         <template v-else>
           <button
             type="button"
-            class="min-h-10 w-full break-words rounded-md text-left text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50"
+            class="pt-list-entry min-h-10 w-full break-words rounded-md text-left text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50"
             :aria-label="`Go to bookmark ${bookmark.name}`"
             :disabled="!available || busy || bookmark.location.chapter >= totalChapters"
             @click="emit('navigate', bookmark)"
