@@ -1,5 +1,11 @@
 # PaperTrail progress
 
+## Current checkpoint — #158 reconciled; #144 active
+
+#158 merged as `298d98ffa14b5eec0d539896975a54575ac132a3`; source `a048cf4` passed Frontend CI 37499613529 and owner PR verification is checked. #157 is completed and stale active labels cleared. Accepted checks: 286 unit/component tests, 10 pipeline tests and required validation. #144 local reading insights is implemented for review from main `bb56d474640b543af3023dd751b555fa4b481d69` on `feat/144-reading-insights`; #145 native release acceptance remains new. Parent #15 and milestone 4 remain open. Earlier active/pending-preview checkpoints below are historical and superseded.
+
+Reading insights uses foreground/ready time with a 60-second idle cutoff, cumulative idempotent checkpoints, format/fingerprint identity and a statistics-only reset. PDF page/EPUB chapter positions do not prove completion. See [measurement contract](../architecture/reading-statistics.md) and [verification](../testing/reading-insights-144.md). Native release acceptance remains deferred to #145/#28.
+
 ## Current checkpoint — #155 reconciled; #157 active
 
 Owner merged #155 as `d0c3e10e63bfa27d5046320b4619f7c3ac9dc376`. #143/#156 are completed and stale active labels removed. Accepted source `cbd85f566ab246ff2cb6c5a2b80cb29768fe1b34` passed CI 37469382018 with 273 unit/component tests and 10 pipeline tests plus required checks. Follow-up #157, linked to #156, addresses explicit saves, contextual actions, direct utility panels, selection activation and UI spacing on `fix/157-annotation-interactions` from current main `f8e2ca0b236e60e6e432276c74f827300322e7b2`. Implementation passes 280 unit/component tests, 10 pipeline tests, lint/format/application/node/test types and production build. Earlier #143-active sections below are historical and superseded. #144 statistics follows after this increment; #145 release acceptance remains new. Parent #15 and milestone 4 remain open.

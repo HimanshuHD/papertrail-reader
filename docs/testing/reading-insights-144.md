@@ -1,0 +1,8 @@
+# Reading insights verification (#144)
+
+1. Open each format and choose the clock **Reading insights** icon. Check the shared panel, close/Escape focus return, narrow/wide layouts and both themes. PDF should label Page position; EPUB should label Chapter position. Current and furthest positions must not imply Completed or Read.
+2. Keep a ready reader focused for a short interval: active time advances; a positive visit is saved after the next checkpoint. Hide the tab, blur the window or start a slow document/chapter load: those intervals must not count. Return to foreground and interact in the reader to continue. Leave it untouched beyond 60 seconds; time stops and shows Paused for inactivity. EPUB iframe wheel/pointer/key/touch activity extends the deadline.
+3. Switch documents and reload identical bytes; committed totals restore without duplicate flush counting. Renames reuse insights; changed bytes and different formats remain isolated. A jump to the last page/chapter changes position only.
+4. Reset insights after local confirmation. Time, visits and furthest position reset; bookmarks, annotations and reading position remain. Open two tabs on the same file, reset in one, then flush an older session: its generation is rejected rather than recreating removed statistics.
+5. Simulate unavailable/blocked/quota storage: reading stays usable; the panel shows Retry. A failed checkpoint retains active session time; a failed reset retains committed data. Unknown schema records are not overwritten.
+6. Close/reload after a committed checkpoint and compare totals. Page-close flushing is best effort; hard termination can lose the uncommitted interval. Execute native lifecycle/coordinate/color cases only through #145/#28 reviewed release acceptance.

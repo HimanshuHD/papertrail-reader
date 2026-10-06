@@ -20,6 +20,7 @@ defineProps<{
     | 'search'
     | 'fullscreen'
     | 'fullscreen-exit'
+    | 'clock'
     | 'help'
   disabled?: boolean
   tooltipAlign?: 'start' | 'end'

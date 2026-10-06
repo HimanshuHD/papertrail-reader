@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
+import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { SELECTION_COLORS } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
@@ -28,7 +30,7 @@ import {
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
-  initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | null
+  initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
   initialSearchQuery?: string
   document: DiscoveredDocument
 }>()
@@ -37,7 +39,10 @@ const emit = defineEmits<{
   status: [message: string]
   identity: [fingerprint: string]
   recentReady: [identity: { id: string; fingerprint: string }]
-  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | 'annotations' | null, query: string]
+  utilityChange: [
+    panel: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null,
+    query: string,
+  ]
 }>()
 
 import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
@@ -54,7 +59,7 @@ function saveReadingPoint() {
 }
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
-type UtilityPanel = 'contents' | 'search' | 'bookmarks' | 'annotations' | null
+type UtilityPanel = 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
 type UtilityPopover = 'search' | 'help' | null
 
 interface FlatOutlineItem {
@@ -271,6 +276,16 @@ function highlightResolution(id: string, resolved: boolean, page: number) {
 }
 let pendingBookmark: PdfBookmark | null = null
 const totalPages = ref(0)
+const statisticsReady = computed(() => phase.value === 'ready')
+const statisticsPosition = computed(() =>
+  totalPages.value ? currentPage.value / totalPages.value : 0,
+)
+const statistics = useReadingStatistics(
+  'PDF',
+  continuity.fingerprint,
+  statisticsReady,
+  statisticsPosition,
+)
 const zoom = ref(1)
 const fitMode = ref<PdfFitMode>('width')
 watch(
@@ -790,7 +805,7 @@ function closeRightPanel() {
   void nextTick(() => {
     readerRoot.value
       ?.querySelector<HTMLButtonElement>(
-        `button[aria-label="${closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : closing === 'search' ? 'Search PDF' : 'Contents'}"]`,
+        `button[aria-label="${closing === 'insights' ? 'Reading insights' : closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : closing === 'search' ? 'Search PDF' : 'Contents'}"]`,
       )
       ?.focus()
   })
@@ -1123,6 +1138,14 @@ onBeforeUnmount(() => {
           @click="openPopover('help')"
         />
         <IconButton
+          label="Reading insights"
+          icon="clock"
+          :disabled="phase !== 'ready'"
+          :active="rightPanel === 'insights'"
+          :aria-expanded="rightPanel === 'insights'"
+          @click="toggleRightPanel('insights')"
+        />
+        <IconButton
           label="Annotations"
           icon="annotations"
           :active="rightPanel === 'annotations'"
@@ -1283,13 +1306,15 @@ onBeforeUnmount(() => {
           :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
           :aria-label="
-            rightPanel === 'contents'
-              ? 'PDF contents panel'
-              : rightPanel === 'bookmarks'
-                ? 'PDF bookmarks panel'
-                : rightPanel === 'annotations'
-                  ? 'PDF annotations panel'
-                  : 'PDF search results panel'
+            rightPanel === 'insights'
+              ? 'PDF reading insights panel'
+              : rightPanel === 'contents'
+                ? 'PDF contents panel'
+                : rightPanel === 'bookmarks'
+                  ? 'PDF bookmarks panel'
+                  : rightPanel === 'annotations'
+                    ? 'PDF annotations panel'
+                    : 'PDF search results panel'
           "
           @keydown.esc.stop.prevent="closeRightPanel"
         >
@@ -1298,20 +1323,34 @@ onBeforeUnmount(() => {
           >
             <h3 class="text-base font-semibold">
               {{
-                rightPanel === 'contents'
-                  ? 'Contents'
-                  : rightPanel === 'search'
-                    ? 'Search'
-                    : rightPanel === 'bookmarks'
-                      ? 'Bookmarks'
-                      : 'Annotations'
+                rightPanel === 'insights'
+                  ? 'Reading insights'
+                  : rightPanel === 'contents'
+                    ? 'Contents'
+                    : rightPanel === 'search'
+                      ? 'Search'
+                      : rightPanel === 'bookmarks'
+                        ? 'Bookmarks'
+                        : 'Annotations'
               }}
             </h3>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
           </div>
 
+          <ReadingInsightsPanel
+            v-if="rightPanel === 'insights'"
+            :summary="statistics.summary.value"
+            :active-ms="statistics.activeMs.value"
+            :idle="statistics.idle.value"
+            :notice="statistics.notice.value"
+            :resetting="statistics.resetting.value"
+            position-label="Page position"
+            :position="statisticsPosition"
+            :reset="statistics.reset"
+            :retry="statistics.retry"
+          />
           <section
-            v-if="rightPanel === 'contents'"
+            v-else-if="rightPanel === 'contents'"
             class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
             aria-labelledby="pdf-contents-title"
           >

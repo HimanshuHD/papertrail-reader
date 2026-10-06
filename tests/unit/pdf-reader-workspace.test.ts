@@ -269,4 +269,21 @@ describe('PDF reader utility workspace', () => {
     expect(wrapper.get('[aria-label="PDF search results panel"]').text()).toContain('Matching text')
     expect(wrapper.emitted('utilityChange')).toContainEqual(['search', 'Matching'])
   })
+  it('opens reading insights as a separate utility panel and restores its trigger focus', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const button = wrapper.get('button[aria-label="Reading insights"]')
+    await button.trigger('click')
+    expect(wrapper.get('[aria-label="PDF reading insights panel"]').text()).toContain(
+      'Active reading time',
+    )
+    expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
+    await wrapper
+      .get('[aria-label="PDF reading insights panel"]')
+      .trigger('keydown', { key: 'Escape' })
+    await flushPromises()
+    expect(wrapper.find('[aria-label="PDF reading insights panel"]').exists()).toBe(false)
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Reading insights')
+  })
 })
