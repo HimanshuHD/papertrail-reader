@@ -10,6 +10,8 @@ import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
 import AnnotationsPanel from './AnnotationsPanel.vue'
+import HighlightSelectionToolbar from './HighlightSelectionToolbar.vue'
+import { selectionAnchor, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
 import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
@@ -75,6 +77,8 @@ const persistenceNotice = continuity.notice
 const bookmarks = usePdfBookmarks(continuity.documentId)
 const highlights = usePdfHighlights(continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+const selectionPosition = shallowRef<SelectionAnchor | null>(null)
+const annotationsPanel = ref<InstanceType<typeof AnnotationsPanel> | null>(null)
 let selectingHighlight = false
 const selectedHighlight = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
@@ -131,7 +135,10 @@ function captureSelection() {
   }
   const next = capturePdfHighlight(viewport.value, selection)
   pendingHighlight.value = next ?? null
-  if (next) selectedHighlight.value = ''
+  if (next) {
+    selectedHighlight.value = ''
+    selectionPosition.value = selectionAnchor(selection)
+  }
 }
 async function saveHighlight() {
   const next = pendingHighlight.value
@@ -141,6 +148,7 @@ async function saveHighlight() {
     selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
     pendingHighlight.value = null
     document.getSelection()?.removeAllRanges()
+    return selectedHighlight.value
   }
 }
 function activateHighlight(id: string) {
@@ -178,6 +186,11 @@ function revealSelectedHighlight() {
     saveReadingPoint()
   }
 }
+async function openHighlight(id: string) {
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+}
 async function chooseHighlight(id: string) {
   pendingHighlightNavigation = null
   const annotation = activateHighlight(id)
@@ -202,14 +215,16 @@ watch(highlights.highlights, (items) => {
   if (selected) highlightColor.value = selected.color
   else selectedHighlight.value = ''
 })
-async function recolorHighlight() {
-  if (selectedHighlight.value)
-    await highlights.recolor(selectedHighlight.value, highlightColor.value)
+async function createHighlight(color?: AnnotationColor) {
+  if (color) highlightColor.value = color
+  await saveHighlight()
 }
-async function deleteHighlight() {
-  const id = selectedHighlight.value,
-    sequence = openSequence
-  if (id && (await highlights.remove(id)) && sequence === openSequence) selectedHighlight.value = ''
+async function addSelectionNote() {
+  const id = await saveHighlight()
+  if (!id) return
+  rightPanel.value = 'annotations'
+  await nextTick()
+  annotationsPanel.value?.editNote(id)
 }
 function highlightResolution(id: string, resolved: boolean, page: number) {
   resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: !resolved }
@@ -360,6 +375,7 @@ function measureViewport() {
 }
 
 function scheduleViewportMeasure() {
+  pendingHighlight.value = null
   cancelAnimationFrame(resizeFrame)
   resizeFrame = requestAnimationFrame(measureViewport)
 }
@@ -494,6 +510,7 @@ function chooseMostVisiblePage() {
 }
 
 function handleViewerScroll() {
+  pendingHighlight.value = null
   cancelAnimationFrame(scrollFrame)
   scrollFrame = requestAnimationFrame(() => {
     chooseMostVisiblePage()
@@ -1153,80 +1170,22 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </header>
-    <div
-      v-if="phase === 'ready'"
-      class="highlight-bar flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2"
-      aria-label="PDF highlights"
+    <HighlightSelectionToolbar
+      v-if="pendingHighlight && selectionPosition && phase === 'ready'"
+      format="PDF"
+      :anchor="selectionPosition"
+      :disabled="!highlights.handle.value || highlights.busy.value"
+      @highlight="createHighlight"
+      @note="addSelectionNote"
+    />
+    <p
+      v-if="highlights.notice.value && !highlights.handle.value"
+      role="status"
+      class="px-4 py-2 text-xs text-muted"
     >
-      <button
-        type="button"
-        class="highlight-action"
-        :disabled="!pendingHighlight || !highlights.handle.value || highlights.busy.value"
-        @click="saveHighlight"
-      >
-        Highlight selection
-      </button>
-      <label class="sr-only" for="pdf-highlight-color">Highlight color</label>
-      <select
-        id="pdf-highlight-color"
-        v-model="highlightColor"
-        class="highlight-input"
-        :disabled="highlights.busy.value || !highlights.handle.value"
-        @change="recolorHighlight"
-      >
-        <option value="yellow">Yellow</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="pink">Pink</option>
-      </select>
-      <label class="sr-only" for="pdf-highlight-list">Saved highlights</label>
-      <select
-        id="pdf-highlight-list"
-        class="highlight-input max-w-60"
-        :value="selectedHighlight"
-        :disabled="highlights.busy.value"
-        @change="chooseHighlight(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">Highlights ({{ highlightList.length }})</option>
-        <option v-for="h in highlightList" :key="h.id" :value="h.id">
-          {{
-            h.selector.format === 'PDF'
-              ? `Page ${h.selector.segments[0]?.page} · ${h.selector.segments[0]?.text.exact.slice(0, 45)}`
-              : ''
-          }}{{
-            Object.entries(resolutionFailures).some(
-              ([key, failed]) => failed && key.startsWith(`${h.id}:`),
-            )
-              ? ' · Unresolved'
-              : ''
-          }}
-        </option>
-      </select>
-      <button
-        type="button"
-        class="highlight-action"
-        :disabled="!selectedHighlight || highlights.busy.value || !highlights.handle.value"
-        @click="deleteHighlight"
-      >
-        Delete highlight
-      </button>
-      <button
-        v-if="highlights.notice.value && !highlights.handle.value"
-        type="button"
-        class="highlight-action"
-        @click="((pendingHighlight = null), highlights.reload())"
-      >
-        Retry highlights
-      </button>
-      <span class="text-xs text-muted" role="status">{{
-        highlights.loading.value
-          ? 'Loading highlights…'
-          : highlights.notice.value ||
-            (pendingHighlight
-              ? 'Text selected.'
-              : 'Select PDF text to highlight. Image-only pages cannot be highlighted.')
-      }}</span>
-    </div>
+      {{ highlights.notice.value }}
+      <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
+    </p>
 
     <div class="pdf-body relative flex min-h-0 flex-1">
       <section
@@ -1284,7 +1243,7 @@ onBeforeUnmount(() => {
             :selection-request="
               selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
             "
-            @highlight-selected="activateHighlight"
+            @highlight-selected="openHighlight"
             @highlight-resolution="highlightResolution"
             @pointerup="captureSelection"
             @visibility="handleVisibility"
@@ -1320,6 +1279,7 @@ onBeforeUnmount(() => {
             class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
           >
             <div
+              v-if="rightPanel !== 'annotations'"
               class="flex min-w-0 flex-wrap items-center gap-1"
               aria-label="PDF utility panel mode"
             >
@@ -1350,12 +1310,13 @@ onBeforeUnmount(() => {
               <button
                 type="button"
                 class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
-                :aria-pressed="rightPanel === 'annotations'"
+                :aria-pressed="false"
                 @click="rightPanel = 'annotations'"
               >
                 Annotations
               </button>
             </div>
+            <h3 v-if="rightPanel === 'annotations'" class="text-base font-semibold">Annotations</h3>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
           </div>
 
@@ -1396,6 +1357,7 @@ onBeforeUnmount(() => {
 
           <AnnotationsPanel
             v-else-if="rightPanel === 'annotations'"
+            ref="annotationsPanel"
             :key="continuity.fingerprint.value ?? document.id"
             format="PDF"
             :annotations="highlightList"

@@ -42,7 +42,7 @@ const records: Annotation[] = [
 ]
 const wrappers: ReturnType<typeof mount>[] = []
 afterEach(() => wrappers.splice(0).forEach((wrapper) => wrapper.unmount()))
-function panel() {
+async function panel() {
   const saveNote = vi.fn(async () => true)
   const recolor = vi.fn(async () => true)
   const remove = vi.fn(async () => true)
@@ -62,21 +62,23 @@ function panel() {
       remove,
     },
   })
+  wrapper.vm.editNote('first')
+  await flushPromises()
   wrappers.push(wrapper)
   return { wrapper, saveNote, recolor, remove }
 }
 it('renders notes safely, labels unresolved anchors and delegates navigation and color changes', async () => {
-  const { wrapper, recolor } = panel()
+  const { wrapper, recolor } = await panel()
   expect(wrapper.text()).toContain('<img src=x onerror=alert(1)>')
   expect(wrapper.find('img').exists()).toBe(false)
   expect(wrapper.text()).toContain('Unresolved')
   await wrapper.get('[data-annotation-id="first"]').trigger('click')
   expect(wrapper.emitted('navigate')).toEqual([['first']])
-  await wrapper.get('#epub-annotations-edit-color').setValue('green')
+  await wrapper.get('#epub-annotations-color-first').setValue('green')
   expect(recolor).toHaveBeenCalledWith('first', 'green')
 })
 it('combines note/quote/location search with color and notes-only filters', async () => {
-  const { wrapper } = panel()
+  const { wrapper } = await panel()
   await wrapper.get('#epub-annotations-filter').setValue('plain text')
   expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(1)
   await wrapper.get('#epub-annotations-color-filter').setValue('blue')
@@ -87,7 +89,7 @@ it('combines note/quote/location search with color and notes-only filters', asyn
   expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(0)
 })
 it('retains failed drafts, enforces the note bound and restores list focus on cancel', async () => {
-  const { wrapper, saveNote } = panel()
+  const { wrapper, saveNote } = await panel()
   saveNote.mockResolvedValue(false)
   await wrapper.get('textarea').setValue('Unsaved local draft')
   await wrapper.get('form').trigger('submit')
@@ -107,7 +109,7 @@ it('retains failed drafts, enforces the note bound and restores list focus on ca
   expect(document.activeElement?.getAttribute('data-annotation-id')).toBe('first')
 })
 it('clears only the note or explicitly deletes its highlight, and locks failed storage until retry', async () => {
-  const { wrapper, saveNote, remove } = panel()
+  const { wrapper, saveNote, remove } = await panel()
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete note')!
@@ -129,7 +131,7 @@ it('clears only the note or explicitly deletes its highlight, and locks failed s
   expect(wrapper.emitted('retry')).toEqual([[]])
 })
 it('does not replace a new selection draft after an earlier save completes', async () => {
-  const { wrapper, saveNote } = panel()
+  const { wrapper, saveNote } = await panel()
   let finish!: (value: boolean) => void
   saveNote.mockReturnValueOnce(
     new Promise((resolve) => {
@@ -145,7 +147,7 @@ it('does not replace a new selection draft after an earlier save completes', asy
   expect(wrapper.get('textarea').element).toHaveProperty('value', 'Second selection draft')
 })
 it('preserves a dirty draft on color refresh and shows a useful empty state', async () => {
-  const { wrapper } = panel()
+  const { wrapper } = await panel()
   await wrapper.get('textarea').setValue('Unsaved note')
   await wrapper.setProps({ annotations: [{ ...records[0]!, color: 'green' }, records[1]!] })
   expect(wrapper.get('textarea').element).toHaveProperty('value', 'Unsaved note')

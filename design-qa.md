@@ -36,3 +36,15 @@ First combined comparison found no P0/P1/P2 issue, so no visual fix iteration wa
 Follow-up polish: none required for the scoped feedback.
 
 final result: passed
+
+## Annotation option 1 — #156
+
+Visual target: selected generated option 1, contextual selection toolbar and right Annotations drawer. Implementation uses the existing semantic light/dark tokens and licensed icon system; no raster assets are needed for these UI controls. Selection toolbar, top toggle, colored markers, readable serif excerpts, inline notes and overflow actions are implemented for PDF and EPUB.
+
+final result: blocked
+
+Browser capture and same-viewport visual comparison are deferred to the owner preview and #145/#28 reviewed release gate, following the owner's instruction to run Browser E2E at release. Unit/type/build checks are not visual certification. Verify both themes, toolbar placement, both document formats, narrow screens, selection legibility and drawer transitions before visual acceptance.
+
+### Design standard for future features
+
+Design the primary workflow before implementation. Reuse the reader utility bar, drawer, spacing, semantic colors, typography and icon system. Show visual options for substantial new interfaces, implement the selected reference, and cover loading, error, empty, hover, focus and responsive states. Compare rendered screenshots with the selected design at the agreed browser gate.

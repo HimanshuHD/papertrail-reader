@@ -38,6 +38,7 @@ vi.mock('../../src/composables/usePdfHighlights', () => ({
     add: mocks.add,
     recolor: mocks.recolor,
     remove: mocks.remove,
+    saveNote: vi.fn(async () => true),
     reload: vi.fn(),
   }),
 }))
@@ -62,7 +63,7 @@ afterEach(() => {
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
-it('exposes keyboard reachable highlight/color/delete controls and keeps mutations in the toolbar', async () => {
+it('keeps selection creation safe during a drag and opens the note editor after saving', async () => {
   annotations = shallowRef([])
   mocks.open.mockResolvedValue({
     totalPages: 1,
@@ -108,7 +109,7 @@ it('exposes keyboard reachable highlight/color/delete controls and keeps mutatio
   } as DOMRect)
   Object.defineProperty(Range.prototype, 'getClientRects', {
     configurable: true,
-    value: () => [{ left: 10, top: 10, right: 30, bottom: 30 }],
+    value: () => [{ left: 10, top: 10, right: 30, bottom: 30, width: 20, height: 20 }],
   })
   const range = document.createRange()
   const text = wrapper.get('.textLayer span').element.firstChild!
@@ -117,12 +118,12 @@ it('exposes keyboard reachable highlight/color/delete controls and keeps mutatio
   document.getSelection()!.addRange(range)
   document.dispatchEvent(new Event('selectionchange'))
   await wrapper.vm.$nextTick()
-  const button = wrapper.findAll('button').find((b) => b.text() === 'Highlight selection')!
+  let button = wrapper.get<HTMLButtonElement>('button[aria-label="Highlight selection"]')
   expect(button.attributes('disabled')).toBeUndefined()
   button.element.focus()
   await wrapper.get('.textLayer').trigger('pointerdown')
   await wrapper.vm.$nextTick()
-  expect(button.attributes('disabled')).toBeDefined()
+  expect(wrapper.find('button[aria-label="Highlight selection"]').exists()).toBe(false)
   const freshRange = document.createRange()
   freshRange.selectNodeContents(text)
   document.getSelection()!.removeAllRanges()
@@ -131,25 +132,31 @@ it('exposes keyboard reachable highlight/color/delete controls and keeps mutatio
   await wrapper.vm.$nextTick()
   document.dispatchEvent(new Event('selectionchange'))
   await wrapper.vm.$nextTick()
-  expect(button.attributes('disabled')).toBeDefined()
+  expect(wrapper.find('button[aria-label="Highlight selection"]').exists()).toBe(false)
   await wrapper.get('.textLayer').trigger('pointerup')
+  button = wrapper.get<HTMLButtonElement>('button[aria-label="Highlight selection"]')
   expect(button.attributes('disabled')).toBeUndefined()
   mocks.add.mockImplementation(async () => {
     annotations.value = [annotation]
     return true
   })
-  await button.trigger('click')
+  await wrapper
+    .findAll('button')
+    .find((item) => item.text() === 'Add note')!
+    .trigger('click')
   await flushPromises()
   expect(mocks.add).toHaveBeenCalledWith(expect.objectContaining({ format: 'PDF' }), 'yellow')
-  await wrapper.get('#pdf-highlight-color').setValue('pink')
+  expect(wrapper.find('#pdf-annotations-note').exists()).toBe(true)
+  expect(document.activeElement?.id).toBe('pdf-annotations-note')
+  await wrapper.get('#pdf-annotations-color-one').setValue('pink')
   await flushPromises()
   expect(mocks.recolor).toHaveBeenCalledWith('one', 'pink')
-  const remove = wrapper.findAll('button').find((b) => b.text() === 'Delete highlight')!
+  const remove = wrapper.findAll('button').find((b) => b.text() === 'Delete highlight and note')!
   mocks.remove.mockResolvedValue(true)
   await remove.trigger('click')
   await flushPromises()
   expect(mocks.remove).toHaveBeenCalledWith('one')
-  expect(wrapper.get('#pdf-highlight-list').element).toBeInstanceOf(HTMLSelectElement)
+  expect(wrapper.find('#pdf-highlight-list').exists()).toBe(false)
 })
 it('rebuilds saved overlays after zoom and avoids painting a mismatched text anchor', async () => {
   vi.stubGlobal('IntersectionObserver', undefined)

@@ -105,7 +105,8 @@ async function reader(initialPanel?: 'annotations') {
 }
 it('waits for the selected PDF page text layer, then aligns the exact text with top padding', async () => {
   const { wrapper, pane } = await reader()
-  await wrapper.get('#pdf-highlight-list').setValue('saved')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-annotation-id="saved"]').trigger('click')
   await flushPromises()
   expect(pane.scrollTop).toBe(100)
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
@@ -117,7 +118,8 @@ it('waits for the selected PDF page text layer, then aligns the exact text with 
 })
 it('does not apply a late highlight jump after a different page navigation', async () => {
   const { wrapper, pane } = await reader()
-  await wrapper.get('#pdf-highlight-list').setValue('saved')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-annotation-id="saved"]').trigger('click')
   await flushPromises()
   await wrapper.get('input[aria-label="Current page"]').setValue('3')
   await flushPromises()
@@ -135,6 +137,8 @@ it('opens the shared PDF annotation panel and returns focus on Escape', async ()
   expect(wrapper.emitted('utilityChange')).toContainEqual(['annotations', ''])
   expect(wrapper.get('[aria-label="PDF annotations panel"]').text()).toContain('A saved PDF note')
   await wrapper.get('[data-annotation-id="saved"]').trigger('click')
+  await flushPromises()
+  wrapper.findComponent({ name: 'AnnotationsPanel' }).vm.editNote('saved')
   await flushPromises()
   expect(wrapper.get('#pdf-annotations-note').element).toHaveProperty('value', 'A saved PDF note')
   await wrapper.get('[aria-label="PDF annotations panel"]').trigger('keydown', { key: 'Escape' })

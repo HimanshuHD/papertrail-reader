@@ -79,3 +79,7 @@ The shared coordinator commits notes through the same generation-scoped mutation
 Selecting an annotation reuses verified PDF/EPUB highlight navigation and the 24px reading-pane inset. The editor receives focus after navigation settles, scrolling only its own utility panel. Closing returns focus to the Annotations opener. PDF's workspace schema now recognizes the Annotations utility mode and reports restored state when its reader is ready; previous modes remain valid. Known unresolved anchors stay visible/editable rather than being painted on unrelated text.
 
 See [panel and notes app verification](../testing/annotation-panel-143.md). Native browser/IndexedDB acceptance remains #145/#28. Reading statistics remain #144.
+
+## Annotation visual refinement — #156
+
+Child of #143, included in PR #155. Selected option 1 replaces the persistent PDF/EPUB highlights row with a selection-anchored toolbar (four pastel color saves, highlight action and Add note). Native iframe coordinates are mapped into the outer viewport and clamped for narrow screens. Scroll/resize dismisses stale selection controls. Add note saves the owned highlight before opening its editor. The existing Annotations utility icon toggles a matching drawer: slim colored markers, serif excerpts, inline plain-text notes, per-entry menus and compact filters. Existing storage limits/retry and verified-range navigation remain unchanged. Owner visual verification and reviewed release acceptance #145/#28 remain pending.

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Annotation, AnnotationColor } from '../../services/annotation-storage'
+import UiIcon from '../UiIcon.vue'
 import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 
 const props = defineProps<{
@@ -25,6 +26,7 @@ const notesOnly = ref(false)
 const noteInput = ref<HTMLTextAreaElement | null>(null)
 let pendingEditorFocus: string | null = null
 const draft = ref('')
+const editing = ref(false)
 const prefix = computed(() => props.format.toLowerCase() + '-annotations')
 const selected = computed(() => props.annotations.find((item) => item.id === props.selectedId))
 const colors: Record<AnnotationColor, string> = {
@@ -78,10 +80,18 @@ async function focusEditor() {
   noteInput.value.focus({ preventScroll: true })
 }
 function selectAnnotation(id: string) {
-  pendingEditorFocus = id
+  pendingEditorFocus = null
   emit('navigate', id)
   void focusEditor()
 }
+function editNote(id: string) {
+  editing.value = true
+  pendingEditorFocus = id
+  if (props.selectedId !== id) emit('navigate', id)
+  else draft.value = selected.value?.note ?? ''
+  void focusEditor()
+}
+defineExpose({ editNote })
 watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
 async function focusList(id?: string) {
   await nextTick()
@@ -115,12 +125,10 @@ function cancelEdit() {
 <template>
   <section
     ref="root"
-    class="annotation-panel min-h-0 flex-1 overflow-auto overscroll-contain p-3"
+    class="annotation-panel min-h-0 flex-1 overflow-auto overscroll-contain p-5"
     :aria-labelledby="`${prefix}-title`"
   >
-    <h3 :id="`${prefix}-title`" class="mb-3 text-sm font-semibold">
-      Annotations ({{ annotations.length }})
-    </h3>
+    <h3 :id="`${prefix}-title`" class="sr-only">Annotations ({{ annotations.length }})</h3>
     <p v-if="loading" role="status" class="mb-3 text-sm text-muted">Loading annotations…</p>
     <p v-if="notice" role="status" aria-live="polite" class="mb-3 text-sm text-muted">
       {{ notice }}
@@ -135,7 +143,7 @@ function cancelEdit() {
       Retry annotations
     </button>
     <div class="mb-4 space-y-2">
-      <label :for="`${prefix}-filter`" class="block text-xs font-medium">Find annotations</label>
+      <label :for="`${prefix}-filter`" class="sr-only">Find annotations</label>
       <input
         :id="`${prefix}-filter`"
         ref="filterInput"
@@ -145,15 +153,20 @@ function cancelEdit() {
         placeholder="Search highlights and notes"
         class="annotation-input"
       />
-      <label :for="`${prefix}-color-filter`" class="sr-only">Filter by highlight color</label>
-      <select :id="`${prefix}-color-filter`" v-model="colorFilter" class="annotation-input">
-        <option value="">All colors</option>
-        <option v-for="(label, color) in colors" :key="color" :value="color">{{ label }}</option>
-      </select>
-      <label class="flex items-center gap-2 text-xs">
-        <input v-model="notesOnly" type="checkbox" />
-        With notes only
-      </label>
+      <details class="annotation-filters text-xs text-muted">
+        <summary class="cursor-pointer py-1">
+          Filters<span v-if="colorFilter || notesOnly"> · active</span>
+        </summary>
+        <label :for="`${prefix}-color-filter`" class="sr-only">Filter by highlight color</label>
+        <select :id="`${prefix}-color-filter`" v-model="colorFilter" class="annotation-input">
+          <option value="">All colors</option>
+          <option v-for="(label, color) in colors" :key="color" :value="color">{{ label }}</option>
+        </select>
+        <label class="flex items-center gap-2 text-xs">
+          <input v-model="notesOnly" type="checkbox" />
+          With notes only
+        </label>
+      </details>
     </div>
     <p v-if="!loading && !annotations.length" class="text-sm text-muted">
       Select text in the reader and save a highlight to add your first note.
@@ -161,32 +174,81 @@ function cancelEdit() {
     <p v-else-if="!loading && !filtered.length" class="text-sm text-muted">
       No annotations match these filters.
     </p>
-    <ul class="space-y-2" aria-label="Saved annotations">
-      <li v-for="item in filtered" :key="item.id">
-        <button
-          type="button"
-          :data-annotation-id="item.id"
-          :aria-pressed="selectedId === item.id"
-          :aria-label="`Go to annotation: ${location(item)} — ${quote(item).slice(0, 80)}`"
-          :disabled="busy || loading"
-          class="annotation-entry w-full rounded-lg border border-line p-3 text-left"
-          :class="{ 'bg-canvas': selectedId === item.id }"
-          @click="selectAnnotation(item.id)"
-        >
-          <span class="mb-1 flex flex-wrap gap-2 text-xs text-muted">
-            <span>{{ location(item) }}</span>
-            <span>{{ colors[item.color] }}</span>
-            <span v-if="unresolved[item.id]" class="font-semibold">Unresolved</span>
-          </span>
-          <span class="block text-sm leading-relaxed">{{ quote(item).slice(0, 180) }}</span>
-          <span v-if="item.note" class="mt-2 block whitespace-pre-wrap text-xs text-muted">{{
-            item.note.slice(0, 160)
-          }}</span>
-        </button>
+    <ul aria-label="Saved annotations">
+      <li
+        v-for="item in filtered"
+        :key="item.id"
+        class="annotation-row"
+        :class="{ 'annotation-selected': selectedId === item.id }"
+      >
+        <span
+          class="annotation-marker"
+          :class="`marker-${item.color}`"
+          :aria-label="colors[item.color]"
+        />
+        <div class="min-w-0 flex-1">
+          <button
+            type="button"
+            :data-annotation-id="item.id"
+            :aria-pressed="selectedId === item.id"
+            :aria-label="`Go to annotation: ${location(item)} — ${quote(item).slice(0, 80)}`"
+            :disabled="busy || loading"
+            class="annotation-entry w-full text-left"
+            @click="selectAnnotation(item.id)"
+          >
+            <span class="mb-2 block text-xs text-muted"
+              >{{ location(item)
+              }}<span v-if="unresolved[item.id]" class="ml-2 font-semibold">Unresolved</span></span
+            >
+            <span class="annotation-quote block">“{{ quote(item).slice(0, 240) }}”</span>
+            <span v-if="item.note" class="annotation-note"
+              ><UiIcon name="annotations" /><span class="whitespace-pre-wrap">{{
+                item.note.slice(0, 240)
+              }}</span></span
+            >
+          </button>
+          <details class="annotation-menu">
+            <summary :aria-label="`Actions for ${location(item)}`"><UiIcon name="more" /></summary>
+            <div class="annotation-menu-content">
+              <button
+                type="button"
+                class="annotation-button w-full text-left"
+                :disabled="busy || loading"
+                @click="editNote(item.id)"
+              >
+                {{ item.note ? 'Edit note' : 'Add note' }}
+              </button>
+              <label :for="`${prefix}-color-${item.id}`" class="block px-2 py-1 text-xs"
+                >Highlight color</label
+              >
+              <select
+                :id="`${prefix}-color-${item.id}`"
+                :value="item.color"
+                :disabled="!available || busy || loading"
+                class="annotation-input"
+                @change="
+                  recolor(item.id, ($event.target as HTMLSelectElement).value as AnnotationColor)
+                "
+              >
+                <option v-for="(label, color) in colors" :key="color" :value="color">
+                  {{ label }}
+                </option>
+              </select>
+              <button
+                type="button"
+                class="annotation-button mt-2 w-full text-left"
+                :disabled="!available || busy || loading"
+                @click="remove(item.id)"
+              >
+                Delete highlight and note
+              </button>
+            </div>
+          </details>
+        </div>
       </li>
     </ul>
     <form
-      v-if="selected"
+      v-if="selected && editing"
       class="mt-4 space-y-3 border-t border-line pt-4"
       @submit.prevent="submitNote"
     >
@@ -267,6 +329,80 @@ function cancelEdit() {
   border-radius: 0.5rem;
   padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
+}
+.annotation-row {
+  position: relative;
+  display: flex;
+  gap: 16px;
+  padding: 22px 26px 24px 0;
+  border-bottom: 1px solid var(--pt-line);
+}
+.annotation-marker {
+  flex: 0 0 7px;
+  height: 42px;
+  border-radius: 4px;
+  margin-top: 2px;
+}
+.marker-yellow {
+  background: #ffe58a;
+}
+.marker-green {
+  background: #a9dfbf;
+}
+.marker-blue {
+  background: #a4d9f5;
+}
+.marker-pink {
+  background: #efb2d0;
+}
+.annotation-quote {
+  font-family: Georgia, serif;
+  font-size: 16px;
+  line-height: 1.65;
+}
+.annotation-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-top: 18px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.annotation-note svg {
+  flex-shrink: 0;
+}
+.annotation-menu {
+  position: absolute;
+  right: 0;
+  top: 20px;
+}
+.annotation-menu summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+.annotation-menu summary::-webkit-details-marker {
+  display: none;
+}
+.annotation-menu-content {
+  position: absolute;
+  z-index: 10;
+  right: 0;
+  top: 32px;
+  width: 210px;
+  padding: 10px;
+  border: 1px solid var(--pt-line);
+  border-radius: 10px;
+  background: var(--pt-panel);
+  box-shadow: 0 6px 16px #0002;
+}
+.annotation-entry:hover .annotation-quote {
+  color: var(--pt-brand);
+}
+.annotation-selected .annotation-marker {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: 3px;
 }
 .annotation-panel {
   overflow-wrap: anywhere;
