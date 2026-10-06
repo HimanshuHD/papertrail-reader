@@ -28,12 +28,12 @@ function activate() {
     @click.stop="activate"
   >
     <UiIcon name="note" />
+    <FloatingPopover v-if="preview" :anchor="trigger" @close="preview = false">
+      <p :id="tooltipId" role="tooltip" class="reader-note-preview">
+        {{ note.slice(0, 240) }}{{ note.length > 240 ? '…' : '' }}
+      </p>
+    </FloatingPopover>
   </button>
-  <FloatingPopover v-if="preview" :anchor="trigger" @close="preview = false">
-    <p :id="tooltipId" role="tooltip" class="reader-note-preview">
-      {{ note.slice(0, 240) }}{{ note.length > 240 ? '…' : '' }}
-    </p>
-  </FloatingPopover>
 </template>
 <style scoped>
 .reader-note-indicator {
@@ -42,8 +42,9 @@ function activate() {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 22px;
-  height: 28px;
+  width: 40px;
+  height: 40px;
+  padding: 8px;
   border-radius: 7px 7px 7px 2px;
   color: var(--pt-brand);
   background: var(--pt-panel);

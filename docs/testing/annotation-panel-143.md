@@ -46,3 +46,7 @@ Verify hovered, pressed, selected/open and keyboard-focused icons/buttons across
 6. Verify narrow/wide layouts, both themes, native fullscreen, keyboard focus and reduced motion. Annotation/bookmark list items retain their list styling; controls show the 2px bottom accent without movement.
 
 Native browser execution remains at #145/#28; local tests do not certify viewport appearance.
+
+## #158 owner-observation follow-up
+
+Verify reader note markers align with the highlight's original vertical location, inside the document's right edge with 40px padded buttons. Marker positioning attributes must reach the button even while its preview is open. Check stronger popover edges/shadows in both themes, real 2px active/hover control bottom borders, 14px/1.45 annotation excerpts, color-only Filters hover and library row hover without outlines (selected documents retain their border). Successful saves appear in toasts without an extra message above annotation search; loading/storage failures remain visible.

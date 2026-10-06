@@ -157,7 +157,7 @@ function cancelEdit() {
   >
     <h3 :id="`${prefix}-title`" class="sr-only">Annotations ({{ annotations.length }})</h3>
     <p v-if="loading" role="status" class="mb-3 text-sm text-muted">Loading annotations…</p>
-    <p v-if="notice" role="status" aria-live="polite" class="mb-3 text-sm text-muted">
+    <p v-if="notice && !available" role="status" aria-live="polite" class="mb-3 text-sm text-muted">
       {{ notice }}
     </p>
     <button
@@ -181,7 +181,7 @@ function cancelEdit() {
         class="annotation-input"
       />
       <details class="annotation-filters text-xs text-muted">
-        <summary class="cursor-pointer py-1">
+        <summary class="pt-text-action cursor-pointer py-1">
           Filters<span v-if="colorFilter || notesOnly"> · active</span>
         </summary>
         <label :for="`${prefix}-color-filter`" class="sr-only">Filter by highlight color</label>
@@ -425,8 +425,8 @@ function cancelEdit() {
 }
 .annotation-quote {
   font-family: Georgia, serif;
-  font-size: 16px;
-  line-height: 1.65;
+  font-size: 14px;
+  line-height: 1.45;
 }
 .annotation-note {
   display: flex;

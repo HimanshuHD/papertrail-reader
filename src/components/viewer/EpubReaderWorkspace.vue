@@ -97,12 +97,12 @@ function updateNoteIndicators() {
           outer.top + rect.top < bounds.bottom,
       )
     if (!rect) continue
-    // EPUB body reserves 24px of padding; use that margin, outside the text column.
+    // EPUB body reserves 24px of padding; use that margin, inside the document edge.
     noteIndicators.value.push({
       id: item.id,
       note: item.note,
-      left: Math.max(0, Math.min(outer.right - bounds.left - 23, bounds.width - 24)),
-      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 28)),
+      left: Math.max(0, Math.min(outer.right - bounds.left - 48, bounds.width - 48)),
+      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 40)),
     })
   }
 }

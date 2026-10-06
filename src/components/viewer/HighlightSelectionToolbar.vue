@@ -193,13 +193,13 @@ function preserveSelection(event: PointerEvent) {
   max-width: calc(100vw - 16px);
   max-height: calc(100dvh - 16px);
   overflow-y: auto;
-  max-height: calc(100dvh - 16px);
-  overflow-y: auto;
-  border: 1px solid var(--pt-line);
+  border: 1px solid color-mix(in srgb, var(--pt-ink) 35%, var(--pt-line));
   border-radius: 16px;
   background: var(--pt-panel);
   color: var(--pt-ink);
-  box-shadow: 0 8px 24px #0003;
+  box-shadow:
+    0 18px 48px #0006,
+    0 4px 12px #0003;
   transition:
     top 180ms ease,
     width 180ms ease;

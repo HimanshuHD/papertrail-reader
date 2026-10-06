@@ -103,13 +103,14 @@ watch(
   overflow-y: auto;
   overscroll-behavior: contain;
   padding: 16px;
-  border: 1px solid var(--pt-line);
+  border: 1px solid color-mix(in srgb, var(--pt-ink) 35%, var(--pt-line));
   border-radius: 14px;
   background: var(--pt-panel);
   color: var(--pt-ink);
   box-shadow:
-    0 18px 50px #0004,
-    0 4px 12px #0002;
+    0 20px 56px #0007,
+    0 6px 18px #0004,
+    0 0 0 1px var(--pt-line);
 }
 .expanded {
   width: min(380px, calc(100vw - 16px));

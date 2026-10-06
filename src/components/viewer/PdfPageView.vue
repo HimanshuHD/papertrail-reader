@@ -483,7 +483,7 @@ onBeforeUnmount(() => {
         :key="item.id"
         :note="item.note"
         :label="`Open note on page ${pageNumber}: ${item.note.slice(0, 80)}`"
-        :style="{ left: 'calc(100% + 1px)', top: `${item.top * 100}%` }"
+        :style="{ left: 'calc(100% - 48px)', top: `${item.top * 100}%` }"
         @activate="emit('noteSelected', item.id)"
       />
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
