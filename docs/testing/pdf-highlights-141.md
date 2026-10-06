@@ -4,7 +4,6 @@
 
 Owner merged PR #153 as `56e9aba3bc626f28ddc2b74c1667e7d83f68011b`; owner native verification is checked on that PR. #152 is completed and its stale active label removed. Source `c9446ca93d6d4a9b69c3e8eefac397fa065fbfdf` passed Frontend CI 37407335570: 243 unit/component tests, 10 pipeline tests, lint, formatting, types and build. The PR's remaining Browser E2E item is reconciled as a deferred release responsibility under #145/#28, not an executed test. Earlier active #152 and pending-owner checkpoints are superseded. Next increment: #142 EPUB highlights, one fresh branch from current main. #15/milestone 4 remain open for #142–#145.
 
-
 This increment adds a compact PDF highlight bar below the existing controls. Select text, choose Yellow/Green/Blue/Pink, then use **Highlight selection**. Use the saved-highlights selector or click a painted highlight to activate it, change its color or delete it. All controls support keyboard focus; normal modified text-selection keys are preserved.
 
 ## Owner app checks after deployment
