@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
+import { useAnnotationHighlights } from '../../composables/useAnnotationHighlights'
+import { captureEpubHighlight, paintEpubHighlights } from '../../features/epub/highlights'
+import type { AnnotationSelector } from '../../features/annotations/selectors'
+import type { AnnotationColor } from '../../services/annotation-storage'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
 import LoadingState from '../LoadingState.vue'
@@ -30,6 +34,95 @@ const emit = defineEmits<{
 const continuity = useEpubContinuity(captureReading)
 const reader = useEpubReader()
 const bookmarks = useEpubBookmarks(continuity.documentId)
+const highlights = useAnnotationHighlights('EPUB', continuity.fingerprint)
+const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+const selectedHighlight = ref('')
+const highlightColor = ref<AnnotationColor>('yellow')
+const unresolvedHighlights = ref<Record<string, boolean>>({})
+const highlightSupportNotice = ref('')
+const highlightStatus = computed(() =>
+  [highlights.notice.value, highlightSupportNotice.value].filter(Boolean).join(' '),
+)
+let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
+const highlightObservers: MutationObserver[] = []
+let highlightFrame = 0
+function paintHighlights() {
+  const context = reader.session.value?.annotationContext?.()
+  paintedHighlights?.dispose()
+  paintedHighlights = undefined
+  if (loading.value || !context || !continuity.fingerprint.value) return
+  paintedHighlights = paintEpubHighlights(
+    context,
+    continuity.fingerprint.value,
+    highlights.highlights.value,
+  )
+  for (const item of highlights.highlights.value) {
+    if (item.selector.format === 'EPUB' && item.selector.chapter === context.chapter)
+      unresolvedHighlights.value[item.id] = paintedHighlights.unresolved.has(item.id)
+  }
+  highlightSupportNotice.value = paintedHighlights.unsupported
+    ? 'This browser cannot display highlight colors. Saved highlights remain available.'
+    : ''
+}
+function scheduleHighlights() {
+  cancelAnimationFrame(highlightFrame)
+  highlightFrame = requestAnimationFrame(paintHighlights)
+}
+function captureHighlight() {
+  if (loading.value) return
+  const context = reader.session.value?.annotationContext?.()
+  pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
+}
+function clearHighlightSelection(event: PointerEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="EPUB highlights"]'))
+    pendingHighlight.value = null
+}
+async function saveHighlight() {
+  const selector = pendingHighlight.value,
+    owner = openGeneration,
+    sourceDocument = reader.session.value?.annotationContext?.()?.document
+  if (!selector || loading.value) return
+  if (
+    (await highlights.add(selector, highlightColor.value)) &&
+    owner === openGeneration &&
+    sourceDocument === reader.session.value?.annotationContext?.()?.document
+  ) {
+    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
+    pendingHighlight.value = null
+    reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
+  }
+}
+async function chooseHighlight(id: string) {
+  selectedHighlight.value = id
+  pendingHighlight.value = null
+  const item = highlights.highlights.value.find((entry) => entry.id === id)
+  if (!item || item.selector.format !== 'EPUB') return
+  highlightColor.value = item.color
+  if (!reader.session.value?.chapters[item.selector.chapter]) {
+    unresolvedHighlights.value[id] = true
+    return
+  }
+  await reader.go(item.selector.chapter)
+}
+async function recolorHighlight() {
+  if (selectedHighlight.value)
+    await highlights.recolor(selectedHighlight.value, highlightColor.value)
+}
+async function deleteHighlight() {
+  if (await highlights.remove(selectedHighlight.value)) selectedHighlight.value = ''
+}
+watch(
+  continuity.fingerprint,
+  () => {
+    pendingHighlight.value = null
+    selectedHighlight.value = ''
+    unresolvedHighlights.value = {}
+    highlightSupportNotice.value = ''
+  },
+  { flush: 'sync' },
+)
+watch(highlights.highlights, scheduleHighlights)
+
 let openGeneration = 0
 const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
@@ -70,6 +163,7 @@ watch(windowWidth, () => {
 })
 const frameDocuments = new Set<Document>()
 function onFramePointer() {
+  pendingHighlight.value = null
   closeTypography(false)
 }
 function onFrameKey(event: KeyboardEvent) {
@@ -95,11 +189,17 @@ function saveReading() {
   continuity.save()
 }
 function clearFrameListeners() {
+  highlightObservers.splice(0).forEach((observer) => observer.disconnect())
+  cancelAnimationFrame(highlightFrame)
+  paintedHighlights?.dispose()
+  paintedHighlights = undefined
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
   for (const doc of frameDocuments) {
     doc.removeEventListener('pointerdown', onFramePointer, true)
     doc.removeEventListener('keydown', onFrameKey, true)
+    doc.removeEventListener('pointerup', captureHighlight)
+    doc.removeEventListener('keyup', captureHighlight)
   }
   frameDocuments.clear()
 }
@@ -112,14 +212,24 @@ function bindFrameListeners() {
     if (!doc) continue
     doc.addEventListener('pointerdown', onFramePointer, true)
     doc.addEventListener('keydown', onFrameKey, true)
+    doc.addEventListener('pointerup', captureHighlight)
+    doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
+    const observer = new MutationObserver(scheduleHighlights)
+    observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
+    highlightObservers.push(observer)
   }
+  paintHighlights()
 }
 watch(
   () => reader.busy.value || continuity.preparing.value,
   async (busy) => {
     clearTimeout(loaderTimer)
     showLoader.value = false
+    if (busy) {
+      pendingHighlight.value = null
+      clearFrameListeners()
+    }
     if (busy)
       loaderTimer = setTimeout(() => {
         showLoader.value = true
@@ -339,7 +449,12 @@ watch(
 </script>
 
 <template>
-  <section ref="root" class="epub-reader min-w-0 bg-canvas" aria-label="EPUB reader">
+  <section
+    ref="root"
+    class="epub-reader min-w-0 bg-canvas"
+    aria-label="EPUB reader"
+    @pointerdown.capture="clearHighlightSelection"
+  >
     <header
       class="epub-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
     >
@@ -477,6 +592,70 @@ watch(
         </section>
       </Transition>
     </header>
+    <div
+      v-if="reader.session.value"
+      aria-label="EPUB highlights"
+      class="flex flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2 text-xs"
+    >
+      <button
+        class="rounded border border-line px-3 py-2"
+        :disabled="
+          !pendingHighlight || !highlights.handle.value || highlights.busy.value || loading
+        "
+        @click="saveHighlight"
+      >
+        Highlight selection
+      </button>
+      <label for="epub-highlight-color">Color</label>
+      <select
+        id="epub-highlight-color"
+        v-model="highlightColor"
+        class="rounded border border-line bg-panel px-2 py-2"
+        :disabled="highlights.busy.value || loading"
+        @change="recolorHighlight"
+      >
+        <option value="yellow">Yellow</option>
+        <option value="green">Green</option>
+        <option value="blue">Blue</option>
+        <option value="pink">Pink</option>
+      </select>
+      <label for="epub-saved-highlights"
+        >Highlights ({{ highlights.highlights.value.length }})</label
+      >
+      <select
+        id="epub-saved-highlights"
+        :value="selectedHighlight"
+        class="max-w-64 rounded border border-line bg-panel px-2 py-2"
+        :disabled="highlights.busy.value || loading"
+        @change="chooseHighlight(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">Choose highlight</option>
+        <option v-for="item in highlights.highlights.value" :key="item.id" :value="item.id">
+          {{
+            item.selector.format === 'EPUB'
+              ? `Chapter ${item.selector.chapter + 1}: ${item.selector.text.exact.slice(0, 50)}${unresolvedHighlights[item.id] ? ' — Unresolved' : ''}`
+              : ''
+          }}
+        </option>
+      </select>
+      <button
+        class="rounded border border-line px-3 py-2"
+        :disabled="
+          !selectedHighlight || !highlights.handle.value || highlights.busy.value || loading
+        "
+        @click="deleteHighlight"
+      >
+        Delete highlight
+      </button>
+      <button
+        v-if="!highlights.handle.value && !highlights.loading.value"
+        class="rounded border border-line px-3 py-2"
+        @click="highlights.reload"
+      >
+        Retry highlights
+      </button>
+      <span role="status">{{ highlightStatus }}</span>
+    </div>
 
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>

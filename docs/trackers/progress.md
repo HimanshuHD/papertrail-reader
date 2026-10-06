@@ -1,5 +1,9 @@
 # PaperTrail progress
 
+## Active EPUB highlights — #142
+
+#153/#152 reconciliation is complete; owner native verification is recorded separately from deferred release Browser E2E. #142 is in progress on `feat/142-epub-highlights`, from reconciled main `6cc13b3`. It adds fingerprint-scoped selection, pastel colors, deletion, chapter navigation and validated restoration across formatted/text-only views. The adapter paints native text ranges without rewriting chapter markup. Missing or ambiguous anchors remain Unresolved; browsers lacking the CSS Highlight API retain metadata and show a capability notice. See [EPUB highlight verification](../testing/epub-highlights-142.md). Local validation passes: 248 unit/component tests, 10 pipeline tests, lint, formatting, type checks and production build. Native browser acceptance remains #145/#28 at the reviewed release gate. #15/milestone 4 remain open; #143–#145 remain new. Earlier active #152 checkpoints below are superseded.
+
 ## Current checkpoint — #153 merged; EPUB highlights next
 
 Owner merged PR #153 as `56e9aba3bc626f28ddc2b74c1667e7d83f68011b`; owner native verification is checked on that PR. #152 is completed and its stale active label removed. Source `c9446ca93d6d4a9b69c3e8eefac397fa065fbfdf` passed Frontend CI 37407335570: 243 unit/component tests, 10 pipeline tests, lint, formatting, types and build. The PR's remaining Browser E2E item is reconciled as a deferred release responsibility under #145/#28, not an executed test. Earlier active #152 and pending-owner checkpoints are superseded. Next increment: #142 EPUB highlights, one fresh branch from current main. #15/milestone 4 remain open for #142–#145.
