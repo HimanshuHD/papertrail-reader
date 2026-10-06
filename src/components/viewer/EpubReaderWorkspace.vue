@@ -11,6 +11,10 @@ import LoadingState from '../LoadingState.vue'
 import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
 import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
+import AnnotationsPanel from './AnnotationsPanel.vue'
+import NoteIndicator from './NoteIndicator.vue'
+import HighlightSelectionToolbar from './HighlightSelectionToolbar.vue'
+import { selectionAnchor, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
 import { normalizeLocation } from '../../features/epub/location'
 import type { EpubReadingSettings, EpubBookmark } from '../../services/epub-reading-storage'
 import type { EpubSession } from '../../features/epub/epub-session'
@@ -36,13 +40,19 @@ const reader = useEpubReader()
 const bookmarks = useEpubBookmarks(continuity.documentId)
 const highlights = useAnnotationHighlights('EPUB', continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+const selectionPosition = shallowRef<SelectionAnchor | null>(null)
+const annotationsPanel = ref<InstanceType<typeof AnnotationsPanel> | null>(null)
 const selectedHighlight = ref('')
+const toolbarSavedId = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
 const unresolvedHighlights = ref<Record<string, boolean>>({})
 const highlightSupportNotice = ref('')
 const highlightStatus = computed(() =>
   [highlights.notice.value, highlightSupportNotice.value].filter(Boolean).join(' '),
 )
+const noteIndicators = ref<{ id: string; note: string; left: number; top: number }[]>([])
+let noteFrame = 0
+let noteResizeObserver: ResizeObserver | undefined
 let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
 const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
@@ -63,35 +73,123 @@ function paintHighlights() {
   highlightSupportNotice.value = paintedHighlights.unsupported
     ? 'This browser cannot display highlight colors. Saved highlights remain available.'
     : ''
+  scheduleNoteIndicators()
+}
+function updateNoteIndicators() {
+  noteIndicators.value = []
+  const context = reader.session.value?.annotationContext?.()
+  const stage = host.value?.parentElement
+  const frame = host.value?.querySelector('iframe')
+  if (!context || !stage || !frame || loading.value) return
+  const outer = frame.getBoundingClientRect(),
+    bounds = stage.getBoundingClientRect()
+  for (const item of highlights.highlights.value) {
+    if (!item.note.trim()) continue
+    const range = paintedHighlights?.resolvedRanges.get(item.id)
+    const rect =
+      range?.getClientRects &&
+      Array.from(range.getClientRects()).find(
+        (rect) =>
+          rect.width > 0 &&
+          rect.height > 0 &&
+          outer.top + rect.bottom > bounds.top &&
+          outer.top + rect.top < bounds.bottom,
+      )
+    if (!rect) continue
+    // EPUB body reserves 24px of padding; use that margin, outside the text column.
+    noteIndicators.value.push({
+      id: item.id,
+      note: item.note,
+      left: Math.max(0, Math.min(outer.right - bounds.left - 23, bounds.width - 24)),
+      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 28)),
+    })
+  }
+}
+function scheduleNoteIndicators() {
+  cancelAnimationFrame(noteFrame)
+  noteFrame = requestAnimationFrame(updateNoteIndicators)
+}
+async function openNote(id: string) {
+  const owner = openGeneration
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+  if (owner === openGeneration && selectedHighlight.value === id)
+    annotationsPanel.value?.revealAnnotation(id)
 }
 function scheduleHighlights() {
   cancelAnimationFrame(highlightFrame)
   highlightFrame = requestAnimationFrame(paintHighlights)
 }
-function captureHighlight() {
+function captureHighlight(event?: Event) {
   if (loading.value) return
   const context = reader.session.value?.annotationContext?.()
   pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
-  if (pendingHighlight.value) selectedHighlight.value = ''
+  if (pendingHighlight.value && context) {
+    selectedHighlight.value = ''
+    toolbarSavedId.value = ''
+    selectionPosition.value = selectionAnchor(
+      context.document.getSelection(),
+      context.document.defaultView?.frameElement as HTMLIFrameElement | null,
+    )
+  }
+  // CSS Highlights have no DOM wrapper; only activate a saved range on a collapsed click.
+  if (
+    !pendingHighlight.value &&
+    context?.document.getSelection()?.isCollapsed &&
+    event?.type === 'pointerup'
+  ) {
+    const pointer = event as PointerEvent
+    for (const [id, range] of paintedHighlights?.resolvedRanges ?? []) {
+      if (
+        Array.from(range.getClientRects()).some(
+          (rect) =>
+            pointer.clientX >= rect.left &&
+            pointer.clientX <= rect.right &&
+            pointer.clientY >= rect.top &&
+            pointer.clientY <= rect.bottom,
+        )
+      ) {
+        rightPanel.value = 'annotations'
+        void nextTick().then(() => chooseHighlight(id))
+        break
+      }
+    }
+  }
 }
 function clearHighlightSelection(event: PointerEvent) {
-  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="EPUB highlights"]'))
+  if (
+    !(event.target instanceof Element) ||
+    !event.target.closest('[aria-label="EPUB highlights"]')
+  ) {
     pendingHighlight.value = null
+    toolbarSavedId.value = ''
+  }
 }
-async function saveHighlight() {
+async function saveHighlight(note = '', keepOpen = false) {
   const selector = pendingHighlight.value,
     owner = openGeneration,
     sourceDocument = reader.session.value?.annotationContext?.()?.document
   if (!selector || loading.value) return
+  const committedBefore = highlights.lastCreatedId?.value
+  const saved = await highlights.add(selector, highlightColor.value, note)
   if (
-    (await highlights.add(selector, highlightColor.value)) &&
-    owner === openGeneration &&
-    sourceDocument === reader.session.value?.annotationContext?.()?.document
-  ) {
-    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
-    pendingHighlight.value = null
-    reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
+    owner !== openGeneration ||
+    pendingHighlight.value !== selector ||
+    sourceDocument !== reader.session.value?.annotationContext?.()?.document
+  )
+    return
+  if (!saved) {
+    const committed = highlights.lastCreatedId?.value
+    if (committed && committed !== committedBefore) toolbarSavedId.value = committed
+    return
   }
+  selectedHighlight.value =
+    highlights.lastCreatedId?.value || highlights.highlights.value.at(-1)?.id || ''
+  toolbarSavedId.value = keepOpen ? selectedHighlight.value : ''
+  pendingHighlight.value = null
+  reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
+  return selectedHighlight.value
 }
 let highlightNavigation = 0
 async function chooseHighlight(id: string) {
@@ -122,18 +220,30 @@ async function chooseHighlight(id: string) {
   unresolvedHighlights.value[id] = !range || !session?.revealRange?.(range)
   if (!unresolvedHighlights.value[id]) continuity.save()
 }
-async function recolorHighlight() {
-  if (selectedHighlight.value)
-    await highlights.recolor(selectedHighlight.value, highlightColor.value)
+async function createHighlight(color: AnnotationColor, keepOpen = false) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    await highlights.recolor(toolbarSavedId.value, color)
+    return
+  }
+  await saveHighlight('', keepOpen)
 }
-async function deleteHighlight() {
-  if (await highlights.remove(selectedHighlight.value)) selectedHighlight.value = ''
+async function saveSelectionNote(note: string, color: AnnotationColor) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    const id = toolbarSavedId.value
+    if ((await highlights.saveNote(id, note, color)) && toolbarSavedId.value === id) {
+      toolbarSavedId.value = ''
+      pendingHighlight.value = null
+    }
+  } else await saveHighlight(note)
 }
 watch(
   continuity.fingerprint,
   () => {
     pendingHighlight.value = null
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     unresolvedHighlights.value = {}
     highlightSupportNotice.value = ''
   },
@@ -146,7 +256,7 @@ const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
-const rightPanel = ref<'contents' | 'bookmarks' | null>(null)
+const rightPanel = ref<'contents' | 'bookmarks' | 'annotations' | null>(null)
 const typographyOpen = ref(false)
 const popover = ref<HTMLElement | null>(null)
 const lineOptions = [
@@ -170,6 +280,9 @@ const showLoader = ref(false)
 const restoringContentsEntry = ref<string | null>(null)
 let loaderTimer: ReturnType<typeof setTimeout> | undefined
 function updateWindowWidth() {
+  scheduleNoteIndicators()
+  toolbarSavedId.value = ''
+  pendingHighlight.value = null
   windowWidth.value = globalThis.innerWidth
 }
 watch(windowWidth, () => {
@@ -181,6 +294,7 @@ watch(windowWidth, () => {
 })
 const frameDocuments = new Set<Document>()
 function onFramePointer() {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   closeTypography(false)
 }
@@ -204,13 +318,20 @@ function captureReading(): EpubReadingSettings | undefined {
   }
 }
 function saveReading() {
+  scheduleNoteIndicators()
+  toolbarSavedId.value = ''
+  pendingHighlight.value = null
   continuity.save()
 }
 function clearFrameListeners() {
+  noteResizeObserver?.disconnect()
+  if (host.value) noteResizeObserver?.observe(host.value)
   highlightObservers.splice(0).forEach((observer) => observer.disconnect())
   cancelAnimationFrame(highlightFrame)
   paintedHighlights?.dispose()
   paintedHighlights = undefined
+  cancelAnimationFrame(noteFrame)
+  noteIndicators.value = []
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
   for (const doc of frameDocuments) {
@@ -228,6 +349,8 @@ function bindFrameListeners() {
   for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
     const doc = frame.contentDocument
     if (!doc) continue
+    noteResizeObserver?.observe(frame)
+    noteResizeObserver?.observe(doc.body)
     doc.addEventListener('pointerdown', onFramePointer, true)
     doc.addEventListener('keydown', onFrameKey, true)
     doc.addEventListener('pointerup', captureHighlight)
@@ -274,15 +397,21 @@ function closeTypography(focus = true) {
   if (focus) focusAction('Typography')
 }
 function closePanel() {
-  const label = rightPanel.value === 'bookmarks' ? 'Bookmarks' : 'Contents'
+  const label =
+    rightPanel.value === 'annotations'
+      ? 'Annotations'
+      : rightPanel.value === 'bookmarks'
+        ? 'Bookmarks'
+        : 'Contents'
   rightPanel.value = null
   focusAction(label)
 }
-async function togglePanel(panel: 'contents' | 'bookmarks' = 'contents') {
+async function togglePanel(panel: 'contents' | 'bookmarks' | 'annotations' = 'contents') {
   closeTypography(false)
   if (rightPanel.value === panel) return closePanel()
   rightPanel.value = panel
   await nextTick()
+  if (panel === 'annotations') return
   root.value
     ?.querySelector<HTMLButtonElement>('button[aria-label="Close utility panel"]')
     ?.focus({ preventScroll: true })
@@ -310,11 +439,17 @@ function onPointer(event: PointerEvent) {
     closeTypography(false)
 }
 onMounted(() => {
+  if (host.value && typeof ResizeObserver !== 'undefined') {
+    noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
+    noteResizeObserver.observe(host.value)
+  }
   globalThis.addEventListener('keydown', onKey)
   globalThis.addEventListener('pointerdown', onPointer, true)
   globalThis.addEventListener('resize', updateWindowWidth)
 })
 onBeforeUnmount(() => {
+  noteResizeObserver?.disconnect()
+  cancelAnimationFrame(noteFrame)
   ++openGeneration
   globalThis.removeEventListener('keydown', onKey)
   globalThis.removeEventListener('pointerdown', onPointer, true)
@@ -515,6 +650,15 @@ watch(
           @click="toggleTypography"
         />
         <IconButton
+          label="Annotations"
+          icon="annotations"
+          :disabled="unavailable"
+          :active="rightPanel === 'annotations'"
+          :aria-expanded="rightPanel === 'annotations'"
+          aria-controls="epub-utility-panel"
+          @click="togglePanel('annotations')"
+        />
+        <IconButton
           label="Bookmarks"
           icon="bookmark"
           :disabled="unavailable"
@@ -610,70 +754,26 @@ watch(
         </section>
       </Transition>
     </header>
-    <div
-      v-if="reader.session.value"
-      aria-label="EPUB highlights"
-      class="flex flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2 text-xs"
+    <HighlightSelectionToolbar
+      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && !loading"
+      format="EPUB"
+      :anchor="selectionPosition"
+      :disabled="!highlights.handle.value || highlights.busy.value"
+      :saved="!!toolbarSavedId"
+      :notice="highlights.notice.value"
+      :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
+      @highlight="createHighlight"
+      @retry="highlights.reload"
+      @save-note="saveSelectionNote"
+    />
+    <p
+      v-if="highlightStatus && !highlights.handle.value"
+      role="status"
+      class="px-4 py-2 text-xs text-muted"
     >
-      <button
-        class="rounded border border-line px-3 py-2"
-        :disabled="
-          !pendingHighlight || !highlights.handle.value || highlights.busy.value || loading
-        "
-        @click="saveHighlight"
-      >
-        Highlight selection
-      </button>
-      <label for="epub-highlight-color">Color</label>
-      <select
-        id="epub-highlight-color"
-        v-model="highlightColor"
-        class="rounded border border-line bg-panel px-2 py-2"
-        :disabled="highlights.busy.value || loading"
-        @change="recolorHighlight"
-      >
-        <option value="yellow">Yellow</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="pink">Pink</option>
-      </select>
-      <label for="epub-saved-highlights"
-        >Highlights ({{ highlights.highlights.value.length }})</label
-      >
-      <select
-        id="epub-saved-highlights"
-        :value="selectedHighlight"
-        class="max-w-64 rounded border border-line bg-panel px-2 py-2"
-        :disabled="highlights.busy.value || loading"
-        @change="chooseHighlight(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">Choose highlight</option>
-        <option v-for="item in highlights.highlights.value" :key="item.id" :value="item.id">
-          {{
-            item.selector.format === 'EPUB'
-              ? `Chapter ${item.selector.chapter + 1}: ${item.selector.text.exact.slice(0, 50)}${unresolvedHighlights[item.id] ? ' — Unresolved' : ''}`
-              : ''
-          }}
-        </option>
-      </select>
-      <button
-        class="rounded border border-line px-3 py-2"
-        :disabled="
-          !selectedHighlight || !highlights.handle.value || highlights.busy.value || loading
-        "
-        @click="deleteHighlight"
-      >
-        Delete highlight
-      </button>
-      <button
-        v-if="!highlights.handle.value && !highlights.loading.value"
-        class="rounded border border-line px-3 py-2"
-        @click="highlights.reload"
-      >
-        Retry highlights
-      </button>
-      <span role="status">{{ highlightStatus }}</span>
-    </div>
+      {{ highlightStatus }}
+      <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
+    </p>
 
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
@@ -683,6 +783,14 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
+        <NoteIndicator
+          v-for="item in noteIndicators"
+          :key="item.id"
+          :note="item.note"
+          :label="`Open note: ${item.note.slice(0, 80)}`"
+          :style="{ left: `${item.left}px`, top: `${item.top}px` }"
+          @activate="openNote(item.id)"
+        />
         <p
           v-if="continuity.notice.value"
           role="status"
@@ -759,10 +867,17 @@ watch(
           id="epub-utility-panel"
           class="epub-side-panel border-l border-line bg-panel"
           aria-label="EPUB utility panel"
+          @keydown.esc.stop.prevent="closePanel"
         >
           <div class="flex items-center justify-between gap-2 border-b border-line p-3">
             <h3 class="text-sm font-semibold">
-              {{ rightPanel === 'bookmarks' ? 'Bookmarks' : 'Contents' }}
+              {{
+                rightPanel === 'annotations'
+                  ? 'Annotations'
+                  : rightPanel === 'bookmarks'
+                    ? 'Bookmarks'
+                    : 'Contents'
+              }}
             </h3>
             <IconButton label="Close utility panel" icon="close" @click="closePanel" />
           </div>
@@ -784,6 +899,24 @@ watch(
               @select="selectContents"
             />
           </nav>
+          <AnnotationsPanel
+            v-else-if="rightPanel === 'annotations'"
+            ref="annotationsPanel"
+            :key="continuity.fingerprint.value ?? document.id"
+            format="EPUB"
+            :annotations="highlights.highlights.value"
+            :selected-id="selectedHighlight"
+            :unresolved="unresolvedHighlights"
+            :available="!!highlights.handle.value"
+            :busy="highlights.busy.value || unavailable"
+            :loading="highlights.loading.value"
+            :notice="highlightStatus"
+            :save-note="highlights.saveNote"
+            :recolor="highlights.recolor"
+            :remove="highlights.remove"
+            @navigate="chooseHighlight"
+            @retry="highlights.reload"
+          />
           <EpubBookmarksPanel
             v-else
             :bookmarks="bookmarks.bookmarks.value"

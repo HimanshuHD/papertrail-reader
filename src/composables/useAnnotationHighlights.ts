@@ -14,15 +14,19 @@ export function useAnnotationHighlights(
   storage: AnnotationStorage = new IndexedDbAnnotationStorage(),
 ) {
   const highlights = shallowRef<Annotation[]>([])
+  const lastCreatedId = ref('')
   const handle = shallowRef<AnnotationHandle | null>(null)
   const notice = ref(''),
     loading = ref(false),
     busy = ref(false)
   let generation = 0
-  async function load() {
+  async function load(preserve = false) {
     const owner = ++generation
     handle.value = null
-    highlights.value = []
+    if (!preserve) {
+      highlights.value = []
+      lastCreatedId.value = ''
+    }
     notice.value = ''
     busy.value = false
     const digest = fingerprint.value
@@ -36,12 +40,12 @@ export function useAnnotationHighlights(
     } catch {
       if (generation === owner)
         notice.value =
-          'Highlights could not be loaded. You can continue reading; retry to restore them.'
+          'Annotations could not be loaded. You can continue reading; retry to restore them.'
     } finally {
       if (generation === owner) loading.value = false
     }
   }
-  watch(fingerprint, load, { immediate: true, flush: 'sync' })
+  watch(fingerprint, () => load(), { immediate: true, flush: 'sync' })
   onBeforeUnmount(() => {
     generation++
   })
@@ -68,8 +72,8 @@ export function useAnnotationHighlights(
       if (owner === generation) {
         handle.value = null
         notice.value = committed
-          ? 'The change was saved, but highlights could not be refreshed. Retry highlights before editing again.'
-          : 'The highlight change could not be saved. Retry highlights before editing again.'
+          ? 'The change was saved, but annotations could not be refreshed. Retry annotations before editing again.'
+          : 'The annotation change could not be saved. Retry annotations before editing again.'
       }
       return false
     } finally {
@@ -78,13 +82,29 @@ export function useAnnotationHighlights(
   }
   return {
     highlights,
+    lastCreatedId,
     handle,
     notice,
     busy,
     loading,
-    reload: load,
-    add: (selector: AnnotationSelector, color: AnnotationColor) =>
-      mutate((h) => storage.create(h, selector, color), 'Highlight saved.'),
+    reload: () => load(true),
+    add: (selector: AnnotationSelector, color: AnnotationColor, note = '') => {
+      const owner = generation
+      return mutate(
+        async (h) => {
+          lastCreatedId.value = ''
+          const created = await storage.create(h, selector, color, note)
+          if (owner === generation) lastCreatedId.value = created.id
+          return created
+        },
+        note ? 'Highlight with note saved.' : 'Highlight saved.',
+      )
+    },
+    saveNote: (id: string, note: string, color?: AnnotationColor) =>
+      mutate(
+        (h) => storage.update(h, id, color ? { note, color } : { note }),
+        note ? 'Note saved.' : 'Note deleted.',
+      ),
     recolor: (id: string, color: AnnotationColor) =>
       mutate((h) => storage.update(h, id, { color }), 'Highlight color updated.'),
     remove: (id: string) => mutate((h) => storage.remove(h, id), 'Highlight deleted.'),

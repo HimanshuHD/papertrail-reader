@@ -67,3 +67,27 @@ Capture stores a bounded CFI when EPUB.js can supply one; rendering always resol
 CSS Highlight API ranges paint pastel backgrounds without overriding authored foreground colors or wrapping chapter text. Ranges follow browser layout during typography/resize. Chapter/mode/document changes dispose styles, ranges, observers and selection listeners before rebinding. DOM replacement schedules range resolution again. Engines without this API keep CRUD available and show a capability notice; no invisible success is claimed. No book bytes, paths, or handles are added to annotation storage.
 
 Unit/component coverage exercises inline selections, optional CFI capture, mode restoration, unsupported APIs, unresolved anchors and shared storage controls. The native lifecycle case is added to the release Browser E2E suite but is not executed on this feature branch. See [EPUB verification](../testing/epub-highlights-142.md).
+
+## Shared annotation panel and notes (#143)
+
+`AnnotationsPanel` is the same utility-panel component in PDF and EPUB. Renderer-specific parents provide annotation lists, known unresolved states, navigation and storage callbacks. The panel has no direct document/file/database access. It filters excerpts, notes, page/chapter labels and colors, and supports notes-only filtering. Existing reader quick actions remain available.
+
+Notes attach to a saved highlight and use the existing schema-v2 `note` field, bounded at 4,000 UTF-16 units. No database migration is required. Text interpolation and textarea values render note content as text; no HTML conversion or content execution occurs. Delete note saves an empty note while retaining the selector/color; Delete highlight and note removes the whole annotation.
+
+The shared coordinator commits notes through the same generation-scoped mutation protocol as highlights. Storage errors preserve the draft and lock editing until explicit retry. Same-document retry keeps last-known metadata while loading; fingerprint changes clear it immediately, and stale results cannot publish into the new document. Panel keys scope drafts to the fingerprint, and asynchronous selection changes cannot replace a newer draft. Closing the panel or changing the selected item discards unsaved edits; Save is explicit.
+
+Selecting an annotation reuses verified PDF/EPUB highlight navigation and the 24px reading-pane inset. The editor receives focus after navigation settles, scrolling only its own utility panel. Closing returns focus to the Annotations opener. PDF's workspace schema now recognizes the Annotations utility mode and reports restored state when its reader is ready; previous modes remain valid. Known unresolved anchors stay visible/editable rather than being painted on unrelated text.
+
+See [panel and notes app verification](../testing/annotation-panel-143.md). Native browser/IndexedDB acceptance remains #145/#28. Reading statistics remain #144.
+
+## Annotation visual refinement — #156
+
+Child of #143, included in PR #155. Selected option 1 replaces the persistent PDF/EPUB highlights row with a selection-anchored toolbar (four pastel color saves, highlight action and Add note). Native iframe coordinates are mapped into the outer viewport and clamped for narrow screens. Scroll/resize dismisses stale selection controls. Add note saves the owned highlight before opening its editor. The existing Annotations utility icon toggles a matching drawer: slim colored markers, serif excerpts, inline plain-text notes, per-entry menus and compact filters. Existing storage limits/retry and verified-range navigation remain unchanged. Owner visual verification and reviewed release acceptance #145/#28 remain pending.
+
+## #156 option 2 composer and reader note indicators
+
+PR #155 now expands Add note inside the selection toolbar, without a storage write or opening the drawer. Save highlight with note supplies the note to `AnnotationStorage.create`, committing one schema-v2 annotation in one transaction; transaction failures leave neither partial highlight nor orphan note. Add highlight remains independent. Saving it while editing retains the composer and switches to Save note. Cancel/back discard only the note draft and reverse the expansion; failed writes preserve drafts with an in-composer retry. Completion guards preserve newer selections.
+
+The drawer replaces the associated entry's action-menu contents with its note editor. PDF indicators derive from freshly verified highlight rectangles and follow page rendering/zoom/virtualization; EPUB indicators derive from resolved ranges and iframe coordinates, refreshing on scroll and observed reader/frame/body resizing. Plain-text hover/focus previews lead to the selected drawer entry. No marker is painted for unresolved text or an annotation without a note. Native layout/visual verification remains pending under #145/#28.
+
+The coordinator retains the committed creation ID even if refreshing the list fails. In-composer retry keeps the draft and updates that ID rather than creating another record. Document identity changes discard it. Inline Save note can atomically update the existing highlight's chosen color and note together.

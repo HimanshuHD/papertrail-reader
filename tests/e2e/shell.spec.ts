@@ -677,7 +677,7 @@ function createPdfFixture(
   return Buffer.from(pdf, 'ascii')
 }
 
-test('PDF highlights persist across wrapped pages, reload and changed-file isolation', async ({
+test('PDF highlights and notes persist through the contextual toolbar and annotation drawer', async ({
   page,
 }, info) => {
   await page.goto('./#/app')
@@ -696,7 +696,6 @@ test('PDF highlights persist across wrapped pages, reload and changed-file isola
       'false',
     )
     await page.getByRole('button', { name: 'Hide library' }).click()
-    await expect(page.getByRole('combobox', { name: 'Highlight color' })).toBeEnabled()
   }
   const bytes = createPdfFixture(2, undefined, true)
   await select('highlights.pdf', bytes)
@@ -713,26 +712,28 @@ test('PDF highlights persist across wrapped pages, reload and changed-file isola
     document.getSelection()!.addRange(range)
     document.dispatchEvent(new Event('selectionchange'))
   })
-  await expect(page.getByRole('button', { name: 'Highlight selection', exact: true })).toBeEnabled()
-  await page.getByRole('button', { name: 'Highlight selection', exact: true }).click()
-  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
-    'Highlights (1)',
-  )
-  await expect(page.locator('#pdf-page-2 .pdf-saved-highlight').first()).toBeVisible()
-  await page.getByRole('combobox', { name: 'Highlight color' }).selectOption('pink')
-  await expect(page.locator('#pdf-page-2 .pdf-saved-highlight').first()).toHaveCSS(
-    'background-color',
-    'rgb(251, 207, 232)',
-  )
-  await capture(page, info, 'pdf-persistent-highlights')
+  await page.getByRole('button', { name: 'Add note', exact: true }).click()
+  const panel = page.getByRole('complementary', { name: 'PDF annotations panel' })
+  const entries = panel.locator('[data-annotation-id]')
+  await expect(panel).toHaveCount(0)
+  await page.locator('#pdf-selection-note').fill('A persistent PDF note')
+  await page.getByRole('button', { name: 'Save highlight with note', exact: true }).click()
+  await page.locator('#pdf-page-2 .reader-note-indicator').click()
+  await expect(entries).toHaveCount(1)
+  await expect(entries.first()).toContainText('A persistent PDF note')
+  await panel.locator('.annotation-menu summary').first().click()
+  await panel.locator('.annotation-menu select').first().selectOption('pink')
+  await capture(page, info, 'pdf-annotation-notes')
   await page.reload()
   await select('renamed-highlights.pdf', bytes)
-  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
-    'Highlights (1)',
-  )
-  const saved = page.getByRole('combobox', { name: 'Saved highlights' })
-  const id = await saved.locator('option').nth(1).getAttribute('value')
-  await saved.selectOption(id!)
+  const toggle = page.getByRole('button', { name: 'Annotations', exact: true })
+  if (!(await panel.isVisible())) await toggle.click()
+  await expect(entries).toHaveCount(1)
+  await entries.first().click()
+  await panel.locator('.annotation-menu summary').first().click()
+  await panel.getByRole('button', { name: 'Edit note', exact: true }).click()
+  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue('A persistent PDF note')
+  await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
   await expect(page.locator('#pdf-page-1 .pdf-saved-highlight').first()).toHaveCSS(
@@ -740,23 +741,18 @@ test('PDF highlights persist across wrapped pages, reload and changed-file isola
     'rgb(251, 207, 232)',
   )
   await select('changed.pdf', createPdfFixture(3))
-  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
-    'Highlights (0)',
-  )
+  if (!(await panel.isVisible())) await toggle.click()
+  await expect(entries).toHaveCount(0)
   await select('original-again.pdf', bytes)
-  await expect(saved).toContainText('Highlights (1)')
-  await saved.selectOption(id!)
-  await page.getByRole('button', { name: 'Delete highlight', exact: true }).click()
-  await expect(saved).toContainText('Highlights (0)')
+  if (!(await panel.isVisible())) await toggle.click()
+  await expect(entries).toHaveCount(1)
+  await panel.locator('.annotation-menu summary').first().click()
+  await panel.getByRole('button', { name: 'Delete highlight and note', exact: true }).click()
+  await expect(entries).toHaveCount(0)
   await page.reload()
   await select('deleted.pdf', bytes)
-  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
-    'Highlights (0)',
-  )
-  await select('changed.pdf', createPdfFixture(3))
-  await expect(page.getByRole('combobox', { name: 'Saved highlights' })).toContainText(
-    'Highlights (0)',
-  )
+  if (!(await panel.isVisible())) await toggle.click()
+  await expect(entries).toHaveCount(0)
   await noOverflow(page)
 })
 
@@ -776,7 +772,6 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
   await page.getByRole('button', { name: 'Hide library' }).click()
   const layer = page.locator('#pdf-page-1 .textLayer')
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
-  await expect(page.getByRole('combobox', { name: 'Highlight color' })).toBeEnabled()
   await layer.evaluate((element) => {
     const range = document.createRange()
     range.selectNodeContents(element.querySelector('span')!)
@@ -784,7 +779,7 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
     document.getSelection()!.addRange(range)
     document.dispatchEvent(new Event('selectionchange'))
   })
-  await page.getByRole('button', { name: 'Highlight selection', exact: true }).click()
+  await page.getByRole('button', { name: 'Add highlight', exact: true }).click()
   const overlay = page.locator('#pdf-page-1 .pdf-saved-highlight').first()
   await expect(overlay).toBeVisible()
   const aligned = async () => {
@@ -2503,9 +2498,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     selection.addRange(range)
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
-  await reader.locator('#epub-highlight-color').selectOption('pink')
-  await reader.getByRole('button', { name: 'Highlight selection', exact: true }).click()
-  await expect(reader.getByText('Highlights (1)', { exact: true })).toBeVisible()
+  await reader.getByRole('button', { name: 'Highlight pink', exact: true }).click()
   const painted = async () => {
     await expect
       .poll(() =>
@@ -2531,15 +2524,43 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await painted()
   await page.reload()
   await open()
-  await expect(reader.getByText('Highlights (1)', { exact: true })).toBeVisible()
   await painted()
-  const saved = reader.locator('#epub-saved-highlights')
-  await saved.selectOption({ index: 1 })
-  await reader.locator('#epub-highlight-color').selectOption('green')
-  await reader.getByRole('button', { name: 'Delete highlight' }).click()
-  await expect(reader.getByText('Highlights (0)', { exact: true })).toBeVisible()
+  await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
+  const panel = reader.getByRole('complementary', { name: 'EPUB utility panel' })
+  const saved = panel.locator('[data-annotation-id]')
+  await expect(saved).toHaveCount(1)
+  await saved.first().click()
+  await panel.locator('.annotation-menu summary').first().click()
+  await panel.getByRole('button', { name: 'Add note', exact: true }).click()
+  const note = 'A local note <img src=x onerror=alert(1)>'
+  await panel.getByLabel('Note', { exact: true }).fill(note)
+  await panel.getByRole('button', { name: 'Save note', exact: true }).click()
+  await expect(panel.getByText('Note saved.', { exact: true })).toBeVisible()
+  await expect(panel.locator('img')).toHaveCount(0)
+  await capture(page, info, 'epub-annotation-notes')
+  await reader.getByRole('button', { name: 'Close utility panel' }).click()
+  await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toBeFocused()
+  await page.reload()
+  await open()
+  await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
+  await saved.first().click()
+  await panel.locator('.annotation-menu summary').first().click()
+  await panel.getByRole('button', { name: 'Edit note', exact: true }).click()
+  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue(note)
+  await panel.getByRole('button', { name: 'Delete note', exact: true }).click()
+  await expect(panel.getByLabel('Note', { exact: true })).toHaveValue('')
+  await expect(saved).toHaveCount(1)
+  await panel.getByRole('button', { name: 'Back to annotation actions', exact: true }).click()
+  await panel.locator('.annotation-menu select').first().selectOption('green')
+  await panel
+    .locator('.annotation-menu')
+    .first()
+    .getByRole('button', { name: 'Delete highlight and note', exact: true })
+    .click()
+  await expect(saved).toHaveCount(0)
   await capture(page, info, 'epub-highlights')
   await page.reload()
   await open()
-  await expect(reader.getByText('Highlights (0)', { exact: true })).toBeVisible()
+  await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
+  await expect(saved).toHaveCount(0)
 })

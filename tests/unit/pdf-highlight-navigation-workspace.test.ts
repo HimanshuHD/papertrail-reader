@@ -29,6 +29,7 @@ vi.mock('../../src/composables/usePdfHighlights', () => ({
       {
         id: 'saved',
         color: 'yellow',
+        note: 'A saved PDF note',
         selector: {
           version: 1,
           format: 'PDF',
@@ -46,6 +47,10 @@ vi.mock('../../src/composables/usePdfHighlights', () => ({
     busy: ref(false),
     notice: ref(''),
     handle: ref(null),
+    saveNote: vi.fn(async () => true),
+    recolor: vi.fn(async () => true),
+    remove: vi.fn(async () => true),
+    reload: vi.fn(),
   }),
 }))
 const wrappers: ReturnType<typeof mount>[] = []
@@ -54,10 +59,11 @@ afterEach(() => {
   document.body.replaceChildren()
   vi.restoreAllMocks()
 })
-async function reader() {
+async function reader(initialPanel?: 'annotations') {
   const wrapper = mount(PdfReaderWorkspace, {
     attachTo: document.body,
     props: {
+      initialPanel,
       document: {
         id: 'file',
         name: 'file.pdf',
@@ -99,7 +105,8 @@ async function reader() {
 }
 it('waits for the selected PDF page text layer, then aligns the exact text with top padding', async () => {
   const { wrapper, pane } = await reader()
-  await wrapper.get('#pdf-highlight-list').setValue('saved')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-annotation-id="saved"]').trigger('click')
   await flushPromises()
   expect(pane.scrollTop).toBe(100)
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
@@ -111,7 +118,8 @@ it('waits for the selected PDF page text layer, then aligns the exact text with 
 })
 it('does not apply a late highlight jump after a different page navigation', async () => {
   const { wrapper, pane } = await reader()
-  await wrapper.get('#pdf-highlight-list').setValue('saved')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-annotation-id="saved"]').trigger('click')
   await flushPromises()
   await wrapper.get('input[aria-label="Current page"]').setValue('3')
   await flushPromises()
@@ -122,4 +130,28 @@ it('does not apply a late highlight jump after a different page navigation', asy
     .vm.$emit('highlightResolution', 'saved', true, 2)
   await flushPromises()
   expect(pane.scrollTop).toBe(123)
+})
+
+it('opens the shared PDF annotation panel and returns focus on Escape', async () => {
+  const { wrapper } = await reader('annotations')
+  expect(wrapper.emitted('utilityChange')).toContainEqual(['annotations', ''])
+  expect(wrapper.get('[aria-label="PDF annotations panel"]').text()).toContain('A saved PDF note')
+  await wrapper.get('[data-annotation-id="saved"]').trigger('click')
+  await flushPromises()
+  wrapper.findComponent({ name: 'AnnotationsPanel' }).vm.editNote('saved')
+  await flushPromises()
+  expect(wrapper.get('#pdf-annotations-note').element).toHaveProperty('value', 'A saved PDF note')
+  await wrapper.get('[aria-label="PDF annotations panel"]').trigger('keydown', { key: 'Escape' })
+  await flushPromises()
+  expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('Annotations')
+})
+
+it('opens and focuses the matching annotation when its reader note indicator is activated', async () => {
+  const { wrapper } = await reader()
+  wrapper.findAllComponents({ name: 'PdfPageView' })[1]!.vm.$emit('noteSelected', 'saved')
+  await flushPromises()
+  expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(true)
+  expect(wrapper.get('[data-annotation-id="saved"]').attributes('aria-pressed')).toBe('true')
+  expect(document.activeElement?.getAttribute('data-annotation-id')).toBe('saved')
 })

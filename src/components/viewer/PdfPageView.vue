@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import NoteIndicator from './NoteIndicator.vue'
 import type { Annotation } from '../../services/annotation-storage'
 import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
 import {
@@ -37,6 +38,7 @@ const emit = defineEmits<{
   rendered: [pageNumber: number, scale: number]
   error: [message: string]
   highlightSelected: [id: string]
+  noteSelected: [id: string]
   highlightResolution: [id: string, resolved: boolean, page: number]
 }>()
 
@@ -56,6 +58,14 @@ const highlightRects = ref<
 const savedRects = ref<
   { id: string; color: string; x: number; y: number; width: number; height: number }[]
 >([])
+const noteIndicators = computed(() =>
+  (props.annotations ?? [])
+    .filter((item) => item.note.trim())
+    .flatMap((item) => {
+      const rect = savedRects.value.find((rect) => rect.id === item.id)
+      return rect ? [{ id: item.id, note: item.note, top: rect.y }] : []
+    }),
+)
 function selectSavedHighlight(event: PointerEvent) {
   if (!textLayer.value?.ownerDocument.getSelection()?.isCollapsed) return
   const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
@@ -452,6 +462,14 @@ onBeforeUnmount(() => {
           />
         </div>
       </div>
+      <NoteIndicator
+        v-for="item in noteIndicators"
+        :key="item.id"
+        :note="item.note"
+        :label="`Open note on page ${pageNumber}: ${item.note.slice(0, 80)}`"
+        :style="{ left: 'calc(100% + 1px)', top: `${item.top * 100}%` }"
+        @activate="emit('noteSelected', item.id)"
+      />
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
         <span
           v-for="(rect, index) in highlightRects"

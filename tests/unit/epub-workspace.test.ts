@@ -55,10 +55,15 @@ vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
         this.records.push(entry)
         return entry
       }
-      async update(_handle: AnnotationHandle, id: string, patch: { color: AnnotationColor }) {
+      async update(
+        _handle: AnnotationHandle,
+        id: string,
+        patch: { color?: AnnotationColor; note?: string },
+      ) {
         const entry = this.records.find((item) => item.id === id)!
         mocked.highlightUpdate(id, patch)
-        entry.color = patch.color
+        if (patch.color !== undefined) entry.color = patch.color
+        if (patch.note !== undefined) entry.note = patch.note
         return entry
       }
       async remove(_handle: AnnotationHandle, id: string) {
@@ -583,9 +588,14 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   frameDoc!.getSelection()!.addRange(range)
   frameDoc!.dispatchEvent(new Event('pointerup'))
   await wrapper.vm.$nextTick()
-  const save = wrapper.findAll('button').find((button) => button.text() === 'Highlight selection')!
+  Object.defineProperty(frameDoc!.defaultView!.Range.prototype, 'getClientRects', {
+    configurable: true,
+    value: () => [{ left: 100, top: 200, width: 80, height: 20 }],
+  })
+  frameDoc!.dispatchEvent(new Event('pointerup'))
+  await wrapper.vm.$nextTick()
+  const save = wrapper.get('button[aria-label="Highlight pink"]')
   expect(save.attributes('disabled')).toBeUndefined()
-  await wrapper.get('#epub-highlight-color').setValue('pink')
   await save.trigger('click')
   await flushPromises()
   expect(mocked.highlightOpen).toHaveBeenLastCalledWith({
@@ -600,26 +610,40 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
     }),
     'pink',
   )
-  expect(wrapper.text()).toContain('Highlights (1)')
-  await wrapper.get('#epub-highlight-color').setValue('green')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(1)
+  await wrapper.get('#epub-annotations-color-highlight-one').setValue('green')
   await flushPromises()
   expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', { color: 'green' })
   const edits = mocked.highlightUpdate.mock.calls.length
   frameDoc!.getSelection()!.addRange(range)
   frameDoc!.dispatchEvent(new Event('pointerup'))
   await wrapper.vm.$nextTick()
-  await wrapper.get('#epub-highlight-color').setValue('blue')
+  expect(wrapper.find('button[aria-label="Highlight blue"]').exists()).toBe(true)
   await flushPromises()
   expect(mocked.highlightUpdate).toHaveBeenCalledTimes(edits)
-  await wrapper.get('#epub-saved-highlights').setValue('highlight-one')
+  await wrapper.get('[data-annotation-id="highlight-one"]').trigger('click')
   await flushPromises()
   expect(revealRange).toHaveBeenCalledOnce()
   expect((revealRange.mock.calls[0] as unknown as [Range])[0].toString()).toBe('Hello world.')
+  wrapper.findComponent({ name: 'AnnotationsPanel' }).vm.editNote('highlight-one')
+  await flushPromises()
+  await wrapper.get('#epub-annotations-note').setValue('A local EPUB note')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', {
+    note: 'A local EPUB note',
+  })
+  expect(wrapper.text()).toContain('A local EPUB note')
+  await wrapper.get('button[aria-label="Close utility panel"]').trigger('click')
+  await flushPromises()
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('Annotations')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
   await wrapper
     .findAll('button')
-    .find((button) => button.text() === 'Delete highlight')!
+    .find((button) => button.text() === 'Delete highlight and note')!
     .trigger('click')
   await flushPromises()
-  expect(wrapper.text()).toContain('Highlights (0)')
+  expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(0)
   wrapper.unmount()
 })

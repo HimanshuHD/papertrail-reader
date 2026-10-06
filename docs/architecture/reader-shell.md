@@ -34,3 +34,7 @@ PR #50 browser screenshots/results are historical validation evidence. Automatic
 ---
 
 [Previous](vue.md) · [Documentation home](../README.md) · [Next](deployment.md)
+
+## Shared button interaction theme (#156)
+
+App buttons, icon controls, actionable links, menu summaries and semantic selected/open states share the reference Annotations control's tinted inset surface and accent outline. Global interaction tokens adapt to light/dark/system themes; filled accent actions use an explicit contrasting foreground and hover/pressed shades. Inset rings avoid layout shifts, disabled controls do not receive interactive styling, and keyboard focus retains its outline. Component shapes and color swatches retain their identities. Add new filled actions with `pt-button-filled`; button-like links also use `pt-button`.

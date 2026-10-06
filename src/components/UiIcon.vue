@@ -12,6 +12,9 @@ defineProps<{
     | 'zoom-in'
     | 'fit-width'
     | 'fit-page'
+    | 'annotations'
+    | 'highlight'
+    | 'more'
     | 'bookmark'
     | 'contents'
     | 'typography'
@@ -34,6 +37,10 @@ const paths = {
   'zoom-in': 'M21 21 16.65 16.65M8 11h6M11 8v6',
   'fit-width': 'M4 7h16M4 12h16M4 17h16M2 7l2-2 2 2M22 17l-2 2-2-2',
   'fit-page': 'M5 3h14v18H5zM8 7h8M8 11h8M8 15h5',
+  annotations:
+    'M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.5 8.5 0 0 1 8 8v.5ZM8 10h8M8 14h5',
+  highlight: 'm9 11-6 6v3h3l6-6m-3-3 9-9 4 4-9 9-4-4Z',
+  more: 'M12 5h.01M12 12h.01M12 19h.01',
   bookmark: 'M6 3h12v18l-6-4-6 4z',
   typography: 'M4 19 10 5l6 14M6 15h8M17 11h5M19.5 11v8',
   contents: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',

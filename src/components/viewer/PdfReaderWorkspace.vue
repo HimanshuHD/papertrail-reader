@@ -9,6 +9,9 @@ import LoadingState from '../LoadingState.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
+import AnnotationsPanel from './AnnotationsPanel.vue'
+import HighlightSelectionToolbar from './HighlightSelectionToolbar.vue'
+import { selectionAnchor, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
 import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
@@ -24,7 +27,7 @@ import {
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
-  initialPanel?: 'contents' | 'search' | 'bookmarks' | null
+  initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | null
   initialSearchQuery?: string
   document: DiscoveredDocument
 }>()
@@ -33,7 +36,7 @@ const emit = defineEmits<{
   status: [message: string]
   identity: [fingerprint: string]
   recentReady: [identity: { id: string; fingerprint: string }]
-  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | null, query: string]
+  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | 'annotations' | null, query: string]
 }>()
 
 import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
@@ -50,7 +53,7 @@ function saveReadingPoint() {
 }
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
-type UtilityPanel = 'contents' | 'search' | 'bookmarks' | null
+type UtilityPanel = 'contents' | 'search' | 'bookmarks' | 'annotations' | null
 type UtilityPopover = 'search' | 'help' | null
 
 interface FlatOutlineItem {
@@ -74,8 +77,11 @@ const persistenceNotice = continuity.notice
 const bookmarks = usePdfBookmarks(continuity.documentId)
 const highlights = usePdfHighlights(continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
+const selectionPosition = shallowRef<SelectionAnchor | null>(null)
+const annotationsPanel = ref<InstanceType<typeof AnnotationsPanel> | null>(null)
 let selectingHighlight = false
 const selectedHighlight = ref('')
+const toolbarSavedId = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
 const resolutionFailures = ref<Record<string, boolean>>({})
 watch(
@@ -84,9 +90,20 @@ watch(
     selectingHighlight = false
     pendingHighlight.value = null
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     resolutionFailures.value = {}
   },
   { flush: 'sync' },
+)
+const unresolvedAnnotations = computed(() =>
+  Object.fromEntries(
+    highlights.highlights.value.map((item) => [
+      item.id,
+      Object.entries(resolutionFailures.value).some(
+        ([key, failed]) => failed && key.startsWith(`${item.id}:`),
+      ),
+    ]),
+  ),
 )
 const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
@@ -96,8 +113,13 @@ function clearPendingHighlight(event: PointerEvent) {
     event.target instanceof Element &&
     !!event.target.closest('.textLayer') &&
     !!viewport.value?.contains(event.target)
-  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="PDF highlights"]'))
+  if (
+    !(event.target instanceof Element) ||
+    !event.target.closest('[aria-label="PDF highlights"]')
+  ) {
     pendingHighlight.value = null
+    toolbarSavedId.value = ''
+  }
 }
 function finishHighlightSelection() {
   if (!selectingHighlight) return
@@ -112,6 +134,7 @@ function captureSelection() {
   // Native selection paints continuously; measuring every drag update stalls it.
   if (selectingHighlight) return
   if (phase.value !== 'ready' || !viewport.value) return
+  if (document.activeElement?.closest('[aria-label="PDF highlights"]')) return
   const selection = document.getSelection()
   if (selection?.isCollapsed || !selection?.rangeCount) {
     if (document.activeElement?.closest('[aria-label="PDF highlights"]')) return
@@ -120,19 +143,33 @@ function captureSelection() {
   }
   const next = capturePdfHighlight(viewport.value, selection)
   pendingHighlight.value = next ?? null
-  if (next) selectedHighlight.value = ''
+  if (next) {
+    selectedHighlight.value = ''
+    toolbarSavedId.value = ''
+    selectionPosition.value = selectionAnchor(selection)
+  }
 }
-async function saveHighlight() {
+async function saveHighlight(note = '', keepOpen = false) {
   const next = pendingHighlight.value
   if (!next || phase.value !== 'ready') return
   const sequence = openSequence
-  if ((await highlights.add(next, highlightColor.value)) && sequence === openSequence) {
-    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
-    pendingHighlight.value = null
-    document.getSelection()?.removeAllRanges()
+  const committedBefore = highlights.lastCreatedId?.value
+  const saved = await highlights.add(next, highlightColor.value, note)
+  if (sequence !== openSequence || pendingHighlight.value !== next) return
+  if (!saved) {
+    const committed = highlights.lastCreatedId?.value
+    if (committed && committed !== committedBefore) toolbarSavedId.value = committed
+    return
   }
+  selectedHighlight.value =
+    highlights.lastCreatedId?.value || highlights.highlights.value.at(-1)?.id || ''
+  toolbarSavedId.value = keepOpen ? selectedHighlight.value : ''
+  pendingHighlight.value = null
+  document.getSelection()?.removeAllRanges()
+  return selectedHighlight.value
 }
 function activateHighlight(id: string) {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   selectedHighlight.value = id
   const annotation = highlightList.value.find((h) => h.id === id)
@@ -167,10 +204,28 @@ function revealSelectedHighlight() {
     saveReadingPoint()
   }
 }
+async function openNote(id: string) {
+  const owner = openSequence
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+  if (owner === openSequence && selectedHighlight.value === id)
+    annotationsPanel.value?.revealAnnotation(id)
+}
+async function openHighlight(id: string) {
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+}
 async function chooseHighlight(id: string) {
   pendingHighlightNavigation = null
   const annotation = activateHighlight(id)
   if (annotation?.selector.format !== 'PDF') return
+  const page = annotation.selector.segments[0]!.page
+  if (page > totalPages.value) {
+    resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: true }
+    return
+  }
   pendingHighlightNavigation = {
     id,
     page: annotation.selector.segments[0]!.page,
@@ -186,14 +241,23 @@ watch(highlights.highlights, (items) => {
   if (selected) highlightColor.value = selected.color
   else selectedHighlight.value = ''
 })
-async function recolorHighlight() {
-  if (selectedHighlight.value)
-    await highlights.recolor(selectedHighlight.value, highlightColor.value)
+async function createHighlight(color: AnnotationColor, keepOpen = false) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    await highlights.recolor(toolbarSavedId.value, color)
+    return
+  }
+  await saveHighlight('', keepOpen)
 }
-async function deleteHighlight() {
-  const id = selectedHighlight.value,
-    sequence = openSequence
-  if (id && (await highlights.remove(id)) && sequence === openSequence) selectedHighlight.value = ''
+async function saveSelectionNote(note: string, color: AnnotationColor) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    const id = toolbarSavedId.value
+    if ((await highlights.saveNote(id, note, color)) && toolbarSavedId.value === id) {
+      toolbarSavedId.value = ''
+      pendingHighlight.value = null
+    }
+  } else await saveHighlight(note)
 }
 function highlightResolution(id: string, resolved: boolean, page: number) {
   resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: !resolved }
@@ -223,7 +287,7 @@ const outlineLoaded = ref(false)
 const outlineBusy = ref(false)
 const searchQuery = ref('')
 const completedSearchQuery = ref('')
-watch([rightPanel, completedSearchQuery], ([panel, query]) => {
+watch([rightPanel, completedSearchQuery, phase], ([panel, query]) => {
   if (phase.value === 'ready') emit('utilityChange', panel, query)
 })
 const selectedSearchMatch = ref<{ pageNumber: number; occurrence: number; request: number } | null>(
@@ -344,6 +408,8 @@ function measureViewport() {
 }
 
 function scheduleViewportMeasure() {
+  toolbarSavedId.value = ''
+  pendingHighlight.value = null
   cancelAnimationFrame(resizeFrame)
   resizeFrame = requestAnimationFrame(measureViewport)
 }
@@ -478,6 +544,8 @@ function chooseMostVisiblePage() {
 }
 
 function handleViewerScroll() {
+  toolbarSavedId.value = ''
+  pendingHighlight.value = null
   cancelAnimationFrame(scrollFrame)
   scrollFrame = requestAnimationFrame(() => {
     chooseMostVisiblePage()
@@ -705,7 +773,7 @@ function closeRightPanel() {
   void nextTick(() => {
     readerRoot.value
       ?.querySelector<HTMLButtonElement>(
-        `button[aria-label="${closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
+        `button[aria-label="${closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
       )
       ?.focus()
   })
@@ -1025,6 +1093,14 @@ onBeforeUnmount(() => {
           @click="openPopover('help')"
         />
         <IconButton
+          label="Annotations"
+          icon="annotations"
+          :active="rightPanel === 'annotations'"
+          :aria-expanded="rightPanel === 'annotations'"
+          aria-controls="pdf-utility-panel"
+          @click="toggleRightPanel('annotations')"
+        />
+        <IconButton
           label="Bookmarks"
           icon="bookmark"
           :active="rightPanel === 'bookmarks'"
@@ -1067,7 +1143,7 @@ onBeforeUnmount(() => {
               />
               <button
                 type="submit"
-                class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
+                class="pt-button-filled inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
                 :aria-busy="searchBusy"
                 :disabled="searchBusy || !searchQuery.trim()"
               >
@@ -1129,85 +1205,31 @@ onBeforeUnmount(() => {
         </div>
       </Transition>
     </header>
-    <div
-      v-if="phase === 'ready'"
-      class="highlight-bar flex shrink-0 flex-wrap items-center gap-2 border-b border-line bg-panel px-4 py-2"
-      aria-label="PDF highlights"
+    <HighlightSelectionToolbar
+      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && phase === 'ready'"
+      format="PDF"
+      :anchor="selectionPosition"
+      :disabled="!highlights.handle.value || highlights.busy.value"
+      :saved="!!toolbarSavedId"
+      :notice="highlights.notice.value"
+      :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
+      @highlight="createHighlight"
+      @retry="highlights.reload"
+      @save-note="saveSelectionNote"
+    />
+    <p
+      v-if="highlights.notice.value && !highlights.handle.value"
+      role="status"
+      class="px-4 py-2 text-xs text-muted"
     >
-      <button
-        type="button"
-        class="highlight-action"
-        :disabled="!pendingHighlight || !highlights.handle.value || highlights.busy.value"
-        @click="saveHighlight"
-      >
-        Highlight selection
-      </button>
-      <label class="sr-only" for="pdf-highlight-color">Highlight color</label>
-      <select
-        id="pdf-highlight-color"
-        v-model="highlightColor"
-        class="highlight-input"
-        :disabled="highlights.busy.value || !highlights.handle.value"
-        @change="recolorHighlight"
-      >
-        <option value="yellow">Yellow</option>
-        <option value="green">Green</option>
-        <option value="blue">Blue</option>
-        <option value="pink">Pink</option>
-      </select>
-      <label class="sr-only" for="pdf-highlight-list">Saved highlights</label>
-      <select
-        id="pdf-highlight-list"
-        class="highlight-input max-w-60"
-        :value="selectedHighlight"
-        :disabled="highlights.busy.value"
-        @change="chooseHighlight(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">Highlights ({{ highlightList.length }})</option>
-        <option v-for="h in highlightList" :key="h.id" :value="h.id">
-          {{
-            h.selector.format === 'PDF'
-              ? `Page ${h.selector.segments[0]?.page} · ${h.selector.segments[0]?.text.exact.slice(0, 45)}`
-              : ''
-          }}{{
-            Object.entries(resolutionFailures).some(
-              ([key, failed]) => failed && key.startsWith(`${h.id}:`),
-            )
-              ? ' · Unresolved'
-              : ''
-          }}
-        </option>
-      </select>
-      <button
-        type="button"
-        class="highlight-action"
-        :disabled="!selectedHighlight || highlights.busy.value || !highlights.handle.value"
-        @click="deleteHighlight"
-      >
-        Delete highlight
-      </button>
-      <button
-        v-if="highlights.notice.value && !highlights.handle.value"
-        type="button"
-        class="highlight-action"
-        @click="((pendingHighlight = null), highlights.reload())"
-      >
-        Retry highlights
-      </button>
-      <span class="text-xs text-muted" role="status">{{
-        highlights.loading.value
-          ? 'Loading highlights…'
-          : highlights.notice.value ||
-            (pendingHighlight
-              ? 'Text selected.'
-              : 'Select PDF text to highlight. Image-only pages cannot be highlighted.')
-      }}</span>
-    </div>
+      {{ highlights.notice.value }}
+      <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
+    </p>
 
     <div class="pdf-body relative flex min-h-0 flex-1">
       <section
         ref="viewport"
-        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas p-4 sm:p-6"
+        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
@@ -1260,7 +1282,8 @@ onBeforeUnmount(() => {
             :selection-request="
               selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
             "
-            @highlight-selected="activateHighlight"
+            @highlight-selected="openHighlight"
+            @note-selected="openNote"
             @highlight-resolution="highlightResolution"
             @pointerup="captureSelection"
             @visibility="handleVisibility"
@@ -1277,6 +1300,7 @@ onBeforeUnmount(() => {
       >
         <aside
           v-if="(phase === 'restoring' || phase === 'ready') && rightPanel"
+          id="pdf-utility-panel"
           :inert="phase !== 'ready'"
           :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
@@ -1285,7 +1309,9 @@ onBeforeUnmount(() => {
               ? 'PDF contents panel'
               : rightPanel === 'bookmarks'
                 ? 'PDF bookmarks panel'
-                : 'PDF search results panel'
+                : rightPanel === 'annotations'
+                  ? 'PDF annotations panel'
+                  : 'PDF search results panel'
           "
           @keydown.esc.stop.prevent="closeRightPanel"
         >
@@ -1293,6 +1319,7 @@ onBeforeUnmount(() => {
             class="flex shrink-0 items-center justify-between gap-2 border-b border-line px-4 py-3"
           >
             <div
+              v-if="rightPanel !== 'annotations'"
               class="flex min-w-0 flex-wrap items-center gap-1"
               aria-label="PDF utility panel mode"
             >
@@ -1320,7 +1347,16 @@ onBeforeUnmount(() => {
               >
                 Bookmarks
               </button>
+              <button
+                type="button"
+                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
+                :aria-pressed="false"
+                @click="rightPanel = 'annotations'"
+              >
+                Annotations
+              </button>
             </div>
+            <h3 v-if="rightPanel === 'annotations'" class="text-base font-semibold">Annotations</h3>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
           </div>
 
@@ -1359,6 +1395,24 @@ onBeforeUnmount(() => {
             </ul>
           </section>
 
+          <AnnotationsPanel
+            v-else-if="rightPanel === 'annotations'"
+            ref="annotationsPanel"
+            :key="continuity.fingerprint.value ?? document.id"
+            format="PDF"
+            :annotations="highlightList"
+            :selected-id="selectedHighlight"
+            :unresolved="unresolvedAnnotations"
+            :available="!!highlights.handle.value"
+            :busy="highlights.busy.value || phase !== 'ready'"
+            :loading="highlights.loading.value"
+            :notice="highlights.notice.value"
+            :save-note="highlights.saveNote"
+            :recolor="highlights.recolor"
+            :remove="highlights.remove"
+            @navigate="chooseHighlight"
+            @retry="highlights.reload"
+          />
           <PdfBookmarksPanel
             v-else-if="rightPanel === 'bookmarks'"
             :key="continuity.documentId.value ?? document.id"

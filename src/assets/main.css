@@ -65,3 +65,79 @@ button:disabled,
 [role='button'][aria-disabled='true'] {
   cursor: not-allowed;
 }
+
+/* Shared interaction treatment, grounded in the reader's outlined Annotations control.
+   Inset rings avoid layout shifts; semantic state attributes keep every surface consistent. */
+:root {
+  --pt-control-surface: #e5f0ee;
+  --pt-control-ink: #18575a;
+  --pt-control-edge: #23686b;
+  --pt-filled-hover: #1b5054;
+  --pt-filled-active: #163f43;
+  --pt-on-brand: #ffffff;
+  --pt-control-inset: #17344912;
+}
+:root[data-theme='dark'] {
+  --pt-control-surface: #111b22;
+  --pt-control-ink: #80d5c3;
+  --pt-control-edge: #80d5c3;
+  --pt-filled-hover: #a3e3d4;
+  --pt-filled-active: #8ad8c5;
+  --pt-on-brand: #122c32;
+  --pt-control-inset: #00000030;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --pt-control-surface: #111b22;
+    --pt-control-ink: #80d5c3;
+    --pt-control-edge: #80d5c3;
+    --pt-filled-hover: #a3e3d4;
+    --pt-filled-active: #8ad8c5;
+    --pt-on-brand: #122c32;
+    --pt-control-inset: #00000030;
+  }
+}
+.pt-button-filled {
+  --pt-button-surface: var(--pt-filled-hover);
+  --pt-button-ink: var(--pt-on-brand);
+  --pt-button-edge: var(--pt-on-brand);
+  color: var(--pt-on-brand);
+}
+.pt-on-brand {
+  color: var(--pt-on-brand);
+}
+:where(button, [role='button'], summary, .pt-button) {
+  transition:
+    background-color 150ms ease,
+    color 150ms ease,
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+/* Scoped component/utility rules must not give individual controls competing colors. */
+:is(button, [role='button'], summary, .pt-button):not(:disabled):not([aria-disabled='true']):is(
+    :hover,
+    :active,
+    :focus-visible,
+    [aria-pressed='true'],
+    [aria-selected='true'],
+    [aria-checked='true'],
+    [aria-expanded='true'],
+    [data-active='true'],
+    [aria-current]:not([aria-current='false'])
+  ),
+details[open] > summary {
+  background-color: var(--pt-button-surface, var(--pt-control-surface)) !important;
+  color: var(--pt-button-ink, var(--pt-control-ink)) !important;
+  border-color: var(--pt-button-edge, var(--pt-control-edge)) !important;
+  box-shadow:
+    inset 0 0 0 1px var(--pt-button-edge, var(--pt-control-edge)),
+    inset 0 -3px 8px var(--pt-control-inset) !important;
+}
+.pt-button-filled:not(:disabled):not([aria-disabled='true']):active {
+  --pt-button-surface: var(--pt-filled-active);
+}
+@media (prefers-reduced-motion: reduce) {
+  :where(button, [role='button'], summary, .pt-button) {
+    transition: none;
+  }
+}

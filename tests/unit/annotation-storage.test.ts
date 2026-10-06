@@ -311,3 +311,25 @@ it('enforces combined metadata text limits and rolls back failed document deleti
   await expect(storage.clearDocument(handle)).rejects.toMatchObject({ reason: 'quota' })
   expect(await storage.list(handle)).toHaveLength(1)
 })
+
+it('creates a highlight and its note atomically and rolls both back on a failed commit', async () => {
+  const { database, storage } = setup()
+  const { handle } = await storage.open(identity)
+  const created = await storage.create(handle, selector, 'pink', 'A note saved with its highlight')
+  expect(await storage.list(handle)).toEqual([
+    expect.objectContaining({
+      id: created.id,
+      color: 'pink',
+      note: 'A note saved with its highlight',
+    }),
+  ])
+  database.nextFailure = new DOMException('quota', 'QuotaExceededError')
+  await expect(
+    storage.create(handle, selector, 'blue', 'Must not partially save'),
+  ).rejects.toMatchObject({ reason: 'quota' })
+  expect(await storage.list(handle)).toHaveLength(1)
+  await expect(storage.create(handle, selector, 'yellow', 'x'.repeat(4001))).rejects.toMatchObject({
+    reason: 'invalid-data',
+  })
+  expect(await storage.list(handle)).toHaveLength(1)
+})

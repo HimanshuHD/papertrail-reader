@@ -251,3 +251,68 @@ it('does not reveal a PDF highlight when its saved quote no longer resolves', ()
   expect(revealPdfHighlight(root, digest, selector)).toBe(false)
   expect(root.scrollTop).toBe(300)
 })
+
+it('saves local notes and retains current metadata during an explicit retry', async () => {
+  const { state, storage, wrapper } = setupStorage()
+  await flushPromises()
+  expect(await state.saveNote('one', 'A local note')).toBe(true)
+  expect(storage.update).toHaveBeenLastCalledWith(
+    expect.objectContaining({ identity: { format: 'PDF', fingerprint: digest } }),
+    'one',
+    { note: 'A local note' },
+  )
+  expect(state.notice.value).toBe('Note saved.')
+  let finish!: (value: Awaited<ReturnType<AnnotationStorage['open']>>) => void
+  vi.mocked(storage.open).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const retry = state.reload()
+  expect(state.loading.value).toBe(true)
+  expect(state.highlights.value).toEqual([annotation])
+  expect(state.handle.value).toBeNull()
+  finish({
+    handle: { identity: { format: 'PDF', fingerprint: digest }, generation: 'retry' },
+    annotations: [annotation],
+  })
+  await retry
+  expect(state.handle.value?.generation).toBe('retry')
+  wrapper.unmount()
+})
+it('discards a late note mutation result after the document fingerprint changes', async () => {
+  const { state, storage, fingerprint, wrapper } = setupStorage()
+  await flushPromises()
+  let finish!: (value: Annotation) => void
+  vi.mocked(storage.update).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const saving = state.saveNote('one', 'Old document draft')
+  fingerprint.value = 'sha256-chunks-v1:' + 'b'.repeat(64)
+  await flushPromises()
+  finish(annotation)
+  expect(await saving).toBe(false)
+  expect(state.highlights.value).toEqual([])
+  expect(storage.list).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
+
+it('retains a committed creation id through refresh failure so composer retry cannot duplicate it', async () => {
+  const { state, storage, fingerprint, wrapper } = setupStorage()
+  await flushPromises()
+  vi.mocked(storage.list).mockRejectedValueOnce(Error('Refresh failed'))
+  expect(await state.add(selector, 'pink', 'Combined note')).toBe(false)
+  expect(storage.create).toHaveBeenCalledWith(expect.anything(), selector, 'pink', 'Combined note')
+  expect(state.lastCreatedId.value).toBe('one')
+  expect(state.notice.value).toContain('was saved')
+  await state.reload()
+  expect(state.lastCreatedId.value).toBe('one')
+  expect(await state.saveNote('one', 'Combined note')).toBe(true)
+  expect(storage.create).toHaveBeenCalledTimes(1)
+  fingerprint.value = 'sha256-chunks-v1:' + 'b'.repeat(64)
+  await flushPromises()
+  expect(state.lastCreatedId.value).toBe('')
+  wrapper.unmount()
+})
