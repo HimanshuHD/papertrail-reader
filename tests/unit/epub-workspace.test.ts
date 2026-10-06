@@ -543,6 +543,7 @@ it('restores saved mode, typography and chapter before opening, and flushes prog
 
 it('captures iframe selections and saves, recolors and deletes fingerprint-scoped EPUB highlights', async () => {
   let frameDoc: Document
+  const revealRange = vi.fn(() => true)
   mocked.open.mockImplementationOnce(async (_file, target: HTMLElement) => {
     const frame = document.createElement('iframe')
     target.append(frame)
@@ -558,6 +559,7 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
       appearance: vi.fn(),
       destroy: () => frame.remove(),
       annotationContext: () => ({ document: frameDoc, chapter: 0, mode: 'formatted' }),
+      revealRange,
     }
   })
   const wrapper = mount(EpubReaderWorkspace, {
@@ -611,6 +613,8 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   expect(mocked.highlightUpdate).toHaveBeenCalledTimes(edits)
   await wrapper.get('#epub-saved-highlights').setValue('highlight-one')
   await flushPromises()
+  expect(revealRange).toHaveBeenCalledOnce()
+  expect((revealRange.mock.calls[0] as unknown as [Range])[0].toString()).toBe('Hello world.')
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete highlight')!

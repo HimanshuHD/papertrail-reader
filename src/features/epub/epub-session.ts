@@ -12,6 +12,7 @@ import {
   type CfiBridge,
 } from './location'
 import { keepScrolledChapterMounted } from './scroll-layout'
+import { scrollHighlightRange } from '../annotations/highlight-navigation'
 
 export interface EpubPosition {
   node: string
@@ -39,6 +40,7 @@ export interface EpubSession {
   display(index: number, fragment?: string): Promise<void>
   typography(settings: EpubTypography): void
   annotationContext?(): EpubAnnotationContext | undefined
+  revealRange?(range: Range): boolean
   defaultFontSize?(): number
   location?(): EpubLocation | undefined
   restore?(location: EpubLocation): Promise<boolean>
@@ -417,6 +419,17 @@ export async function openEpubSession(
           mode,
           ...(current ? { cfiFromRange: (range: Range) => current.cfiFromRange(range) } : {}),
         }
+      },
+      revealRange(range) {
+        if (destroyed || navigating) return false
+        const container = root.querySelector<HTMLElement>('.epub-container')
+        const frame = root.querySelector('iframe')
+        if (!container || !frame) return false
+        // An explicit highlight jump replaces any earlier resize/location restoration.
+        cancelRestoration()
+        if (!scrollHighlightRange(container, range, frame)) return false
+        lastLocation = currentLocation()
+        return true
       },
       defaultFontSize() {
         const doc = root.querySelector('iframe')?.contentDocument

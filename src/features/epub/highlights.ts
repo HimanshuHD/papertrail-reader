@@ -120,6 +120,7 @@ export function paintEpubHighlights(
   const unresolved = new Set<string>(),
     identity = { format: 'EPUB' as const, fingerprint }
   const ranges = new Map<keyof typeof colors, Range[]>()
+  const resolvedRanges = new Map<string, Range>()
   let index: ReturnType<typeof epubHighlightIndex> | undefined
   try {
     index = epubHighlightIndex(doc)
@@ -144,6 +145,7 @@ export function paintEpubHighlights(
       unresolved.add(annotation.id)
       continue
     }
+    resolvedRanges.set(annotation.id, range)
     const group = ranges.get(annotation.color) ?? []
     group.push(range)
     ranges.set(annotation.color, group)
@@ -160,6 +162,7 @@ export function paintEpubHighlights(
       registry.set(`papertrail-${color}`, new Constructor(...(ranges.get(color) ?? [])))
   }
   return {
+    resolvedRanges,
     unresolved,
     unsupported: !registry || !Constructor,
     dispose() {

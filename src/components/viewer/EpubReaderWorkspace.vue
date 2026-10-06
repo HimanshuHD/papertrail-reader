@@ -93,7 +93,11 @@ async function saveHighlight() {
     reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
   }
 }
+let highlightNavigation = 0
 async function chooseHighlight(id: string) {
+  const navigation = ++highlightNavigation,
+    owner = openGeneration,
+    session = reader.session.value
   selectedHighlight.value = id
   pendingHighlight.value = null
   const item = highlights.highlights.value.find((entry) => entry.id === id)
@@ -104,6 +108,19 @@ async function chooseHighlight(id: string) {
     return
   }
   await reader.go(item.selector.chapter)
+  await nextTick()
+  if (
+    navigation !== highlightNavigation ||
+    owner !== openGeneration ||
+    session !== reader.session.value ||
+    selectedHighlight.value !== id ||
+    reader.error.value
+  )
+    return
+  paintHighlights()
+  const range = paintedHighlights?.resolvedRanges.get(id)
+  unresolvedHighlights.value[id] = !range || !session?.revealRange?.(range)
+  if (!unresolvedHighlights.value[id]) continuity.save()
 }
 async function recolorHighlight() {
   if (selectedHighlight.value)

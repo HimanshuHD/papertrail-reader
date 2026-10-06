@@ -6,6 +6,7 @@ import {
   capturePdfRectangles,
   pdfTextIndex,
   pdfTextRange,
+  revealPdfHighlight,
 } from '../../src/features/pdf/highlights'
 import { usePdfHighlights } from '../../src/composables/usePdfHighlights'
 import type {
@@ -225,4 +226,28 @@ it('joins overlapping and adjacent runs without bridging lines or columns', () =
   expect(rectangles[0]).toMatchObject({ x: 0.05, y: 0.05, width: 0.4 })
   expect(rectangles.some((rect) => rect.x === 0.7)).toBe(true)
   expect(rectangles.some((rect) => rect.y === 0.125)).toBe(true)
+})
+
+it('reveals verified text inside the PDF pane and waits for virtualized layers', () => {
+  const root = setupDom()
+  const { shell } = page(root, 1, ['One'])
+  Object.defineProperties(root, {
+    clientHeight: { value: 400 },
+    scrollHeight: { value: 2000 },
+  })
+  root.scrollTop = 300
+  vi.spyOn(root, 'getBoundingClientRect').mockReturnValue({ top: 0 } as DOMRect)
+  expect(revealPdfHighlight(root, digest, selector)).toBe(true)
+  expect(root.scrollTop).toBe(296)
+  shell.dataset.renderState = 'pending'
+  root.scrollTop = 300
+  expect(revealPdfHighlight(root, digest, selector)).toBe(false)
+  expect(root.scrollTop).toBe(300)
+})
+it('does not reveal a PDF highlight when its saved quote no longer resolves', () => {
+  const root = setupDom()
+  page(root, 1, ['Changed content'])
+  root.scrollTop = 300
+  expect(revealPdfHighlight(root, digest, selector)).toBe(false)
+  expect(root.scrollTop).toBe(300)
 })

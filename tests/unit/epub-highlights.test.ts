@@ -91,6 +91,7 @@ it('restores validated ranges across modes without mutating text, and disposes r
   const result = paintEpubHighlights(second, fingerprint, [annotation])
   expect(result.unsupported).toBe(false)
   expect(result.unresolved.size).toBe(0)
+  expect(result.resolvedRanges.get('one')?.toString()).toBe('Hello world.')
   expect((highlights.get('papertrail-yellow') as { first: Range }).first.toString()).toBe(
     'Hello world.',
   )
@@ -108,6 +109,7 @@ it('marks changed quotes unresolved, leaves other chapters untouched and reports
   const changed = context('<p>Completely different content</p>')
   const result = paintEpubHighlights(changed, fingerprint, [annotation])
   expect(result.unresolved.has('one')).toBe(true)
+  expect(result.resolvedRanges.has('one')).toBe(false)
   expect(result.unsupported).toBe(true)
   changed.chapter = 1
   expect(paintEpubHighlights(changed, fingerprint, [annotation]).unresolved.size).toBe(0)
