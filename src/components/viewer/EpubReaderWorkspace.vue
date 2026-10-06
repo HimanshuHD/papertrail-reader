@@ -72,6 +72,7 @@ function captureHighlight() {
   if (loading.value) return
   const context = reader.session.value?.annotationContext?.()
   pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
+  if (pendingHighlight.value) selectedHighlight.value = ''
 }
 function clearHighlightSelection(event: PointerEvent) {
   if (!(event.target instanceof Element) || !event.target.closest('[aria-label="EPUB highlights"]'))

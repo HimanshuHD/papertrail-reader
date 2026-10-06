@@ -602,6 +602,15 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   await wrapper.get('#epub-highlight-color').setValue('green')
   await flushPromises()
   expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', { color: 'green' })
+  const edits = mocked.highlightUpdate.mock.calls.length
+  frameDoc!.getSelection()!.addRange(range)
+  frameDoc!.dispatchEvent(new Event('pointerup'))
+  await wrapper.vm.$nextTick()
+  await wrapper.get('#epub-highlight-color').setValue('blue')
+  await flushPromises()
+  expect(mocked.highlightUpdate).toHaveBeenCalledTimes(edits)
+  await wrapper.get('#epub-saved-highlights').setValue('highlight-one')
+  await flushPromises()
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete highlight')!
