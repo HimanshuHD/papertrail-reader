@@ -650,42 +650,42 @@ onBeforeUnmount(() => {
 }
 </style>
 
-<style scoped>
-:global(:root[data-theme='dark']) .pdf-page {
+<style>
+:root[data-theme='dark'] .pdf-page {
   background: var(--pt-canvas);
 }
-:global(:root[data-theme='dark']) .pdf-page canvas {
+:root[data-theme='dark'] .pdf-page canvas {
   filter: invert(0.9) hue-rotate(180deg);
 }
-:global(:root[data-theme='dark']) .pdf-saved-overlay {
+:root[data-theme='dark'] .pdf-saved-overlay {
   mix-blend-mode: normal;
 }
-:global(:root[data-theme='dark']) .pdf-saved-group {
+:root[data-theme='dark'] .pdf-saved-group {
   opacity: 0.25;
 }
-:global(:root[data-theme='dark']) .pdf-saved-highlight.active {
+:root[data-theme='dark'] .pdf-saved-highlight.active {
   outline-color: #e4edf3;
 }
-:global(:root[data-theme='dark']) .textLayer :deep(span::selection) {
+:root[data-theme='dark'] .textLayer span::selection {
   background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
 }
 @media (prefers-color-scheme: dark) {
-  :global(:root:not([data-theme])) .pdf-page {
+  :root:not([data-theme]) .pdf-page {
     background: var(--pt-canvas);
   }
-  :global(:root:not([data-theme])) .pdf-page canvas {
+  :root:not([data-theme]) .pdf-page canvas {
     filter: invert(0.9) hue-rotate(180deg);
   }
-  :global(:root:not([data-theme])) .pdf-saved-overlay {
+  :root:not([data-theme]) .pdf-saved-overlay {
     mix-blend-mode: normal;
   }
-  :global(:root:not([data-theme])) .pdf-saved-group {
+  :root:not([data-theme]) .pdf-saved-group {
     opacity: 0.25;
   }
-  :global(:root:not([data-theme])) .pdf-saved-highlight.active {
+  :root:not([data-theme]) .pdf-saved-highlight.active {
     outline-color: #e4edf3;
   }
-  :global(:root:not([data-theme])) .textLayer :deep(span::selection) {
+  :root:not([data-theme]) .textLayer span::selection {
     background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
   }
 }
