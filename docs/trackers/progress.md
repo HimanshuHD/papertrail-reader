@@ -1,5 +1,9 @@
 # PaperTrail progress
 
+## Current checkpoint — PR #148 merged; #152 selection gaps active
+
+Owner merged PR #148 as `a4d756b1c92d5122bb51221ac206287e5eaae202`. #141 and #149–#151 are closed with stale active labels removed. The remaining blank-line native selection defect stays #152/In progress on `fix/152-pdf-selection-gaps`, created from main `fc87455a51bc3c7fb9db8c7f19bed096a0205658`. Parent #15 remains in progress; #142–#145 remain new. Earlier pending-merge #141 checkpoints are superseded. The independent fix restores PDF.js native selection guards and a text cursor across the text-layer surface; browser visual acceptance stays #145/#28 at the reviewed release gate.
+
 ## Active PDF highlights — 5 October 2026
 
 Owner merged PR #147 as `45c8c8cf8d5955edd896330bc5ad1097e03f2df8`; #140 is closed/completed and its stale active label is removed. #141 is in progress on `feat/141-pdf-highlights`, created from main `4ffdc1c`. Parent #15 remains in progress; #142–#145 remain new. This increment adds PDF text selection/highlights, colors, deletion, local restoration and current-layer overlay geometry. See [app verification](../testing/pdf-highlights-141.md). Local checks pass: 234 unit/component tests, 10 pipeline tests, lint, formatting, type checks and production build. Native Browser E2E acceptance remains the reviewed release gate, with two new cases added but not run on this feature branch. Implemented in [PR #148](https://github.com/HimanshuHD/papertrail-reader/pull/148), initial application/test source `be20b5845333c8f368eed6a6b7f741180dd6965c`. The final selection-focus regression is included; final revision/CI evidence is maintained in the PR. CI evidence is maintained on #141 and the PR. Earlier #140 pending-merge and #141-new checkpoints are superseded.
@@ -404,3 +408,7 @@ PR #148 also joins nearby text fragments per line while preserving column gutter
 ### Highlight text contrast and selection follow-up — #151 / #152
 
 PR #148 now uses multiply blending within an isolated PDF page so pastel highlights and native selection preserve dark canvas glyphs. Line-break selection blocks are transparent. Pointer drags defer annotation geometry capture until release (including release outside the reader); keyboard selection remains available. Pointer cancellation, blur and document changes clear drag state. Component regression coverage checks that Save stays disabled during a drag and enables after release. Owner visual verification of contrast and drag smoothness remains pending under #145/#28.
+
+### #152 margin and outside-page drag revision
+
+PR #153 now keeps an explicit mouse-drag text anchor. Margin starts resolve to a real text boundary on the nearest line; moving endpoints resolve against mounted pages in the same reader, including outside-page positions and re-entry. Backward/cross-page drags retain the original anchor. Pointer updates are coalesced per animation frame; release resolves the final coordinates before saving the selection. Cancel, blur and disposed text layers release drag state. Touch, modifier-assisted selection and native double/triple clicks keep their native behavior. Glyph geometry is measured from current ranges, including page rotation and Unicode boundaries. New coordinate regressions exercise margins, outside/re-entry, cross-page, pointer ownership, cancellation, native double-click handling and 90-degree rotation. Native visual verification remains pending in #152/#145/#28; prior workspace-unavailable notes are superseded by this implemented revision.

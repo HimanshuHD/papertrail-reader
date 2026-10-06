@@ -49,3 +49,11 @@ PR #148 also joins nearby text fragments per line while preserving column gutter
 ### Highlight text contrast and selection follow-up — #151 / #152
 
 PR #148 now uses multiply blending within an isolated PDF page so pastel highlights and native selection preserve dark canvas glyphs. Line-break selection blocks are transparent. Pointer drags defer annotation geometry capture until release (including release outside the reader); keyboard selection remains available. Pointer cancellation, blur and document changes clear drag state. Component regression coverage checks that Save stays disabled during a drag and enables after release. Owner visual verification of contrast and drag smoothness remains pending under #145/#28.
+
+### Native PDF selection guards (#152)
+
+`features/pdf/text-selection.ts` supplies the PDF.js viewer selection guard omitted by low-level TextLayer rendering. One listener set per document coordinates mounted pages; empty guards cover blank selection areas during a drag and reset on release/cancel/blur. Glyphs sit above the guard and the whole text surface keeps a text cursor. Older engines receive the moving-boundary compatibility guard. PdfPageView disposes and reinstalls guards on text replacement and releases them on virtualization/unmount. Empty guard nodes do not change canonical quotes or offsets.
+
+### #152 margin and outside-page drag revision
+
+PR #153 now keeps an explicit mouse-drag text anchor. Margin starts resolve to a real text boundary on the nearest line; moving endpoints resolve against mounted pages in the same reader, including outside-page positions and re-entry. Backward/cross-page drags retain the original anchor. Pointer updates are coalesced per animation frame; release resolves the final coordinates before saving the selection. Cancel, blur and disposed text layers release drag state. Touch, modifier-assisted selection and native double/triple clicks keep their native behavior. Glyph geometry is measured from current ranges, including page rotation and Unicode boundaries. New coordinate regressions exercise margins, outside/re-entry, cross-page, pointer ownership, cancellation, native double-click handling and 90-degree rotation. Native visual verification remains pending in #152/#145/#28; prior workspace-unavailable notes are superseded by this implemented revision.
