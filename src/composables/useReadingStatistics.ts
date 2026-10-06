@@ -8,6 +8,7 @@ import {
 } from '../services/reading-statistics'
 
 type Visit = {
+  fingerprint: string
   handle: StatisticsHandle
   clock: ActiveReadingTime
   position: number
@@ -40,7 +41,8 @@ export function useReadingStatistics(
     visit.clock.tick(now())
     activeMs.value = visit.baseMs + Math.floor(visit.clock.activeMs)
     idle.value = visit.clock.isIdle(now())
-    visit.position = Math.min(1, Math.max(0, position.value))
+    if (ready.value && visit.fingerprint === fingerprint.value)
+      visit.position = Math.min(1, Math.max(0, position.value))
   }
   function flush(visit = current) {
     if (!visit) return queue
@@ -104,6 +106,7 @@ export function useReadingStatistics(
       const opened = await storage.open({ format, fingerprint: digest })
       if (generation !== owner) return
       current = {
+        fingerprint: digest,
         handle: opened.handle,
         clock: new ActiveReadingTime(now()),
         position: position.value,
@@ -131,6 +134,7 @@ export function useReadingStatistics(
       const result = await storage.reset(visit.handle)
       if (current === visit) {
         current = {
+          fingerprint: visit.fingerprint,
           handle: result.handle,
           clock: new ActiveReadingTime(now()),
           position: position.value,

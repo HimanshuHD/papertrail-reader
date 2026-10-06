@@ -115,10 +115,12 @@ it('stops at the idle deadline, resumes on reader interaction, and flushes owned
   expect(api.activeMs.value).toBe(65_000)
   const old = fingerprint.value
   fingerprint.value = 'sha256-chunks-v1:' + 'b'.repeat(64)
+  position.value = 1
   await nextTick()
   await vi.advanceTimersByTimeAsync(0)
   expect(mocked.checkpoint.mock.calls.at(-1)?.[0].id).toBe(old)
   expect(mocked.checkpoint.mock.calls.at(-1)?.[1]).toBe(65_000)
+  expect(mocked.checkpoint.mock.calls.at(-1)?.[2]).toBe(0.2)
   expect(api.activeMs.value).toBe(0)
 })
 it('keeps failed time available for explicit retry and clears failure only after a committed save', async () => {
