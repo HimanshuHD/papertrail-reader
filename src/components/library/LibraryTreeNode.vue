@@ -40,7 +40,7 @@ const label = computed(() =>
     <template v-if="node.kind === 'folder'">
       <button
         type="button"
-        class="pt-list-entry flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
+        class="pt-list-entry pt-library-entry flex min-h-10 w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-canvas"
         :aria-expanded="expanded"
         @click="toggle"
       >
@@ -73,7 +73,7 @@ const label = computed(() =>
       :title="label"
       :aria-label="`${node.document.format}: ${label}`"
       :class="[
-        'pt-list-entry flex min-h-11 w-full items-center gap-2 rounded-md border px-2 py-2 text-left',
+        'pt-list-entry pt-library-entry flex min-h-11 w-full items-center gap-2 rounded-md border px-2 py-2 text-left',
         selectedId === node.document.id
           ? 'border-brand bg-canvas'
           : 'border-transparent hover:bg-canvas',

@@ -26,7 +26,7 @@ async function forget(id?: string) {
         id="recent-title"
         ref="toggle"
         type="button"
-        class="pt-list-entry flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left text-sm font-medium hover:bg-canvas"
+        class="pt-list-entry pt-library-entry flex min-h-11 w-full items-center gap-3 rounded-lg px-2 text-left text-sm font-medium hover:bg-canvas"
         :aria-expanded="expanded"
         aria-controls="recent-documents"
         @click="expanded = !expanded"
@@ -51,7 +51,7 @@ async function forget(id?: string) {
           <button
             type="button"
             :disabled="busy"
-            class="pt-list-entry min-w-0 flex-1 rounded border border-transparent px-2 py-2 text-left text-xs hover:bg-canvas"
+            class="pt-list-entry pt-library-entry min-w-0 flex-1 rounded border border-transparent px-2 py-2 text-left text-xs hover:bg-canvas"
             :aria-label="`Open recent ${entry.format ?? 'PDF'} ${entry.name}`"
             @click="$emit('open', entry)"
           >

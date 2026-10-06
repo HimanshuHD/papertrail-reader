@@ -105,7 +105,7 @@ function preserveSelection(event: PointerEvent) {
         v-for="shade in colors"
         :key="shade"
         type="button"
-        class="color-action"
+        class="color-action pt-color-swatch"
         :aria-label="`Highlight ${shade}`"
         :aria-pressed="color === shade"
         :title="`Highlight ${shade}`"
@@ -227,8 +227,7 @@ function preserveSelection(event: PointerEvent) {
   white-space: nowrap;
   font-size: 14px;
 }
-.toolbar-action:hover,
-.color-action:hover {
+.toolbar-action:hover {
   background: var(--pt-canvas);
 }
 button:focus-visible,
@@ -360,5 +359,13 @@ textarea {
   .note-expand-leave-active {
     transition: none;
   }
+}
+</style>
+
+<style scoped>
+.color-action {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 </style>
