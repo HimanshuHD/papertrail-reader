@@ -146,3 +146,12 @@ it('opens the shared PDF annotation panel and returns focus on Escape', async ()
   expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
   expect(document.activeElement?.getAttribute('aria-label')).toBe('Annotations')
 })
+
+it('opens and focuses the matching annotation when its reader note indicator is activated', async () => {
+  const { wrapper } = await reader()
+  wrapper.findAllComponents({ name: 'PdfPageView' })[1]!.vm.$emit('noteSelected', 'saved')
+  await flushPromises()
+  expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(true)
+  expect(wrapper.get('[data-annotation-id="saved"]').attributes('aria-pressed')).toBe('true')
+  expect(document.activeElement?.getAttribute('data-annotation-id')).toBe('saved')
+})

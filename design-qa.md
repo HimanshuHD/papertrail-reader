@@ -48,3 +48,7 @@ Browser capture and same-viewport visual comparison are deferred to the owner pr
 ### Design standard for future features
 
 Design the primary workflow before implementation. Reuse the reader utility bar, drawer, spacing, semantic colors, typography and icon system. Show visual options for substantial new interfaces, implement the selected reference, and cover loading, error, empty, hover, focus and responsive states. Compare rendered screenshots with the selected design at the agreed browser gate.
+
+## #156 selected option 2 follow-up
+
+Target: the second displayed generated concept, expandable toolbar composer, refined by owner requirements. The toolbar keeps highlight controls above a slide-down editor; combined save is explicit, back/cancel reverses the expansion, and the drawer editor replaces its own entry menu. Added margin note indicators use the existing speech-bubble icon and semantic tokens. Same-viewport capture, transition/placement inspection and native overflow certification remain deferred to the agreed owner/release gate. Final result for this revision: blocked pending browser comparison; local checks do not certify visual fidelity.

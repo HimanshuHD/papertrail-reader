@@ -27,6 +27,7 @@ const noteInput = ref<HTMLTextAreaElement | null>(null)
 let pendingEditorFocus: string | null = null
 const draft = ref('')
 const editing = ref(false)
+const menuId = ref('')
 const prefix = computed(() => props.format.toLowerCase() + '-annotations')
 const selected = computed(() => props.annotations.find((item) => item.id === props.selectedId))
 const colors: Record<AnnotationColor, string> = {
@@ -80,45 +81,65 @@ async function focusEditor() {
   noteInput.value.focus({ preventScroll: true })
 }
 function selectAnnotation(id: string) {
+  editing.value = false
   pendingEditorFocus = null
   emit('navigate', id)
   void focusEditor()
 }
 function editNote(id: string) {
+  query.value = ''
+  colorFilter.value = ''
+  notesOnly.value = false
+  menuId.value = id
   editing.value = true
   pendingEditorFocus = id
   if (props.selectedId !== id) emit('navigate', id)
   else draft.value = selected.value?.note ?? ''
   void focusEditor()
 }
-defineExpose({ editNote })
-watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
-async function focusList(id?: string) {
+async function revealAnnotation(id: string) {
+  query.value = ''
+  colorFilter.value = ''
+  notesOnly.value = false
+  editing.value = false
   await nextTick()
-  const button = id
-    ? root.value?.querySelector<HTMLButtonElement>(`[data-annotation-id="${id}"]`)
-    : null
-  const target = button ?? filterInput.value
-  target?.focus({ preventScroll: true })
+  const entry = root.value?.querySelector<HTMLButtonElement>(`[data-annotation-id="${id}"]`)
+  if (entry && root.value)
+    root.value.scrollTop +=
+      entry.getBoundingClientRect().top - root.value.getBoundingClientRect().top - 16
+  entry?.focus({ preventScroll: true })
 }
+function menuToggle(event: Event, id: string) {
+  if ((event.target as HTMLDetailsElement).open) menuId.value = id
+  else if (menuId.value === id) {
+    menuId.value = ''
+    editing.value = false
+  }
+}
+defineExpose({ editNote, revealAnnotation })
+watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
 async function submitNote() {
   const item = selected.value
   if (!item || tooLong.value || !props.available || props.busy) return
   // Keep the draft until storage refreshes the committed record, including failed saves.
-  await props.saveNote(item.id, draft.value)
+  const submitted = draft.value
+  if (await props.saveNote(item.id, submitted)) {
+    if (props.selectedId === item.id && draft.value === submitted) cancelEdit()
+  }
 }
 async function clearNote() {
   const item = selected.value
   if (!item || !props.available || props.busy) return
   if ((await props.saveNote(item.id, '')) && props.selectedId === item.id) draft.value = ''
 }
-async function deleteAnnotation() {
-  const item = selected.value
-  if (item && (await props.remove(item.id))) await focusList()
-}
 function cancelEdit() {
   draft.value = selected.value?.note ?? ''
-  void focusList(selected.value?.id)
+  editing.value = false
+  void nextTick(() =>
+    root.value
+      ?.querySelector<HTMLButtonElement>(`[data-note-action="${props.selectedId}"]`)
+      ?.focus({ preventScroll: true }),
+  )
 }
 </script>
 
@@ -207,108 +228,112 @@ function cancelEdit() {
               }}</span></span
             >
           </button>
-          <details class="annotation-menu">
+          <details
+            class="annotation-menu"
+            :open="menuId === item.id"
+            @toggle="menuToggle($event, item.id)"
+          >
             <summary :aria-label="`Actions for ${location(item)}`"><UiIcon name="more" /></summary>
             <div class="annotation-menu-content">
-              <button
-                type="button"
-                class="annotation-button w-full text-left"
-                :disabled="busy || loading"
-                @click="editNote(item.id)"
+              <form
+                v-if="selected && editing && selected.id === item.id"
+                class="space-y-3"
+                @submit.prevent="submitNote"
               >
-                {{ item.note ? 'Edit note' : 'Add note' }}
-              </button>
-              <label :for="`${prefix}-color-${item.id}`" class="block px-2 py-1 text-xs"
-                >Highlight color</label
-              >
-              <select
-                :id="`${prefix}-color-${item.id}`"
-                :value="item.color"
-                :disabled="!available || busy || loading"
-                class="annotation-input"
-                @change="
-                  recolor(item.id, ($event.target as HTMLSelectElement).value as AnnotationColor)
-                "
-              >
-                <option v-for="(label, color) in colors" :key="color" :value="color">
-                  {{ label }}
-                </option>
-              </select>
-              <button
-                type="button"
-                class="annotation-button mt-2 w-full text-left"
-                :disabled="!available || busy || loading"
-                @click="remove(item.id)"
-              >
-                Delete highlight and note
-              </button>
+                <div class="flex items-center gap-2">
+                  <button
+                    type="button"
+                    class="annotation-back"
+                    aria-label="Back to annotation actions"
+                    :disabled="busy"
+                    @click="cancelEdit"
+                  >
+                    <UiIcon name="previous" /></button
+                  ><span class="text-sm font-semibold">{{
+                    selected.note ? 'Edit note' : 'Add note'
+                  }}</span>
+                </div>
+                <label :for="`${prefix}-note`" class="block text-sm font-medium">Note</label>
+                <textarea
+                  :id="`${prefix}-note`"
+                  :ref="(element) => (noteInput = element as HTMLTextAreaElement | null)"
+                  v-model="draft"
+                  :maxlength="ANNOTATION_LIMITS.note"
+                  :disabled="!available || busy || loading"
+                  rows="3"
+                  class="annotation-input resize-y"
+                  :aria-describedby="`${prefix}-note-limit`"
+                />
+                <p :id="`${prefix}-note-limit`" class="text-xs text-muted">
+                  {{ draft.length }} / {{ ANNOTATION_LIMITS.note }} characters
+                  <span v-if="tooLong"> · Note is too long.</span>
+                </p>
+                <div class="flex flex-wrap gap-2">
+                  <button
+                    type="submit"
+                    class="annotation-button"
+                    :disabled="!available || busy || loading || !dirty || tooLong"
+                  >
+                    Save note
+                  </button>
+                  <button
+                    type="button"
+                    class="annotation-button"
+                    :disabled="busy"
+                    @click="cancelEdit"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    class="annotation-button"
+                    :disabled="!available || busy || loading || !selected.note"
+                    @click="clearNote"
+                  >
+                    Delete note
+                  </button>
+                </div>
+              </form>
+              <div v-else>
+                <button
+                  type="button"
+                  class="annotation-button w-full text-left"
+                  :data-note-action="item.id"
+                  :disabled="busy || loading"
+                  @click="editNote(item.id)"
+                >
+                  {{ item.note ? 'Edit note' : 'Add note' }}
+                </button>
+                <label :for="`${prefix}-color-${item.id}`" class="block px-2 py-1 text-xs"
+                  >Highlight color</label
+                >
+                <select
+                  :id="`${prefix}-color-${item.id}`"
+                  :value="item.color"
+                  :disabled="!available || busy || loading"
+                  class="annotation-input"
+                  @change="
+                    recolor(item.id, ($event.target as HTMLSelectElement).value as AnnotationColor)
+                  "
+                >
+                  <option v-for="(label, color) in colors" :key="color" :value="color">
+                    {{ label }}
+                  </option>
+                </select>
+                <button
+                  type="button"
+                  class="annotation-button mt-2 w-full text-left"
+                  :disabled="!available || busy || loading"
+                  @click="remove(item.id)"
+                >
+                  Delete highlight and note
+                </button>
+              </div>
             </div>
           </details>
         </div>
       </li>
     </ul>
-    <form
-      v-if="selected && editing"
-      class="mt-4 space-y-3 border-t border-line pt-4"
-      @submit.prevent="submitNote"
-    >
-      <p class="text-xs text-muted">{{ location(selected) }} · {{ colors[selected.color] }}</p>
-      <label :for="`${prefix}-note`" class="block text-sm font-medium">Note</label>
-      <textarea
-        :id="`${prefix}-note`"
-        ref="noteInput"
-        v-model="draft"
-        :maxlength="ANNOTATION_LIMITS.note"
-        :disabled="!available || busy || loading"
-        rows="5"
-        class="annotation-input resize-y"
-        :aria-describedby="`${prefix}-note-limit`"
-      />
-      <p :id="`${prefix}-note-limit`" class="text-xs text-muted">
-        {{ draft.length }} / {{ ANNOTATION_LIMITS.note }} characters
-        <span v-if="tooLong"> · Note is too long.</span>
-      </p>
-      <div class="flex flex-wrap gap-2">
-        <button
-          type="submit"
-          class="annotation-button"
-          :disabled="!available || busy || loading || !dirty || tooLong"
-        >
-          Save note
-        </button>
-        <button type="button" class="annotation-button" :disabled="busy" @click="cancelEdit">
-          Cancel edit
-        </button>
-        <button
-          type="button"
-          class="annotation-button"
-          :disabled="!available || busy || loading || !selected.note"
-          @click="clearNote"
-        >
-          Delete note
-        </button>
-      </div>
-      <label :for="`${prefix}-edit-color`" class="block text-xs font-medium">Highlight color</label>
-      <select
-        :id="`${prefix}-edit-color`"
-        :value="selected.color"
-        :disabled="!available || busy || loading"
-        class="annotation-input"
-        @change="
-          recolor(selected.id, ($event.target as HTMLSelectElement).value as AnnotationColor)
-        "
-      >
-        <option v-for="(label, color) in colors" :key="color" :value="color">{{ label }}</option>
-      </select>
-      <button
-        type="button"
-        class="annotation-button"
-        :disabled="!available || busy || loading"
-        @click="deleteAnnotation"
-      >
-        Delete highlight and note
-      </button>
-    </form>
   </section>
 </template>
 
@@ -385,12 +410,20 @@ function cancelEdit() {
 .annotation-menu summary::-webkit-details-marker {
   display: none;
 }
+.annotation-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
 .annotation-menu-content {
   position: absolute;
   z-index: 10;
   right: 0;
   top: 32px;
-  width: 210px;
+  width: min(270px, 68vw);
   padding: 10px;
   border: 1px solid var(--pt-line);
   border-radius: 10px;

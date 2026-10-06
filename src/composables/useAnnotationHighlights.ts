@@ -14,6 +14,7 @@ export function useAnnotationHighlights(
   storage: AnnotationStorage = new IndexedDbAnnotationStorage(),
 ) {
   const highlights = shallowRef<Annotation[]>([])
+  const lastCreatedId = ref('')
   const handle = shallowRef<AnnotationHandle | null>(null)
   const notice = ref(''),
     loading = ref(false),
@@ -22,7 +23,10 @@ export function useAnnotationHighlights(
   async function load(preserve = false) {
     const owner = ++generation
     handle.value = null
-    if (!preserve) highlights.value = []
+    if (!preserve) {
+      highlights.value = []
+      lastCreatedId.value = ''
+    }
     notice.value = ''
     busy.value = false
     const digest = fingerprint.value
@@ -78,15 +82,29 @@ export function useAnnotationHighlights(
   }
   return {
     highlights,
+    lastCreatedId,
     handle,
     notice,
     busy,
     loading,
     reload: () => load(true),
-    add: (selector: AnnotationSelector, color: AnnotationColor) =>
-      mutate((h) => storage.create(h, selector, color), 'Highlight saved.'),
-    saveNote: (id: string, note: string) =>
-      mutate((h) => storage.update(h, id, { note }), note ? 'Note saved.' : 'Note deleted.'),
+    add: (selector: AnnotationSelector, color: AnnotationColor, note = '') => {
+      const owner = generation
+      return mutate(
+        async (h) => {
+          lastCreatedId.value = ''
+          const created = await storage.create(h, selector, color, note)
+          if (owner === generation) lastCreatedId.value = created.id
+          return created
+        },
+        note ? 'Highlight with note saved.' : 'Highlight saved.',
+      )
+    },
+    saveNote: (id: string, note: string, color?: AnnotationColor) =>
+      mutate(
+        (h) => storage.update(h, id, color ? { note, color } : { note }),
+        note ? 'Note saved.' : 'Note deleted.',
+      ),
     recolor: (id: string, color: AnnotationColor) =>
       mutate((h) => storage.update(h, id, { color }), 'Highlight color updated.'),
     remove: (id: string) => mutate((h) => storage.remove(h, id), 'Highlight deleted.'),

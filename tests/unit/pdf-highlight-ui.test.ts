@@ -118,12 +118,12 @@ it('keeps selection creation safe during a drag and opens the note editor after 
   document.getSelection()!.addRange(range)
   document.dispatchEvent(new Event('selectionchange'))
   await wrapper.vm.$nextTick()
-  let button = wrapper.get<HTMLButtonElement>('button[aria-label="Highlight selection"]')
+  let button = wrapper.get<HTMLButtonElement>('button[aria-label="Add highlight"]')
   expect(button.attributes('disabled')).toBeUndefined()
   button.element.focus()
   await wrapper.get('.textLayer').trigger('pointerdown')
   await wrapper.vm.$nextTick()
-  expect(wrapper.find('button[aria-label="Highlight selection"]').exists()).toBe(false)
+  expect(wrapper.find('button[aria-label="Add highlight"]').exists()).toBe(false)
   const freshRange = document.createRange()
   freshRange.selectNodeContents(text)
   document.getSelection()!.removeAllRanges()
@@ -132,22 +132,26 @@ it('keeps selection creation safe during a drag and opens the note editor after 
   await wrapper.vm.$nextTick()
   document.dispatchEvent(new Event('selectionchange'))
   await wrapper.vm.$nextTick()
-  expect(wrapper.find('button[aria-label="Highlight selection"]').exists()).toBe(false)
+  expect(wrapper.find('button[aria-label="Add highlight"]').exists()).toBe(false)
   await wrapper.get('.textLayer').trigger('pointerup')
-  button = wrapper.get<HTMLButtonElement>('button[aria-label="Highlight selection"]')
+  button = wrapper.get<HTMLButtonElement>('button[aria-label="Add highlight"]')
   expect(button.attributes('disabled')).toBeUndefined()
   mocks.add.mockImplementation(async () => {
     annotations.value = [annotation]
     return true
   })
-  await wrapper
-    .findAll('button')
-    .find((item) => item.text() === 'Add note')!
-    .trigger('click')
+  await wrapper.get('button[aria-label="Add note"]').trigger('click')
+  expect(mocks.add).not.toHaveBeenCalled()
+  await wrapper.get('#pdf-selection-note').setValue('A selection note')
+  await wrapper.get('[aria-label="PDF highlights"] form').trigger('submit')
   await flushPromises()
-  expect(mocks.add).toHaveBeenCalledWith(expect.objectContaining({ format: 'PDF' }), 'yellow')
-  expect(wrapper.find('#pdf-annotations-note').exists()).toBe(true)
-  expect(document.activeElement?.id).toBe('pdf-annotations-note')
+  expect(mocks.add).toHaveBeenCalledWith(
+    expect.objectContaining({ format: 'PDF' }),
+    'yellow',
+    'A selection note',
+  )
+  expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
   await wrapper.get('#pdf-annotations-color-one').setValue('pink')
   await flushPromises()
   expect(mocks.recolor).toHaveBeenCalledWith('one', 'pink')
@@ -183,7 +187,7 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
       availableWidth: 100,
       availableHeight: 200,
       scrollRoot: null,
-      annotations: [annotation],
+      annotations: [{ ...annotation, note: 'A PDF note' }],
       fingerprint: digest,
     },
   })
@@ -199,6 +203,8 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(1)
   expect(wrapper.get('.pdf-saved-highlight').attributes('style')).toContain('rgb(191, 219, 254)')
+  await wrapper.get('.reader-note-indicator').trigger('click')
+  expect(wrapper.emitted('noteSelected')).toEqual([['one']])
   await wrapper.setProps({ availableWidth: 150 })
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(1)
@@ -218,4 +224,5 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(0)
   expect(wrapper.emitted('highlightResolution')?.at(-1)).toEqual(['one', false, 1])
+  expect(wrapper.find('.reader-note-indicator').exists()).toBe(false)
 })

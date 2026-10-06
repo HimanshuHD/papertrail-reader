@@ -81,6 +81,7 @@ const selectionPosition = shallowRef<SelectionAnchor | null>(null)
 const annotationsPanel = ref<InstanceType<typeof AnnotationsPanel> | null>(null)
 let selectingHighlight = false
 const selectedHighlight = ref('')
+const toolbarSavedId = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
 const resolutionFailures = ref<Record<string, boolean>>({})
 watch(
@@ -89,6 +90,7 @@ watch(
     selectingHighlight = false
     pendingHighlight.value = null
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     resolutionFailures.value = {}
   },
   { flush: 'sync' },
@@ -111,8 +113,13 @@ function clearPendingHighlight(event: PointerEvent) {
     event.target instanceof Element &&
     !!event.target.closest('.textLayer') &&
     !!viewport.value?.contains(event.target)
-  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="PDF highlights"]'))
+  if (
+    !(event.target instanceof Element) ||
+    !event.target.closest('[aria-label="PDF highlights"]')
+  ) {
     pendingHighlight.value = null
+    toolbarSavedId.value = ''
+  }
 }
 function finishHighlightSelection() {
   if (!selectingHighlight) return
@@ -127,6 +134,7 @@ function captureSelection() {
   // Native selection paints continuously; measuring every drag update stalls it.
   if (selectingHighlight) return
   if (phase.value !== 'ready' || !viewport.value) return
+  if (document.activeElement?.closest('[aria-label="PDF highlights"]')) return
   const selection = document.getSelection()
   if (selection?.isCollapsed || !selection?.rangeCount) {
     if (document.activeElement?.closest('[aria-label="PDF highlights"]')) return
@@ -137,21 +145,31 @@ function captureSelection() {
   pendingHighlight.value = next ?? null
   if (next) {
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     selectionPosition.value = selectionAnchor(selection)
   }
 }
-async function saveHighlight() {
+async function saveHighlight(note = '', keepOpen = false) {
   const next = pendingHighlight.value
   if (!next || phase.value !== 'ready') return
   const sequence = openSequence
-  if ((await highlights.add(next, highlightColor.value)) && sequence === openSequence) {
-    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
-    pendingHighlight.value = null
-    document.getSelection()?.removeAllRanges()
-    return selectedHighlight.value
+  const committedBefore = highlights.lastCreatedId?.value
+  const saved = await highlights.add(next, highlightColor.value, note)
+  if (sequence !== openSequence || pendingHighlight.value !== next) return
+  if (!saved) {
+    const committed = highlights.lastCreatedId?.value
+    if (committed && committed !== committedBefore) toolbarSavedId.value = committed
+    return
   }
+  selectedHighlight.value =
+    highlights.lastCreatedId?.value || highlights.highlights.value.at(-1)?.id || ''
+  toolbarSavedId.value = keepOpen ? selectedHighlight.value : ''
+  pendingHighlight.value = null
+  document.getSelection()?.removeAllRanges()
+  return selectedHighlight.value
 }
 function activateHighlight(id: string) {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   selectedHighlight.value = id
   const annotation = highlightList.value.find((h) => h.id === id)
@@ -186,6 +204,14 @@ function revealSelectedHighlight() {
     saveReadingPoint()
   }
 }
+async function openNote(id: string) {
+  const owner = openSequence
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+  if (owner === openSequence && selectedHighlight.value === id)
+    annotationsPanel.value?.revealAnnotation(id)
+}
 async function openHighlight(id: string) {
   rightPanel.value = 'annotations'
   await nextTick()
@@ -215,16 +241,23 @@ watch(highlights.highlights, (items) => {
   if (selected) highlightColor.value = selected.color
   else selectedHighlight.value = ''
 })
-async function createHighlight(color?: AnnotationColor) {
-  if (color) highlightColor.value = color
-  await saveHighlight()
+async function createHighlight(color: AnnotationColor, keepOpen = false) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    await highlights.recolor(toolbarSavedId.value, color)
+    return
+  }
+  await saveHighlight('', keepOpen)
 }
-async function addSelectionNote() {
-  const id = await saveHighlight()
-  if (!id) return
-  rightPanel.value = 'annotations'
-  await nextTick()
-  annotationsPanel.value?.editNote(id)
+async function saveSelectionNote(note: string, color: AnnotationColor) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    const id = toolbarSavedId.value
+    if ((await highlights.saveNote(id, note, color)) && toolbarSavedId.value === id) {
+      toolbarSavedId.value = ''
+      pendingHighlight.value = null
+    }
+  } else await saveHighlight(note)
 }
 function highlightResolution(id: string, resolved: boolean, page: number) {
   resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: !resolved }
@@ -375,6 +408,7 @@ function measureViewport() {
 }
 
 function scheduleViewportMeasure() {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   cancelAnimationFrame(resizeFrame)
   resizeFrame = requestAnimationFrame(measureViewport)
@@ -510,6 +544,7 @@ function chooseMostVisiblePage() {
 }
 
 function handleViewerScroll() {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   cancelAnimationFrame(scrollFrame)
   scrollFrame = requestAnimationFrame(() => {
@@ -1171,12 +1206,16 @@ onBeforeUnmount(() => {
       </Transition>
     </header>
     <HighlightSelectionToolbar
-      v-if="pendingHighlight && selectionPosition && phase === 'ready'"
+      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && phase === 'ready'"
       format="PDF"
       :anchor="selectionPosition"
       :disabled="!highlights.handle.value || highlights.busy.value"
+      :saved="!!toolbarSavedId"
+      :notice="highlights.notice.value"
+      :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
       @highlight="createHighlight"
-      @note="addSelectionNote"
+      @retry="highlights.reload"
+      @save-note="saveSelectionNote"
     />
     <p
       v-if="highlights.notice.value && !highlights.handle.value"
@@ -1190,7 +1229,7 @@ onBeforeUnmount(() => {
     <div class="pdf-body relative flex min-h-0 flex-1">
       <section
         ref="viewport"
-        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas p-4 sm:p-6"
+        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
         aria-label="PDF pages"
         tabindex="0"
         aria-describedby="reader-title"
@@ -1244,6 +1283,7 @@ onBeforeUnmount(() => {
               selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
             "
             @highlight-selected="openHighlight"
+            @note-selected="openNote"
             @highlight-resolution="highlightResolution"
             @pointerup="captureSelection"
             @visibility="handleVisibility"

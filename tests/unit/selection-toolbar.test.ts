@@ -32,11 +32,57 @@ it('preserves native selection on pointer down and delegates color/note actions'
   expect(event.defaultPrevented).toBe(true)
   await wrapper.get('[aria-label="Highlight blue"]').trigger('click')
   await wrapper.findAll('button').at(-1)!.trigger('click')
-  expect(wrapper.emitted('highlight')).toEqual([['blue']])
-  expect(wrapper.emitted('note')).toEqual([[]])
+  expect(wrapper.emitted('highlight')).toEqual([['blue', false]])
+  expect(wrapper.find('textarea').exists()).toBe(true)
+  expect(wrapper.emitted('saveNote')).toBeUndefined()
   await wrapper.setProps({ disabled: true })
   expect(
     wrapper.findAll('button').every((button) => button.attributes('disabled') !== undefined),
   ).toBe(true)
+  wrapper.unmount()
+})
+
+it('expands without writing, submits both fields, and cancels only the note draft', async () => {
+  const wrapper = mount(HighlightSelectionToolbar, {
+    props: { format: 'PDF', anchor: { left: 150, top: 300 }, disabled: false },
+  })
+  await wrapper.get('[aria-label="Add note"]').trigger('click')
+  expect(wrapper.emitted('highlight')).toBeUndefined()
+  await wrapper.get('textarea').setValue('Combined note')
+  await wrapper.get('[aria-label="Highlight pink"]').trigger('click')
+  expect(wrapper.emitted('highlight')).toBeUndefined()
+  expect(wrapper.text()).toContain('Save highlight with note')
+  await wrapper.get('form').trigger('submit')
+  expect(wrapper.emitted('saveNote')).toEqual([['Combined note', 'pink']])
+  await wrapper.get('[aria-label="Back to highlight controls"]').trigger('click')
+  expect(wrapper.find('textarea').exists()).toBe(false)
+  await wrapper.get('[aria-label="Add note"]').trigger('click')
+  expect(wrapper.get('textarea').element).toHaveProperty('value', '')
+  await wrapper.get('[aria-label="Add highlight"]').trigger('click')
+  expect(wrapper.emitted('highlight')).toEqual([['pink', true]])
+  await wrapper.setProps({ saved: true })
+  expect(wrapper.text()).toContain('Save note')
+  expect(wrapper.get('[aria-label="Add highlight"]').attributes('disabled')).toBeDefined()
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Cancel')!
+    .trigger('click')
+  expect(wrapper.find('textarea').exists()).toBe(false)
+  expect(wrapper.props('saved')).toBe(true)
+  wrapper.unmount()
+})
+
+it('allows textarea focus without clearing the document selection and preserves failed drafts', async () => {
+  const wrapper = mount(HighlightSelectionToolbar, {
+    props: { format: 'EPUB', anchor: { left: 150, top: 300 }, disabled: false },
+  })
+  await wrapper.get('[aria-label="Add note"]').trigger('click')
+  const event = new Event('pointerdown', { bubbles: true, cancelable: true })
+  wrapper.get('textarea').element.dispatchEvent(event)
+  expect(event.defaultPrevented).toBe(false)
+  await wrapper.get('textarea').setValue('Keep this draft')
+  await wrapper.setProps({ disabled: true, notice: 'The change could not be saved.' })
+  expect(wrapper.get('textarea').element).toHaveProperty('value', 'Keep this draft')
+  expect(wrapper.text()).toContain('could not be saved')
   wrapper.unmount()
 })

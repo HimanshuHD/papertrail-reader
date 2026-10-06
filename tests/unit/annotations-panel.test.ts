@@ -102,11 +102,11 @@ it('retains failed drafts, enforces the note bound and restores list focus on ca
   expect(wrapper.text()).toContain('Note is too long.')
   await wrapper
     .findAll('button')
-    .find((button) => button.text() === 'Cancel edit')!
+    .find((button) => button.text() === 'Cancel')!
     .trigger('click')
   await flushPromises()
-  expect(wrapper.get('textarea').element).toHaveProperty('value', records[0]!.note)
-  expect(document.activeElement?.getAttribute('data-annotation-id')).toBe('first')
+  expect(wrapper.find('textarea').exists()).toBe(false)
+  expect(document.activeElement?.getAttribute('data-note-action')).toBe('first')
 })
 it('clears only the note or explicitly deletes its highlight, and locks failed storage until retry', async () => {
   const { wrapper, saveNote, remove } = await panel()
@@ -116,12 +116,15 @@ it('clears only the note or explicitly deletes its highlight, and locks failed s
     .trigger('click')
   await flushPromises()
   expect(saveNote).toHaveBeenCalledWith('first', '')
+  await wrapper.get('[aria-label="Back to annotation actions"]').trigger('click')
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete highlight and note')!
     .trigger('click')
   await flushPromises()
   expect(remove).toHaveBeenCalledWith('first')
+  wrapper.vm.editNote('first')
+  await flushPromises()
   await wrapper.setProps({ available: false, notice: 'Storage is unavailable.' })
   expect(wrapper.get('textarea').attributes('disabled')).toBeDefined()
   await wrapper
@@ -141,6 +144,8 @@ it('does not replace a new selection draft after an earlier save completes', asy
   await wrapper.get('textarea').setValue('First selection draft')
   await wrapper.get('form').trigger('submit')
   await wrapper.setProps({ selectedId: 'second' })
+  wrapper.vm.editNote('second')
+  await flushPromises()
   await wrapper.get('textarea').setValue('Second selection draft')
   finish(true)
   await flushPromises()

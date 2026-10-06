@@ -12,6 +12,7 @@ import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
 import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
 import AnnotationsPanel from './AnnotationsPanel.vue'
+import NoteIndicator from './NoteIndicator.vue'
 import HighlightSelectionToolbar from './HighlightSelectionToolbar.vue'
 import { selectionAnchor, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
 import { normalizeLocation } from '../../features/epub/location'
@@ -42,12 +43,16 @@ const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
 const selectionPosition = shallowRef<SelectionAnchor | null>(null)
 const annotationsPanel = ref<InstanceType<typeof AnnotationsPanel> | null>(null)
 const selectedHighlight = ref('')
+const toolbarSavedId = ref('')
 const highlightColor = ref<AnnotationColor>('yellow')
 const unresolvedHighlights = ref<Record<string, boolean>>({})
 const highlightSupportNotice = ref('')
 const highlightStatus = computed(() =>
   [highlights.notice.value, highlightSupportNotice.value].filter(Boolean).join(' '),
 )
+const noteIndicators = ref<{ id: string; note: string; left: number; top: number }[]>([])
+let noteFrame = 0
+let noteResizeObserver: ResizeObserver | undefined
 let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
 const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
@@ -68,6 +73,49 @@ function paintHighlights() {
   highlightSupportNotice.value = paintedHighlights.unsupported
     ? 'This browser cannot display highlight colors. Saved highlights remain available.'
     : ''
+  scheduleNoteIndicators()
+}
+function updateNoteIndicators() {
+  noteIndicators.value = []
+  const context = reader.session.value?.annotationContext?.()
+  const stage = host.value?.parentElement
+  const frame = host.value?.querySelector('iframe')
+  if (!context || !stage || !frame || loading.value) return
+  const outer = frame.getBoundingClientRect(),
+    bounds = stage.getBoundingClientRect()
+  for (const item of highlights.highlights.value) {
+    if (!item.note.trim()) continue
+    const range = paintedHighlights?.resolvedRanges.get(item.id)
+    const rect =
+      range?.getClientRects &&
+      Array.from(range.getClientRects()).find(
+        (rect) =>
+          rect.width > 0 &&
+          rect.height > 0 &&
+          outer.top + rect.bottom > bounds.top &&
+          outer.top + rect.top < bounds.bottom,
+      )
+    if (!rect) continue
+    // EPUB body reserves 24px of padding; use that margin, outside the text column.
+    noteIndicators.value.push({
+      id: item.id,
+      note: item.note,
+      left: Math.max(0, Math.min(outer.right - bounds.left - 23, bounds.width - 24)),
+      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 28)),
+    })
+  }
+}
+function scheduleNoteIndicators() {
+  cancelAnimationFrame(noteFrame)
+  noteFrame = requestAnimationFrame(updateNoteIndicators)
+}
+async function openNote(id: string) {
+  const owner = openGeneration
+  rightPanel.value = 'annotations'
+  await nextTick()
+  await chooseHighlight(id)
+  if (owner === openGeneration && selectedHighlight.value === id)
+    annotationsPanel.value?.revealAnnotation(id)
 }
 function scheduleHighlights() {
   cancelAnimationFrame(highlightFrame)
@@ -79,6 +127,7 @@ function captureHighlight(event?: Event) {
   pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
   if (pendingHighlight.value && context) {
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     selectionPosition.value = selectionAnchor(
       context.document.getSelection(),
       context.document.defaultView?.frameElement as HTMLIFrameElement | null,
@@ -109,24 +158,38 @@ function captureHighlight(event?: Event) {
   }
 }
 function clearHighlightSelection(event: PointerEvent) {
-  if (!(event.target instanceof Element) || !event.target.closest('[aria-label="EPUB highlights"]'))
+  if (
+    !(event.target instanceof Element) ||
+    !event.target.closest('[aria-label="EPUB highlights"]')
+  ) {
     pendingHighlight.value = null
+    toolbarSavedId.value = ''
+  }
 }
-async function saveHighlight() {
+async function saveHighlight(note = '', keepOpen = false) {
   const selector = pendingHighlight.value,
     owner = openGeneration,
     sourceDocument = reader.session.value?.annotationContext?.()?.document
   if (!selector || loading.value) return
+  const committedBefore = highlights.lastCreatedId?.value
+  const saved = await highlights.add(selector, highlightColor.value, note)
   if (
-    (await highlights.add(selector, highlightColor.value)) &&
-    owner === openGeneration &&
-    sourceDocument === reader.session.value?.annotationContext?.()?.document
-  ) {
-    selectedHighlight.value = highlights.highlights.value.at(-1)?.id ?? ''
-    pendingHighlight.value = null
-    reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
-    return selectedHighlight.value
+    owner !== openGeneration ||
+    pendingHighlight.value !== selector ||
+    sourceDocument !== reader.session.value?.annotationContext?.()?.document
+  )
+    return
+  if (!saved) {
+    const committed = highlights.lastCreatedId?.value
+    if (committed && committed !== committedBefore) toolbarSavedId.value = committed
+    return
   }
+  selectedHighlight.value =
+    highlights.lastCreatedId?.value || highlights.highlights.value.at(-1)?.id || ''
+  toolbarSavedId.value = keepOpen ? selectedHighlight.value : ''
+  pendingHighlight.value = null
+  reader.session.value?.annotationContext?.()?.document.getSelection()?.removeAllRanges()
+  return selectedHighlight.value
 }
 let highlightNavigation = 0
 async function chooseHighlight(id: string) {
@@ -157,22 +220,30 @@ async function chooseHighlight(id: string) {
   unresolvedHighlights.value[id] = !range || !session?.revealRange?.(range)
   if (!unresolvedHighlights.value[id]) continuity.save()
 }
-async function createHighlight(color?: AnnotationColor) {
-  if (color) highlightColor.value = color
-  await saveHighlight()
+async function createHighlight(color: AnnotationColor, keepOpen = false) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    await highlights.recolor(toolbarSavedId.value, color)
+    return
+  }
+  await saveHighlight('', keepOpen)
 }
-async function addSelectionNote() {
-  const id = await saveHighlight()
-  if (!id) return
-  rightPanel.value = 'annotations'
-  await nextTick()
-  annotationsPanel.value?.editNote(id)
+async function saveSelectionNote(note: string, color: AnnotationColor) {
+  highlightColor.value = color
+  if (toolbarSavedId.value) {
+    const id = toolbarSavedId.value
+    if ((await highlights.saveNote(id, note, color)) && toolbarSavedId.value === id) {
+      toolbarSavedId.value = ''
+      pendingHighlight.value = null
+    }
+  } else await saveHighlight(note)
 }
 watch(
   continuity.fingerprint,
   () => {
     pendingHighlight.value = null
     selectedHighlight.value = ''
+    toolbarSavedId.value = ''
     unresolvedHighlights.value = {}
     highlightSupportNotice.value = ''
   },
@@ -209,6 +280,8 @@ const showLoader = ref(false)
 const restoringContentsEntry = ref<string | null>(null)
 let loaderTimer: ReturnType<typeof setTimeout> | undefined
 function updateWindowWidth() {
+  scheduleNoteIndicators()
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   windowWidth.value = globalThis.innerWidth
 }
@@ -221,6 +294,7 @@ watch(windowWidth, () => {
 })
 const frameDocuments = new Set<Document>()
 function onFramePointer() {
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   closeTypography(false)
 }
@@ -244,14 +318,20 @@ function captureReading(): EpubReadingSettings | undefined {
   }
 }
 function saveReading() {
+  scheduleNoteIndicators()
+  toolbarSavedId.value = ''
   pendingHighlight.value = null
   continuity.save()
 }
 function clearFrameListeners() {
+  noteResizeObserver?.disconnect()
+  if (host.value) noteResizeObserver?.observe(host.value)
   highlightObservers.splice(0).forEach((observer) => observer.disconnect())
   cancelAnimationFrame(highlightFrame)
   paintedHighlights?.dispose()
   paintedHighlights = undefined
+  cancelAnimationFrame(noteFrame)
+  noteIndicators.value = []
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
   for (const doc of frameDocuments) {
@@ -269,6 +349,8 @@ function bindFrameListeners() {
   for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
     const doc = frame.contentDocument
     if (!doc) continue
+    noteResizeObserver?.observe(frame)
+    noteResizeObserver?.observe(doc.body)
     doc.addEventListener('pointerdown', onFramePointer, true)
     doc.addEventListener('keydown', onFrameKey, true)
     doc.addEventListener('pointerup', captureHighlight)
@@ -357,11 +439,17 @@ function onPointer(event: PointerEvent) {
     closeTypography(false)
 }
 onMounted(() => {
+  if (host.value && typeof ResizeObserver !== 'undefined') {
+    noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
+    noteResizeObserver.observe(host.value)
+  }
   globalThis.addEventListener('keydown', onKey)
   globalThis.addEventListener('pointerdown', onPointer, true)
   globalThis.addEventListener('resize', updateWindowWidth)
 })
 onBeforeUnmount(() => {
+  noteResizeObserver?.disconnect()
+  cancelAnimationFrame(noteFrame)
   ++openGeneration
   globalThis.removeEventListener('keydown', onKey)
   globalThis.removeEventListener('pointerdown', onPointer, true)
@@ -667,12 +755,16 @@ watch(
       </Transition>
     </header>
     <HighlightSelectionToolbar
-      v-if="pendingHighlight && selectionPosition && !loading"
+      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && !loading"
       format="EPUB"
       :anchor="selectionPosition"
       :disabled="!highlights.handle.value || highlights.busy.value"
+      :saved="!!toolbarSavedId"
+      :notice="highlights.notice.value"
+      :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
       @highlight="createHighlight"
-      @note="addSelectionNote"
+      @retry="highlights.reload"
+      @save-note="saveSelectionNote"
     />
     <p
       v-if="highlightStatus && !highlights.handle.value"
@@ -691,6 +783,14 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
+        <NoteIndicator
+          v-for="item in noteIndicators"
+          :key="item.id"
+          :note="item.note"
+          :label="`Open note: ${item.note.slice(0, 80)}`"
+          :style="{ left: `${item.left}px`, top: `${item.top}px` }"
+          @activate="openNote(item.id)"
+        />
         <p
           v-if="continuity.notice.value"
           role="status"

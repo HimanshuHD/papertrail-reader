@@ -168,6 +168,7 @@ export interface AnnotationStorage {
     handle: AnnotationHandle,
     selector: AnnotationSelector,
     color?: AnnotationColor,
+    note?: string,
   ): Promise<Annotation>
   update(
     handle: AnnotationHandle,
@@ -242,10 +243,15 @@ export class IndexedDbAnnotationStorage implements AnnotationStorage {
   list(handle: AnnotationHandle) {
     return this.withHandle(handle, (record) => record.annotations)
   }
-  create(handle: AnnotationHandle, value: AnnotationSelector, shade: AnnotationColor = 'yellow') {
+  create(
+    handle: AnnotationHandle,
+    value: AnnotationSelector,
+    shade: AnnotationColor = 'yellow',
+    noteText = '',
+  ) {
     return this.withHandle(handle, (record, store) => {
       const selector = normalizeAnnotationSelector(value)
-      if (!selector || selector.format !== record.format || !color(shade))
+      if (!selector || selector.format !== record.format || !color(shade) || !note(noteText))
         fail('invalid-data', 'Invalid annotation selection or color.')
       if (record.annotations.length >= ANNOTATION_LIMITS.annotations)
         fail('limit', 'Annotation limit reached for this document.')
@@ -255,7 +261,7 @@ export class IndexedDbAnnotationStorage implements AnnotationStorage {
         id: crypto.randomUUID(),
         selector,
         color: shade,
-        note: '',
+        note: noteText,
         createdAt: now,
         updatedAt: now,
       }

@@ -1,15 +1,45 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiIcon from '../UiIcon.vue'
 import type { AnnotationColor } from '../../services/annotation-storage'
+import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 import { toolbarPosition, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
-const props = defineProps<{ format: 'PDF' | 'EPUB'; anchor: SelectionAnchor; disabled: boolean }>()
-const emit = defineEmits<{ highlight: [color?: AnnotationColor]; note: [] }>()
+const props = defineProps<{
+  format: 'PDF' | 'EPUB'
+  anchor: SelectionAnchor
+  disabled: boolean
+  saved?: boolean
+  notice?: string
+  retryable?: boolean
+}>()
+const emit = defineEmits<{
+  highlight: [color: AnnotationColor, keepOpen: boolean]
+  saveNote: [note: string, color: AnnotationColor]
+  retry: []
+}>()
 const root = ref<HTMLElement | null>(null)
+const textarea = ref<HTMLTextAreaElement | null>(null)
+const noteButton = ref<HTMLButtonElement | null>(null)
 const size = ref({ width: 320, height: 48 })
-onMounted(async () => {
+const editing = ref(false)
+const draft = ref('')
+const color = ref<AnnotationColor>('yellow')
+let observer: ResizeObserver | undefined
+function measure() {
+  if (root.value)
+    size.value = { width: root.value.offsetWidth || 320, height: root.value.offsetHeight || 48 }
+}
+onMounted(() => {
+  measure()
+  if (typeof ResizeObserver !== 'undefined') {
+    observer = new ResizeObserver(measure)
+    if (root.value) observer.observe(root.value)
+  }
+})
+onBeforeUnmount(() => observer?.disconnect())
+watch(editing, async () => {
   await nextTick()
-  if (root.value) size.value = { width: root.value.offsetWidth, height: root.value.offsetHeight }
+  measure()
 })
 const position = computed(() =>
   toolbarPosition(
@@ -21,56 +51,127 @@ const position = computed(() =>
   ),
 )
 const colors: AnnotationColor[] = ['yellow', 'green', 'blue', 'pink']
+async function openNote() {
+  editing.value = true
+  await nextTick()
+  textarea.value?.focus({ preventScroll: true })
+}
+async function cancelNote() {
+  draft.value = ''
+  editing.value = false
+  await nextTick()
+  noteButton.value?.focus({ preventScroll: true })
+}
+function pickColor(next: AnnotationColor) {
+  color.value = next
+  if (!editing.value) emit('highlight', next, false)
+}
+function submitNote() {
+  if (!props.disabled && draft.value.trim() && draft.value.length <= ANNOTATION_LIMITS.note)
+    emit('saveNote', draft.value, color.value)
+}
+function preserveSelection(event: PointerEvent) {
+  if (!(event.target instanceof Element) || !event.target.closest('textarea'))
+    event.preventDefault()
+}
 </script>
 <template>
   <div
     ref="root"
     class="selection-toolbar"
+    :class="{ 'composer-open': editing }"
     :aria-label="`${format} highlights`"
     role="group"
     :style="{ left: position.left + 'px', top: position.top + 'px' }"
-    @pointerdown.prevent
+    @pointerdown="preserveSelection"
+    @keydown.esc.stop.prevent="cancelNote"
   >
-    <button
-      v-for="color in colors"
-      :key="color"
-      type="button"
-      class="color-action"
-      :aria-label="`Highlight ${color}`"
-      :title="`Highlight ${color}`"
-      :disabled="disabled"
-      @click="emit('highlight', color)"
-    >
-      <span class="color-swatch" :class="`swatch-${color}`" />
-    </button>
-    <span class="toolbar-divider" />
-    <button
-      type="button"
-      class="toolbar-action"
-      aria-label="Highlight selection"
-      title="Highlight selection"
-      :disabled="disabled"
-      @click="emit('highlight')"
-    >
-      <UiIcon name="highlight" />
-    </button>
-    <span class="toolbar-divider" />
-    <button
-      type="button"
-      class="toolbar-action note-action"
-      :disabled="disabled"
-      @click="emit('note')"
-    >
-      <UiIcon name="annotations" /><span>Add note</span>
-    </button>
+    <div class="highlight-controls">
+      <button
+        v-for="shade in colors"
+        :key="shade"
+        type="button"
+        class="color-action"
+        :aria-label="`Highlight ${shade}`"
+        :aria-pressed="color === shade"
+        :title="`Highlight ${shade}`"
+        :disabled="disabled"
+        @click="pickColor(shade)"
+      >
+        <span class="color-swatch" :class="`swatch-${shade}`" />
+      </button>
+      <span class="toolbar-divider" />
+      <button
+        type="button"
+        class="toolbar-action highlight-action"
+        aria-label="Add highlight"
+        :disabled="disabled || saved"
+        @click="emit('highlight', color, editing)"
+      >
+        <UiIcon name="highlight" /><span role="tooltip" class="highlight-tooltip"
+          >Add highlight</span
+        >
+      </button>
+      <span class="toolbar-divider" />
+      <button
+        ref="noteButton"
+        type="button"
+        class="toolbar-action note-action"
+        aria-label="Add note"
+        :disabled="disabled"
+        @click="openNote"
+      >
+        <UiIcon name="annotations" /><span>Add note</span>
+      </button>
+    </div>
+    <Transition name="note-expand" @after-enter="measure" @after-leave="measure">
+      <form v-if="editing" class="note-composer" @submit.prevent="submitNote">
+        <div class="composer-heading">
+          <button
+            type="button"
+            class="toolbar-action"
+            aria-label="Back to highlight controls"
+            :disabled="disabled"
+            @click="cancelNote"
+          >
+            <UiIcon name="previous" /></button
+          ><label :for="`${format.toLowerCase()}-selection-note`">Add note</label>
+        </div>
+        <textarea
+          :id="`${format.toLowerCase()}-selection-note`"
+          ref="textarea"
+          v-model="draft"
+          rows="3"
+          placeholder="Write your note…"
+          :maxlength="ANNOTATION_LIMITS.note"
+          :disabled="disabled"
+        />
+        <p v-if="notice" class="composer-status" role="status">
+          {{ notice }}
+          <button v-if="retryable" type="button" class="underline" @click="emit('retry')">
+            Retry annotations
+          </button>
+        </p>
+        <div class="composer-footer">
+          <span class="composer-count">{{ draft.length }} / {{ ANNOTATION_LIMITS.note }}</span
+          ><button type="button" class="composer-cancel" :disabled="disabled" @click="cancelNote">
+            Cancel</button
+          ><button
+            type="submit"
+            class="composer-save"
+            :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
+          >
+            {{ saved ? 'Save note' : 'Save highlight with note' }}
+          </button>
+        </div>
+      </form>
+    </Transition>
   </div>
 </template>
 <style scoped>
 .selection-toolbar {
   position: fixed;
   z-index: 40;
-  display: flex;
-  align-items: center;
   padding: 5px 8px;
   max-width: calc(100vw - 16px);
   border: 1px solid var(--pt-line);
@@ -78,19 +179,30 @@ const colors: AnnotationColor[] = ['yellow', 'green', 'blue', 'pink']
   background: var(--pt-panel);
   color: var(--pt-ink);
   box-shadow: 0 8px 24px #0003;
+  transition:
+    top 180ms ease,
+    width 180ms ease;
+}
+.composer-open {
+  width: min(400px, calc(100vw - 16px));
+}
+.highlight-controls {
+  display: flex;
+  align-items: center;
 }
 .toolbar-action,
 .color-action {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   min-height: 38px;
-  min-width: 34px;
+  min-width: 32px;
   border-radius: 8px;
 }
 .note-action {
-  padding: 0 8px;
+  padding: 0 6px;
   white-space: nowrap;
   font-size: 14px;
 }
@@ -98,8 +210,8 @@ const colors: AnnotationColor[] = ['yellow', 'green', 'blue', 'pink']
 .color-action:hover {
   background: var(--pt-canvas);
 }
-.toolbar-action:focus-visible,
-.color-action:focus-visible {
+button:focus-visible,
+textarea:focus-visible {
   outline: 2px solid var(--pt-brand);
   outline-offset: 2px;
 }
@@ -111,6 +223,10 @@ button:disabled {
   height: 20px;
   border-radius: 50%;
   border: 1px solid #0002;
+}
+.color-action[aria-pressed='true'] .color-swatch {
+  outline: 1px solid var(--pt-ink);
+  outline-offset: 2px;
 }
 .swatch-yellow {
   background: #ffe58a;
@@ -129,5 +245,96 @@ button:disabled {
   width: 1px;
   margin: 0 5px;
   background: var(--pt-line);
+}
+.highlight-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  padding: 6px 10px;
+  border: 1px solid var(--pt-line);
+  border-radius: 8px;
+  background: var(--pt-panel);
+  font-size: 12px;
+  pointer-events: none;
+  visibility: hidden;
+}
+.highlight-action:hover .highlight-tooltip,
+.highlight-action:focus-visible .highlight-tooltip {
+  visibility: visible;
+}
+.note-composer {
+  padding: 8px 4px 6px;
+  border-top: 1px solid var(--pt-line);
+  margin-top: 5px;
+  overflow: hidden;
+}
+.composer-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+textarea {
+  display: block;
+  width: 100%;
+  border: 1px solid var(--pt-line);
+  border-radius: 8px;
+  background: var(--pt-canvas);
+  color: var(--pt-ink);
+  padding: 10px;
+  font-size: 14px;
+  resize: vertical;
+}
+.composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.composer-cancel,
+.composer-save {
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid var(--pt-line);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.composer-save {
+  background: var(--pt-brand);
+  color: var(--pt-canvas);
+}
+.composer-count,
+.composer-status {
+  font-size: 11px;
+  color: var(--pt-muted);
+}
+.composer-count {
+  margin-right: auto;
+}
+.note-expand-enter-active,
+.note-expand-leave-active {
+  transition:
+    max-height 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+  max-height: 420px;
+}
+.note-expand-enter-from,
+.note-expand-leave-to {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-8px);
+}
+@media (prefers-reduced-motion: reduce) {
+  .selection-toolbar,
+  .note-expand-enter-active,
+  .note-expand-leave-active {
+    transition: none;
+  }
 }
 </style>
