@@ -1,5 +1,10 @@
 # Product Roadmap 2
 
+## Current checkpoint — #153 merged; EPUB highlights next
+
+Owner merged PR #153 as `56e9aba3bc626f28ddc2b74c1667e7d83f68011b`; owner native verification is checked on that PR. #152 is completed and its stale active label removed. Source `c9446ca93d6d4a9b69c3e8eefac397fa065fbfdf` passed Frontend CI 37407335570: 243 unit/component tests, 10 pipeline tests, lint, formatting, types and build. The PR's remaining Browser E2E item is reconciled as a deferred release responsibility under #145/#28, not an executed test. Earlier active #152 and pending-owner checkpoints are superseded. Next increment: #142 EPUB highlights, one fresh branch from current main. #15/milestone 4 remain open for #142–#145.
+
+
 ## Current checkpoint — PR #148 merged; #152 selection gaps active
 
 Owner merged PR #148 as `a4d756b1c92d5122bb51221ac206287e5eaae202`. #141 and #149–#151 are closed with stale active labels removed. The remaining blank-line native selection defect stays #152/In progress on `fix/152-pdf-selection-gaps`, created from main `fc87455a51bc3c7fb9db8c7f19bed096a0205658`. Parent #15 remains in progress; #142–#145 remain new. Earlier pending-merge #141 checkpoints are superseded. The independent fix restores PDF.js native selection guards and a text cursor across the text-layer surface; browser visual acceptance stays #145/#28 at the reviewed release gate.
