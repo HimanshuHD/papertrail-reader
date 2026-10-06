@@ -1,5 +1,9 @@
 # EPUB highlight verification (#142)
 
+## Merge reconciliation — #154 completed; #143 next
+
+Owner merged PR #154 as `89292276a59d2ff0c1e1c1fe594df5ff6c14e6bb`; owner verification of EPUB creation and saved-highlight navigation/top offset is checked on that PR. #142 is completed and its stale active label removed. Accepted source `f028f0ee6dd5226b7032443447b1813cf94c85cd` passed Frontend CI 37426388106: 255 unit/component tests, 10 pipeline tests, lint/format/types/build. Automated native Browser E2E remains deferred to #145/#28. Next is #143 shared annotation panel/plain-text notes, followed by #144 statistics and #145 acceptance. Parent #15 and milestone 4 remain open; earlier active #142 checkpoints are historical and superseded.
+
 Parent #15; acceptance #145/#28. Use an EPUB containing wrapped paragraphs, inline emphasis, images and multiple chapters.
 
 1. Select text in formatted view, choose Yellow/Green/Blue/Pink and save. Check readable authored text and continuous selection across inline runs.

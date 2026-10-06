@@ -1,5 +1,9 @@
 # PDF highlight verification (#141)
 
+## Merge reconciliation — #154 completed; #143 next
+
+Owner merged PR #154 as `89292276a59d2ff0c1e1c1fe594df5ff6c14e6bb`; owner verification of EPUB creation and saved-highlight navigation/top offset is checked on that PR. #142 is completed and its stale active label removed. Accepted source `f028f0ee6dd5226b7032443447b1813cf94c85cd` passed Frontend CI 37426388106: 255 unit/component tests, 10 pipeline tests, lint/format/types/build. Automated native Browser E2E remains deferred to #145/#28. Next is #143 shared annotation panel/plain-text notes, followed by #144 statistics and #145 acceptance. Parent #15 and milestone 4 remain open; earlier active #142 checkpoints are historical and superseded.
+
 ## Current checkpoint — #153 merged; EPUB highlights next
 
 Owner merged PR #153 as `56e9aba3bc626f28ddc2b74c1667e7d83f68011b`; owner native verification is checked on that PR. #152 is completed and its stale active label removed. Source `c9446ca93d6d4a9b69c3e8eefac397fa065fbfdf` passed Frontend CI 37407335570: 243 unit/component tests, 10 pipeline tests, lint, formatting, types and build. The PR's remaining Browser E2E item is reconciled as a deferred release responsibility under #145/#28, not an executed test. Earlier active #152 and pending-owner checkpoints are superseded. Next increment: #142 EPUB highlights, one fresh branch from current main. #15/milestone 4 remain open for #142–#145.
