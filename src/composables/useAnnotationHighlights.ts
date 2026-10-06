@@ -1,3 +1,4 @@
+import { showToast } from './useToasts'
 import { onBeforeUnmount, ref, shallowRef, watch, type Ref } from 'vue'
 import {
   IndexedDbAnnotationStorage,
@@ -67,6 +68,7 @@ export function useAnnotationHighlights(
       if (owner !== generation) return false
       highlights.value = result
       notice.value = message
+      showToast(message)
       return true
     } catch {
       if (owner === generation) {

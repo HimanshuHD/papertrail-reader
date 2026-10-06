@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Annotation, AnnotationColor } from '../../services/annotation-storage'
+import FloatingPopover from '../FloatingPopover.vue'
 import UiIcon from '../UiIcon.vue'
 import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 
@@ -17,7 +18,7 @@ const props = defineProps<{
   recolor: (id: string, color: AnnotationColor) => Promise<boolean>
   remove: (id: string) => Promise<boolean>
 }>()
-const emit = defineEmits<{ navigate: [id: string]; retry: [] }>()
+const emit = defineEmits<{ navigate: [id: string]; select: [id: string]; retry: [] }>()
 const root = ref<HTMLElement | null>(null)
 const filterInput = ref<HTMLInputElement | null>(null)
 const query = ref('')
@@ -28,6 +29,24 @@ let pendingEditorFocus: string | null = null
 const draft = ref('')
 const editing = ref(false)
 const menuId = ref('')
+const menuAnchor = ref<HTMLElement | null>(null)
+function closeMenu() {
+  menuId.value = ''
+  editing.value = false
+  pendingEditorFocus = null
+}
+function openMenu(id: string, event: MouseEvent) {
+  if (menuId.value === id) return closeMenu()
+  menuId.value = id
+  menuAnchor.value = event.currentTarget as HTMLElement
+  editing.value = false
+}
+async function changeColor(id: string, color: AnnotationColor) {
+  if ((await props.recolor(id, color)) && menuId.value === id) closeMenu()
+}
+async function deleteHighlight(id: string) {
+  if ((await props.remove(id)) && menuId.value === id) closeMenu()
+}
 const prefix = computed(() => props.format.toLowerCase() + '-annotations')
 const selected = computed(() => props.annotations.find((item) => item.id === props.selectedId))
 const colors: Record<AnnotationColor, string> = {
@@ -76,13 +95,10 @@ async function focusEditor() {
   const id = pendingEditorFocus
   pendingEditorFocus = null
   if (props.selectedId !== id || !props.available || !root.value || !noteInput.value) return
-  root.value.scrollTop +=
-    noteInput.value.getBoundingClientRect().top - root.value.getBoundingClientRect().top - 16
   noteInput.value.focus({ preventScroll: true })
 }
 function selectAnnotation(id: string) {
-  editing.value = false
-  pendingEditorFocus = null
+  closeMenu()
   emit('navigate', id)
   void focusEditor()
 }
@@ -91,10 +107,11 @@ function editNote(id: string) {
   colorFilter.value = ''
   notesOnly.value = false
   menuId.value = id
+  menuAnchor.value = root.value?.querySelector<HTMLElement>(`[data-menu-id="${id}"]`) ?? null
   editing.value = true
   pendingEditorFocus = id
-  if (props.selectedId !== id) emit('navigate', id)
-  else draft.value = selected.value?.note ?? ''
+  if (props.selectedId !== id) emit('select', id)
+  draft.value = props.annotations.find((item) => item.id === id)?.note ?? ''
   void focusEditor()
 }
 async function revealAnnotation(id: string) {
@@ -109,13 +126,6 @@ async function revealAnnotation(id: string) {
       entry.getBoundingClientRect().top - root.value.getBoundingClientRect().top - 16
   entry?.focus({ preventScroll: true })
 }
-function menuToggle(event: Event, id: string) {
-  if ((event.target as HTMLDetailsElement).open) menuId.value = id
-  else if (menuId.value === id) {
-    menuId.value = ''
-    editing.value = false
-  }
-}
 defineExpose({ editNote, revealAnnotation })
 watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
 async function submitNote() {
@@ -124,7 +134,7 @@ async function submitNote() {
   // Keep the draft until storage refreshes the committed record, including failed saves.
   const submitted = draft.value
   if (await props.saveNote(item.id, submitted)) {
-    if (props.selectedId === item.id && draft.value === submitted) cancelEdit()
+    if (props.selectedId === item.id && draft.value === submitted) closeMenu()
   }
 }
 async function clearNote() {
@@ -135,11 +145,7 @@ async function clearNote() {
 function cancelEdit() {
   draft.value = selected.value?.note ?? ''
   editing.value = false
-  void nextTick(() =>
-    root.value
-      ?.querySelector<HTMLButtonElement>(`[data-note-action="${props.selectedId}"]`)
-      ?.focus({ preventScroll: true }),
-  )
+  void nextTick(() => menuAnchor.value?.focus({ preventScroll: true }))
 }
 </script>
 
@@ -163,7 +169,7 @@ function cancelEdit() {
     >
       Retry annotations
     </button>
-    <div class="mb-4 space-y-2">
+    <div class="annotation-filter-bar">
       <label :for="`${prefix}-filter`" class="sr-only">Find annotations</label>
       <input
         :id="`${prefix}-filter`"
@@ -214,27 +220,41 @@ function cancelEdit() {
             :aria-pressed="selectedId === item.id"
             :aria-label="`Go to annotation: ${location(item)} — ${quote(item).slice(0, 80)}`"
             :disabled="busy || loading"
-            class="annotation-entry w-full text-left"
+            class="annotation-entry pt-list-entry w-full text-left"
             @click="selectAnnotation(item.id)"
           >
             <span class="mb-2 block text-xs text-muted"
               >{{ location(item)
               }}<span v-if="unresolved[item.id]" class="ml-2 font-semibold">Unresolved</span></span
             >
-            <span class="annotation-quote block">“{{ quote(item).slice(0, 240) }}”</span>
+            <span class="annotation-quote block"
+              >“{{
+                Array.from(quote(item)).slice(0, 100).join('') +
+                (Array.from(quote(item)).length > 100 ? '...' : '')
+              }}”</span
+            >
             <span v-if="item.note" class="annotation-note"
               ><UiIcon name="annotations" /><span class="whitespace-pre-wrap">{{
                 item.note.slice(0, 240)
               }}</span></span
             >
           </button>
-          <details
-            class="annotation-menu"
-            :open="menuId === item.id"
-            @toggle="menuToggle($event, item.id)"
-          >
-            <summary :aria-label="`Actions for ${location(item)}`"><UiIcon name="more" /></summary>
-            <div class="annotation-menu-content">
+          <div class="annotation-menu">
+            <button
+              type="button"
+              :data-menu-id="item.id"
+              :aria-label="`Actions for ${location(item)}`"
+              :aria-expanded="menuId === item.id"
+              @click="openMenu(item.id, $event)"
+            >
+              <UiIcon name="more" />
+            </button>
+            <FloatingPopover
+              v-if="menuId === item.id"
+              :anchor="menuAnchor"
+              :expanded="editing"
+              @close="closeMenu"
+            >
               <form
                 v-if="selected && editing && selected.id === item.id"
                 class="space-y-3"
@@ -274,7 +294,7 @@ function cancelEdit() {
                     class="annotation-button"
                     :disabled="!available || busy || loading || !dirty || tooLong"
                   >
-                    Save note
+                    <UiIcon name="check" />Save note
                   </button>
                   <button
                     type="button"
@@ -282,7 +302,7 @@ function cancelEdit() {
                     :disabled="busy"
                     @click="cancelEdit"
                   >
-                    Cancel
+                    <UiIcon name="close" />Cancel
                   </button>
                   <button
                     type="button"
@@ -290,7 +310,7 @@ function cancelEdit() {
                     :disabled="!available || busy || loading || !selected.note"
                     @click="clearNote"
                   >
-                    Delete note
+                    <UiIcon name="trash" />Delete note
                   </button>
                 </div>
               </form>
@@ -302,7 +322,17 @@ function cancelEdit() {
                   :disabled="busy || loading"
                   @click="editNote(item.id)"
                 >
-                  {{ item.note ? 'Edit note' : 'Add note' }}
+                  <UiIcon :name="item.note ? 'edit' : 'annotations'" />{{
+                    item.note ? 'Edit note' : 'Add note'
+                  }}
+                </button>
+                <button
+                  type="button"
+                  class="annotation-button mt-2 w-full text-left"
+                  :disabled="!available || busy || loading"
+                  @click="deleteHighlight(item.id)"
+                >
+                  <UiIcon name="trash" />Delete highlight and note
                 </button>
                 <label :for="`${prefix}-color-${item.id}`" class="block px-2 py-1 text-xs"
                   >Highlight color</label
@@ -313,24 +343,19 @@ function cancelEdit() {
                   :disabled="!available || busy || loading"
                   class="annotation-input"
                   @change="
-                    recolor(item.id, ($event.target as HTMLSelectElement).value as AnnotationColor)
+                    changeColor(
+                      item.id,
+                      ($event.target as HTMLSelectElement).value as AnnotationColor,
+                    )
                   "
                 >
                   <option v-for="(label, color) in colors" :key="color" :value="color">
                     {{ label }}
                   </option>
                 </select>
-                <button
-                  type="button"
-                  class="annotation-button mt-2 w-full text-left"
-                  :disabled="!available || busy || loading"
-                  @click="remove(item.id)"
-                >
-                  Delete highlight and note
-                </button>
               </div>
-            </div>
-          </details>
+            </FloatingPopover>
+          </div>
         </div>
       </li>
     </ul>
@@ -338,6 +363,21 @@ function cancelEdit() {
 </template>
 
 <style scoped>
+.annotation-filter-bar {
+  margin: 0 -20px;
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--pt-line);
+  display: grid;
+  gap: 12px;
+}
+.annotation-filters {
+  display: grid;
+  gap: 12px;
+}
+.annotation-filters[open] > * + * {
+  margin-top: 12px;
+}
+
 .annotation-input {
   width: 100%;
   min-width: 0;
@@ -349,10 +389,13 @@ function cancelEdit() {
   font-size: 0.875rem;
 }
 .annotation-button {
-  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
   border: 1px solid var(--pt-line);
   border-radius: 0.5rem;
-  padding: 0.375rem 0.625rem;
+  padding: 10px 12px;
   font-size: 0.75rem;
 }
 .annotation-row {
@@ -401,14 +444,11 @@ function cancelEdit() {
   right: 0;
   top: 20px;
 }
-.annotation-menu summary {
+.annotation-menu > button {
   list-style: none;
   cursor: pointer;
-  padding: 4px;
+  padding: 6px;
   border-radius: 6px;
-}
-.annotation-menu summary::-webkit-details-marker {
-  display: none;
 }
 .annotation-back {
   display: inline-flex;
@@ -417,18 +457,6 @@ function cancelEdit() {
   width: 32px;
   height: 32px;
   border-radius: 6px;
-}
-.annotation-menu-content {
-  position: absolute;
-  z-index: 10;
-  right: 0;
-  top: 32px;
-  width: min(270px, 68vw);
-  padding: 10px;
-  border: 1px solid var(--pt-line);
-  border-radius: 10px;
-  background: var(--pt-panel);
-  box-shadow: 0 6px 16px #0002;
 }
 .annotation-entry:hover .annotation-quote {
   color: var(--pt-brand);

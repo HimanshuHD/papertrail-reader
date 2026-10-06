@@ -166,7 +166,7 @@ function createGuard(doc: Document): SelectionGuard {
   doc.addEventListener('pointermove', queueMove, { passive: false })
   const finish = (event: PointerEvent) => {
     if (drag && event.pointerId !== drag.pointerId) return
-    move(event)
+    if (!event.defaultPrevented) move(event)
     resetAll()
   }
   doc.addEventListener('pointerup', finish)

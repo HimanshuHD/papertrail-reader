@@ -91,3 +91,13 @@ PR #155 now expands Add note inside the selection toolbar, without a storage wri
 The drawer replaces the associated entry's action-menu contents with its note editor. PDF indicators derive from freshly verified highlight rectangles and follow page rendering/zoom/virtualization; EPUB indicators derive from resolved ranges and iframe coordinates, refreshing on scroll and observed reader/frame/body resizing. Plain-text hover/focus previews lead to the selected drawer entry. No marker is painted for unresolved text or an annotation without a note. Native layout/visual verification remains pending under #145/#28.
 
 The coordinator retains the committed creation ID even if refreshing the list fails. In-composer retry keeps the draft and updates that ID rather than creating another record. Document identity changes discard it. Inline Save note can atomically update the existing highlight's chosen color and note together.
+
+## Annotation interaction follow-up (#157)
+
+Only explicit Add highlight or Save highlight with note writes a pending selection. Swatches update the live native-selection preview and chosen color without storage mutations. Clicking a saved range uses its verified geometry and a small pointer movement threshold; actual drags remain selection gestures. It clears unrelated native selections and opens/reveals the owned annotation.
+
+List excerpts show 100 Unicode characters followed by three dots when truncated; complete quotes remain in storage and filter/navigation logic. Global button styling excludes annotation/bookmark entry surfaces, preserving their own list treatment. Active and hover controls add a 2px inset bottom accent without changing other border geometry.
+
+`FloatingPopover` portals per-entry actions to the overlay surface (or native fullscreen element), measures both trigger and content, clamps to viewport margins and flips above when space below is insufficient. Editor expansion changes width, not panel layout. Outside pointer, Escape, section scroll and successful actions dismiss; note focus uses preventScroll. Action order is Add/Edit note, Delete highlight and note, then color. Errors retain drafts. `ToastHost` announces successful committed/loaded mutations through a bounded three-message queue, auto-dismiss and accessible close controls; failed or stale operations never show a success toast.
+
+PDF search input and results share their own directly opened right-panel mode. Contents, Bookmarks and Annotations likewise open directly from toolbar icons; no panel tab strip remains. EPUB continues its existing direct Contents/Bookmarks/Annotations modes; adding publication-wide EPUB text search is outside this annotation refinement.

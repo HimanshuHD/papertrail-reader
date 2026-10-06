@@ -66,8 +66,20 @@ const noteIndicators = computed(() =>
       return rect ? [{ id: item.id, note: item.note, top: rect.y }] : []
     }),
 )
+let savedPointerStart: { x: number; y: number } | null = null
+function startSavedPointer(event: PointerEvent) {
+  savedPointerStart =
+    event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+      ? { x: event.clientX, y: event.clientY }
+      : null
+}
 function selectSavedHighlight(event: PointerEvent) {
-  if (!textLayer.value?.ownerDocument.getSelection()?.isCollapsed) return
+  if (
+    !savedPointerStart ||
+    Math.hypot(event.clientX - savedPointerStart.x, event.clientY - savedPointerStart.y) > 4
+  )
+    return
+  savedPointerStart = null
   const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
   if (!box) return
   const hit = savedRects.value.find(
@@ -77,7 +89,11 @@ function selectSavedHighlight(event: PointerEvent) {
       event.clientY >= box.top + rect.y * box.height &&
       event.clientY <= box.top + (rect.y + rect.height) * box.height,
   )
-  if (hit) emit('highlightSelected', hit.id)
+  if (hit) {
+    event.preventDefault()
+    textLayer.value?.ownerDocument.getSelection()?.removeAllRanges()
+    emit('highlightSelected', hit.id)
+  }
 }
 function updateSavedHighlights() {
   savedRects.value = []
@@ -490,6 +506,7 @@ onBeforeUnmount(() => {
         class="textLayer absolute top-0 left-0 overflow-hidden"
         :style="{ visibility: rendered && !rendering ? 'visible' : 'hidden' }"
         :aria-label="`Selectable text for PDF page ${pageNumber}`"
+        @pointerdown="startSavedPointer"
         @pointerup="selectSavedHighlight"
       ></div>
       <div
@@ -585,7 +602,7 @@ onBeforeUnmount(() => {
   transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
 }
 .textLayer :deep(span::selection) {
-  background: rgb(147 197 253 / 35%);
+  background: var(--pt-selection-color, rgb(147 197 253 / 35%));
   color: transparent;
 }
 .textLayer :deep(br::selection) {

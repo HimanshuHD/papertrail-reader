@@ -114,7 +114,9 @@ button:disabled,
     box-shadow 150ms ease;
 }
 /* Scoped component/utility rules must not give individual controls competing colors. */
-:is(button, [role='button'], summary, .pt-button):not(:disabled):not([aria-disabled='true']):is(
+:is(button, [role='button'], summary, .pt-button):not(.pt-list-entry):not(:disabled):not(
+    [aria-disabled='true']
+  ):is(
     :hover,
     :active,
     :focus-visible,
@@ -131,6 +133,7 @@ details[open] > summary {
   border-color: var(--pt-button-edge, var(--pt-control-edge)) !important;
   box-shadow:
     inset 0 0 0 1px var(--pt-button-edge, var(--pt-control-edge)),
+    inset 0 -2px 0 var(--pt-button-edge, var(--pt-control-edge)),
     inset 0 -3px 8px var(--pt-control-inset) !important;
 }
 .pt-button-filled:not(:disabled):not([aria-disabled='true']):active {

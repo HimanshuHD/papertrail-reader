@@ -1,6 +1,10 @@
 <script setup lang="ts">
 defineProps<{
   name:
+    | 'edit'
+    | 'trash'
+    | 'check'
+    | 'note'
     | 'clock'
     | 'refresh'
     | 'plus'
@@ -24,6 +28,10 @@ defineProps<{
     | 'help'
 }>()
 const paths = {
+  edit: 'm16 3 5 5-13 13H3v-5L16 3ZM14 5l5 5',
+  trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',
+  check: 'm5 12 4 4L19 6',
+  note: 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6ZM14 2v6h6M8 12h8M8 16h6',
   // Lucide clock; existing library license in docs/licenses/lucide.txt.
   clock: 'M12 6v6l4 2',
   refresh: 'M20 7v5h-5M4 17v-5h5M6 8a7 7 0 0 1 12-2l2 2M4 16l2 2a7 7 0 0 0 12-2',

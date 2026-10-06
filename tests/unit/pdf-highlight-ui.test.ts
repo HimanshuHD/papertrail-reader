@@ -1,3 +1,5 @@
+import { config } from '@vue/test-utils'
+config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, shallowRef } from 'vue'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -152,9 +154,12 @@ it('keeps selection creation safe during a drag and opens the note editor after 
   )
   expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
   await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await wrapper.get('[data-menu-id="one"]').trigger('click')
+  mocks.recolor.mockResolvedValue(true)
   await wrapper.get('#pdf-annotations-color-one').setValue('pink')
   await flushPromises()
   expect(mocks.recolor).toHaveBeenCalledWith('one', 'pink')
+  await wrapper.get('[data-menu-id="one"]').trigger('click')
   const remove = wrapper.findAll('button').find((b) => b.text() === 'Delete highlight and note')!
   mocks.remove.mockResolvedValue(true)
   await remove.trigger('click')
@@ -205,6 +210,22 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   expect(wrapper.get('.pdf-saved-highlight').attributes('style')).toContain('rgb(191, 219, 254)')
   await wrapper.get('.reader-note-indicator').trigger('click')
   expect(wrapper.emitted('noteSelected')).toEqual([['one']])
+  const layer = wrapper.get('.textLayer')
+  layer.element.dispatchEvent(
+    new MouseEvent('pointerdown', { clientX: 20, clientY: 30, bubbles: true }),
+  )
+  layer.element.dispatchEvent(
+    new MouseEvent('pointerup', { clientX: 21, clientY: 30, bubbles: true, cancelable: true }),
+  )
+  expect(wrapper.emitted('highlightSelected')).toEqual([['one']])
+  layer.element.dispatchEvent(
+    new MouseEvent('pointerdown', { clientX: 20, clientY: 30, bubbles: true }),
+  )
+  layer.element.dispatchEvent(
+    new MouseEvent('pointerup', { clientX: 60, clientY: 30, bubbles: true, cancelable: true }),
+  )
+  expect(wrapper.emitted('highlightSelected')).toHaveLength(1)
+
   await wrapper.setProps({ availableWidth: 150 })
   await flushPromises()
   expect(wrapper.findAll('.pdf-saved-highlight')).toHaveLength(1)

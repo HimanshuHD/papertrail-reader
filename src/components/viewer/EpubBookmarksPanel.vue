@@ -151,7 +151,7 @@ async function removeBookmark(id: string) {
         <template v-else>
           <button
             type="button"
-            class="min-h-10 w-full break-words rounded-md text-left text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50"
+            class="pt-list-entry min-h-10 w-full break-words rounded-md text-left text-sm font-medium text-brand focus-visible:outline-2 focus-visible:outline-brand disabled:opacity-50"
             :aria-label="`Go to bookmark ${bookmark.name}`"
             :disabled="!available || busy || bookmark.location.chapter >= totalChapters"
             @click="emit('navigate', bookmark)"

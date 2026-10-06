@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { selectionColorPreview } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 import { useAnnotationHighlights } from '../../composables/useAnnotationHighlights'
@@ -124,20 +125,14 @@ function scheduleHighlights() {
 function captureHighlight(event?: Event) {
   if (loading.value) return
   const context = reader.session.value?.annotationContext?.()
-  pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
-  if (pendingHighlight.value && context) {
-    selectedHighlight.value = ''
-    toolbarSavedId.value = ''
-    selectionPosition.value = selectionAnchor(
-      context.document.getSelection(),
-      context.document.defaultView?.frameElement as HTMLIFrameElement | null,
-    )
-  }
-  // CSS Highlights have no DOM wrapper; only activate a saved range on a collapsed click.
   if (
-    !pendingHighlight.value &&
-    context?.document.getSelection()?.isCollapsed &&
-    event?.type === 'pointerup'
+    event?.type === 'pointerup' &&
+    context &&
+    framePointerStart &&
+    Math.hypot(
+      (event as PointerEvent).clientX - framePointerStart.x,
+      (event as PointerEvent).clientY - framePointerStart.y,
+    ) <= 4
   ) {
     const pointer = event as PointerEvent
     for (const [id, range] of paintedHighlights?.resolvedRanges ?? []) {
@@ -150,11 +145,25 @@ function captureHighlight(event?: Event) {
             pointer.clientY <= rect.bottom,
         )
       ) {
-        rightPanel.value = 'annotations'
-        void nextTick().then(() => chooseHighlight(id))
-        break
+        event.preventDefault()
+        context.document.getSelection()?.removeAllRanges()
+        pendingHighlight.value = null
+        toolbarSavedId.value = ''
+        framePointerStart = null
+        void openNote(id)
+        return
       }
     }
+  }
+  framePointerStart = null
+  pendingHighlight.value = context ? (captureEpubHighlight(context) ?? null) : null
+  if (pendingHighlight.value && context) {
+    selectedHighlight.value = ''
+    toolbarSavedId.value = ''
+    selectionPosition.value = selectionAnchor(
+      context.document.getSelection(),
+      context.document.defaultView?.frameElement as HTMLIFrameElement | null,
+    )
   }
 }
 function clearHighlightSelection(event: PointerEvent) {
@@ -293,7 +302,14 @@ watch(windowWidth, () => {
   if (previousWidth !== typography.value.readingWidth) applyTypography()
 })
 const frameDocuments = new Set<Document>()
-function onFramePointer() {
+const colorPreviews: ReturnType<typeof selectionColorPreview>[] = []
+watch(highlightColor, (color) => colorPreviews.forEach((preview) => preview.set(color)))
+let framePointerStart: { x: number; y: number } | null = null
+function onFramePointer(event: PointerEvent) {
+  framePointerStart =
+    event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
+      ? { x: event.clientX, y: event.clientY }
+      : null
   toolbarSavedId.value = ''
   pendingHighlight.value = null
   closeTypography(false)
@@ -324,6 +340,7 @@ function saveReading() {
   continuity.save()
 }
 function clearFrameListeners() {
+  colorPreviews.splice(0).forEach((preview) => preview.dispose())
   noteResizeObserver?.disconnect()
   if (host.value) noteResizeObserver?.observe(host.value)
   highlightObservers.splice(0).forEach((observer) => observer.disconnect())
@@ -356,6 +373,7 @@ function bindFrameListeners() {
     doc.addEventListener('pointerup', captureHighlight)
     doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
+    colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
     const observer = new MutationObserver(scheduleHighlights)
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
@@ -762,6 +780,7 @@ watch(
       :saved="!!toolbarSavedId"
       :notice="highlights.notice.value"
       :retryable="!highlights.handle.value && !highlights.busy.value && !highlights.loading.value"
+      @color="highlightColor = $event"
       @highlight="createHighlight"
       @retry="highlights.reload"
       @save-note="saveSelectionNote"
@@ -914,6 +933,7 @@ watch(
             :save-note="highlights.saveNote"
             :recolor="highlights.recolor"
             :remove="highlights.remove"
+            @select="selectedHighlight = $event"
             @navigate="chooseHighlight"
             @retry="highlights.reload"
           />

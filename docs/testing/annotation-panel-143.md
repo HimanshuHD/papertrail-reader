@@ -4,12 +4,12 @@ Parent #15; native release acceptance #145/#28. Notes are plain text attached to
 
 ## Highlight with note workflow — option 2 (#156)
 
-1. Select real document text. The anchored toolbar shows pastel colors, an Add highlight icon with hover/focus tooltip, and Add note.
+1. Select real document text. The anchored toolbar shows pastel color previews (no automatic save), an Add highlight icon with hover/focus tooltip, and Add note.
 2. Add note expands the composer below the controls with a reversible slide transition. It opens no drawer and performs no storage write. Choose a color, type the note and press **Save highlight with note** to persist one annotation containing both selection and note in a single transaction. Empty notes cannot be submitted.
-3. Add highlight independently saves without a note. If used while the composer is open, the saved highlight remains and the editor's primary action becomes **Save note**. Color choices then recolor that saved record.
+3. Add highlight independently saves without a note. If used while the composer is open, the saved highlight remains and the editor's primary action becomes **Save note**. Color choices remain pending until Save note explicitly commits the color and note together.
 4. Cancel or the back arrow discards only the note draft and collapses the composer. A saved highlight remains; an unsaved selection/color remains available for Add highlight. A failed save keeps its draft and exposes retry inside the composer.
-5. Highlights with notes show a margin speech-bubble indicator in PDF and EPUB. Hover/keyboard focus previews plain text; activation opens Annotations, selects and reveals the matching entry. Unresolved ranges and highlights without notes have no marker.
-6. In the drawer, the entry's menu provides Add/Edit note. This replaces that menu's actions with its editor, back arrow, Save note, Cancel and Delete note. It never appends a form to the panel bottom. Back/Cancel restores the menu; Save returns after a successful commit. Delete note retains the highlight; Delete highlight and note removes both.
+5. Highlights with notes show a margin note-document indicator in PDF and EPUB. Hover/keyboard focus previews plain text; activation opens Annotations, selects and reveals the matching entry. Unresolved ranges and highlights without notes have no marker.
+6. In the drawer, the entry's menu provides Add/Edit note. This replaces that menu's actions with its editor, back arrow, Save note, Cancel and Delete note. It never appends a form to the panel bottom. Back/Cancel restores the menu; Save closes the popup after a successful commit. Delete note retains the highlight; Delete highlight and note removes both.
 7. Notes remain local plain-text metadata, bounded to 4,000 UTF-16 units. Source files are unchanged. Save before switching selections or closing a composer.
 
 ## App checks
@@ -35,3 +35,14 @@ Verify slide-down/reverse transitions and reduced-motion behavior; no automatic 
 ## Shared interaction theme follow-up
 
 Verify hovered, pressed, selected/open and keyboard-focused icons/buttons across library, PDF/EPUB utilities, popovers, menus, typography, theme picker and landing CTA. Match the Annotations reference's inset accent outline; filled/light controls must use contrasting text/icons. Confirm disabled controls have no hover/selected treatment, highlight swatches retain their colors, rings do not shift layout, and reduced motion removes transitions. Native visual comparison remains pending at the agreed owner/release gate.
+
+## #157 follow-up verification
+
+1. In both formats, pick each color without saving: the selection preview changes and no saved record appears. Add highlight saves once; Add note then Save highlight with note saves both fields once. Check the toast, reload persistence and failed-save recovery.
+2. Long quotes display the first 100 characters plus `...`; search text beyond that boundary still finds the record and navigation resolves the full anchor.
+3. Open each utility from its toolbar icon. Only its panel heading/content appears, without a tab strip. PDF Search keeps input, pending/error status and results in one panel.
+4. Open annotation actions near each viewport edge, then Add/Edit note. Confirm larger editor width, even padding, icons, shadows and action order; the list does not scroll or grow. Outside click and Escape close the popup; the next Escape closes the panel. Back/Cancel restores actions, successful saves/recolors close, failures retain the editor.
+5. Click saved document highlights with a tiny pointer movement: matching annotation selects/reveals without stray native text selection. Drag across text remains normal selection. Margin note indicators preview plain text and open the same entry.
+6. Verify narrow/wide layouts, both themes, native fullscreen, keyboard focus and reduced motion. Annotation/bookmark list items retain their list styling; controls show the 2px bottom accent without movement.
+
+Native browser execution remains at #145/#28; local tests do not certify viewport appearance.

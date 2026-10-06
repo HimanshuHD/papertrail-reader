@@ -16,6 +16,7 @@ const emit = defineEmits<{
   highlight: [color: AnnotationColor, keepOpen: boolean]
   saveNote: [note: string, color: AnnotationColor]
   retry: []
+  color: [color: AnnotationColor]
 }>()
 const root = ref<HTMLElement | null>(null)
 const textarea = ref<HTMLTextAreaElement | null>(null)
@@ -50,6 +51,19 @@ const position = computed(() =>
     globalThis.innerHeight,
   ),
 )
+const tooltipPosition = computed(() => ({
+  left: position.value.left + 'px',
+  top:
+    Math.max(
+      8,
+      Math.min(
+        position.value.top > 48
+          ? position.value.top - 40
+          : position.value.top + size.value.height + 8,
+        globalThis.innerHeight - 40,
+      ),
+    ) + 'px',
+}))
 const colors: AnnotationColor[] = ['yellow', 'green', 'blue', 'pink']
 async function openNote() {
   editing.value = true
@@ -64,7 +78,7 @@ async function cancelNote() {
 }
 function pickColor(next: AnnotationColor) {
   color.value = next
-  if (!editing.value) emit('highlight', next, false)
+  emit('color', next)
 }
 function submitNote() {
   if (!props.disabled && draft.value.trim() && draft.value.length <= ANNOTATION_LIMITS.note)
@@ -108,7 +122,10 @@ function preserveSelection(event: PointerEvent) {
         :disabled="disabled || saved"
         @click="emit('highlight', color, editing)"
       >
-        <UiIcon name="highlight" /><span role="tooltip" class="highlight-tooltip"
+        <UiIcon name="highlight" /><span
+          role="tooltip"
+          class="highlight-tooltip"
+          :style="tooltipPosition"
           >Add highlight</span
         >
       </button>
@@ -172,8 +189,12 @@ function preserveSelection(event: PointerEvent) {
 .selection-toolbar {
   position: fixed;
   z-index: 40;
-  padding: 5px 8px;
+  padding: 12px;
   max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
+  max-height: calc(100dvh - 16px);
+  overflow-y: auto;
   border: 1px solid var(--pt-line);
   border-radius: 16px;
   background: var(--pt-panel);
@@ -247,10 +268,7 @@ button:disabled {
   background: var(--pt-line);
 }
 .highlight-tooltip {
-  position: absolute;
-  bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  position: fixed;
   width: max-content;
   padding: 6px 10px;
   border: 1px solid var(--pt-line);
@@ -265,9 +283,9 @@ button:disabled {
   visibility: visible;
 }
 .note-composer {
-  padding: 8px 4px 6px;
+  padding: 16px 0 0;
   border-top: 1px solid var(--pt-line);
-  margin-top: 5px;
+  margin-top: 12px;
   overflow: hidden;
 }
 .composer-heading {
@@ -276,6 +294,8 @@ button:disabled {
   gap: 8px;
   font-size: 14px;
   font-weight: 600;
+  margin-bottom: 12px;
+  margin-bottom: 12px;
 }
 textarea {
   display: block;
@@ -287,6 +307,10 @@ textarea {
   padding: 10px;
   font-size: 14px;
   resize: vertical;
+  min-height: 100px;
+  max-height: 30vh;
+  min-height: 100px;
+  max-height: 30vh;
 }
 .composer-footer {
   display: flex;

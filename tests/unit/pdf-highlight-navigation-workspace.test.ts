@@ -1,3 +1,5 @@
+import { config } from '@vue/test-utils'
+config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -141,6 +143,9 @@ it('opens the shared PDF annotation panel and returns focus on Escape', async ()
   wrapper.findComponent({ name: 'AnnotationsPanel' }).vm.editNote('saved')
   await flushPromises()
   expect(wrapper.get('#pdf-annotations-note').element).toHaveProperty('value', 'A saved PDF note')
+  await wrapper.get('[aria-label="PDF annotations panel"]').trigger('keydown', { key: 'Escape' })
+  await flushPromises()
+  expect(wrapper.find('textarea').exists()).toBe(false)
   await wrapper.get('[aria-label="PDF annotations panel"]').trigger('keydown', { key: 'Escape' })
   await flushPromises()
   expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(false)
