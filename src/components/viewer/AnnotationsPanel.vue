@@ -291,7 +291,7 @@ function cancelEdit() {
                 <div class="flex flex-wrap gap-2">
                   <button
                     type="submit"
-                    class="annotation-button"
+                    class="annotation-button pt-stable-border"
                     :disabled="!available || busy || loading || !dirty || tooLong"
                   >
                     <UiIcon name="check" />Save note

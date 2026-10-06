@@ -2,7 +2,7 @@
 import { ref, useId } from 'vue'
 import UiIcon from '../UiIcon.vue'
 import FloatingPopover from '../FloatingPopover.vue'
-defineProps<{ note: string; label: string }>()
+defineProps<{ note: string; label: string; highlighted?: boolean }>()
 const emit = defineEmits<{ activate: [] }>()
 const trigger = ref<HTMLButtonElement | null>(null)
 const preview = ref(false)
@@ -16,7 +16,8 @@ function activate() {
   <button
     ref="trigger"
     type="button"
-    class="reader-note-indicator"
+    class="reader-note-indicator pt-note-marker"
+    :class="{ highlighted }"
     :aria-label="label"
     :aria-describedby="preview ? tooltipId : undefined"
     title="View highlight note"
@@ -61,5 +62,16 @@ function activate() {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   text-align: left;
+}
+</style>
+
+<style scoped>
+.reader-note-indicator {
+  border-right: 0;
+}
+.reader-note-indicator:is(:hover, :active, :focus-visible, .highlighted) {
+  border-left-width: 2px;
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
 }
 </style>

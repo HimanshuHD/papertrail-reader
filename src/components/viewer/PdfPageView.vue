@@ -56,6 +56,7 @@ const highlightRects = ref<
     occurrence: number
   }[]
 >([])
+const hoveredHighlight = ref<string | null>(null)
 const savedRects = ref<
   { id: string; color: string; x: number; y: number; width: number; height: number }[]
 >([])
@@ -270,17 +271,24 @@ async function renderPage() {
     currentTextLayer.replaceChildren(...pendingText.childNodes)
     releaseTextSelection = bindPdfTextSelection(currentTextLayer)
     releaseHighlightHover?.()
-    releaseHighlightHover = bindHighlightHover(currentTextLayer, () => {
-      const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
-      return box
-        ? savedRects.value.map((rect) => ({
-            left: box.left + rect.x * box.width,
-            right: box.left + (rect.x + rect.width) * box.width,
-            top: box.top + rect.y * box.height,
-            bottom: box.top + (rect.y + rect.height) * box.height,
-          }))
-        : []
-    })
+    releaseHighlightHover = bindHighlightHover(
+      currentTextLayer,
+      () => {
+        const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
+        return box
+          ? savedRects.value.map((rect) => ({
+              id: rect.id,
+              left: box.left + rect.x * box.width,
+              right: box.left + (rect.x + rect.width) * box.width,
+              top: box.top + rect.y * box.height,
+              bottom: box.top + (rect.y + rect.height) * box.height,
+            }))
+          : []
+      },
+      (id) => {
+        hoveredHighlight.value = id
+      },
+    )
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -498,6 +506,7 @@ onBeforeUnmount(() => {
         v-for="item in noteIndicators"
         :key="item.id"
         :note="item.note"
+        :highlighted="hoveredHighlight === item.id"
         :label="`Open note on page ${pageNumber}: ${item.note.slice(0, 80)}`"
         :style="{ left: 'calc(100% - 40px)', top: `${item.top * 100}%` }"
         @activate="emit('noteSelected', item.id)"

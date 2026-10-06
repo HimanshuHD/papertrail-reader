@@ -1,13 +1,17 @@
 /** A pointer hint only for freshly verified painted text; preserve authored attributes. */
 export function bindHighlightHover(
   root: HTMLElement,
-  rectangles: () => readonly Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>[],
+  rectangles: () => readonly (Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'> & {
+    id?: string
+  })[],
+  onHover?: (id: string | null) => void,
 ) {
   let current: HTMLElement | null = null
   let cursor = '',
     priority = '',
     title: string | null = null
   function clear() {
+    onHover?.(null)
     if (!current) return
     if (cursor) current.style.setProperty('cursor', cursor, priority)
     else current.style.removeProperty('cursor')
@@ -20,7 +24,7 @@ export function bindHighlightHover(
     const hit =
       target?.style &&
       root.contains(target) &&
-      rectangles().some(
+      rectangles().find(
         (rect) =>
           event.clientX >= rect.left &&
           event.clientX <= rect.right &&
@@ -31,8 +35,12 @@ export function bindHighlightHover(
       clear()
       return
     }
-    if (current === target) return
+    if (current === target) {
+      onHover?.(hit.id ?? null)
+      return
+    }
     clear()
+    onHover?.(hit.id ?? null)
     current = target
     cursor = target.style.getPropertyValue('cursor')
     priority = target.style.getPropertyPriority('cursor')

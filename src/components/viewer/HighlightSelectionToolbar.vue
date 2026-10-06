@@ -175,7 +175,7 @@ function preserveSelection(event: PointerEvent) {
             Cancel</button
           ><button
             type="submit"
-            class="composer-save pt-button-filled"
+            class="composer-save pt-button-filled pt-stable-border"
             :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
           >
             {{ saved ? 'Save note' : 'Save highlight with note' }}
@@ -247,6 +247,7 @@ button:disabled {
 .color-action[aria-pressed='true'] .color-swatch {
   outline: 1px solid var(--pt-ink);
   outline-offset: 2px;
+  transform: scale(1.15);
 }
 .swatch-yellow {
   background: #ffe58a;
@@ -367,5 +368,17 @@ textarea {
   border: 0;
   background: transparent;
   box-shadow: none;
+}
+</style>
+
+<style scoped>
+textarea {
+  border: 1px solid var(--pt-line);
+}
+.color-swatch {
+  transition: transform 150ms ease;
+}
+.composer-save:hover {
+  background: var(--pt-filled-hover);
 }
 </style>

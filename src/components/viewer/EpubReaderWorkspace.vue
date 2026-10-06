@@ -53,6 +53,7 @@ const highlightSupportNotice = ref('')
 const highlightStatus = computed(() =>
   [highlights.notice.value, highlightSupportNotice.value].filter(Boolean).join(' '),
 )
+const hoveredHighlight = ref<string | null>(null)
 const noteIndicators = ref<{ id: string; note: string; left: number; top: number }[]>([])
 let noteFrame = 0
 let noteResizeObserver: ResizeObserver | undefined
@@ -382,10 +383,23 @@ function bindFrameListeners() {
     colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
     pageAppearances.push(bindEpubPageAppearance(doc, theme.resolvedTheme === 'dark'))
     hoverDisposers.push(
-      bindHighlightHover(doc.body, () =>
-        Array.from(paintedHighlights?.resolvedRanges.values() ?? []).flatMap((range) =>
-          range.getClientRects ? Array.from(range.getClientRects()) : [],
-        ),
+      bindHighlightHover(
+        doc.body,
+        () =>
+          Array.from(paintedHighlights?.resolvedRanges.entries() ?? []).flatMap(([id, range]) =>
+            range.getClientRects
+              ? Array.from(range.getClientRects()).map((rect) => ({
+                  id,
+                  left: rect.left,
+                  right: rect.right,
+                  top: rect.top,
+                  bottom: rect.bottom,
+                }))
+              : [],
+          ),
+        (id) => {
+          hoveredHighlight.value = id
+        },
       ),
     )
     const observer = new MutationObserver(scheduleHighlights)
@@ -823,6 +837,7 @@ watch(
           v-for="item in noteIndicators"
           :key="item.id"
           :note="item.note"
+          :highlighted="hoveredHighlight === item.id"
           :label="`Open note: ${item.note.slice(0, 80)}`"
           :style="{ left: `${item.left}px`, top: `${item.top}px` }"
           @activate="openNote(item.id)"

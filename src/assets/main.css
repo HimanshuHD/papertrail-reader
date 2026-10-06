@@ -114,9 +114,9 @@ button:disabled,
     box-shadow 150ms ease;
 }
 /* Scoped component/utility rules must not give individual controls competing colors. */
-:is(button, [role='button'], summary, .pt-button):not(.pt-list-entry):not(.pt-text-action):not(
-    .pt-color-swatch
-  ):not(:disabled):not([aria-disabled='true']):is(
+:is(button, [role='button'], summary, .pt-button):not(.pt-note-marker):not(.pt-stable-border):not(
+    .pt-list-entry
+  ):not(.pt-text-action):not(.pt-color-swatch):not(:disabled):not([aria-disabled='true']):is(
     :hover,
     :active,
     :focus-visible,
@@ -131,6 +131,8 @@ details[open] > summary:not(.pt-text-action):not(.pt-color-swatch) {
   background-color: var(--pt-button-surface, var(--pt-control-surface)) !important;
   color: var(--pt-button-ink, var(--pt-control-ink)) !important;
   border-color: var(--pt-button-edge, var(--pt-control-edge)) !important;
+  border-bottom-width: 2px !important;
+  border-bottom-style: solid !important;
   box-shadow:
     inset 0 0 0 1px var(--pt-button-edge, var(--pt-control-edge)),
     inset 0 -2px 0 var(--pt-button-edge, var(--pt-control-edge)),
@@ -145,14 +147,6 @@ details[open] > summary:not(.pt-text-action):not(.pt-color-swatch) {
   }
 }
 
-/* Reserve the real bottom border so active/hover controls do not move. */
-:where(button, [role='button'], summary, .pt-button):not(.pt-list-entry):not(.pt-text-action):not(
-    .pt-color-swatch
-  ) {
-  border-bottom-width: 2px !important;
-  border-bottom-style: solid !important;
-  border-bottom-color: transparent;
-}
 .pt-text-action:hover,
 .pt-text-action:active,
 .pt-text-action:focus-visible {
