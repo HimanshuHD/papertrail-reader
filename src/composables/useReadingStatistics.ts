@@ -2,6 +2,7 @@ import { onBeforeUnmount, onMounted, ref, watch, type Ref } from 'vue'
 import { ActiveReadingTime } from '../features/reading/active-time'
 import {
   ReadingStatisticsStorage,
+  ReadingStatisticsResetError,
   type ReadingStatistics,
   type StatisticsHandle,
 } from '../services/reading-statistics'
@@ -55,8 +56,14 @@ export function useReadingStatistics(
           visit.savedMs = ms
           notice.value = ''
         }
-      } catch {
-        if (current === visit)
+      } catch (error) {
+        if (current === visit && error instanceof ReadingStatisticsResetError) {
+          current = null
+          summary.value = null
+          activeMs.value = 0
+          owner++
+          notice.value = 'Insights were reset in another tab. Retry to start a new reading visit.'
+        } else if (current === visit)
           notice.value = 'Reading insights could not be saved. Retry to keep this session.'
       }
     })
@@ -138,7 +145,7 @@ export function useReadingStatistics(
       }
     } catch {
       if (current === visit) {
-        notice.value = 'Reading insights could not be reset. Your saved statistics were kept.'
+        notice.value = 'Reading insights could not be reset. Reopen this document to retry.'
         visit.clock.setEligible(eligible(), now())
       }
     } finally {

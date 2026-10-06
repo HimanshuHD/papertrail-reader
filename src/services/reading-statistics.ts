@@ -16,6 +16,12 @@ export interface StatisticsHandle {
   generation: string
   sessionId: string
 }
+export class ReadingStatisticsResetError extends Error {
+  constructor() {
+    super('Reading insights were reset by another session.')
+    this.name = 'ReadingStatisticsResetError'
+  }
+}
 interface Checkpoint {
   version: 1
   id: string
@@ -99,58 +105,65 @@ export class ReadingStatisticsStorage {
       position > 1
     )
       return Promise.reject(new Error('Invalid reading checkpoint.'))
-    return this.database.transaction((store, done) => {
-      const request = store.get(handle.id)
-      request.onsuccess = () => {
-        try {
-          const summary = normalize(request.result)
-          if (summary.id !== handle.id || summary.generation !== handle.generation) {
+    let resetElsewhere = false
+    return this.database
+      .transaction<ReadingStatistics>((store, done) => {
+        const request = store.get(handle.id)
+        request.onsuccess = () => {
+          try {
+            const summary = normalize(request.result)
+            if (summary.id !== handle.id || summary.generation !== handle.generation) {
+              resetElsewhere = summary.generation !== handle.generation
+              store.transaction.abort()
+              return
+            }
+            const key = `session:${handle.id}:${handle.generation}:${handle.sessionId}`
+            const previous = store.get(key)
+            previous.onsuccess = () => {
+              const saved = previous.result as Checkpoint | undefined
+              if (
+                saved &&
+                (saved.version !== 1 ||
+                  saved.generation !== handle.generation ||
+                  !Number.isSafeInteger(saved.activeMs) ||
+                  saved.activeMs < 0)
+              ) {
+                store.transaction.abort()
+                return
+              }
+              const delta = Math.max(0, activeMs - (saved?.activeMs ?? 0))
+              const next: ReadingStatistics = {
+                ...summary,
+                activeMs: summary.activeMs + delta,
+                visits: summary.visits + (!saved && activeMs > 0 ? 1 : 0),
+                lastPosition: position,
+                furthestPosition: Math.max(summary.furthestPosition, position),
+                updatedAt: Date.now(),
+              }
+              if (!Number.isSafeInteger(next.activeMs) || !Number.isSafeInteger(next.visits)) {
+                store.transaction.abort()
+                return
+              }
+              // Zero-time navigation does not establish a reading visit.
+              if (activeMs > 0)
+                store.put({
+                  version: 1,
+                  id: key,
+                  generation: handle.generation,
+                  activeMs: Math.max(activeMs, saved?.activeMs ?? 0),
+                })
+              store.put(next)
+              done(next)
+            }
+          } catch {
             store.transaction.abort()
-            return
           }
-          const key = `session:${handle.id}:${handle.generation}:${handle.sessionId}`
-          const previous = store.get(key)
-          previous.onsuccess = () => {
-            const saved = previous.result as Checkpoint | undefined
-            if (
-              saved &&
-              (saved.version !== 1 ||
-                saved.generation !== handle.generation ||
-                !Number.isSafeInteger(saved.activeMs) ||
-                saved.activeMs < 0)
-            ) {
-              store.transaction.abort()
-              return
-            }
-            const delta = Math.max(0, activeMs - (saved?.activeMs ?? 0))
-            const next: ReadingStatistics = {
-              ...summary,
-              activeMs: summary.activeMs + delta,
-              visits: summary.visits + (!saved && activeMs > 0 ? 1 : 0),
-              lastPosition: position,
-              furthestPosition: Math.max(summary.furthestPosition, position),
-              updatedAt: Date.now(),
-            }
-            if (!Number.isSafeInteger(next.activeMs) || !Number.isSafeInteger(next.visits)) {
-              store.transaction.abort()
-              return
-            }
-            // Zero-time navigation does not establish a reading visit.
-            if (activeMs > 0)
-              store.put({
-                version: 1,
-                id: key,
-                generation: handle.generation,
-                activeMs: Math.max(activeMs, saved?.activeMs ?? 0),
-              })
-            store.put(next)
-            done(next)
-          }
-        } catch {
-          store.transaction.abort()
         }
-      }
-    })
+      })
+      .catch((error) => {
+        if (resetElsewhere) throw new ReadingStatisticsResetError()
+        throw error
+      })
   }
   reset(
     handle: StatisticsHandle,

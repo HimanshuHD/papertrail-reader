@@ -16,7 +16,7 @@ Checkpoints run every 15 seconds and at visibility, focus, ready and page-lifecy
 
 Reading insight summaries have schema version 1. Unknown/damaged versions are rejected and preserved rather than replaced. Atomic read/write transactions roll back on failures. A generation token prevents a late checkpoint from recreating a reset document's statistics. Reset installs a fresh zero summary, deletes only that document's old session records and starts a fresh visit; bookmarks, notes, reading positions and source files remain intact. The panel asks for a local reset confirmation.
 
-The composable guards asynchronous open/save/reset callbacks by document ownership. Storage errors show an actionable notice and retain current-session time for Retry; no failed save/reset is announced as successful. Checkpoint retries are idempotent. Unavailable persistence does not block reading.
+The composable guards asynchronous open/save/reset callbacks by document ownership. Storage errors show an actionable notice and retain current-session time for Retry; no failed save/reset is announced as successful. Checkpoint retries are idempotent. A reset from another tab invalidates the old visit and exposes Retry to open a fresh generation; it never replays the discarded cumulative time. Unavailable persistence does not block reading.
 
 ## Verification
 

@@ -1,7 +1,10 @@
 import { expect, it } from 'vitest'
 import { ActiveReadingTime } from '../../src/features/reading/active-time'
 import { ReadingMetadataDatabase } from '../../src/services/reading-database'
-import { ReadingStatisticsStorage } from '../../src/services/reading-statistics'
+import {
+  ReadingStatisticsResetError,
+  ReadingStatisticsStorage,
+} from '../../src/services/reading-statistics'
 
 it('pauses hidden/blurred/loading intervals, caps idle gaps and resumes only on activity', () => {
   const clock = new ActiveReadingTime(0)
@@ -127,7 +130,9 @@ it('reset clears session metadata, rejects stale flushes and preserves other doc
   await storage.checkpoint(other.handle, 7_000, 0.3)
   const reset = await storage.reset(first.handle)
   expect(reset.summary).toMatchObject({ activeMs: 0, visits: 0, furthestPosition: 0 })
-  await expect(storage.checkpoint(first.handle, 20_000, 1)).rejects.toThrow()
+  await expect(storage.checkpoint(first.handle, 20_000, 1)).rejects.toBeInstanceOf(
+    ReadingStatisticsResetError,
+  )
   expect((await storage.open(pdf)).summary.activeMs).toBe(0)
   expect((await storage.open({ ...pdf, format: 'EPUB' })).summary.activeMs).toBe(7_000)
   expect(Array.from(db.records.keys()).some((key) => key.includes(first.handle.sessionId))).toBe(

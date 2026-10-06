@@ -1,9 +1,11 @@
 import { mount } from '@vue/test-utils'
 import { defineComponent, nextTick, ref } from 'vue'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
+import { ReadingStatisticsResetError } from '../../src/services/reading-statistics'
 import { useReadingStatistics } from '../../src/composables/useReadingStatistics'
 const mocked = vi.hoisted(() => ({ open: vi.fn(), checkpoint: vi.fn(), reset: vi.fn() }))
 vi.mock('../../src/services/reading-statistics', () => ({
+  ReadingStatisticsResetError: class extends Error {},
   ReadingStatisticsStorage: class {
     open = mocked.open
     checkpoint = mocked.checkpoint
@@ -129,4 +131,17 @@ it('keeps failed time available for explicit retry and clears failure only after
   await vi.advanceTimersByTimeAsync(0)
   expect(api.notice.value).toBe('')
   expect(mocked.checkpoint.mock.calls.at(-1)?.[1]).toBe(15_000)
+})
+
+it('recovers after another tab resets insights without retrying stale cumulative time', async () => {
+  await start()
+  mocked.checkpoint.mockRejectedValueOnce(new ReadingStatisticsResetError())
+  await vi.advanceTimersByTimeAsync(15_000)
+  expect(api.notice.value).toContain('reset in another tab')
+  expect(api.activeMs.value).toBe(0)
+  api.retry()
+  await vi.advanceTimersByTimeAsync(0)
+  expect(mocked.open).toHaveBeenCalledTimes(2)
+  expect(api.notice.value).toBe('')
+  expect(api.activeMs.value).toBe(0)
 })
