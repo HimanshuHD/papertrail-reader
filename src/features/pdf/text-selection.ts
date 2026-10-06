@@ -12,6 +12,8 @@
  * https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.js
  * Low-level TextLayer rendering does not install this native selection guard.
  */
+import { pdfCaretAt, type PdfCaret } from './selection-caret'
+
 type SelectionGuard = { add: (layer: HTMLElement) => () => void }
 const guards = new WeakMap<Document, SelectionGuard>()
 
@@ -30,6 +32,42 @@ function createGuard(doc: Document): SelectionGuard {
   const win = doc.defaultView!
   let previous: Range | undefined
   let pointerDown = false
+  let moveFrame = 0
+  let pendingMove: PointerEvent | undefined
+  let drag: { anchor: PdfCaret; layer: HTMLElement; pointerId: number } | undefined
+  const dragLayers = () =>
+    [...layers.keys()].filter(
+      (layer) => layer.closest('.pdf-reader') === drag?.layer.closest('.pdf-reader'),
+    )
+  const move = (event: PointerEvent) => {
+    if (!drag || event.pointerId !== drag.pointerId || !drag.anchor.node.isConnected) return
+    const focus = pdfCaretAt(dragLayers(), event.clientX, event.clientY)
+    if (!focus) return
+    event.preventDefault()
+    doc
+      .getSelection()
+      ?.setBaseAndExtent(drag.anchor.node, drag.anchor.offset, focus.node, focus.offset)
+  }
+  const queueMove = (event: PointerEvent) => {
+    if (!drag || event.pointerId !== drag.pointerId) return
+    event.preventDefault()
+    pendingMove = event
+    if (moveFrame) return
+    moveFrame = win.requestAnimationFrame(() => {
+      moveFrame = 0
+      if (pendingMove) move(pendingMove)
+      pendingMove = undefined
+    })
+  }
+  const mouseStart = (event: MouseEvent) => {
+    if (!drag) return
+    // Keep native double/triple click word/paragraph selection.
+    if (event.detail > 1) {
+      drag = undefined
+      return
+    }
+    event.preventDefault()
+  }
   const reset = (layer: HTMLElement, end: HTMLElement) => {
     layer.append(end)
     end.style.width = ''
@@ -38,14 +76,36 @@ function createGuard(doc: Document): SelectionGuard {
     layer.classList.remove('selecting')
   }
   const resetAll = () => {
+    win.cancelAnimationFrame(moveFrame)
+    moveFrame = 0
+    pendingMove = undefined
     pointerDown = false
+    drag = undefined
     previous = undefined
     layers.forEach((end, layer) => reset(layer, end))
   }
-  const start = (event: Event) => {
+  const start = (event: PointerEvent) => {
     pointerDown = true
     previous = undefined
     const target = event.target
+    const layer = [...layers.keys()].find(
+      (layer) => target instanceof win.Node && layer.contains(target),
+    )
+    if (
+      layer &&
+      event.pointerType === 'mouse' &&
+      event.button === 0 &&
+      !event.shiftKey &&
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey
+    ) {
+      const anchor = pdfCaretAt([layer], event.clientX, event.clientY)
+      if (anchor) {
+        drag = { anchor, layer, pointerId: event.pointerId }
+        doc.getSelection()?.setBaseAndExtent(anchor.node, anchor.offset, anchor.node, anchor.offset)
+      }
+    }
     layers.forEach((_, layer) => {
       if (target instanceof win.Node && layer.contains(target)) layer.classList.add('selecting')
     })
@@ -56,6 +116,7 @@ function createGuard(doc: Document): SelectionGuard {
   const change = () => {
     const selection = doc.getSelection()
     if (!selection?.rangeCount || selection.isCollapsed) {
+      if (drag) return
       resetAll()
       return
     }
@@ -66,6 +127,7 @@ function createGuard(doc: Document): SelectionGuard {
       if (active) layer.classList.add('selecting')
       else reset(layer, end)
     })
+    if (drag) return
     // Chromium 148+ and Firefox handle the non-selectable guard natively.
     const sample = layers.values().next().value
     const chrome = /\bChrome\/(\d+)\b/.exec(win.navigator.userAgent)?.[1]
@@ -100,7 +162,14 @@ function createGuard(doc: Document): SelectionGuard {
     previous = range.cloneRange()
   }
   doc.addEventListener('pointerdown', start)
-  doc.addEventListener('pointerup', resetAll)
+  doc.addEventListener('mousedown', mouseStart)
+  doc.addEventListener('pointermove', queueMove, { passive: false })
+  const finish = (event: PointerEvent) => {
+    if (drag && event.pointerId !== drag.pointerId) return
+    move(event)
+    resetAll()
+  }
+  doc.addEventListener('pointerup', finish)
   doc.addEventListener('pointercancel', resetAll)
   doc.addEventListener('keyup', keyup)
   doc.addEventListener('selectionchange', change)
@@ -113,12 +182,16 @@ function createGuard(doc: Document): SelectionGuard {
       layers.set(layer, end)
       layer.append(end)
       return () => {
+        if (drag?.layer === layer) drag = undefined
         end.remove()
         layer.classList.remove('selecting')
         layers.delete(layer)
         if (layers.size) return
+        resetAll()
         doc.removeEventListener('pointerdown', start)
-        doc.removeEventListener('pointerup', resetAll)
+        doc.removeEventListener('mousedown', mouseStart)
+        doc.removeEventListener('pointermove', queueMove)
+        doc.removeEventListener('pointerup', finish)
         doc.removeEventListener('pointercancel', resetAll)
         doc.removeEventListener('keyup', keyup)
         doc.removeEventListener('selectionchange', change)
