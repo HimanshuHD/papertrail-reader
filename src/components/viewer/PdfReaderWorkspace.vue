@@ -9,6 +9,7 @@ import LoadingState from '../LoadingState.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
+import AnnotationsPanel from './AnnotationsPanel.vue'
 import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
@@ -24,7 +25,7 @@ import {
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
-  initialPanel?: 'contents' | 'search' | 'bookmarks' | null
+  initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | null
   initialSearchQuery?: string
   document: DiscoveredDocument
 }>()
@@ -33,7 +34,7 @@ const emit = defineEmits<{
   status: [message: string]
   identity: [fingerprint: string]
   recentReady: [identity: { id: string; fingerprint: string }]
-  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | null, query: string]
+  utilityChange: [panel: 'contents' | 'search' | 'bookmarks' | 'annotations' | null, query: string]
 }>()
 
 import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
@@ -50,7 +51,7 @@ function saveReadingPoint() {
 }
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'
-type UtilityPanel = 'contents' | 'search' | 'bookmarks' | null
+type UtilityPanel = 'contents' | 'search' | 'bookmarks' | 'annotations' | null
 type UtilityPopover = 'search' | 'help' | null
 
 interface FlatOutlineItem {
@@ -87,6 +88,16 @@ watch(
     resolutionFailures.value = {}
   },
   { flush: 'sync' },
+)
+const unresolvedAnnotations = computed(() =>
+  Object.fromEntries(
+    highlights.highlights.value.map((item) => [
+      item.id,
+      Object.entries(resolutionFailures.value).some(
+        ([key, failed]) => failed && key.startsWith(`${item.id}:`),
+      ),
+    ]),
+  ),
 )
 const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
@@ -171,6 +182,11 @@ async function chooseHighlight(id: string) {
   pendingHighlightNavigation = null
   const annotation = activateHighlight(id)
   if (annotation?.selector.format !== 'PDF') return
+  const page = annotation.selector.segments[0]!.page
+  if (page > totalPages.value) {
+    resolutionFailures.value = { ...resolutionFailures.value, [`${id}:${page}`]: true }
+    return
+  }
   pendingHighlightNavigation = {
     id,
     page: annotation.selector.segments[0]!.page,
@@ -223,7 +239,7 @@ const outlineLoaded = ref(false)
 const outlineBusy = ref(false)
 const searchQuery = ref('')
 const completedSearchQuery = ref('')
-watch([rightPanel, completedSearchQuery], ([panel, query]) => {
+watch([rightPanel, completedSearchQuery, phase], ([panel, query]) => {
   if (phase.value === 'ready') emit('utilityChange', panel, query)
 })
 const selectedSearchMatch = ref<{ pageNumber: number; occurrence: number; request: number } | null>(
@@ -705,7 +721,7 @@ function closeRightPanel() {
   void nextTick(() => {
     readerRoot.value
       ?.querySelector<HTMLButtonElement>(
-        `button[aria-label="${closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
+        `button[aria-label="${closing === 'annotations' ? 'Annotations' : closing === 'bookmarks' ? 'Bookmarks' : 'Contents'}"]`,
       )
       ?.focus()
   })
@@ -1025,6 +1041,14 @@ onBeforeUnmount(() => {
           @click="openPopover('help')"
         />
         <IconButton
+          label="Annotations"
+          icon="annotations"
+          :active="rightPanel === 'annotations'"
+          :aria-expanded="rightPanel === 'annotations'"
+          aria-controls="pdf-utility-panel"
+          @click="toggleRightPanel('annotations')"
+        />
+        <IconButton
           label="Bookmarks"
           icon="bookmark"
           :active="rightPanel === 'bookmarks'"
@@ -1277,6 +1301,7 @@ onBeforeUnmount(() => {
       >
         <aside
           v-if="(phase === 'restoring' || phase === 'ready') && rightPanel"
+          id="pdf-utility-panel"
           :inert="phase !== 'ready'"
           :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"
@@ -1285,7 +1310,9 @@ onBeforeUnmount(() => {
               ? 'PDF contents panel'
               : rightPanel === 'bookmarks'
                 ? 'PDF bookmarks panel'
-                : 'PDF search results panel'
+                : rightPanel === 'annotations'
+                  ? 'PDF annotations panel'
+                  : 'PDF search results panel'
           "
           @keydown.esc.stop.prevent="closeRightPanel"
         >
@@ -1319,6 +1346,14 @@ onBeforeUnmount(() => {
                 @click="rightPanel = 'bookmarks'"
               >
                 Bookmarks
+              </button>
+              <button
+                type="button"
+                class="utility-tab rounded-md px-2 py-1.5 text-sm font-medium focus-visible:outline-2 focus-visible:outline-brand"
+                :aria-pressed="rightPanel === 'annotations'"
+                @click="rightPanel = 'annotations'"
+              >
+                Annotations
               </button>
             </div>
             <IconButton label="Close utility panel" icon="close" @click="closeRightPanel" />
@@ -1359,6 +1394,23 @@ onBeforeUnmount(() => {
             </ul>
           </section>
 
+          <AnnotationsPanel
+            v-else-if="rightPanel === 'annotations'"
+            :key="continuity.fingerprint.value ?? document.id"
+            format="PDF"
+            :annotations="highlightList"
+            :selected-id="selectedHighlight"
+            :unresolved="unresolvedAnnotations"
+            :available="!!highlights.handle.value"
+            :busy="highlights.busy.value || phase !== 'ready'"
+            :loading="highlights.loading.value"
+            :notice="highlights.notice.value"
+            :save-note="highlights.saveNote"
+            :recolor="highlights.recolor"
+            :remove="highlights.remove"
+            @navigate="chooseHighlight"
+            @retry="highlights.reload"
+          />
           <PdfBookmarksPanel
             v-else-if="rightPanel === 'bookmarks'"
             :key="continuity.documentId.value ?? document.id"

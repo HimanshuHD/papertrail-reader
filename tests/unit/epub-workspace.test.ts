@@ -55,10 +55,15 @@ vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
         this.records.push(entry)
         return entry
       }
-      async update(_handle: AnnotationHandle, id: string, patch: { color: AnnotationColor }) {
+      async update(
+        _handle: AnnotationHandle,
+        id: string,
+        patch: { color?: AnnotationColor; note?: string },
+      ) {
         const entry = this.records.find((item) => item.id === id)!
         mocked.highlightUpdate(id, patch)
-        entry.color = patch.color
+        if (patch.color !== undefined) entry.color = patch.color
+        if (patch.note !== undefined) entry.note = patch.note
         return entry
       }
       async remove(_handle: AnnotationHandle, id: string) {
@@ -615,6 +620,18 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   await flushPromises()
   expect(revealRange).toHaveBeenCalledOnce()
   expect((revealRange.mock.calls[0] as unknown as [Range])[0].toString()).toBe('Hello world.')
+  await wrapper.get('button[aria-label="Annotations"]').trigger('click')
+  await flushPromises()
+  await wrapper.get('#epub-annotations-note').setValue('A local EPUB note')
+  await wrapper.get('form').trigger('submit')
+  await flushPromises()
+  expect(mocked.highlightUpdate).toHaveBeenLastCalledWith('highlight-one', {
+    note: 'A local EPUB note',
+  })
+  expect(wrapper.text()).toContain('A local EPUB note')
+  await wrapper.get('button[aria-label="Close utility panel"]').trigger('click')
+  await flushPromises()
+  expect(document.activeElement?.getAttribute('aria-label')).toBe('Annotations')
   await wrapper
     .findAll('button')
     .find((button) => button.text() === 'Delete highlight')!

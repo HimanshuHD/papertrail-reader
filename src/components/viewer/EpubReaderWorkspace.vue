@@ -11,6 +11,7 @@ import LoadingState from '../LoadingState.vue'
 import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
 import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
+import AnnotationsPanel from './AnnotationsPanel.vue'
 import { normalizeLocation } from '../../features/epub/location'
 import type { EpubReadingSettings, EpubBookmark } from '../../services/epub-reading-storage'
 import type { EpubSession } from '../../features/epub/epub-session'
@@ -146,7 +147,7 @@ const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
-const rightPanel = ref<'contents' | 'bookmarks' | null>(null)
+const rightPanel = ref<'contents' | 'bookmarks' | 'annotations' | null>(null)
 const typographyOpen = ref(false)
 const popover = ref<HTMLElement | null>(null)
 const lineOptions = [
@@ -274,15 +275,21 @@ function closeTypography(focus = true) {
   if (focus) focusAction('Typography')
 }
 function closePanel() {
-  const label = rightPanel.value === 'bookmarks' ? 'Bookmarks' : 'Contents'
+  const label =
+    rightPanel.value === 'annotations'
+      ? 'Annotations'
+      : rightPanel.value === 'bookmarks'
+        ? 'Bookmarks'
+        : 'Contents'
   rightPanel.value = null
   focusAction(label)
 }
-async function togglePanel(panel: 'contents' | 'bookmarks' = 'contents') {
+async function togglePanel(panel: 'contents' | 'bookmarks' | 'annotations' = 'contents') {
   closeTypography(false)
   if (rightPanel.value === panel) return closePanel()
   rightPanel.value = panel
   await nextTick()
+  if (panel === 'annotations') return
   root.value
     ?.querySelector<HTMLButtonElement>('button[aria-label="Close utility panel"]')
     ?.focus({ preventScroll: true })
@@ -513,6 +520,15 @@ watch(
           :aria-expanded="typographyOpen"
           aria-controls="epub-typography"
           @click="toggleTypography"
+        />
+        <IconButton
+          label="Annotations"
+          icon="annotations"
+          :disabled="unavailable"
+          :active="rightPanel === 'annotations'"
+          :aria-expanded="rightPanel === 'annotations'"
+          aria-controls="epub-utility-panel"
+          @click="togglePanel('annotations')"
         />
         <IconButton
           label="Bookmarks"
@@ -759,10 +775,17 @@ watch(
           id="epub-utility-panel"
           class="epub-side-panel border-l border-line bg-panel"
           aria-label="EPUB utility panel"
+          @keydown.esc.stop.prevent="closePanel"
         >
           <div class="flex items-center justify-between gap-2 border-b border-line p-3">
             <h3 class="text-sm font-semibold">
-              {{ rightPanel === 'bookmarks' ? 'Bookmarks' : 'Contents' }}
+              {{
+                rightPanel === 'annotations'
+                  ? 'Annotations'
+                  : rightPanel === 'bookmarks'
+                    ? 'Bookmarks'
+                    : 'Contents'
+              }}
             </h3>
             <IconButton label="Close utility panel" icon="close" @click="closePanel" />
           </div>
@@ -784,6 +807,23 @@ watch(
               @select="selectContents"
             />
           </nav>
+          <AnnotationsPanel
+            v-else-if="rightPanel === 'annotations'"
+            :key="continuity.fingerprint.value ?? document.id"
+            format="EPUB"
+            :annotations="highlights.highlights.value"
+            :selected-id="selectedHighlight"
+            :unresolved="unresolvedHighlights"
+            :available="!!highlights.handle.value"
+            :busy="highlights.busy.value || unavailable"
+            :loading="highlights.loading.value"
+            :notice="highlightStatus"
+            :save-note="highlights.saveNote"
+            :recolor="highlights.recolor"
+            :remove="highlights.remove"
+            @navigate="chooseHighlight"
+            @retry="highlights.reload"
+          />
           <EpubBookmarksPanel
             v-else
             :bookmarks="bookmarks.bookmarks.value"

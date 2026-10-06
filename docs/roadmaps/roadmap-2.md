@@ -1,5 +1,9 @@
 # Product Roadmap 2
 
+## Active annotation panel and notes — #143
+
+#154/#142 are merged and reconciled, including owner-checked highlight navigation/top offset. #143 is in progress on `feat/143-annotation-notes-panel` from reconciled main `080063f1243b8169109ec32d80054adfc7dff8fc`. Both readers now use the same Annotations utility-panel mode for saved-highlight navigation, excerpt/note/color filters, bounded plain-text notes, recoloring and deletion. Drafts remain on failed saves; explicit retry and document generations preserve truthful, isolated state. Panel close restores opener focus; PDF workspace restores its Annotations mode. Local validation passes: 264 unit/component tests, 10 pipeline tests, lint/format/types and production build. See [panel verification](../testing/annotation-panel-143.md). Browser note lifecycle cases are added but execution remains deferred to #145/#28. #144/#145 remain new; parent #15 and milestone 4 remain open. Earlier active #142 checkpoints are superseded.
+
 ## Merge reconciliation — #154 completed; #143 next
 
 Owner merged PR #154 as `89292276a59d2ff0c1e1c1fe594df5ff6c14e6bb`; owner verification of EPUB creation and saved-highlight navigation/top offset is checked on that PR. #142 is completed and its stale active label removed. Accepted source `f028f0ee6dd5226b7032443447b1813cf94c85cd` passed Frontend CI 37426388106: 255 unit/component tests, 10 pipeline tests, lint/format/types/build. Automated native Browser E2E remains deferred to #145/#28. Next is #143 shared annotation panel/plain-text notes, followed by #144 statistics and #145 acceptance. Parent #15 and milestone 4 remain open; earlier active #142 checkpoints are historical and superseded.

@@ -251,3 +251,50 @@ it('does not reveal a PDF highlight when its saved quote no longer resolves', ()
   expect(revealPdfHighlight(root, digest, selector)).toBe(false)
   expect(root.scrollTop).toBe(300)
 })
+
+it('saves local notes and retains current metadata during an explicit retry', async () => {
+  const { state, storage, wrapper } = setupStorage()
+  await flushPromises()
+  expect(await state.saveNote('one', 'A local note')).toBe(true)
+  expect(storage.update).toHaveBeenLastCalledWith(
+    expect.objectContaining({ identity: { format: 'PDF', fingerprint: digest } }),
+    'one',
+    { note: 'A local note' },
+  )
+  expect(state.notice.value).toBe('Note saved.')
+  let finish!: (value: Awaited<ReturnType<AnnotationStorage['open']>>) => void
+  vi.mocked(storage.open).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const retry = state.reload()
+  expect(state.loading.value).toBe(true)
+  expect(state.highlights.value).toEqual([annotation])
+  expect(state.handle.value).toBeNull()
+  finish({
+    handle: { identity: { format: 'PDF', fingerprint: digest }, generation: 'retry' },
+    annotations: [annotation],
+  })
+  await retry
+  expect(state.handle.value?.generation).toBe('retry')
+  wrapper.unmount()
+})
+it('discards a late note mutation result after the document fingerprint changes', async () => {
+  const { state, storage, fingerprint, wrapper } = setupStorage()
+  await flushPromises()
+  let finish!: (value: Annotation) => void
+  vi.mocked(storage.update).mockReturnValueOnce(
+    new Promise((resolve) => {
+      finish = resolve
+    }),
+  )
+  const saving = state.saveNote('one', 'Old document draft')
+  fingerprint.value = 'sha256-chunks-v1:' + 'b'.repeat(64)
+  await flushPromises()
+  finish(annotation)
+  expect(await saving).toBe(false)
+  expect(state.highlights.value).toEqual([])
+  expect(storage.list).not.toHaveBeenCalled()
+  wrapper.unmount()
+})
