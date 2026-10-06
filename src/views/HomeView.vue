@@ -33,7 +33,7 @@ const plannedFormats: readonly string[] = ['PDF', 'EPUB']
       <p class="mt-4 text-sm text-muted">This screen does not scan or open files yet.</p>
       <RouterLink
         to="/app"
-        class="mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 font-semibold text-canvas sm:w-auto"
+        class="pt-button pt-button-filled mt-6 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand px-5 py-3 font-semibold text-canvas sm:w-auto"
         >Go to app <span aria-hidden="true">→</span></RouterLink
       >
     </section>

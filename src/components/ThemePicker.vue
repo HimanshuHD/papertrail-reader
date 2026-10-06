@@ -20,7 +20,7 @@ function toggleTheme() {
         <span
           :class="[
             'rounded-full p-2',
-            theme.preference === 'light' ? 'bg-brand text-white' : 'text-muted',
+            theme.preference === 'light' ? 'bg-brand pt-on-brand' : 'text-muted',
           ]"
         >
           <svg
@@ -41,7 +41,7 @@ function toggleTheme() {
         <span
           :class="[
             'rounded-full p-2',
-            theme.preference === 'dark' ? 'bg-brand text-white' : 'text-muted',
+            theme.preference === 'dark' ? 'bg-brand pt-on-brand' : 'text-muted',
           ]"
         >
           <svg

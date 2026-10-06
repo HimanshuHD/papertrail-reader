@@ -1143,7 +1143,7 @@ onBeforeUnmount(() => {
               />
               <button
                 type="submit"
-                class="inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
+                class="pt-button-filled inline-flex min-h-10 items-center gap-2 rounded-lg border border-brand bg-brand px-3 py-2 text-sm font-semibold text-panel transition hover:opacity-90 disabled:opacity-50"
                 :aria-busy="searchBusy"
                 :disabled="searchBusy || !searchQuery.trim()"
               >

@@ -158,7 +158,7 @@ function preserveSelection(event: PointerEvent) {
             Cancel</button
           ><button
             type="submit"
-            class="composer-save"
+            class="composer-save pt-button-filled"
             :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
           >
             {{ saved ? 'Save note' : 'Save highlight with note' }}

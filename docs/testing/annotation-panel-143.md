@@ -31,3 +31,7 @@ PDF and EPUB Browser E2E lifecycle cases now include note persistence and panel 
 ## Follow-up verification
 
 Verify slide-down/reverse transitions and reduced-motion behavior; no automatic drawer opening on Add note; Save highlight with note vs Save note labels; Cancel retains an independent saved highlight; hover/focus tooltip; per-entry replacement editor; reader note indicators after scroll, resize, typography/view changes and PDF zoom/virtualization. Late saves must not clear a newer selection. Browser screenshots/interaction execution remain at the agreed reviewed release gate.
+
+## Shared interaction theme follow-up
+
+Verify hovered, pressed, selected/open and keyboard-focused icons/buttons across library, PDF/EPUB utilities, popovers, menus, typography, theme picker and landing CTA. Match the Annotations reference's inset accent outline; filled/light controls must use contrasting text/icons. Confirm disabled controls have no hover/selected treatment, highlight swatches retain their colors, rings do not shift layout, and reduced motion removes transitions. Native visual comparison remains pending at the agreed owner/release gate.
