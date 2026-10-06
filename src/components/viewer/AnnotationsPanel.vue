@@ -163,7 +163,7 @@ function cancelEdit() {
     <button
       v-if="!available && !loading"
       type="button"
-      class="annotation-button mb-3"
+      class="pt-framed-control annotation-button mb-3"
       :disabled="busy"
       @click="emit('retry')"
     >
@@ -291,14 +291,14 @@ function cancelEdit() {
                 <div class="flex flex-wrap gap-2">
                   <button
                     type="submit"
-                    class="annotation-button pt-stable-border"
+                    class="pt-framed-control annotation-button pt-stable-border"
                     :disabled="!available || busy || loading || !dirty || tooLong"
                   >
                     <UiIcon name="check" />Save note
                   </button>
                   <button
                     type="button"
-                    class="annotation-button"
+                    class="pt-framed-control annotation-button"
                     :disabled="busy"
                     @click="cancelEdit"
                   >
@@ -306,7 +306,7 @@ function cancelEdit() {
                   </button>
                   <button
                     type="button"
-                    class="annotation-button"
+                    class="pt-framed-control annotation-button"
                     :disabled="!available || busy || loading || !selected.note"
                     @click="clearNote"
                   >
@@ -317,7 +317,7 @@ function cancelEdit() {
               <div v-else>
                 <button
                   type="button"
-                  class="annotation-button w-full text-left"
+                  class="pt-framed-control annotation-button w-full text-left"
                   :data-note-action="item.id"
                   :disabled="busy || loading"
                   @click="editNote(item.id)"
@@ -326,7 +326,7 @@ function cancelEdit() {
                 </button>
                 <button
                   type="button"
-                  class="annotation-button mt-2 w-full text-left"
+                  class="pt-framed-control annotation-button mt-2 w-full text-left"
                   :disabled="!available || busy || loading"
                   @click="deleteHighlight(item.id)"
                 >
@@ -476,5 +476,26 @@ function cancelEdit() {
 .annotation-input:disabled,
 .annotation-entry:disabled {
   opacity: 0.5;
+}
+
+.annotation-input {
+  box-sizing: border-box;
+  border: 1px solid var(--pt-line);
+}
+.annotation-button.pt-framed-control.pt-stable-border:is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-line);
+  background: var(--pt-control-surface);
+}
+
+.annotation-button.pt-framed-control:not(.pt-stable-border):not(:disabled):is(
+    :hover,
+    :active,
+    :focus-visible
+  ) {
+  border: 1px solid var(--pt-control-edge);
+  border-bottom: 2px solid var(--pt-control-edge);
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
+  box-shadow: none;
 }
 </style>

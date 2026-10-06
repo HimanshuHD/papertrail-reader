@@ -133,7 +133,7 @@ function preserveSelection(event: PointerEvent) {
       <button
         ref="noteButton"
         type="button"
-        class="toolbar-action note-action"
+        class="toolbar-action note-action pt-framed-control"
         aria-label="Add note"
         :disabled="disabled"
         @click="openNote"
@@ -171,7 +171,12 @@ function preserveSelection(event: PointerEvent) {
         </p>
         <div class="composer-footer">
           <span class="composer-count">{{ draft.length }} / {{ ANNOTATION_LIMITS.note }}</span
-          ><button type="button" class="composer-cancel" :disabled="disabled" @click="cancelNote">
+          ><button
+            type="button"
+            class="composer-cancel pt-framed-control"
+            :disabled="disabled"
+            @click="cancelNote"
+          >
             Cancel</button
           ><button
             type="submit"
@@ -185,6 +190,7 @@ function preserveSelection(event: PointerEvent) {
     </Transition>
   </div>
 </template>
+
 <style scoped>
 .selection-toolbar {
   position: fixed;
@@ -219,7 +225,7 @@ function preserveSelection(event: PointerEvent) {
   justify-content: center;
   gap: 8px;
   min-height: 38px;
-  min-width: 32px;
+  min-width: 36px;
   border-radius: 8px;
 }
 .note-action {
@@ -247,7 +253,8 @@ button:disabled {
 .color-action[aria-pressed='true'] .color-swatch {
   outline: 1px solid var(--pt-ink);
   outline-offset: 2px;
-  transform: scale(1.15);
+  width: 24px;
+  height: 24px;
 }
 .swatch-yellow {
   background: #ffe58a;
@@ -295,9 +302,9 @@ button:disabled {
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 12px;
-  margin-bottom: 12px;
 }
 textarea {
+  box-sizing: border-box;
   display: block;
   width: 100%;
   border: 1px solid var(--pt-line);
@@ -307,8 +314,6 @@ textarea {
   padding: 10px;
   font-size: 14px;
   resize: vertical;
-  min-height: 100px;
-  max-height: 30vh;
   min-height: 100px;
   max-height: 30vh;
 }
@@ -361,24 +366,41 @@ textarea {
     transition: none;
   }
 }
-</style>
 
-<style scoped>
 .color-action {
   border: 0;
   background: transparent;
   box-shadow: none;
 }
-</style>
 
-<style scoped>
 textarea {
   border: 1px solid var(--pt-line);
 }
 .color-swatch {
-  transition: transform 150ms ease;
+  transition:
+    width 150ms ease,
+    height 150ms ease;
 }
 .composer-save:hover {
   background: var(--pt-filled-hover);
+}
+
+.color-action {
+  width: 36px;
+  flex: 0 0 36px;
+  padding: 4px;
+  border-radius: 50%;
+}
+.composer-save:is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-line);
+  box-shadow: none;
+}
+
+.pt-framed-control:not(:disabled):is(:hover, :active, :focus-visible) {
+  border: 1px solid var(--pt-control-edge);
+  border-bottom: 2px solid var(--pt-control-edge);
+  background: var(--pt-control-surface);
+  color: var(--pt-control-ink);
+  box-shadow: none;
 }
 </style>

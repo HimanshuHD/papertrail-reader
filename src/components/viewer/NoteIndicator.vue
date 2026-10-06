@@ -36,6 +36,7 @@ function activate() {
     </FloatingPopover>
   </button>
 </template>
+
 <style scoped>
 .reader-note-indicator {
   position: absolute;
@@ -49,7 +50,9 @@ function activate() {
   border-radius: 8px 0 0 8px;
   color: var(--pt-brand);
   background: var(--pt-panel);
+  box-sizing: border-box;
   border: 1px solid var(--pt-brand);
+  border-right: 0;
   box-shadow: 0 3px 10px #0002;
 }
 .reader-note-indicator:focus-visible {
@@ -63,14 +66,15 @@ function activate() {
   overflow-wrap: anywhere;
   text-align: left;
 }
-</style>
 
-<style scoped>
 .reader-note-indicator {
   border-right: 0;
 }
 .reader-note-indicator:is(:hover, :active, :focus-visible, .highlighted) {
-  border-left-width: 2px;
+  border: 1px solid var(--pt-brand);
+  border-left: 2px solid var(--pt-brand);
+  border-right: 0;
+  box-shadow: 0 3px 10px #0002;
   background: var(--pt-control-surface);
   color: var(--pt-control-ink);
 }

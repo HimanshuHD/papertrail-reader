@@ -14,7 +14,7 @@ function toggleTheme() {
         aria-label="Dark mode"
         :aria-pressed="theme.preference === 'dark'"
         :title="theme.preference === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-        class="inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-panel p-1 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+        class="pt-framed-control inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-panel p-1 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
         @click="toggleTheme"
       >
         <span
