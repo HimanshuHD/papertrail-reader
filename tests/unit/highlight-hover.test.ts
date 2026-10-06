@@ -1,0 +1,18 @@
+import { expect, it } from 'vitest'
+import { bindHighlightHover } from '../../src/features/annotations/highlight-hover'
+it('shows the hint only over verified ranges and restores authored cursor/title on leave and disposal', () => {
+  const root = document.createElement('div')
+  root.innerHTML = '<span title="Original" style="cursor:text">Saved text</span>'
+  const target = root.firstElementChild as HTMLElement
+  const dispose = bindHighlightHover(root, () => [{ left: 10, top: 20, right: 80, bottom: 40 }])
+  target.dispatchEvent(new MouseEvent('pointermove', { clientX: 20, clientY: 30, bubbles: true }))
+  expect(target.style.cursor).toBe('pointer')
+  expect(target.title).toBe('Show highlighted text')
+  target.dispatchEvent(new MouseEvent('pointermove', { clientX: 100, clientY: 30, bubbles: true }))
+  expect(target.style.cursor).toBe('text')
+  expect(target.title).toBe('Original')
+  target.dispatchEvent(new MouseEvent('pointermove', { clientX: 20, clientY: 30, bubbles: true }))
+  dispose()
+  expect(target.style.cursor).toBe('text')
+  expect(target.title).toBe('Original')
+})

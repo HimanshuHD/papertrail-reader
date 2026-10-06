@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { bindHighlightHover } from '../../features/annotations/highlight-hover'
 import NoteIndicator from './NoteIndicator.vue'
 import type { Annotation } from '../../services/annotation-storage'
 import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
@@ -215,6 +216,7 @@ let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
 let releaseTextSelection: (() => void) | undefined
+let releaseHighlightHover: (() => void) | undefined
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || disposed) return
@@ -267,6 +269,18 @@ async function renderPage() {
     releaseTextSelection?.()
     currentTextLayer.replaceChildren(...pendingText.childNodes)
     releaseTextSelection = bindPdfTextSelection(currentTextLayer)
+    releaseHighlightHover?.()
+    releaseHighlightHover = bindHighlightHover(currentTextLayer, () => {
+      const box = root.value?.querySelector('.pdf-page')?.getBoundingClientRect()
+      return box
+        ? savedRects.value.map((rect) => ({
+            left: box.left + rect.x * box.width,
+            right: box.left + (rect.x + rect.width) * box.width,
+            top: box.top + rect.y * box.height,
+            bottom: box.top + (rect.y + rect.height) * box.height,
+          }))
+        : []
+    })
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -321,6 +335,8 @@ function releaseBitmap() {
   savedRects.value = []
   releaseTextSelection?.()
   releaseTextSelection = undefined
+  releaseHighlightHover?.()
+  releaseHighlightHover = undefined
   textLayer.value?.replaceChildren()
   rendered.value = false
   previewed.value = false
@@ -483,7 +499,7 @@ onBeforeUnmount(() => {
         :key="item.id"
         :note="item.note"
         :label="`Open note on page ${pageNumber}: ${item.note.slice(0, 80)}`"
-        :style="{ left: 'calc(100% - 48px)', top: `${item.top * 100}%` }"
+        :style="{ left: 'calc(100% - 40px)', top: `${item.top * 100}%` }"
         @activate="emit('noteSelected', item.id)"
       />
       <div class="pdf-match-overlay absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -631,5 +647,46 @@ onBeforeUnmount(() => {
 }
 .textLayer[data-main-rotation='270'] {
   transform: rotate(270deg) translateX(-100%);
+}
+</style>
+
+<style scoped>
+:global(:root[data-theme='dark']) .pdf-page {
+  background: var(--pt-canvas);
+}
+:global(:root[data-theme='dark']) .pdf-page canvas {
+  filter: invert(0.9) hue-rotate(180deg);
+}
+:global(:root[data-theme='dark']) .pdf-saved-overlay {
+  mix-blend-mode: normal;
+}
+:global(:root[data-theme='dark']) .pdf-saved-group {
+  opacity: 0.25;
+}
+:global(:root[data-theme='dark']) .pdf-saved-highlight.active {
+  outline-color: #e4edf3;
+}
+:global(:root[data-theme='dark']) .textLayer :deep(span::selection) {
+  background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
+}
+@media (prefers-color-scheme: dark) {
+  :global(:root:not([data-theme])) .pdf-page {
+    background: var(--pt-canvas);
+  }
+  :global(:root:not([data-theme])) .pdf-page canvas {
+    filter: invert(0.9) hue-rotate(180deg);
+  }
+  :global(:root:not([data-theme])) .pdf-saved-overlay {
+    mix-blend-mode: normal;
+  }
+  :global(:root:not([data-theme])) .pdf-saved-group {
+    opacity: 0.25;
+  }
+  :global(:root:not([data-theme])) .pdf-saved-highlight.active {
+    outline-color: #e4edf3;
+  }
+  :global(:root:not([data-theme])) .textLayer :deep(span::selection) {
+    background: color-mix(in srgb, var(--pt-selection-color) 50%, transparent);
+  }
 }
 </style>

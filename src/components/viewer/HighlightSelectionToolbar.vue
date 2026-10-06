@@ -138,7 +138,7 @@ function preserveSelection(event: PointerEvent) {
         :disabled="disabled"
         @click="openNote"
       >
-        <UiIcon name="annotations" /><span>Add note</span>
+        <UiIcon name="note" /><span>Add note</span>
       </button>
     </div>
     <Transition name="note-expand" @after-enter="measure" @after-leave="measure">

@@ -149,10 +149,15 @@ details[open] > summary:not(.pt-text-action) {
 :where(button, [role='button'], summary, .pt-button):not(.pt-list-entry):not(.pt-text-action) {
   border-bottom-width: 2px !important;
   border-bottom-style: solid !important;
-  border-bottom-color: transparent;
+  border-bottom-color: var(--pt-button-edge, var(--pt-control-edge));
 }
 .pt-text-action:hover,
 .pt-text-action:active,
 .pt-text-action:focus-visible {
   color: var(--pt-control-ink);
+}
+
+.pt-list-entry[aria-pressed='true'],
+.pt-list-entry[aria-selected='true'] {
+  border-bottom: 2px solid var(--pt-brand) !important;
 }

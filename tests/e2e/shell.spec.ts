@@ -2387,6 +2387,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     { name: 'other.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(2) },
   ])
   await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).click()
+  await library.getByRole('button', { name: /^Recent\s*1$/ }).click()
   await expect(
     library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }),
   ).toBeEnabled()
@@ -2430,6 +2431,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await page.reload()
   await show()
+  await library.getByRole('button', { name: /^Recent\s*1$/ }).click()
   await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
   await expect(
     library.getByRole('status').filter({ hasText: 'unavailable or changed' }),

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { bindHighlightHover } from '../../features/annotations/highlight-hover'
+import { bindEpubPageAppearance } from '../../features/epub/page-appearance'
 import { selectionColorPreview } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import type { DiscoveredDocument } from '../../features/library/discovery'
@@ -101,7 +103,7 @@ function updateNoteIndicators() {
     noteIndicators.value.push({
       id: item.id,
       note: item.note,
-      left: Math.max(0, Math.min(outer.right - bounds.left - 48, bounds.width - 48)),
+      left: Math.max(0, Math.min(outer.right - bounds.left - 40, bounds.width - 40)),
       top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 40)),
     })
   }
@@ -302,6 +304,8 @@ watch(windowWidth, () => {
   if (previousWidth !== typography.value.readingWidth) applyTypography()
 })
 const frameDocuments = new Set<Document>()
+const hoverDisposers: (() => void)[] = []
+const pageAppearances: ReturnType<typeof bindEpubPageAppearance>[] = []
 const colorPreviews: ReturnType<typeof selectionColorPreview>[] = []
 watch(highlightColor, (color) => colorPreviews.forEach((preview) => preview.set(color)))
 let framePointerStart: { x: number; y: number } | null = null
@@ -340,6 +344,8 @@ function saveReading() {
   continuity.save()
 }
 function clearFrameListeners() {
+  hoverDisposers.splice(0).forEach((dispose) => dispose())
+  pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
   noteResizeObserver?.disconnect()
   if (host.value) noteResizeObserver?.observe(host.value)
@@ -374,6 +380,14 @@ function bindFrameListeners() {
     doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
     colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
+    pageAppearances.push(bindEpubPageAppearance(doc, theme.resolvedTheme === 'dark'))
+    hoverDisposers.push(
+      bindHighlightHover(doc.body, () =>
+        Array.from(paintedHighlights?.resolvedRanges.values() ?? []).flatMap((range) =>
+          range.getClientRects ? Array.from(range.getClientRects()) : [],
+        ),
+      ),
+    )
     const observer = new MutationObserver(scheduleHighlights)
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
@@ -595,7 +609,10 @@ watch(
 )
 watch(
   () => theme.resolvedTheme,
-  (mode) => reader.session.value?.appearance(mode === 'dark'),
+  (mode) => {
+    reader.session.value?.appearance(mode === 'dark')
+    pageAppearances.forEach((page) => page.set(mode === 'dark'))
+  },
 )
 watch(
   () => reader.error.value,

@@ -127,6 +127,27 @@ describe('PDF reader utility workspace', () => {
     expect(wrapper.text()).toContain('Page 1 of 3')
   })
 
+  it('clamps page edits immediately to the document bounds and retains the current page for empty edits', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get<HTMLInputElement>('input[aria-label="Current page"]')
+    await input.trigger('focus')
+    input.element.value = '999'
+    await input.trigger('input')
+    expect(input.element.value).toBe('3')
+    await input.trigger('change')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 3 of 3')
+    input.element.value = ''
+    await input.trigger('change')
+    await flushPromises()
+    expect(input.element.value).toBe('3')
+    input.element.value = '0'
+    await input.trigger('input')
+    expect(input.element.value).toBe('1')
+  })
+
   it('truncates a long filename while preserving the full name for assistive and hover access', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)

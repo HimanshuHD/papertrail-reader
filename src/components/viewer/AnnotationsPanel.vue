@@ -195,10 +195,10 @@ function cancelEdit() {
         </label>
       </details>
     </div>
-    <p v-if="!loading && !annotations.length" class="text-sm text-muted">
+    <p v-if="!loading && !annotations.length" class="mt-4 text-sm text-muted">
       Select text in the reader and save a highlight to add your first note.
     </p>
-    <p v-else-if="!loading && !filtered.length" class="text-sm text-muted">
+    <p v-else-if="!loading && !filtered.length" class="mt-4 text-sm text-muted">
       No annotations match these filters.
     </p>
     <ul aria-label="Saved annotations">
@@ -234,7 +234,7 @@ function cancelEdit() {
               }}”</span
             >
             <span v-if="item.note" class="annotation-note"
-              ><UiIcon name="annotations" /><span class="whitespace-pre-wrap">{{
+              ><UiIcon name="note" /><span class="whitespace-pre-wrap">{{
                 item.note.slice(0, 240)
               }}</span></span
             >
@@ -322,9 +322,7 @@ function cancelEdit() {
                   :disabled="busy || loading"
                   @click="editNote(item.id)"
                 >
-                  <UiIcon :name="item.note ? 'edit' : 'annotations'" />{{
-                    item.note ? 'Edit note' : 'Add note'
-                  }}
+                  <UiIcon name="note" />{{ item.note ? 'Edit note' : 'Add note' }}
                 </button>
                 <button
                   type="button"
@@ -365,7 +363,7 @@ function cancelEdit() {
 <style scoped>
 .annotation-filter-bar {
   margin: 0 -20px;
-  padding: 0 20px 20px;
+  padding: 0 20px 8px;
   border-bottom: 1px solid var(--pt-line);
   display: grid;
   gap: 12px;
@@ -402,7 +400,7 @@ function cancelEdit() {
   position: relative;
   display: flex;
   gap: 16px;
-  padding: 22px 26px 24px 0;
+  padding: 12px 46px 16px 0;
   border-bottom: 1px solid var(--pt-line);
 }
 .annotation-marker {

@@ -10,7 +10,7 @@ const emit = defineEmits<{
   clear: []
   retry: []
 }>()
-const expanded = ref(true)
+const expanded = ref(false)
 const toggle = ref<HTMLButtonElement | null>(null)
 async function forget(id?: string) {
   if (id) emit('remove', id)

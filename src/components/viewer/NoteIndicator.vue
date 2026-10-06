@@ -45,7 +45,7 @@ function activate() {
   width: 40px;
   height: 40px;
   padding: 8px;
-  border-radius: 7px 7px 7px 2px;
+  border-radius: 8px 0 0 8px;
   color: var(--pt-brand);
   background: var(--pt-panel);
   border: 1px solid var(--pt-brand);

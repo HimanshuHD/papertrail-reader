@@ -50,3 +50,9 @@ Native browser execution remains at #145/#28; local tests do not certify viewpor
 ## #158 owner-observation follow-up
 
 Verify reader note markers align with the highlight's original vertical location, inside the document's right edge with 40px padded buttons. Marker positioning attributes must reach the button even while its preview is open. Check stronger popover edges/shadows in both themes, real 2px active/hover control bottom borders, 14px/1.45 annotation excerpts, color-only Filters hover and library row hover without outlines (selected documents retain their border). Successful saves appear in toasts without an extra message above annotation search; loading/storage failures remain visible.
+
+## Additional #158 verification
+
+Check visible normal/hover/active bottom borders for both dark and filled light controls; selected library documents have a 2px bottom border without hover outlines. Note actions/markers share the note-document icon; the marker touches the document right edge with square right corners and rounded left corners. Hover only freshly verified saved text for a pointer and Show highlighted text hint. Confirm compact filter-to-list spacing, action-button clearance, empty-list top spacing, bookmark header without duplicate intro and Recent collapsed on every new mount/reload.
+
+PDF page edits clamp to 1..total immediately, permit clearing during typing and restore the current page on empty commit. Dark theme adapts PDF display pixels with inversion/hue rotation, so image colors may differ; switching to light restores the original display. EPUB dark mode adapts authored foreground/background colors while retaining chapter text, layout and images; returning to light removes its owned stylesheet. Verify saved highlight/native selection legibility in both dark readers and theme switches after chapter navigation. Source documents and annotation anchors are unchanged. Native coordinate/color validation remains #145/#28.

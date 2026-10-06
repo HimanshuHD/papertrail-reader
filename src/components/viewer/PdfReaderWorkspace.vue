@@ -708,9 +708,23 @@ function beginPageEdit() {
   pageDraft.value = String(currentPage.value)
 }
 
-function handlePageInput(event: Event) {
+function limitPageDraft(event: Event) {
   const input = event.currentTarget as HTMLInputElement
-  void goToPage(Number(input.value))
+  if (!input.value) {
+    pageDraft.value = ''
+    return
+  }
+  const numeric = Number(input.value)
+  const next = Number.isFinite(numeric) ? clampPage(numeric) : currentPage.value
+  pageDraft.value = String(next)
+  input.value = pageDraft.value
+}
+function handlePageInput(event: Event) {
+  limitPageDraft(event)
+  const next = pageDraft.value ? Number(pageDraft.value) : currentPage.value
+  pageDraft.value = String(next)
+  ;(event.currentTarget as HTMLInputElement).value = pageDraft.value
+  void goToPage(next)
 }
 
 async function loadOutline() {
@@ -1060,7 +1074,7 @@ onBeforeUnmount(() => {
           class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
           aria-label="Current page"
           @focus="beginPageEdit"
-          @input="pageDraft = ($event.target as HTMLInputElement).value"
+          @input="limitPageDraft"
           @blur="pageEditing = false"
           @change="handlePageInput"
         />
