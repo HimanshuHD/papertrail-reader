@@ -103,12 +103,9 @@ it('waits for the selected PDF page text layer, then aligns the exact text with 
   await flushPromises()
   expect(pane.scrollTop).toBe(100)
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
-  wrapper.findAllComponents({ name: 'PdfPageView' })[1]!.vm.$emit(
-    'highlightResolution',
-    'saved',
-    true,
-    2,
-  )
+  wrapper
+    .findAllComponents({ name: 'PdfPageView' })[1]!
+    .vm.$emit('highlightResolution', 'saved', true, 2)
   await flushPromises()
   expect(pane.scrollTop).toBe(476)
 })
@@ -120,12 +117,9 @@ it('does not apply a late highlight jump after a different page navigation', asy
   await flushPromises()
   pane.scrollTop = 123
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
-  wrapper.findAllComponents({ name: 'PdfPageView' })[1]!.vm.$emit(
-    'highlightResolution',
-    'saved',
-    true,
-    2,
-  )
+  wrapper
+    .findAllComponents({ name: 'PdfPageView' })[1]!
+    .vm.$emit('highlightResolution', 'saved', true, 2)
   await flushPromises()
   expect(pane.scrollTop).toBe(123)
 })
