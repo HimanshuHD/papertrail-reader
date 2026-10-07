@@ -55,3 +55,13 @@ Next candidate uses headed native focus once under Xvfb with focus emulation dis
 ### Collection failure — run 37575721571
 
 Candidate `2ed5cf782ee9c6e15756c230dec281a2f2237de2` passed Frontend CI 37575686220, but both browser shards failed collection before executing tests: the worker-scoped `headless` option was declared inside a describe group. No browser acceptance is claimed for this run. The headed focus case is moved to a dedicated file with top-level options; both shards must pass collection before the next candidate is published.
+
+## Fourth pre-execution failure and fifth executed candidate
+
+Run 37576159892 on `26673d146263ec43cc0c2c137341ccdf1f5f4488` failed build because a publication truncation marker corrupted the uploaded fixture. No browser tests executed. The file was republished in bounded chunks and all 17 remote changed files verified against validated local Git blob hashes.
+
+Source `692348f0c2f535c5cdb159875236a3ee70cb1ab5`, checkout `86df7efbcbb7cb2f8bac95166d3b898a1eee8394`: Frontend CI 37576252014 passed. Browser E2E 37576264184 completed with 294 passed, 12 failed, one flaky and 12 intentional skips. Shard 1: 147 passed, seven failed, six skipped. Shard 2: 147 passed, five failed, one flaky, six skipped. Linux Node v24.21.0; Chromium 153.0.8010.12, Firefox 155.0, WebKit 26.6. Compact artifacts 11463225933 and 11462544743 retain exact per-shard results/captures and expire 14 October 2026. This candidate is not accepted.
+
+Remaining failures: ten injected committed-refresh scenarios did not reject refresh opens; one 270-degree/50% PDF drag at 320px exposed the page's unreachable left overflow; native focus did not change under Xvfb without a window manager. The unsupported-schema desktop PDF case retried successfully after an already-restored entry was clicked. Distant PDF/EPUB navigation and quota cases passed.
+
+Corrections: block subsequent database opens immediately after issuing the existing native write; use safe centering for oversized PDF pages; install Openbox under Xvfb for native activation; recognize restored active schema documents. Local runtime disconnected during validation, so fresh GitHub CI must validate these changes before browser readiness. Installed-browser/OS/device gates remain open under #28.

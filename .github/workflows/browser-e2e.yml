@@ -54,9 +54,15 @@ jobs:
       - run: npm run build
       - name: Install browser engines for explicit acceptance
         run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install native focus window manager
+        run: sudo apt-get install -y openbox
       - name: Record exact browser and candidate identity
         run: node scripts/browser-evidence.mjs
-      - run: xvfb-run --auto-servernum npm run test:e2e -- --shard=${{ matrix.shard }}/2
+      - name: Run browser acceptance with native window activation
+        run: >-
+          xvfb-run --auto-servernum sh -c
+          'openbox >/tmp/papertrail-window-manager.log 2>&1 &
+          npm run test:e2e -- --shard=${{ matrix.shard }}/2'
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

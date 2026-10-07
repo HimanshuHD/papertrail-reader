@@ -189,13 +189,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
         const request = put.apply(this, args)
         if (armed && this.transaction.db.name === 'papertrail-annotations') {
           armed = false
-          this.transaction.addEventListener(
-            'complete',
-            () => {
-              blocked = true
-            },
-            { once: true, capture: true },
-          )
+          // The write already owns an open connection; reject subsequent refresh opens.
+          blocked = true
         }
         return request
       }

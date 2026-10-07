@@ -2863,10 +2863,20 @@ for (const format of ['PDF', 'EPUB'] as const) {
       if (await show.isVisible()) await show.click()
       await page.locator('input[accept*=".pdf"]').setInputFiles(file)
       if (await show.isVisible()) await show.click()
-      await page
+      const entry = page
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
-        .click()
+      await expect
+        .poll(async () => {
+          const active = await entry.getAttribute('aria-pressed')
+          return (await entry.isEnabled()) || active === 'true'
+        })
+        .toBe(true)
+      if (await entry.isEnabled()) await entry.click()
+      else {
+        const heading = page.getByRole('heading', { name: file.name, exact: true })
+        await expect(heading).toBeVisible()
+      }
       await page.getByRole('button', { name: 'Hide library' }).click()
       const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
       await expect(toggle).toBeEnabled()
