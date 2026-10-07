@@ -6,7 +6,7 @@
 
 ## Active reliability acceptance — #161 / PR #162
 
-The next candidate expands native selection, saved-highlight navigation and statistics recovery coverage, plus Firefox/WebKit smoke subsets alongside the full Chromium suite. Results are pending; use the [acceptance matrix](../evidence/native-161/README.md) for exact scope and remaining gates. Installed browser/device/OS checks are not inferred from emulated widths or headless engines. #16/#28/#78 remain open until their own acceptance is met; #19 is the next major release gate, followed by staging/deployment planning.
+The next candidate expands native selection, saved-highlight navigation and statistics recovery coverage, plus Firefox/WebKit smoke subsets alongside the full Chromium suite. Browser E2E 37585840311 passed on `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` (307 passed, zero failures/flakes, 12 intentional skips), with Frontend CI 37585690924 passing. Exact source/engine/results and reviewed captures are retained; use the [acceptance matrix](../evidence/native-161/README.md) for executed scope and remaining visual/selection/target-environment gates. Installed browser/device/OS checks are not inferred from emulated widths or headless engines. #16/#28/#78 remain open until their own acceptance is met; #19 is the next major release gate, followed by staging/deployment planning.
 
 ## Current checkpoint — #159 merged; #145 preparation active
 

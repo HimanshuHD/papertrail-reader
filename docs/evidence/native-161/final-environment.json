@@ -1,0 +1,54 @@
+{
+  "candidateSource": "ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd",
+  "testedCheckout": "a2c84480ea13da0b4a0fbabd859433f8b427d28d",
+  "run": "37585840311",
+  "shard": "1/2 and 2/2",
+  "platform": "linux",
+  "node": "v24.21.0",
+  "chromium": "153.0.8010.12",
+  "engines": {
+    "chromium": "153.0.8010.12",
+    "firefox": "155.0",
+    "webkit": "26.6"
+  },
+  "capturedAt": "2026-10-07T07:13:15.311Z",
+  "scope": "Linux Chromium full suite (headed native tab-focus under Xvfb; other cases headless), Firefox/WebKit smoke subset. Viewport emulation does not certify devices, installed Chrome/Edge or macOS Safari.",
+  "results": {
+    "passed": 307,
+    "failed": 0,
+    "flaky": 0,
+    "skipped": 12
+  },
+  "artifacts": [
+    {
+      "name": "browser-summary-1",
+      "id": 11467415291,
+      "digest": "sha256:6bc32d154be9df96d7969354c921bd9dcab1360bcc200d53cad8eb4c12d75d66",
+      "expiresAt": "2026-10-14T07:18:06Z"
+    },
+    {
+      "name": "browser-summary-2",
+      "id": 11466567491,
+      "digest": "sha256:5746507dd278ec0f936b8d50226d12ad9fb53c6fe455492d5bdde6954602922e",
+      "expiresAt": "2026-10-14T07:19:06Z"
+    },
+    {
+      "name": "browser-review-1",
+      "id": 11466532321,
+      "digest": "sha256:31ddc8b78cedbb41cf16ed5410a7fc1481402b3672c37b8229a24466ac531f6e",
+      "expiresAt": "2026-10-14T07:18:04Z"
+    },
+    {
+      "name": "browser-review-2",
+      "id": 11466403241,
+      "digest": "sha256:81cd6392f20685a6652e8cdde83932000cb5d37800f5c3aec3052681e65b41a3",
+      "expiresAt": "2026-10-14T07:19:03Z"
+    }
+  ],
+  "reviewedScreenshots": [
+    "pdf-actions-mobile-light.png",
+    "epub-actions-mobile-dark.png",
+    "pdf-actions-desktop-light.png",
+    "epub-actions-desktop-dark.png"
+  ]
+}
