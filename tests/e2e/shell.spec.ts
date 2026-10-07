@@ -2699,7 +2699,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const show = target.getByRole('button', { name: 'Show library', exact: true })
       if (await show.isVisible()) await show.click()
       await target.locator('input[accept*=".pdf"]').setInputFiles(file)
-      await page
+      await target
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
         .click()

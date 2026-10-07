@@ -48,3 +48,7 @@ The prior candidate passed with 176 passed, one retry-dependent PDF Edit note ca
 New browser coverage adds native forward/backward PDF margin/outside-page dragging, shared excerpt/note/color/notes-only filters, EPUB color-only preview before explicit save, live EPUB counts after note/highlight deletion, actual second-tab UI statistics reset with stale-generation rejection/retry, and blocked statistics storage with usable readers/recovery for both formats. Cases run across all five configured widths. Execution on the expanded candidate remains pending.
 
 Coverage still requires follow-up for cross-page/native drag permutations at rotated zoom levels, exact distant-highlight top offset, unsupported schema preservation/quota refresh failures, unsaved draft/count isolation permutations, complete border/hover/marker visual checks, and OS focus-window delivery. These are not marked automated or accepted by this increment. Non-Chromium acceptance remains #28.
+
+## Expanded-run fixture ownership correction
+
+Run 37567776218: 182 passed, 10 failed, eight intentional skips and no flaky outcomes reported. Both formats failed the same cross-tab helper at every width: file upload used the target tab, but the wrapped library locator still used the original tab. All operations in the helper now use its target Page. Native drag, filter, storage-retry and annotation lifecycle cases passed in this run; cross-tab acceptance must pass on a corrected candidate before completion.
