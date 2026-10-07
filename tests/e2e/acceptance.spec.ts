@@ -230,6 +230,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
     await expect(text).toBeVisible()
     await text.scrollIntoViewIfNeeded()
+    await page.evaluate(async () => {
+      await new Promise<void>((done) => requestAnimationFrame(() => done()))
+      await new Promise<void>((done) => requestAnimationFrame(() => done()))
+    })
     if (format === 'EPUB')
       await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await text.evaluate((element) => {
@@ -281,7 +285,6 @@ for (const format of ['PDF', 'EPUB'] as const) {
     ).toBeVisible()
     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())
     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()
-    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await text.evaluate((element) => {
       const doc = element.ownerDocument
       doc.getSelection()?.removeAllRanges()

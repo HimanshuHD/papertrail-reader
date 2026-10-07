@@ -2866,17 +2866,12 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const entry = page
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
-      await expect
-        .poll(async () => {
-          const active = await entry.getAttribute('aria-pressed')
-          return (await entry.isEnabled()) || active === 'true'
-        })
-        .toBe(true)
-      if (await entry.isEnabled()) await entry.click()
-      else {
-        const heading = page.getByRole('heading', { name: file.name, exact: true })
+      const heading = page.getByRole('heading', { name: file.name, exact: true })
+      await expect(async () => {
+        if (await heading.isVisible()) return
+        await entry.click({ timeout: 1000 })
         await expect(heading).toBeVisible()
-      }
+      }).toPass({ timeout: 5000 })
       await page.getByRole('button', { name: 'Hide library' }).click()
       const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
       await expect(toggle).toBeEnabled()
