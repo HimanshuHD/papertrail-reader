@@ -721,6 +721,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await page.locator('#pdf-page-2 .reader-note-indicator').click()
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('A persistent PDF note')
+  await verifyAnnotationOverview(page, info, 'PDF')
   await panel.locator('[data-menu-id]').first().click()
   await page.locator('.floating-popover select').first().selectOption('pink')
   await capture(page, info, 'pdf-annotation-notes')
@@ -2552,6 +2553,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await expect(panel.getByText('Note saved.', { exact: true })).toBeVisible()
   await expect(panel.locator('img')).toHaveCount(0)
   await capture(page, info, 'epub-annotation-notes')
+  await verifyAnnotationOverview(page, info, 'EPUB')
   await reader.getByRole('button', { name: 'Close utility panel' }).click()
   await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toBeFocused()
   await page.reload()
@@ -2592,3 +2594,118 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await expect(saved).toHaveCount(0)
 })
+
+async function verifyAnnotationOverview(page: Page, info: TestInfo, format: 'PDF' | 'EPUB') {
+  await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
+  const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+  await expect(insights.getByTestId('highlight-count')).toHaveText('1')
+  await expect(insights.getByTestId('note-count')).toHaveText('1')
+  await capture(page, info, `${format.toLowerCase()}-reading-insights-light`)
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await capture(page, info, `${format.toLowerCase()}-reading-insights-dark`)
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
+  await insights.getByRole('button', { name: 'Reset insights', exact: true }).click()
+  await expect(insights.getByTestId('highlight-count')).toHaveText('1')
+  await expect(insights.getByTestId('note-count')).toHaveText('1')
+  await insights.getByRole('button', { name: 'See annotations', exact: true }).click()
+  await expect(insights).toHaveCount(0)
+  await expect(page.locator('[data-annotation-id]')).toHaveCount(1)
+}
+
+for (const format of ['PDF', 'EPUB'] as const) {
+  test(`${format} reading insights persist native checkpoints and resume after lifecycle pause and idle`, async ({
+    page,
+  }) => {
+    // Virtual time drives deadlines; IndexedDB and reader rendering remain native.
+    // Synthetic page lifecycle events verify handlers, not OS window-switch delivery.
+    await page.clock.install()
+    await page.goto('./#/app')
+    const file =
+      format === 'PDF'
+        ? { name: 'insights.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(2) }
+        : {
+            name: 'insights.epub',
+            mimeType: 'application/epub+zip',
+            buffer: Buffer.from(createEpubFixture()),
+          }
+    const open = async () => {
+      await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      await page
+        .locator('section[aria-labelledby="local-library-title"]')
+        .getByRole('button', { name: new RegExp(file.name) })
+        .click()
+      const hide = page.getByRole('button', { name: 'Hide library' })
+      if (await hide.isVisible()) await hide.click()
+      await expect(
+        page.getByRole('button', { name: 'Reading insights', exact: true }),
+      ).toBeEnabled()
+      await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
+    }
+    await open()
+    const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+    await expect(insights).toContainText(format === 'PDF' ? 'Page position' : 'Chapter position')
+    await expect(insights.getByTestId('highlight-count')).toHaveText('0')
+    await expect(insights.getByTestId('note-count')).toHaveText('0')
+    const storedTime = () =>
+      page.evaluate(async () => {
+        const db = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open('papertrail-statistics')
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+        try {
+          return await new Promise<number>((resolve, reject) => {
+            const request = db.transaction('documents').objectStore('documents').getAll()
+            request.onsuccess = () =>
+              resolve(
+                request.result
+                  .filter(
+                    (record) =>
+                      typeof record.id === 'string' && record.id.startsWith('statistics:'),
+                  )
+                  .reduce((sum, record) => sum + record.activeMs, 0),
+              )
+            request.onerror = () => reject(request.error)
+          })
+        } finally {
+          db.close()
+        }
+      })
+    await page.clock.runFor(16_000)
+    await expect.poll(storedTime).toBeGreaterThan(0)
+    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+    await expect.poll(storedTime).toBeGreaterThan(0)
+    const paused = await storedTime()
+    await page.clock.runFor(20_000)
+    const display = await insights.innerText()
+    await page.clock.runFor(2_000)
+    expect(await insights.innerText()).toBe(display)
+    expect(await storedTime()).toBe(paused)
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await page.clock.runFor(16_000)
+    await expect.poll(storedTime).toBeGreaterThan(paused)
+    await page.clock.runFor(65_000)
+    await expect(insights).toContainText('Paused for inactivity')
+    const idleTime = await storedTime()
+    await page.clock.runFor(5_000)
+    expect(await storedTime()).toBe(idleTime)
+    if (format === 'EPUB') {
+      await page
+        .getByRole('region', { name: 'EPUB reader' })
+        .frameLocator('iframe')
+        .locator('body')
+        .dispatchEvent('pointerdown')
+    } else await insights.dispatchEvent('pointerdown')
+    await page.clock.runFor(16_000)
+    await expect.poll(storedTime).toBeGreaterThan(idleTime)
+    const saved = await storedTime()
+    await page.reload()
+    await open()
+    await expect.poll(storedTime).toBeGreaterThanOrEqual(saved)
+    await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
+    await insights.getByRole('button', { name: 'Reset insights', exact: true }).click()
+    await expect.poll(storedTime).toBe(0)
+    await expect(insights.getByTestId('highlight-count')).toHaveText('0')
+  })
+}
