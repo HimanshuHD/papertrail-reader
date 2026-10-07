@@ -1348,6 +1348,10 @@ onBeforeUnmount(() => {
             :position="statisticsPosition"
             :reset="statistics.reset"
             :retry="statistics.retry"
+            :annotations="highlightList"
+            :annotations-available="!!highlights.handle.value"
+            :annotations-loading="highlights.loading.value"
+            @see-annotations="toggleRightPanel('annotations')"
           />
           <section
             v-else-if="rightPanel === 'contents'"

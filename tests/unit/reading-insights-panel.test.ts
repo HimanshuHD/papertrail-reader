@@ -64,3 +64,37 @@ it('requires explicit reset confirmation and keeps failure recovery actionable',
   expect(reset).toHaveBeenCalledOnce()
   wrapper.unmount()
 })
+it('counts saved highlights and non-empty notes reactively and opens annotations', async () => {
+  const wrapper = mount(ReadingInsightsPanel, {
+    props: {
+      summary,
+      activeMs: 0,
+      idle: false,
+      notice: '',
+      resetting: false,
+      positionLabel: 'Page position',
+      position: 0,
+      reset: vi.fn(),
+      retry: vi.fn(),
+      annotationsAvailable: true,
+      annotations: [{ note: 'A note' }, { note: '' }, { note: '   ' }],
+    },
+  })
+  expect(wrapper.get('[data-testid="highlight-count"]').text()).toBe('3')
+  expect(wrapper.get('[data-testid="note-count"]').text()).toBe('1')
+  await wrapper.setProps({ annotations: [{ note: 'Updated' }, { note: 'Another' }] })
+  expect(wrapper.get('[data-testid="highlight-count"]').text()).toBe('2')
+  expect(wrapper.get('[data-testid="note-count"]').text()).toBe('2')
+  await wrapper
+    .findAll('button')
+    .find((b) => b.text() === 'See annotations')!
+    .trigger('click')
+  expect(wrapper.emitted('seeAnnotations')).toHaveLength(1)
+  await wrapper.setProps({ annotationsLoading: true })
+  expect(wrapper.text()).toContain('Loading annotations…')
+  expect(wrapper.find('[data-testid="highlight-count"]').exists()).toBe(false)
+  await wrapper.setProps({ annotationsLoading: false, annotationsAvailable: false })
+  expect(wrapper.text()).toContain('Annotation counts unavailable.')
+  expect(wrapper.find('[data-testid="note-count"]').exists()).toBe(false)
+  wrapper.unmount()
+})

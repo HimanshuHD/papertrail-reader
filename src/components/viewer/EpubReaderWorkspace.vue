@@ -1014,6 +1014,10 @@ watch(
             :position="statisticsPosition"
             :reset="statistics.reset"
             :retry="statistics.retry"
+            :annotations="highlights.highlights.value"
+            :annotations-available="!!highlights.handle.value"
+            :annotations-loading="highlights.loading.value"
+            @see-annotations="togglePanel('annotations')"
           />
           <EpubBookmarksPanel
             v-else

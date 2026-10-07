@@ -285,5 +285,13 @@ describe('PDF reader utility workspace', () => {
     await flushPromises()
     expect(wrapper.find('[aria-label="PDF reading insights panel"]').exists()).toBe(false)
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Reading insights')
+    await button.trigger('click')
+    await wrapper
+      .findAll('button')
+      .find((item) => item.text() === 'See annotations')!
+      .trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[aria-label="PDF reading insights panel"]').exists()).toBe(false)
+    expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(true)
   })
 })

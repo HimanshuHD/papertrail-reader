@@ -18,6 +18,10 @@ Reading insight summaries have schema version 1. Unknown/damaged versions are re
 
 The composable guards asynchronous open/save/reset callbacks by document ownership. Storage errors show an actionable notice and retain current-session time for Retry; no failed save/reset is announced as successful. Checkpoint retries are idempotent. A reset from another tab invalidates the old visit and exposes Retry to open a fresh generation; it never replays the discarded cumulative time. Unavailable persistence does not block reading.
 
+## Annotation overview
+
+The panel derives highlight and note counts from the current format/fingerprint-scoped annotation coordinator. Each saved highlight counts once, regardless of rendered fragments or its page/chapter; notes count only non-empty trimmed note text. Unsaved selections and note drafts do not count. Successful add/edit/delete operations refresh the counts reactively. Loading and unavailable annotation metadata have explicit states instead of a false zero. **See annotations** switches directly to the current document’s Annotations panel, including its recovery controls. No counts or notes are duplicated into statistics storage; resetting insights preserves annotations and their counts.
+
 ## Verification
 
 Tests cover monotonic/idempotent time, idle cutoff, delayed timers, visibility/blur/loading transitions, reader activity, document switching, duplicate/older saves, reload session identity, per-format/content isolation, reset generation guards, session cleanup, atomic rollback and unknown schemas. Native IndexedDB lifecycle, iframe activity, visual themes and page-close durability remain in release acceptance #145/#28. Feature branch checks do not replace that browser gate.
