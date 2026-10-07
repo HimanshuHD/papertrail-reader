@@ -2753,6 +2753,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
     await insights.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(insights.getByRole('alert')).toHaveCount(0)
+    // Retry clears the notice before native IndexedDB finishes opening the new visit.
+    await expect(
+      insights.getByText('Reading visits', { exact: true }).locator('..').getByRole('definition'),
+    ).toHaveText('1')
     await page.clock.runFor(16_000)
     await expect.poll(storedTime).toBeGreaterThan(0)
   })
@@ -2867,17 +2871,13 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
       const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
-      await expect(async () => {
-        if (await toggle.isVisible()) return
-        if ((await entry.getAttribute('aria-pressed')) === 'true') {
-          await expect(toggle).toBeEnabled({ timeout: 15000 })
-          return
-        }
-        await entry.click({ timeout: 1000 })
-        await expect(toggle).toBeEnabled({ timeout: 15000 })
-      }).toPass({ timeout: 20000 })
-      await page.getByRole('button', { name: 'Hide library' }).click()
-      await expect(toggle).toBeEnabled()
+      // A cached selection can stay pressed even when its file needs reopening.
+      // Open the live entry, then dismiss the mobile library before locating reader controls.
+      await expect(entry).toBeEnabled({ timeout: 15000 })
+      await entry.click()
+      const hide = page.getByRole('button', { name: 'Hide library' })
+      if (await hide.isVisible()) await hide.click()
+      await expect(toggle).toBeEnabled({ timeout: 15000 })
       if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
     }
     await page.goto('./#/app')
