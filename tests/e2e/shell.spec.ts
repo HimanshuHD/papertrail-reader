@@ -2889,3 +2889,98 @@ for (const format of ['PDF', 'EPUB'] as const) {
     ).toBeEnabled()
   })
 }
+
+for (const format of ['PDF', 'EPUB'] as const) {
+  test(`${format} preserves unsupported insights metadata while the document remains readable`, async ({
+    page,
+  }) => {
+    const file =
+      format === 'PDF'
+        ? { name: 'schema.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(1) }
+        : {
+            name: 'schema.epub',
+            mimeType: 'application/epub+zip',
+            buffer: Buffer.from(createEpubFixture()),
+          }
+    const open = async () => {
+      const show = page.getByRole('button', { name: 'Show library', exact: true })
+      if (await show.isVisible()) await show.click()
+      await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      await page
+        .locator('section[aria-labelledby="local-library-title"]')
+        .getByRole('button', { name: new RegExp(file.name) })
+        .click()
+      await page.getByRole('button', { name: 'Hide library' }).click()
+      const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
+      await expect(toggle).toBeEnabled()
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+    }
+    await page.goto('./#/app')
+    await open()
+    const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
+    await page.goto('./#/')
+    const unsupportedId = await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-statistics')
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      try {
+        return await new Promise<string>((resolve, reject) => {
+          const tx = db.transaction('documents', 'readwrite'),
+            store = tx.objectStore('documents')
+          const request = store.getAll()
+          let id = ''
+          request.onsuccess = () => {
+            const summary = request.result.find(
+              (record) => typeof record.id === 'string' && record.id.startsWith('statistics:'),
+            )
+            id = summary.id
+            store.put({ ...summary, version: 999 })
+          }
+          tx.oncomplete = () => resolve(id)
+          tx.onabort = () => reject(tx.error)
+        })
+      } finally {
+        db.close()
+      }
+    })
+    await page.goto('./#/app')
+    await open()
+    await expect(insights).toContainText('Local reading insights are unavailable')
+    await insights.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(insights).toContainText('Local reading insights are unavailable')
+    if (format === 'PDF')
+      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+    else
+      await expect(
+        page
+          .getByRole('region', { name: 'EPUB reader' })
+          .frameLocator('iframe')
+          .getByRole('heading', { name: 'First chapter' }),
+      ).toBeVisible()
+    const preserved = await page.evaluate(async (id) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-statistics')
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      try {
+        return await new Promise<number>((resolve, reject) => {
+          const request = db.transaction('documents').objectStore('documents').get(id)
+          request.onsuccess = () => resolve(request.result.version)
+          request.onerror = () => reject(request.error)
+        })
+      } finally {
+        db.close()
+      }
+    }, unsupportedId)
+    expect(preserved).toBe(999)
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeDisabled()
+  })
+}
