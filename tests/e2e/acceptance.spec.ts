@@ -222,9 +222,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
         ? page.locator('#pdf-page-1 .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(page.locator('.utility-panel-leave-active')).toHaveCount(0)
-    await page.evaluate(
-      () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
-    )
+    await page.evaluate(async () => {
+      await new Promise<void>((done) => requestAnimationFrame(() => done()))
+      await new Promise<void>((done) => requestAnimationFrame(() => done()))
+    })
     if (format === 'PDF')
       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
     await expect(text).toBeVisible()
