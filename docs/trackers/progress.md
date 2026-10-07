@@ -1,5 +1,9 @@
 # PaperTrail progress
 
+## Current checkpoint — #159 merged; #145 preparation active
+
+Owner confirmed PR #159 works on 7 October 2026. Accepted application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 with 300 unit/component tests, 10 pipeline tests and required checks. PR #159 is owner-merged; #144 is completed and its stale active label is removed. #145 release acceptance preparation has started. Parent #15 and milestone 4 remain open for that evidence; earlier active/pending-preview checkpoints below are superseded. See [release acceptance plan](../testing/annotations-insights-145.md).
+
 ## Current checkpoint — #158 reconciled; #144 active
 
 #158 merged as `298d98ffa14b5eec0d539896975a54575ac132a3`; source `a048cf4` passed Frontend CI 37499613529 and owner PR verification is checked. #157 is completed and stale active labels cleared. Accepted checks: 286 unit/component tests, 10 pipeline tests and required validation. #144 local reading insights is implemented for review from main `bb56d474640b543af3023dd751b555fa4b481d69` on `feat/144-reading-insights`; #145 native release acceptance remains new. Parent #15 and milestone 4 remain open. Earlier active/pending-preview checkpoints below are historical and superseded.

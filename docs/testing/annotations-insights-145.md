@@ -1,0 +1,34 @@
+# Annotations and insights release acceptance (#145)
+
+Preparation is active; execution and completion are pending. Parent #15, roadmap #78 and milestone 4 remain open. Owner verified and merged PR #159; final application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 and 300 unit/component tests plus 10 pipeline tests and required checks. Owner verification does not replace this release gate.
+
+## Candidate and execution
+
+1. After #159 merges, confirm #140–#144 and #157 are closed and reconcile their status labels. Create one `release/145-annotations-insights` branch from updated main; record its exact base and candidate source.
+2. Review existing browser cases against the matrix below and add missing statistics lifecycle cases before review. Current browser fixtures include PDF/EPUB highlight and note lifecycle coverage; they do not yet cover Reading insights. Type-check fixtures and run required local checks.
+3. Open the release-to-main PR as draft for preparation. Mark it ready only with candidate fixtures/fixes complete. The workflow accepts `release` or `release/…` heads targeting main, on opened/ready_for_review events; updates alone do not trigger it. Use a draft-to-ready transition for a corrected candidate. Full Browser E2E runs here, not on feature branches.
+4. Record exact source and tested merge checkout, browser/OS/Node versions, pass/fail/flaky/skip counts, run/artifact links and expiry. Inspect both-theme screenshots after transitions settle. Preserve durable curated evidence before the seven-day artifacts expire.
+5. Triage failures through #139; correct release blockers on this candidate and rerun on the corrected revision. Reconcile #145/#15/#78/#19 only with actual results. Broader #16/#28 and major release #19 remain separate gates.
+
+## Acceptance matrix
+
+| Area                      | Required cases                                                                                                                                | Current evidence / next action                                                             |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| PDF selection             | Wrapped lines, columns, margins/gaps, backwards/cross-page, outside release, zoom/rotation/virtualization                                     | Existing fixture and owner checks; inspect native geometry and retained selection          |
+| EPUB highlights           | Formatted/text-only, chapter changes, reflow/typography, reload, unsupported/unresolved anchors                                               | Existing lifecycle fixture; inspect same/distant chapter navigation                        |
+| Notes and panel           | Create highlight with note atomically, edits, independent deletion, filtering, color preview versus explicit save, safe plain text            | Existing lifecycle coverage; inspect menus, marker placement, dismissal and viewport edges |
+| Annotation counts         | Saved full-document highlights and non-empty notes, live add/edit/delete, no drafts, document isolation, loading/unavailable, See annotations | Component/integration checks pass; add native overview coverage                            |
+| Timing                    | Foreground/ready only, idle cutoff, activity including EPUB iframe, hidden/blur/loading, repeated window switching                            | Lifecycle regressions pass; add native timing and focus recovery coverage                  |
+| Persistence/reset         | Cumulative reloads, rename/content isolation, current/furthest position, statistics-only reset, cross-tab stale generation                    | Storage/lifecycle checks pass; add native reload/reset coverage                            |
+| Failure and accessibility | Storage rejection/retry, unsupported schema preservation, keyboard/focus/Escape, malicious note text, fullscreen                              | Verify fixture coverage and add gaps; retain truthful failure states                       |
+| Visual/responsive         | Both themes at 320/375/768/1024/1440px, readable highlight contrast, no stray overflow or popover clipping                                    | Inspect current candidate screenshots; historical screenshots are not current acceptance   |
+
+PDF position is page position; EPUB position is chapter position. Neither implies completion. Page-close flushing is best effort; do not claim hard-termination durability. Chromium workflow evidence must identify its tested browser and cannot certify untested browsers under #28.
+
+## Evidence checklist
+
+- [ ] All implementation dependencies merged; candidate/base recorded.
+- [ ] Missing browser cases added and fixtures type-checked.
+- [ ] Reviewed release Browser E2E passed; failures/flaky cases/skips explained.
+- [ ] Current-source visual, focus and failure evidence inspected and retained.
+- [ ] Results linked and issue/roadmap/release checklists reconciled.
