@@ -398,7 +398,17 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.addInitScript(() => {
       const put = IDBObjectStore.prototype.put
       let blocked = false
-      IDBObjectStore.prototype.put = function (.…96 tokens truncated…   await page.goto('./#/app')
+      IDBObjectStore.prototype.put = function (...args) {
+        if (blocked && this.transaction.db.name === 'papertrail-statistics')
+          throw new DOMException('Injected checkpoint quota failure', 'QuotaExceededError')
+        return put.apply(this, args)
+      }
+      Reflect.set(window, 'blockCheckpoints', (value: boolean) => {
+        blocked = value
+      })
+    })
+    await page.clock.install()
+    await page.goto('./#/app')
     await page.locator('input[accept*=".pdf"]').setInputFiles({
       name: `quota.${format.toLowerCase()}`,
       mimeType: format === 'PDF' ? 'application/pdf' : 'application/epub+zip',
