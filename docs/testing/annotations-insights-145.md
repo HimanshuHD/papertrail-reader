@@ -1,6 +1,6 @@
 # Annotations and insights release acceptance (#145)
 
-Preparation is active; execution and completion are pending. Parent #15, roadmap #78 and milestone 4 remain open. Owner verified and merged PR #159; final application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 and 300 unit/component tests plus 10 pipeline tests and required checks. Owner verification does not replace this release gate.
+Chromium release execution passed; owner merge is pending. Remaining broader native coverage is split into #161 under #28/#16. Parent #15, roadmap #78 and milestone 4 remain open. Owner verified and merged PR #159; final application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 and 300 unit/component tests plus 10 pipeline tests and required checks. Owner verification does not replace this release gate.
 
 ## Candidate and execution
 
@@ -27,10 +27,10 @@ PDF position is page position; EPUB position is chapter position. Neither implie
 
 ## Evidence checklist
 
-- [ ] All implementation dependencies merged; candidate/base recorded.
+- [x] All implementation dependencies merged; candidate/base recorded.
 - [x] Initial Reading insights browser cases added and fixtures type-checked; remaining native/manual matrix gaps stay explicit.
-- [ ] Reviewed release Browser E2E passed; failures/flaky cases/skips explained.
-- [ ] Current-source visual, focus and failure evidence inspected and retained.
+- [x] Reviewed release Browser E2E passed: 192 passed, no failures/flakes; eight duplicate-width skips explained.
+- [x] Current-source outcomes/identity and scoped PDF/EPUB light/dark visual evidence inspected and retained; remaining permutations transferred to #161.
 - [ ] Results linked and issue/roadmap/release checklists reconciled.
 
 ## First release-run corrections
@@ -52,3 +52,7 @@ Coverage still requires follow-up for cross-page/native drag permutations at rot
 ## Expanded-run fixture ownership correction
 
 Run 37567776218: 182 passed, 10 failed, eight intentional skips and no flaky outcomes reported. Both formats failed the same cross-tab helper at every width: file upload used the target tab, but the wrapped library locator still used the original tab. All operations in the helper now use its target Page. Native drag, filter, storage-retry and annotation lifecycle cases passed in this run; cross-tab acceptance must pass on a corrected candidate before completion.
+
+## Final accepted Chromium evidence
+
+See [retained evidence](../evidence/annotations-145/README.md). #160 owner merge completes this scoped increment; #161 records the remaining native/visual/browser acceptance explicitly, coordinated with #28/#16 before major release #19. Earlier execution-pending statements are historical.

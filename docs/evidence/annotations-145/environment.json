@@ -1,0 +1,10 @@
+{
+  "candidateSource": "2ed4f36688686273f216cf70ec7198de5d6d7267",
+  "testedCheckout": "b07558632b8d501dcd0004566789b402c4738e38",
+  "run": "37568965714",
+  "platform": "linux",
+  "node": "v24.21.0",
+  "chromium": "153.0.8010.12",
+  "capturedAt": "2026-10-07T03:55:51.649Z",
+  "scope": "Headless Linux Chromium; viewport emulation does not certify real devices or other browser products."
+}

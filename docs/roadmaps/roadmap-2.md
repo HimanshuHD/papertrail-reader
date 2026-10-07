@@ -1,5 +1,9 @@
 # Product Roadmap 2
 
+## Current checkpoint — #160 acceptance passed; owner merge pending
+
+#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 is ready for owner merge; #145/#15 remain open until merge. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. After #160 merge, annotation milestone 4 can close; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+
 ## Current checkpoint — #159 merged; #145 preparation active
 
 Owner confirmed PR #159 works on 7 October 2026. Accepted application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 with 300 unit/component tests, 10 pipeline tests and required checks. PR #159 is owner-merged; #144 is completed and its stale active label is removed. #145 release acceptance preparation has started. Parent #15 and milestone 4 remain open for that evidence; earlier active/pending-preview checkpoints below are superseded. See [release acceptance plan](../testing/annotations-insights-145.md).
