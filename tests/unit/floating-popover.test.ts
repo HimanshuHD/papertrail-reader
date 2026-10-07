@@ -80,3 +80,21 @@ it('keeps the panel close header clear when an expanded note editor flips upward
     Number.parseFloat(document.querySelector<HTMLElement>('.floating-popover')!.style.top),
   ).toBeGreaterThanOrEqual(188)
 })
+
+it('ignores sibling reader scrolling but dismisses when the annotation container scrolls', async () => {
+  const panel = document.createElement('aside'),
+    sibling = document.createElement('section'),
+    anchor = document.createElement('button')
+  panel.append(anchor)
+  document.body.append(panel, sibling)
+  const wrapper = mount(FloatingPopover, {
+    props: { anchor },
+    global: { stubs: { teleport: false } },
+  })
+  wrappers.push(wrapper)
+  await flushPromises()
+  sibling.dispatchEvent(new Event('scroll'))
+  expect(wrapper.emitted('close')).toBeUndefined()
+  panel.dispatchEvent(new Event('scroll'))
+  expect(wrapper.emitted('close')).toEqual([[]])
+})

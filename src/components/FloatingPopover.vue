@@ -45,7 +45,12 @@ function key(event: KeyboardEvent) {
   }
 }
 function scroll(event: Event) {
-  if (!root.value?.contains(event.target as Node)) emit('close')
+  const target = event.target as Node
+  if (root.value?.contains(target)) return
+  // PDF rerenders can scroll a sibling pane without moving this menu’s anchor.
+  // Only scrolling the anchor’s container invalidates the menu placement.
+  if (target === document || target.contains?.(props.anchor)) emit('close')
+  else place()
 }
 onMounted(async () => {
   await nextTick()

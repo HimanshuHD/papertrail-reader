@@ -40,3 +40,11 @@ Run 37563128629 failed: 27 failed, 3 flaky, 147 passed and 8 intentional skips. 
 ## Second-run fixture corrections
 
 Run 37565053738: 167 passed, 10 failed, 8 intentional skips; no flaky outcomes reported. Build/browser setup/artifact upload succeeded. Remaining failures repeated two fixture assumptions at all five widths: success is announced by the shared toast rather than panel-local text, and PDF restores its saved Reading insights mode so blindly clicking its toggle closes it after reload. The fixture now checks the toast plus saved note content, and opens insights only when its toggle is not expanded. No application behavior or assertion coverage is removed. A fresh candidate run remains required.
+
+## Coverage expansion after passing run 37566080108
+
+The prior candidate passed with 176 passed, one retry-dependent PDF Edit note case at 1024px and eight intentional skips. Popover dismissal previously reacted to every document scroll, including sibling PDF rendering scrolls that do not move the panel anchor. It now dismisses for anchor-container/document scrolling, repositions for unrelated panes and preserves inside-popover scrolling. Unit and browser regressions exercise this distinction.
+
+New browser coverage adds native forward/backward PDF margin/outside-page dragging, shared excerpt/note/color/notes-only filters, EPUB color-only preview before explicit save, live EPUB counts after note/highlight deletion, actual second-tab UI statistics reset with stale-generation rejection/retry, and blocked statistics storage with usable readers/recovery for both formats. Cases run across all five configured widths. Execution on the expanded candidate remains pending.
+
+Coverage still requires follow-up for cross-page/native drag permutations at rotated zoom levels, exact distant-highlight top offset, unsupported schema preservation/quota refresh failures, unsaved draft/count isolation permutations, complete border/hover/marker visual checks, and OS focus-window delivery. These are not marked automated or accepted by this increment. Non-Chromium acceptance remains #28.

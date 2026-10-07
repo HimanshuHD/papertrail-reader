@@ -745,6 +745,11 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
   await panel.locator('[data-menu-id]').first().click()
+  // Reflow of the sibling document pane must not dismiss an anchored panel menu.
+  await page.locator('.pdf-scroll').dispatchEvent('scroll')
+  await expect(
+    page.locator('.floating-popover').getByRole('button', { name: 'Edit note', exact: true }),
+  ).toBeVisible()
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Edit note', exact: true })
@@ -2528,6 +2533,20 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
   await reader.getByRole('button', { name: 'Highlight pink', exact: true }).click()
+  await expect(reader.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()
+  expect(
+    await reader
+      .frameLocator('iframe')
+      .locator('body')
+      .evaluate(
+        (body) =>
+          (
+            body.ownerDocument.defaultView as unknown as {
+              CSS: { highlights: Map<string, Set<Range>> }
+            }
+          ).CSS.highlights.get('papertrail-pink')?.size ?? 0,
+      ),
+  ).toBe(0)
   await reader.getByRole('button', { name: 'Add highlight', exact: true }).click()
   const painted = async () => {
     await expect
@@ -2604,12 +2623,20 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     .click()
   await page.locator('.floating-popover select').first().selectOption('green')
   await expect(page.locator('.floating-popover')).toHaveCount(0)
+  await reader.getByRole('button', { name: 'Reading insights', exact: true }).click()
+  await expect(reader.getByTestId('highlight-count')).toHaveText('1')
+  await expect(reader.getByTestId('note-count')).toHaveText('0')
+  await reader.getByRole('button', { name: 'See annotations', exact: true }).click()
   await panel.locator('[data-menu-id]').first().click()
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
     .click()
   await expect(saved).toHaveCount(0)
+  await reader.getByRole('button', { name: 'Reading insights', exact: true }).click()
+  await expect(reader.getByTestId('highlight-count')).toHaveText('0')
+  await expect(reader.getByTestId('note-count')).toHaveText('0')
+  await reader.getByRole('button', { name: 'See annotations', exact: true }).click()
   await capture(page, info, 'epub-highlights')
   await page.reload()
   await open()
@@ -2633,6 +2660,23 @@ async function verifyAnnotationOverview(page: Page, info: TestInfo, format: 'PDF
   await insights.getByRole('button', { name: 'See annotations', exact: true }).click()
   await expect(insights).toHaveCount(0)
   await expect(page.locator('[data-annotation-id]')).toHaveCount(1)
+  const panel = page.getByRole('complementary', {
+    name: format === 'PDF' ? 'PDF annotations panel' : 'EPUB utility panel',
+  })
+  const filter = panel.getByLabel('Find annotations', { exact: true })
+  await filter.fill('no matching annotation anywhere')
+  await expect(panel.locator('[data-annotation-id]')).toHaveCount(0)
+  await filter.fill('note')
+  await expect(panel.locator('[data-annotation-id]')).toHaveCount(1)
+  await filter.fill('')
+  await panel.locator('summary').click()
+  await panel.getByLabel('Filter by highlight color', { exact: true }).selectOption('blue')
+  await expect(panel.locator('[data-annotation-id]')).toHaveCount(0)
+  await panel.getByLabel('Filter by highlight color', { exact: true }).selectOption('')
+  await panel.getByLabel('With notes only', { exact: true }).check()
+  await expect(panel.locator('[data-annotation-id]')).toHaveCount(1)
+  await panel.getByLabel('With notes only', { exact: true }).uncheck()
+  await panel.locator('summary').click()
 }
 
 for (const format of ['PDF', 'EPUB'] as const) {
@@ -2651,20 +2695,20 @@ for (const format of ['PDF', 'EPUB'] as const) {
             mimeType: 'application/epub+zip',
             buffer: Buffer.from(createEpubFixture()),
           }
-    const open = async () => {
-      const show = page.getByRole('button', { name: 'Show library', exact: true })
+    const open = async (target = page) => {
+      const show = target.getByRole('button', { name: 'Show library', exact: true })
       if (await show.isVisible()) await show.click()
-      await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      await target.locator('input[accept*=".pdf"]').setInputFiles(file)
       await page
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
         .click()
-      const hide = page.getByRole('button', { name: 'Hide library' })
+      const hide = target.getByRole('button', { name: 'Hide library' })
       if (await hide.isVisible()) await hide.click()
       await expect(
-        page.getByRole('button', { name: 'Reading insights', exact: true }),
+        target.getByRole('button', { name: 'Reading insights', exact: true }),
       ).toBeEnabled()
-      const insightsToggle = page.getByRole('button', { name: 'Reading insights', exact: true })
+      const insightsToggle = target.getByRole('button', { name: 'Reading insights', exact: true })
       // PDF restores the saved utility mode; do not toggle a restored panel closed.
       if ((await insightsToggle.getAttribute('aria-expanded')) !== 'true')
         await insightsToggle.click()
@@ -2735,5 +2779,113 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await insights.getByRole('button', { name: 'Reset insights', exact: true }).click()
     await expect.poll(storedTime).toBe(0)
     await expect(insights.getByTestId('highlight-count')).toHaveText('0')
+    await page.clock.runFor(16_000)
+    await expect.poll(storedTime).toBeGreaterThan(0)
+    const other = await page.context().newPage()
+    await other.goto('./#/app')
+    await open(other)
+    const otherInsights = other.getByRole('region', { name: 'Local reading insights', exact: true })
+    await otherInsights.getByRole('button', { name: 'Reset this document’s insights' }).click()
+    await otherInsights.getByRole('button', { name: 'Reset insights', exact: true }).click()
+    await expect(
+      otherInsights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
+    await page.bringToFront()
+    await page.evaluate(() => window.dispatchEvent(new Event('pagehide')))
+    await expect(insights).toContainText('Insights were reset in another tab')
+    await other.close()
+    await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
+    await insights.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(insights.getByRole('alert')).toHaveCount(0)
+    await page.clock.runFor(16_000)
+    await expect.poll(storedTime).toBeGreaterThan(0)
+  })
+}
+
+test('PDF native margin and outside-page drags retain the intended anchor in both directions', async ({
+  page,
+}) => {
+  await page.goto('./#/app')
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'native-drag.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(1),
+  })
+  await page.getByRole('button', { name: 'PDF: native-drag.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'Hide library' }).click()
+  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  const text = page.locator('#pdf-page-1 .textLayer span').first()
+  await expect(text).toBeVisible()
+  const line = (await text.boundingBox())!,
+    sheet = (await page.locator('#pdf-page-1').boundingBox())!
+  const y = line.y + line.height / 2
+  await page.mouse.move(Math.max(sheet.x + 2, line.x - 6), y)
+  await page.mouse.down()
+  await page.mouse.move(line.x + line.width - 1, y, { steps: 8 })
+  await page.mouse.move(Math.max(1, sheet.x - 5), y + line.height * 2, { steps: 5 })
+  await page.mouse.move(line.x + line.width - 1, y, { steps: 5 })
+  await page.mouse.up()
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.toString()))
+    .toContain('First page')
+  await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()
+  await page.mouse.move(line.x + line.width - 1, y)
+  await page.mouse.down()
+  await page.mouse.move(Math.max(sheet.x + 2, line.x - 6), y, { steps: 8 })
+  await page.mouse.up()
+  await expect
+    .poll(() => page.evaluate(() => document.getSelection()?.toString()))
+    .toContain('First page')
+})
+
+for (const format of ['PDF', 'EPUB'] as const) {
+  test(`${format} insights storage rejection leaves reading usable and retry recovers`, async ({
+    page,
+  }) => {
+    await page.addInitScript(() => {
+      const original = indexedDB.open.bind(indexedDB)
+      let blocked = true
+      indexedDB.open = ((name: string, version?: number) => {
+        if (blocked && name === 'papertrail-statistics')
+          throw new DOMException('Test storage rejection', 'SecurityError')
+        return version === undefined ? original(name) : original(name, version)
+      }) as typeof indexedDB.open
+      Reflect.set(window, 'allowInsightsStorage', () => {
+        blocked = false
+      })
+    })
+    await page.goto('./#/app')
+    const file =
+      format === 'PDF'
+        ? { name: 'failure.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(1) }
+        : {
+            name: 'failure.epub',
+            mimeType: 'application/epub+zip',
+            buffer: Buffer.from(createEpubFixture()),
+          }
+    await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+    await page
+      .locator('section[aria-labelledby="local-library-title"]')
+      .getByRole('button', { name: new RegExp(file.name) })
+      .click()
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
+    const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+    await expect(insights).toContainText('Local reading insights are unavailable')
+    if (format === 'PDF')
+      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+    else
+      await expect(
+        page
+          .getByRole('region', { name: 'EPUB reader' })
+          .frameLocator('iframe')
+          .getByRole('heading', { name: 'First chapter' }),
+      ).toBeVisible()
+    await page.evaluate(() => (Reflect.get(window, 'allowInsightsStorage') as () => void)())
+    await insights.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(insights.getByRole('alert')).toHaveCount(0)
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
   })
 }
