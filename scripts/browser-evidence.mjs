@@ -1,8 +1,17 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
-import { chromium } from '@playwright/test'
+import { chromium, firefox, webkit } from '@playwright/test'
 
 const browser = await chromium.launch({ channel: 'chromium' })
+const versions = { chromium: browser.version() }
+for (const [name, engine] of Object.entries({ firefox, webkit })) {
+  const instance = await engine.launch()
+  try {
+    versions[name] = instance.version()
+  } finally {
+    await instance.close()
+  }
+}
 try {
   await mkdir('browser-evidence', { recursive: true })
   await writeFile(
@@ -15,9 +24,10 @@ try {
         platform: process.platform,
         node: process.version,
         chromium: browser.version(),
+        engines: versions,
         capturedAt: new Date().toISOString(),
         scope:
-          'Headless Linux Chromium; viewport emulation does not certify real devices or other browser products.',
+          'Headless Linux Chromium full suite and Firefox/WebKit smoke subset; viewport emulation does not certify devices, installed Chrome/Edge or macOS Safari.',
       },
       null,
       2,

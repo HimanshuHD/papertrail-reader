@@ -32,7 +32,7 @@ jobs:
       github.event.pull_request.base.ref == 'main' &&
       (github.event.pull_request.head.ref == 'release' ||
       startsWith(github.event.pull_request.head.ref, 'release/'))
-    name: Explicit Chromium acceptance
+    name: Explicit browser acceptance
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
@@ -47,8 +47,8 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - name: Install Chromium for explicit acceptance
-        run: npx playwright install --with-deps chromium
+      - name: Install browser engines for explicit acceptance
+        run: npx playwright install --with-deps chromium firefox webkit
       - name: Record exact browser and candidate identity
         run: node scripts/browser-evidence.mjs
       - run: npm run test:e2e
