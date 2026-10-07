@@ -147,3 +147,36 @@ it('recovers after another tab resets insights without retrying stale cumulative
   expect(api.notice.value).toBe('')
   expect(api.activeMs.value).toBe(0)
 })
+
+it('recovers when window focus arrives before hasFocus updates and excludes the window-away interval', async () => {
+  await start()
+  await vi.advanceTimersByTimeAsync(5_000)
+  focused = false
+  window.dispatchEvent(new Event('blur'))
+  await vi.advanceTimersByTimeAsync(20_000)
+  // The focus event can precede the browser focus state becoming observable.
+  window.dispatchEvent(new Event('focus'))
+  focused = true
+  await vi.advanceTimersByTimeAsync(1_000)
+  const resumed = api.activeMs.value
+  expect(resumed).toBe(5_000)
+  await vi.advanceTimersByTimeAsync(3_000)
+  expect(api.activeMs.value).toBe(resumed + 3_000)
+})
+it('reconciles a missed window focus event and keeps pagehide paused until pageshow', async () => {
+  await start()
+  await vi.advanceTimersByTimeAsync(5_000)
+  focused = false
+  window.dispatchEvent(new Event('blur'))
+  await vi.advanceTimersByTimeAsync(10_000)
+  focused = true
+  await vi.advanceTimersByTimeAsync(1_000)
+  await vi.advanceTimersByTimeAsync(2_000)
+  expect(api.activeMs.value).toBe(7_000)
+  window.dispatchEvent(new Event('pagehide'))
+  await vi.advanceTimersByTimeAsync(10_000)
+  expect(api.activeMs.value).toBe(7_000)
+  window.dispatchEvent(new Event('pageshow'))
+  await vi.advanceTimersByTimeAsync(2_000)
+  expect(api.activeMs.value).toBe(9_000)
+})

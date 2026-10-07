@@ -8,3 +8,5 @@
 6. Close/reload after a committed checkpoint and compare totals. Page-close flushing is best effort; hard termination can lose the uncommitted interval. Execute native lifecycle/coordinate/color cases only through #145/#28 reviewed release acceptance.
 
 7. In both formats, compare Highlights and Notes with all saved annotations across pages/chapters, including unresolved anchors. Empty/whitespace notes and unsaved drafts must not count. Add, edit, delete and reload: counts must match current saved metadata and remain document-scoped. Loading/unavailable storage must not falsely display zero. Choose **See annotations** and verify it opens the same document’s Annotations panel; resetting insights must preserve annotations and counts. Check both themes and narrow/wide layouts.
+
+8. Repeatedly switch between browser windows and another application, including a return after more than 60 seconds. The timer must resume on a focused ready reader (within the next one-second heartbeat) without counting time spent away. Exercise pagehide/pageshow separately; a hidden page must stay paused.

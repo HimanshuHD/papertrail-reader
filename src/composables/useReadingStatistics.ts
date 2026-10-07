@@ -30,15 +30,21 @@ export function useReadingStatistics(
   let current: Visit | null = null,
     owner = 0,
     timer: ReturnType<typeof setInterval> | undefined
+  let pageHidden = false
   let queue = Promise.resolve()
   const now = () => performance.now()
   function eligible() {
-    return ready.value && document.visibilityState === 'visible' && document.hasFocus()
+    return (
+      !pageHidden && ready.value && document.visibilityState === 'visible' && document.hasFocus()
+    )
   }
-  function tick() {
+  function tick(reconcile = true) {
     const visit = current
     if (!visit) return
-    visit.clock.tick(now())
+    // Window focus events may fire before hasFocus updates, or be missed entirely.
+    // Reconcile on every heartbeat so a transient false cannot latch the clock paused.
+    if (reconcile) visit.clock.setEligible(eligible(), now())
+    else visit.clock.tick(now())
     activeMs.value = visit.baseMs + Math.floor(visit.clock.activeMs)
     idle.value = visit.clock.isIdle(now())
     if (ready.value && visit.fingerprint === fingerprint.value)
@@ -72,20 +78,23 @@ export function useReadingStatistics(
     return queue
   }
   function updateEligibility(event?: Event) {
+    if (event?.type === 'pagehide') pageHidden = true
+    else if (event?.type === 'pageshow') pageHidden = false
     current?.clock.setEligible(
       event?.type === 'blur' || event?.type === 'pagehide' ? false : eligible(),
       now(),
     )
-    tick()
+    tick(false)
     void flush()
   }
   function activity(event: Event) {
-    if (!current || !ready.value) return
+    if (!current || !eligible()) return
     const target = event.target as Element | null
     if (
       target?.closest?.('[aria-label="PDF reader"], [aria-label="EPUB reader"]') ||
       event.type === 'reader-activity'
     ) {
+      current.clock.setEligible(true, now())
       current.clock.activity(now())
       tick()
     }
@@ -123,7 +132,7 @@ export function useReadingStatistics(
   }
   watch(fingerprint, () => void open(), { immediate: true })
   watch(ready, () => updateEligibility())
-  watch(position, tick)
+  watch(position, () => tick())
   async function reset() {
     if (!current || resetting.value) return
     resetting.value = true
