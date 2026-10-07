@@ -285,6 +285,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
     ).toBeVisible()
     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())
     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()
+    if (format === 'EPUB')
+      await page.getByRole('region', { name: 'EPUB reader' }).click({ position: { x: 1, y: 1 } })
     await text.evaluate((element) => {
       const doc = element.ownerDocument
       doc.getSelection()?.removeAllRanges()

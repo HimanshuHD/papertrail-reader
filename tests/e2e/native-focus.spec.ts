@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process'
+import { once } from 'node:events'
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -75,7 +76,11 @@ test('native browser tab focus pauses and resumes the reading timer without synt
     expect(await time()).not.toBe(paused)
   } finally {
     await browser?.close()
-    process.kill('SIGTERM')
-    await rm(profile, { recursive: true, force: true })
+    if (process.exitCode === null && process.signalCode === null) {
+      const exited = once(process, 'exit')
+      process.kill('SIGTERM')
+      await exited
+    }
+    await rm(profile, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
   }
 })

@@ -2866,14 +2866,13 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const entry = page
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })
-      const heading = page.getByRole('heading', { name: file.name, exact: true })
+      const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
       await expect(async () => {
-        if (await heading.isVisible()) return
+        if (await toggle.isVisible()) return
         await entry.click({ timeout: 1000 })
-        await expect(heading).toBeVisible()
+        await expect(toggle).toBeEnabled()
       }).toPass({ timeout: 5000 })
       await page.getByRole('button', { name: 'Hide library' }).click()
-      const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
       await expect(toggle).toBeEnabled()
       if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
     }
