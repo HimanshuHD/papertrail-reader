@@ -62,6 +62,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const show = page.getByRole('button', { name: 'Show library', exact: true })
       if (await show.isVisible()) await show.click()
       await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      if (await show.isVisible()) await show.click()
       await page
         .getByRole('region', { name: 'Library documents', exact: true })
         .getByRole('button', { name: /anchor\./ })
@@ -220,7 +221,14 @@ for (const format of ['PDF', 'EPUB'] as const) {
       format === 'PDF'
         ? page.locator('#pdf-page-1 .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
+    await expect(page.locator('.utility-panel-leave-active')).toHaveCount(0)
+    await page.evaluate(
+      () => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))),
+    )
+    if (format === 'PDF')
+      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
     await expect(text).toBeVisible()
+    await text.scrollIntoViewIfNeeded()
     if (format === 'EPUB')
       await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await text.evaluate((element) => {
@@ -272,6 +280,13 @@ for (const format of ['PDF', 'EPUB'] as const) {
     ).toBeVisible()
     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())
     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+    await text.evaluate((element) => {
+      const doc = element.ownerDocument
+      doc.getSelection()?.removeAllRanges()
+      doc.dispatchEvent(new Event('selectionchange'))
+    })
+    await expect(page.getByRole('group', { name: `${format} highlights` })).toHaveCount(0)
     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
     await expect(page.getByTestId('highlight-count')).toHaveText('1')
     await expect(page.getByTestId('note-count')).toHaveText('1')
