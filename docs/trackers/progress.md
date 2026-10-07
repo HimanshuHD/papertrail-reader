@@ -6,7 +6,7 @@
 
 ## Active #161 acceptance candidate — PR #162
 
-`release/161-native-acceptance` adds native IndexedDB unsupported-schema preservation and quota-checkpoint retry cases for PDF/EPUB, real pointer cross-page/rotated gap/outside/re-entry drags and cancellation, and distant saved-highlight 24px top-offset checks. The Chromium five-width suite is retained. Firefox/WebKit smoke subsets add file fallback, reload/reselection, formatted EPUB, mode switching, resize, dark appearance and insights; exact engine versions are captured by the workflow. Adding cases is not passing acceptance. Browser execution and final source evidence are pending.
+`release/161-native-acceptance` adds native IndexedDB unsupported-schema preservation and quota-checkpoint retry cases for PDF/EPUB, real pointer cross-page/rotated gap/outside/re-entry drags and cancellation, and distant saved-highlight 24px top-offset checks. Further fixtures add missing-anchor recovery, cancelled-draft isolation, committed-refresh recovery, loading/unavailable metadata, native tab focus pause/resume and bounded light/dark action menus. The Chromium five-width suite is retained. Firefox/WebKit smoke subsets add file fallback, reload/reselection, formatted EPUB, mode switching, resize, dark appearance and insights; exact engine versions are captured by the workflow. Adding cases is not passing acceptance. Browser execution and final source evidence are pending.
 
 [Remaining acceptance matrix](../evidence/native-161/README.md) records tested scope and gaps. Installed Chrome/Edge, macOS Safari, real devices, OS window focus delivery and HTTPS remain uncertified by headless Linux engine runs. #161/#16/#28/#78 remain open; major release #19 follows acceptance.
 
