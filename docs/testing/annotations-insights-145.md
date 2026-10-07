@@ -36,3 +36,7 @@ PDF position is page position; EPUB position is chapter position. Neither implie
 ## First release-run corrections
 
 Run 37563128629 failed: 27 failed, 3 flaky, 147 passed and 8 intentional skips. It exposed stale dark-page color/search-panel assertions, hidden-library reload reselection, annotation navigation/editor timing and a real idle-resume gap for PDF utility-panel interactions. Utility panels now explicitly report reader activity; annotation popovers reserve their owning panel header so Close stays reachable. Reload helpers show the library before reconnecting sources, expanded editors dismiss via Escape before view changes, selection waits for fonts/layout, and EPUB scrolling waits for reflow. These corrections require a fresh candidate run; prior results do not certify acceptance.
+
+## Second-run fixture corrections
+
+Run 37565053738: 167 passed, 10 failed, 8 intentional skips; no flaky outcomes reported. Build/browser setup/artifact upload succeeded. Remaining failures repeated two fixture assumptions at all five widths: success is announced by the shared toast rather than panel-local text, and PDF restores its saved Reading insights mode so blindly clicking its toggle closes it after reload. The fixture now checks the toast plus saved note content, and opens insights only when its toggle is not expanded. No application behavior or assertion coverage is removed. A fresh candidate run remains required.

@@ -2571,7 +2571,8 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     .locator('.floating-popover')
     .getByRole('button', { name: 'Save note', exact: true })
     .click()
-  await expect(panel.getByText('Note saved.', { exact: true })).toBeVisible()
+  await expect(page.locator('.toast-host').getByText('Note saved.', { exact: true })).toBeVisible()
+  await expect(saved.first()).toContainText(note)
   await expect(panel.locator('img')).toHaveCount(0)
   await capture(page, info, 'epub-annotation-notes')
   await verifyAnnotationOverview(page, info, 'EPUB')
@@ -2663,7 +2664,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
       await expect(
         page.getByRole('button', { name: 'Reading insights', exact: true }),
       ).toBeEnabled()
-      await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
+      const insightsToggle = page.getByRole('button', { name: 'Reading insights', exact: true })
+      // PDF restores the saved utility mode; do not toggle a restored panel closed.
+      if ((await insightsToggle.getAttribute('aria-expanded')) !== 'true')
+        await insightsToggle.click()
+      await expect(insightsToggle).toHaveAttribute('aria-expanded', 'true')
     }
     await open()
     const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
