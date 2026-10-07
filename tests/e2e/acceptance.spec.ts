@@ -115,6 +115,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }
     }, format)
     await page.goto('./#/app')
+    // Saved sidebar state can unmount the file input while workspace metadata restores.
+    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open()
     const pane = page.locator(format === 'PDF' ? '.pdf-scroll' : '.epub-container')
     const before = await pane.evaluate((element) => element.scrollTop)

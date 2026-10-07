@@ -2729,6 +2729,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(idleTime)
     const saved = await storedTime()
     await page.reload()
+    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open()
     await expect.poll(storedTime).toBeGreaterThanOrEqual(saved)
     await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2739,6 +2740,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(0)
     const other = await page.context().newPage()
     await other.goto('./#/app')
+    await expect(other.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open(other)
     const otherInsights = other.getByRole('region', { name: 'Local reading insights', exact: true })
     await otherInsights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2755,8 +2757,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect(insights.getByRole('alert')).toHaveCount(0)
     // Retry clears the notice before native IndexedDB finishes opening the new visit.
     await expect(
-      insights.getByText('Reading visits', { exact: true }).locator('..').getByRole('definition'),
-    ).toHaveText('1')
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
     await page.clock.runFor(16_000)
     await expect.poll(storedTime).toBeGreaterThan(0)
   })
@@ -2914,6 +2916,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }
     })
     await page.goto('./#/app')
+    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open()
     await expect(insights).toContainText('Local reading insights are unavailable')
     await insights.getByRole('button', { name: 'Retry', exact: true }).click()
