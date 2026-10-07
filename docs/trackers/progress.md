@@ -1,5 +1,13 @@
 # PaperTrail progress
 
+## Current checkpoint — #160 acceptance passed; owner merge pending
+
+#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 is ready for owner merge; #145/#15 remain open until merge. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. After #160 merge, annotation milestone 4 can close; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+
+## Current checkpoint — #159 merged; #145 preparation active
+
+Owner confirmed PR #159 works on 7 October 2026. Accepted application source `b997a247f15adb057261a487ab0cfa54bbc77ea6` passed Frontend CI 37562511277 with 300 unit/component tests, 10 pipeline tests and required checks. PR #159 is owner-merged; #144 is completed and its stale active label is removed. #145 release acceptance preparation has started. Parent #15 and milestone 4 remain open for that evidence; earlier active/pending-preview checkpoints below are superseded. See [release acceptance plan](../testing/annotations-insights-145.md).
+
 ## Current checkpoint — #158 reconciled; #144 active
 
 #158 merged as `298d98ffa14b5eec0d539896975a54575ac132a3`; source `a048cf4` passed Frontend CI 37499613529 and owner PR verification is checked. #157 is completed and stale active labels cleared. Accepted checks: 286 unit/component tests, 10 pipeline tests and required validation. #144 local reading insights is implemented for review from main `bb56d474640b543af3023dd751b555fa4b481d69` on `feat/144-reading-insights`; #145 native release acceptance remains new. Parent #15 and milestone 4 remain open. Earlier active/pending-preview checkpoints below are historical and superseded.

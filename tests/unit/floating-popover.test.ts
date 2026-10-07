@@ -54,3 +54,47 @@ it('does not dismiss for inside pointers and restores trigger focus on Escape', 
   expect(wrapper.emitted('close')).toEqual([[]])
   expect(document.activeElement).toBe(anchor)
 })
+
+it('keeps the panel close header clear when an expanded note editor flips upward', async () => {
+  const panel = document.createElement('aside')
+  panel.innerHTML = '<header>Annotations</header><button>Actions</button>'
+  document.body.append(panel)
+  const anchor = panel.querySelector('button')!
+  vi.spyOn(panel.firstElementChild!, 'getBoundingClientRect').mockReturnValue({
+    bottom: 180,
+  } as DOMRect)
+  vi.spyOn(anchor, 'getBoundingClientRect').mockReturnValue({
+    right: 300,
+    top: 210,
+    bottom: 230,
+  } as DOMRect)
+  vi.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(290)
+  vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(450)
+  const wrapper = mount(FloatingPopover, {
+    props: { anchor, expanded: true },
+    global: { stubs: { teleport: false } },
+  })
+  wrappers.push(wrapper)
+  await flushPromises()
+  expect(
+    Number.parseFloat(document.querySelector<HTMLElement>('.floating-popover')!.style.top),
+  ).toBeGreaterThanOrEqual(188)
+})
+
+it('ignores sibling reader scrolling but dismisses when the annotation container scrolls', async () => {
+  const panel = document.createElement('aside'),
+    sibling = document.createElement('section'),
+    anchor = document.createElement('button')
+  panel.append(anchor)
+  document.body.append(panel, sibling)
+  const wrapper = mount(FloatingPopover, {
+    props: { anchor },
+    global: { stubs: { teleport: false } },
+  })
+  wrappers.push(wrapper)
+  await flushPromises()
+  sibling.dispatchEvent(new Event('scroll'))
+  expect(wrapper.emitted('close')).toBeUndefined()
+  panel.dispatchEvent(new Event('scroll'))
+  expect(wrapper.emitted('close')).toEqual([[]])
+})
