@@ -18,7 +18,7 @@ export interface WorkspaceSnapshot {
   libraryScroll: number
   sidebarOpen: boolean
   sidebarWidth: number
-  utilityPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | null
+  utilityPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
   searchQuery?: string
 }
 export interface WorkspaceStorage {
@@ -98,7 +98,8 @@ function validateSnapshot(value: unknown): WorkspaceSnapshot | null {
       state.utilityPanel === 'contents' ||
       state.utilityPanel === 'search' ||
       state.utilityPanel === 'bookmarks' ||
-      state.utilityPanel === 'annotations'
+      state.utilityPanel === 'annotations' ||
+      state.utilityPanel === 'insights'
         ? state.utilityPanel
         : null,
     searchQuery: typeof state.searchQuery === 'string' ? state.searchQuery.slice(0, 500) : '',

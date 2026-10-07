@@ -640,6 +640,17 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
     note: 'A local EPUB note',
   })
   expect(wrapper.text()).toContain('A local EPUB note')
+  await wrapper.get('button[aria-label="Reading insights"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.get('[data-testid="highlight-count"]').text()).toBe('1')
+  expect(wrapper.get('[data-testid="note-count"]').text()).toBe('1')
+  await wrapper
+    .findAll('button')
+    .find((item) => item.text() === 'See annotations')!
+    .trigger('click')
+  await flushPromises()
+  expect(wrapper.text()).toContain('A local EPUB note')
+  expect(wrapper.find('[data-testid="highlight-count"]').exists()).toBe(false)
   frameDoc!.getSelection()!.removeAllRanges()
   frameDoc!.getSelection()!.addRange(range)
   frameDoc!.dispatchEvent(

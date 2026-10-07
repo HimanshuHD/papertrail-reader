@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
+import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
 import { bindEpubPageAppearance } from '../../features/epub/page-appearance'
 import { selectionColorPreview } from '../../features/annotations/selection-colors'
@@ -268,7 +270,7 @@ const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
-const rightPanel = ref<'contents' | 'bookmarks' | 'annotations' | null>(null)
+const rightPanel = ref<'contents' | 'bookmarks' | 'annotations' | 'insights' | null>(null)
 const typographyOpen = ref(false)
 const popover = ref<HTMLElement | null>(null)
 const lineOptions = [
@@ -402,6 +404,14 @@ function bindFrameListeners() {
         },
       ),
     )
+    const reportActivity = () =>
+      root.value?.dispatchEvent(new Event('reader-activity', { bubbles: true }))
+    for (const name of ['pointerdown', 'keydown', 'wheel', 'touchstart'])
+      doc.addEventListener(name, reportActivity, { passive: true })
+    hoverDisposers.push(() => {
+      for (const name of ['pointerdown', 'keydown', 'wheel', 'touchstart'])
+        doc.removeEventListener(name, reportActivity)
+    })
     const observer = new MutationObserver(scheduleHighlights)
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
@@ -430,6 +440,16 @@ watch(
   { immediate: true },
 )
 const loading = computed(() => reader.busy.value || continuity.preparing.value)
+const statisticsReady = computed(() => !loading.value && !!reader.session.value)
+const statisticsPosition = computed(() =>
+  metadata.value?.chapters.length ? (reader.chapter.value + 1) / metadata.value.chapters.length : 0,
+)
+const statistics = useReadingStatistics(
+  'EPUB',
+  continuity.fingerprint,
+  statisticsReady,
+  statisticsPosition,
+)
 const unavailable = computed(() => loading.value || !reader.session.value)
 function focusAction(label: string) {
   void nextTick(() =>
@@ -444,20 +464,24 @@ function closeTypography(focus = true) {
 }
 function closePanel() {
   const label =
-    rightPanel.value === 'annotations'
-      ? 'Annotations'
-      : rightPanel.value === 'bookmarks'
-        ? 'Bookmarks'
-        : 'Contents'
+    rightPanel.value === 'insights'
+      ? 'Reading insights'
+      : rightPanel.value === 'annotations'
+        ? 'Annotations'
+        : rightPanel.value === 'bookmarks'
+          ? 'Bookmarks'
+          : 'Contents'
   rightPanel.value = null
   focusAction(label)
 }
-async function togglePanel(panel: 'contents' | 'bookmarks' | 'annotations' = 'contents') {
+async function togglePanel(
+  panel: 'contents' | 'bookmarks' | 'annotations' | 'insights' = 'contents',
+) {
   closeTypography(false)
   if (rightPanel.value === panel) return closePanel()
   rightPanel.value = panel
   await nextTick()
-  if (panel === 'annotations') return
+  if (panel === 'annotations' || panel === 'insights') return
   root.value
     ?.querySelector<HTMLButtonElement>('button[aria-label="Close utility panel"]')
     ?.focus({ preventScroll: true })
@@ -699,6 +723,14 @@ watch(
           @click="toggleTypography"
         />
         <IconButton
+          label="Reading insights"
+          icon="clock"
+          :disabled="unavailable"
+          :active="rightPanel === 'insights'"
+          :aria-expanded="rightPanel === 'insights'"
+          @click="togglePanel('insights')"
+        />
+        <IconButton
           label="Annotations"
           icon="annotations"
           :disabled="unavailable"
@@ -923,11 +955,13 @@ watch(
           <div class="flex items-center justify-between gap-2 border-b border-line p-3">
             <h3 class="text-sm font-semibold">
               {{
-                rightPanel === 'annotations'
-                  ? 'Annotations'
-                  : rightPanel === 'bookmarks'
-                    ? 'Bookmarks'
-                    : 'Contents'
+                rightPanel === 'insights'
+                  ? 'Reading insights'
+                  : rightPanel === 'annotations'
+                    ? 'Annotations'
+                    : rightPanel === 'bookmarks'
+                      ? 'Bookmarks'
+                      : 'Contents'
               }}
             </h3>
             <IconButton label="Close utility panel" icon="close" @click="closePanel" />
@@ -968,6 +1002,22 @@ watch(
             @select="selectedHighlight = $event"
             @navigate="chooseHighlight"
             @retry="highlights.reload"
+          />
+          <ReadingInsightsPanel
+            v-else-if="rightPanel === 'insights'"
+            :summary="statistics.summary.value"
+            :active-ms="statistics.activeMs.value"
+            :idle="statistics.idle.value"
+            :notice="statistics.notice.value"
+            :resetting="statistics.resetting.value"
+            position-label="Chapter position"
+            :position="statisticsPosition"
+            :reset="statistics.reset"
+            :retry="statistics.retry"
+            :annotations="highlights.highlights.value"
+            :annotations-available="!!highlights.handle.value"
+            :annotations-loading="highlights.loading.value"
+            @see-annotations="togglePanel('annotations')"
           />
           <EpubBookmarksPanel
             v-else
