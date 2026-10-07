@@ -32,3 +32,7 @@ PDF position is page position; EPUB position is chapter position. Neither implie
 - [ ] Reviewed release Browser E2E passed; failures/flaky cases/skips explained.
 - [ ] Current-source visual, focus and failure evidence inspected and retained.
 - [ ] Results linked and issue/roadmap/release checklists reconciled.
+
+## First release-run corrections
+
+Run 37563128629 failed: 27 failed, 3 flaky, 147 passed and 8 intentional skips. It exposed stale dark-page color/search-panel assertions, hidden-library reload reselection, annotation navigation/editor timing and a real idle-resume gap for PDF utility-panel interactions. Utility panels now explicitly report reader activity; annotation popovers reserve their owning panel header so Close stays reachable. Reload helpers show the library before reconnecting sources, expanded editors dismiss via Escape before view changes, selection waits for fonts/layout, and EPUB scrolling waits for reflow. These corrections require a fresh candidate run; prior results do not certify acceptance.

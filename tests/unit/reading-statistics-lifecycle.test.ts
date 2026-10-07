@@ -71,7 +71,8 @@ async function start() {
         api = useReadingStatistics('PDF', fingerprint, ready, position)
         return {}
       },
-      template: '<section aria-label="PDF reader"><p>Text</p></section>',
+      template:
+        '<div><section aria-label="PDF reader"><p>Text</p></section><aside data-reader-activity><button>Insights control</button></aside></div>',
     }),
     { attachTo: document.body },
   )
@@ -179,4 +180,14 @@ it('reconciles a missed window focus event and keeps pagehide paused until pages
   window.dispatchEvent(new Event('pageshow'))
   await vi.advanceTimersByTimeAsync(2_000)
   expect(api.activeMs.value).toBe(9_000)
+})
+
+it('resumes idle time through a reader utility panel outside the reader region', async () => {
+  await start()
+  await vi.advanceTimersByTimeAsync(65_000)
+  expect(api.idle.value).toBe(true)
+  await wrapper!.get('aside button').trigger('pointerdown')
+  await vi.advanceTimersByTimeAsync(2_000)
+  expect(api.idle.value).toBe(false)
+  expect(api.activeMs.value).toBe(62_000)
 })

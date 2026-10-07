@@ -1302,6 +1302,7 @@ onBeforeUnmount(() => {
         <aside
           v-if="(phase === 'restoring' || phase === 'ready') && rightPanel"
           id="pdf-utility-panel"
+          data-reader-activity
           :inert="phase !== 'ready'"
           :aria-hidden="phase !== 'ready'"
           class="pdf-side-panel absolute inset-y-0 right-0 z-10 flex w-[min(88vw,21rem)] flex-col border-l border-line bg-panel shadow-xl sm:static sm:w-[min(22rem,42vw)] sm:shadow-none"

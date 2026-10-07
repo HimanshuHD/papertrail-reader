@@ -53,7 +53,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await capture(page, info, 'epub-text-reader-light')
   await page.getByRole('button', { name: 'Dark mode' }).click()
-  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(231, 233, 238)')
+  await expect(frame.locator('body')).toHaveCSS('color', 'rgb(228, 237, 243)')
   await capture(page, info, 'epub-text-reader')
   await page.getByRole('button', { name: 'Show library' }).click()
   await library.getByRole('button', { name: /broken.epub/ }).click()
@@ -185,10 +185,20 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
     .toBe(true)
   const next = reader.getByRole('button', { name: 'Next chapter' })
   const before = await next.boundingBox()
-  await reader.locator('.epub-container').evaluate((el) => {
-    el.dispatchEvent(new WheelEvent('wheel'))
-    el.scrollTop = 500
-  })
+  await expect
+    .poll(() =>
+      reader.locator('.epub-container').evaluate((el) => el.scrollHeight - el.clientHeight),
+    )
+    .toBeGreaterThan(500)
+  await expect
+    .poll(async () => {
+      await reader.locator('.epub-container').evaluate((el) => {
+        el.dispatchEvent(new WheelEvent('wheel'))
+        el.scrollTop = 500
+      })
+      return reader.locator('.epub-container').evaluate((el) => el.scrollTop)
+    })
+    .toBeGreaterThan(100)
   await expect
     .poll(() => reader.locator('.epub-container').evaluate((el) => el.scrollTop))
     .toBeGreaterThan(100)
@@ -702,7 +712,11 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await page.locator('#pdf-page-2').scrollIntoViewIfNeeded()
   await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
-  await page.evaluate(() => {
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    await new Promise<void>((resolve) =>
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+    )
     const first = document.querySelector('#pdf-page-1 .textLayer span')!.firstChild!
     const last = [...document.querySelectorAll('#pdf-page-2 .textLayer span')].at(-1)!.firstChild!
     const range = document.createRange()
@@ -730,7 +744,6 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   const toggle = page.getByRole('button', { name: 'Annotations', exact: true })
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await entries.first().click()
   await panel.locator('[data-menu-id]').first().click()
   await page
     .locator('.floating-popover')
@@ -739,6 +752,8 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await expect(page.locator('.floating-popover').getByLabel('Note', { exact: true })).toHaveValue(
     'A persistent PDF note',
   )
+  await page.keyboard.press('Escape')
+  await expect(page.locator('.floating-popover')).toHaveCount(0)
   await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
   await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
@@ -1877,7 +1892,11 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await expect
     .poll(() => page.locator('#pdf-page-2 .pdf-match.selected').count())
     .toBeGreaterThanOrEqual(2)
-  await expect(page.getByRole('search')).toHaveCount(0)
+  await expect(panel.getByRole('searchbox')).toHaveValue('wrapped match')
+  await expect(panel.getByRole('button', { name: /Page 2 · Match 1/ })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  )
   await capture(page, info, 'wrapped-search-occurrence-dark')
   await noOverflow(page)
 })
@@ -2484,6 +2503,8 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     ),
   }
   const open = async () => {
+    const show = page.getByRole('button', { name: 'Show library', exact: true })
+    if (await show.isVisible()) await show.click()
     await page.locator('input[accept*=".pdf"]').setInputFiles(book)
     await page
       .locator('section[aria-labelledby="local-library-title"]')
@@ -2630,6 +2651,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
             buffer: Buffer.from(createEpubFixture()),
           }
     const open = async () => {
+      const show = page.getByRole('button', { name: 'Show library', exact: true })
+      if (await show.isVisible()) await show.click()
       await page.locator('input[accept*=".pdf"]').setInputFiles(file)
       await page
         .locator('section[aria-labelledby="local-library-title"]')
@@ -2696,7 +2719,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .frameLocator('iframe')
         .locator('body')
         .dispatchEvent('pointerdown')
-    } else await insights.dispatchEvent('pointerdown')
+    } else await insights.dispatchEvent('pointerdown', { bubbles: true })
     await page.clock.runFor(16_000)
     await expect.poll(storedTime).toBeGreaterThan(idleTime)
     const saved = await storedTime()

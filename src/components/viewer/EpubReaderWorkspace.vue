@@ -948,6 +948,7 @@ watch(
         <aside
           v-if="rightPanel"
           id="epub-utility-panel"
+          data-reader-activity
           class="epub-side-panel border-l border-line bg-panel"
           aria-label="EPUB utility panel"
           @keydown.esc.stop.prevent="closePanel"

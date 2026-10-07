@@ -91,7 +91,9 @@ export function useReadingStatistics(
     if (!current || !eligible()) return
     const target = event.target as Element | null
     if (
-      target?.closest?.('[aria-label="PDF reader"], [aria-label="EPUB reader"]') ||
+      target?.closest?.(
+        '[aria-label="PDF reader"], [aria-label="EPUB reader"], [data-reader-activity]',
+      ) ||
       event.type === 'reader-activity'
     ) {
       current.clock.setEligible(true, now())

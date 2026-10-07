@@ -5,20 +5,30 @@ import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const props = defineProps<{ anchor: HTMLElement | null; expanded?: boolean }>()
 const emit = defineEmits<{ close: [] }>()
 const root = ref<HTMLElement | null>(null)
-const position = ref({ left: '8px', top: '8px', visibility: 'hidden' as 'hidden' | 'visible' })
+const position = ref({
+  left: '8px',
+  top: '8px',
+  maxHeight: 'calc(100dvh - 16px)',
+  visibility: 'hidden' as 'hidden' | 'visible',
+})
 let observer: ResizeObserver | undefined
 const frameDocuments = new Set<Document>()
 function place() {
   const anchor = props.anchor?.getBoundingClientRect(),
     popup = root.value
   if (!anchor || !popup) return
+  // Keep the owning utility panel’s header and close control reachable.
+  const header = props.anchor?.closest('aside')?.firstElementChild?.getBoundingClientRect()
+  const minTop = Math.max(8, Math.min(header ? header.bottom + 8 : 8, innerHeight - 56))
+  const maxHeight = Math.max(40, innerHeight - minTop - 8)
   const width = popup.offsetWidth,
-    height = popup.offsetHeight
+    height = Math.min(popup.offsetHeight, maxHeight)
   const below = anchor.bottom + 8
   const top = below + height <= innerHeight - 8 ? below : anchor.top - height - 8
   position.value = {
     left: Math.max(8, Math.min(anchor.right - width, innerWidth - width - 8)) + 'px',
-    top: Math.max(8, Math.min(top, innerHeight - height - 8)) + 'px',
+    top: Math.max(minTop, Math.min(top, innerHeight - height - 8)) + 'px',
+    maxHeight: maxHeight + 'px',
     visibility: 'visible',
   }
 }
