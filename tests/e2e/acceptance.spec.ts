@@ -111,6 +111,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
         ? page.locator('#pdf-page-1 .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(text).toBeVisible()
+    if (format === 'EPUB')
+      await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await text.evaluate((element) => {
       const doc = element.ownerDocument,
         range = doc.createRange()
@@ -260,6 +262,8 @@ for (const format of ['PDF', 'EPUB'] as const) {
         ? page.locator('#pdf-page-1 .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(text).toBeVisible()
+    if (format === 'EPUB')
+      await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await text.evaluate((element) => {
       const doc = element.ownerDocument,
         range = doc.createRange()
@@ -355,7 +359,7 @@ for (const rotation of [0, 90, 180, 270]) {
       await page.getByRole('button', { name: 'PDF: drag.pdf', exact: true }).click()
       await page.getByRole('button', { name: 'Hide library' }).click()
       // Keep the text on both pages in view while exercising two explicit zoom levels.
-      for (let i = 0; i < 5; i++)
+      for (let i = 0; i < 16; i++)
         await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
       if (zoomSteps) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
       await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
@@ -534,8 +538,10 @@ test('PDF distant saved highlight lands 24px below the reading viewport after vi
     .poll(() =>
       page.locator('.pdf-scroll').evaluate((pane) => {
         const text = pane.querySelector('#pdf-page-8 .textLayer span')!
+        const range = document.createRange()
+        range.selectNodeContents(text)
         return Math.round(
-          text.getBoundingClientRect().top - pane.getBoundingClientRect().top - pane.clientTop,
+          range.getBoundingClientRect().top - pane.getBoundingClientRect().top - pane.clientTop,
         )
       }),
     )
@@ -565,7 +571,16 @@ test('EPUB distant saved highlight lands at the same top offset in both renderin
     .click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const target = page.frameLocator('iframe').locator('#p40')
+  await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
   await target.scrollIntoViewIfNeeded()
+  await target.evaluate(async (element) => {
+    await element.ownerDocument.fonts.ready
+    await new Promise<void>((resolve) =>
+      element.ownerDocument.defaultView!.requestAnimationFrame(() =>
+        element.ownerDocument.defaultView!.requestAnimationFrame(() => resolve()),
+      ),
+    )
+  })
   await target.evaluate((element) => {
     const doc = element.ownerDocument,
       range = doc.createRange()

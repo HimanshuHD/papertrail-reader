@@ -72,6 +72,9 @@ jobs:
             browser-evidence/
             test-results/**/error-context.md
             test-results/**/epub*.png
+            test-results/**/pdf-annotation-actions*.png
+            test-results/**/pdf-native-drag*.png
+            test-results/**/supported-reader*.png
             test-results/shell-EPUB-*/test-failed*.png
             test-results/shell-EPUB-retains*-chromium-1440/trace.zip
           if-no-files-found: ignore

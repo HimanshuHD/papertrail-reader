@@ -24,3 +24,11 @@ Native browser tab switching verifies timer pause/resume using `bringToFront()` 
 - Actual installed Chrome/Edge and macOS Safari, HTTPS, real OS multi-window focus delivery and device checks under #28. Linux Playwright WebKit is not Safari certification.
 
 Keep #161/#28/#16 and roadmap #78 open until their acceptance is fulfilled. Record reproduced product defects in #139. Major release #19 follows acceptance; staging/deployment implementation follows the major release.
+
+## First candidate — failed acceptance
+
+Source `699f94c8044ead71f8c83db29203829c8cf53929`, checkout `be2b27fd0e12ebd82f7f84745017cf2f07388025`: Browser E2E [37572465053](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37572465053) reported **222 passed, 18 failed, one flaky, eight intentional skips**. Frontend CI 37572445878 passed. Chromium 153.0.8010.12, Firefox 155.0 and WebKit 26.6 on Linux; exact identity/outcomes retained in `first-environment.json` and `first-outcomes.json`. Both non-Chromium smoke subsets and the existing regression suite passed; failures were in the added fixtures.
+
+Corrections: install the virtual clock before the reading session; measure the selected PDF Range rather than the span box; reach actual 25% zoom from large fit-width baselines before native cross-page gestures; wait for EPUB restoration/font/layout readiness before capturing distant text. These are fixture corrections, not claimed product fixes. Expanded combinations and corrections require a fresh candidate run.
+
+Artifacts browser-summary 11461827053 and browser-review 11461354267 expire 14 October 2026. No passing release acceptance is inferred from this run.
