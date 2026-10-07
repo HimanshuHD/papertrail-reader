@@ -1,3 +1,4 @@
+import { openAnnotationActions } from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -651,6 +652,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
     await page
       .locator('input[accept*=".pdf"]')
       .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    if (await show.isVisible()) await show.click()
     await page
       .getByRole('region', { name: 'Library documents', exact: true })
       .getByRole('button', { name: `PDF: ${name}`, exact: true })
@@ -690,7 +692,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('A persistent PDF note')
   await verifyAnnotationOverview(page, info, 'PDF')
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page.locator('.floating-popover select').first().selectOption('pink')
   await capture(page, info, 'pdf-annotation-notes')
   await page.reload()
@@ -698,7 +700,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   const toggle = page.getByRole('button', { name: 'Annotations', exact: true })
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   // Reflow of the sibling document pane must not dismiss an anchored panel menu.
   await page.locator('.pdf-scroll').dispatchEvent('scroll')
   await expect(
@@ -726,7 +728,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await select('original-again.pdf', bytes)
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
@@ -2533,7 +2535,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   const saved = panel.locator('[data-annotation-id]')
   await expect(saved).toHaveCount(1)
   await saved.first().click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Add note', exact: true })
@@ -2555,7 +2557,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await open()
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await saved.first().click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Edit note', exact: true })
@@ -2581,7 +2583,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await expect(reader.getByTestId('highlight-count')).toHaveText('1')
   await expect(reader.getByTestId('note-count')).toHaveText('0')
   await reader.getByRole('button', { name: 'See annotations', exact: true }).click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
@@ -2860,6 +2862,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const show = page.getByRole('button', { name: 'Show library', exact: true })
       if (await show.isVisible()) await show.click()
       await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      if (await show.isVisible()) await show.click()
       await page
         .locator('section[aria-labelledby="local-library-title"]')
         .getByRole('button', { name: new RegExp(file.name) })

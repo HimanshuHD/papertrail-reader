@@ -1,0 +1,4177 @@
+{
+  "stats": {
+    "startTime": "2026-10-07T04:54:09.243Z",
+    "duration": 1039022.13,
+    "expected": 275,
+    "skipped": 8,
+    "unexpected": 33,
+    "flaky": 3
+  },
+  "cases": [
+    {
+      "title": "native browser tab focus pauses and resumes the reading timer without synthetic focus events",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7599,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7633,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2473,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 885,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2549,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2208,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2112,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1578,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7755,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7935,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7632,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7878,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 25% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2866,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 50% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3751,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 25% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4204,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 50% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3913,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 25% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4202,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 50% zoom",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 8190,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page Second page\"\u001b[39m\nReceived: \u001b[31m\"First page Second page\u001b[7m Development \u00b7 SHA unavailable\u001b[27m\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7667,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page Second page\"\u001b[39m\nReceived: \u001b[31m\"First page Second page\u001b[7m Development \u00b7 SHA unavailable\u001b[27m\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 25% zoom",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2858,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 50% zoom",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7157,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page\u001b[7m Second page\u001b[27m\"\u001b[39m\nReceived: \u001b[31m\"First page\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7217,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page\u001b[7m Second page\u001b[27m\"\u001b[39m\nReceived: \u001b[31m\"First page\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6731,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2162,\u001b[39m\n\u001b[31m+   \"activeMs\": 2207,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"a9010bfe-8a4e-4e51-be8d-be1c9f558a99\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791348912941,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791348912976,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6721,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2149,\u001b[39m\n\u001b[31m+   \"activeMs\": 2201,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"82af935d-751b-43ba-8450-1859534e0cec\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791348920458,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791348920499,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6409,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2120,\u001b[39m\n\u001b[31m+   \"activeMs\": 2163,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"5b14ba67-6b5e-4e16-8302-de503f28d501\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:f05bdd6404691cc6780e31bf16c96d70e486669baa7a47dfc42b1f4cbc7e750d\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791348917191,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791348917224,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6420,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2123,\u001b[39m\n\u001b[31m+   \"activeMs\": 2165,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"62ea2992-758c-4331-8c01-22328d8b5438\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:1108ddc6812579c472a512199ff4ea0052594718f4e6b31f1562e35b723f4e09\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791348924426,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791348924458,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF distant saved highlight lands 24px below the reading viewport after virtualization",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2015,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB distant saved highlight lands at the same top offset in both rendering modes",
+      "project": "chromium-320",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30153,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30163,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "native browser tab focus pauses and resumes the reading timer without synthetic focus events",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6408,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6415,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1128,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 879,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2627,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2104,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1535,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1246,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7827,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 8141,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7896,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7564,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 25% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2787,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 50% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2833,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 25% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3489,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 50% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4049,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 25% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3556,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 50% zoom",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 8475,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page Second page\"\u001b[39m\nReceived: \u001b[31m\"First page Second page\u001b[7m Development \u00b7 SHA un\u001b[27m\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7860,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32m\"First page Second page\"\u001b[39m\nReceived: \u001b[31m\"First page Second page\u001b[7m Development \u00b7 SHA un\u001b[27m\"\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  399 |             page.evaluate(() => document.getSelection()?.toString().replace(/\\s+/g, ' ').trim()),\n  400 |           )\n> 401 |           .toBe('First page Second page')\n      |            ^\n  402 |         await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()\n  403 |       }\n  404 |       // Cancellation must release the guard before another independent selection.\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:401:12"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 25% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2602,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 50% zoom",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2718,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6897,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2233,\u001b[39m\n\u001b[31m+   \"activeMs\": 2317,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"687b2429-6ba6-4873-88b1-b8e5e955a2e4\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349098196,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349098253,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6752,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2172,\u001b[39m\n\u001b[31m+   \"activeMs\": 2220,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"b7fab6d9-c54c-4a05-b4ed-f07f8233c98a\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349105801,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349105852,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6603,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2103,\u001b[39m\n\u001b[31m+   \"activeMs\": 2146,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"69b43d2e-eef6-4b19-8ec3-1253f83272c8\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:e8ad72079d2500a87952b9d55067303c70c00aa2e618b54f2be04ee27bef9ca7\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349107682,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349107716,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7067,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2174,\u001b[39m\n\u001b[31m+   \"activeMs\": 2217,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"3078d444-7148-45bd-9040-821f4261b2d9\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:be961198417965bd2a21f93f0311b946b40dd0d5ea8403c6986870c2f75ee1c3\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349116002,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349116035,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF distant saved highlight lands 24px below the reading viewport after virtualization",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2375,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB distant saved highlight lands at the same top offset in both rendering modes",
+      "project": "chromium-375",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30163,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30195,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "native browser tab focus pauses and resumes the reading timer without synthetic focus events",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7951,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7863,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2075,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 897,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2379,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2258,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2503,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1638,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30212,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30215,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7610,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7588,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 25% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2817,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 50% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2805,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 25% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2727,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 50% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3786,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 25% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2730,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 50% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2803,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 25% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2646,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 50% zoom",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2752,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6601,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2144,\u001b[39m\n\u001b[31m+   \"activeMs\": 2190,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"7ed8ecea-baf5-462c-94ee-5a2f84b13991\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349285507,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349285545,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6801,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2170,\u001b[39m\n\u001b[31m+   \"activeMs\": 2221,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"bb79af11-f2e4-4dab-92e8-d6d02511c7dc\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349293160,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349293201,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6589,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2122,\u001b[39m\n\u001b[31m+   \"activeMs\": 2182,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"dd4a3a3e-d2a2-43c9-acad-af18fba05a24\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:5ec52afb3ab0a7d50e00dfd1eb34c9f8670d39b0bb8dd0944319abb3b8d26c55\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349300510,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349300573,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6485,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2123,\u001b[39m\n\u001b[31m+   \"activeMs\": 2166,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"13418976-d250-48cc-b72f-39fd60a7e56e\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:d83833d57bb4bca1047b48d8d3947057b067234ef8245a12c079cb53d1edaac9\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349307909,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349307943,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF distant saved highlight lands 24px below the reading viewport after virtualization",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1868,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB distant saved highlight lands at the same top offset in both rendering modes",
+      "project": "chromium-768",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30285,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30231,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "native browser tab focus pauses and resumes the reading timer without synthetic focus events",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 8010,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7928,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2184,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1069,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2972,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2554,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2778,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1340,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30540,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30401,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7568,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7570,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 25% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2953,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 50% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2956,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 25% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2737,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 50% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4423,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 25% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2811,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 50% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2835,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 25% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2708,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 50% zoom",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2813,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6650,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2173,\u001b[39m\n\u001b[31m+   \"activeMs\": 2223,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"261196ed-7d9f-444b-a323-bc53d09c5c96\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349484303,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349484342,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6871,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2143,\u001b[39m\n\u001b[31m+   \"activeMs\": 2224,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"26335f97-ceae-442c-b18c-39f45241137f\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349491952,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349492026,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6495,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2150,\u001b[39m\n\u001b[31m+   \"activeMs\": 2214,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"aae5bd40-f8da-46a3-b546-e97774be3e54\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:0d0d4458d01b7d092bf682542fca58f2b84845389dee5dc75bd6a50b250692a6\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349499256,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349499324,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6536,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2124,\u001b[39m\n\u001b[31m+   \"activeMs\": 2172,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"b42ecfb4-7637-4ad1-9b95-2985204e4e0d\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:b2e40b2740cd9aa4cfaa727c9399ef0012ba27069781cc896f727e0ebffd240d\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349506699,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349506737,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF distant saved highlight lands 24px below the reading viewport after virtualization",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2325,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB distant saved highlight lands at the same top offset in both rendering modes",
+      "project": "chromium-1024",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30276,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30219,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "native browser tab focus pauses and resumes the reading timer without synthetic focus events",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7708,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7737,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBe\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // Object.is equality\u001b[22m\n\nExpected: \u001b[32mfalse\u001b[39m\nReceived: \u001b[31mtrue\u001b[39m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  26 |     await other.goto('./#/')\n  27 |     await other.bringToFront()\n> 28 |     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)\n     |                                                                       ^\n  29 |     await page.clock.runFor(1000)\n  30 |     const paused = await time()\n  31 |     await page.clock.runFor(5000)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:28:71"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2562,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB delayed annotation metadata shows loading until native data is delivered",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1038,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2665,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB missing saved anchor remains unresolved without guessing a new reading position",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3106,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2652,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB unavailable annotation metadata is not reported as zero and retry restores counts",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1319,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30468,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30264,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Highlight blue', exact: true })\u001b[22m\n\n\n  274 |       element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))\n  275 |     })\n> 276 |     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()\n      |                                                                             ^\n  277 |     await page.getByRole('button', { name: 'Add note', exact: true }).click()\n  278 |     await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')\n  279 |     await page.getByRole('button', { name: 'Cancel', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:276:77"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB note draft stays unsaved and committed refresh failure retries without duplication",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 7560,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 7535,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first() with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByText('The change was saved, but annotations could not be refreshed. Retry annotations before editing again.', { exact: true }).first()\u001b[22m\n\n\n  311 |         )\n  312 |         .first(),\n> 313 |     ).toBeVisible()\n      |       ^\n  314 |     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())\n  315 |     await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()\n  316 |     await page.getByRole('button', { name: 'Reading insights', exact: true }).click()\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:313:7"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 25% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3071,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 0 degrees at 50% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3036,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 25% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2894,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 90 degrees at 50% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4142,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 25% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2890,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 180 degrees at 50% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2934,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 25% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2791,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native cross-page drag keeps its anchor through gaps and re-entry at 270 degrees at 50% zoom",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2984,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6600,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2210,\u001b[39m\n\u001b[31m+   \"activeMs\": 2253,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"a84bbd91-ba22-48c1-9420-7861415437fd\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349686367,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349686391,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6843,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2160,\u001b[39m\n\u001b[31m+   \"activeMs\": 2240,\u001b[39m\n\u001b[2m    \"furthestPosition\": 1,\u001b[22m\n\u001b[2m    \"generation\": \"6e18bdd7-c939-42df-a6dd-2b49861abf73\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:PDF:sha256-chunks-v1:38bc3d5a859c189731238ddfea7e00dbd5394bc935b4ccae8b10b6852e300e23\",\u001b[22m\n\u001b[2m    \"lastPosition\": 1,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349693970,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349694040,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB checkpoint quota failure retains the session and retry commits once",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "failed",
+          "duration": 6527,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2140,\u001b[39m\n\u001b[31m+   \"activeMs\": 2181,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"8c852598-43b1-4796-a3ac-d014e0776007\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:93d1fe7561c0dd97b2462b8e4db834a6d5c9f86af73d96b62ae524657925a12b\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349701292,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349701322,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        },
+        {
+          "status": "failed",
+          "duration": 6473,
+          "errors": [
+            "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m) // deep equality\u001b[22m\n\n\u001b[32m- Expected  - 2\u001b[39m\n\u001b[31m+ Received  + 2\u001b[39m\n\n\u001b[2m  Object {\u001b[22m\n\u001b[32m-   \"activeMs\": 2102,\u001b[39m\n\u001b[31m+   \"activeMs\": 2147,\u001b[39m\n\u001b[2m    \"furthestPosition\": 0.5,\u001b[22m\n\u001b[2m    \"generation\": \"08a5cde2-a8d8-440e-b73f-1d2407f75339\",\u001b[22m\n\u001b[2m    \"id\": \"statistics:EPUB:sha256-chunks-v1:3d806dcb14d49dc177d68a1cc6d0fa19dc7085fe58758a5ebd6cc981f878a5c9\",\u001b[22m\n\u001b[2m    \"lastPosition\": 0.5,\u001b[22m\n\u001b[32m-   \"updatedAt\": 1791349708588,\u001b[39m\n\u001b[31m+   \"updatedAt\": 1791349708623,\u001b[39m\n\u001b[2m    \"version\": 1,\u001b[22m\n\u001b[2m    \"visits\": 1,\u001b[22m\n\u001b[2m  }\u001b[22m\n\nCall Log:\n- Timeout 5000ms exceeded while waiting on the predicate\n\n  493 |     // A duplicate flush of the same cumulative session must not double-count it.\n  494 |     await page.evaluate(() => window.dispatchEvent(new Event('blur')))\n> 495 |     await expect.poll(read).toEqual(saved)\n      |                             ^\n  496 |     if (format === 'PDF')\n  497 |       await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')\n  498 |     else\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:495:29"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "PDF distant saved highlight lands 24px below the reading viewport after virtualization",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2385,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB distant saved highlight lands at the same top offset in both rendering modes",
+      "project": "chromium-1440",
+      "status": "unexpected",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30201,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        },
+        {
+          "status": "timedOut",
+          "duration": 30197,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.evaluate: Frame was detached\n\n  574 |   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')\n  575 |   await target.scrollIntoViewIfNeeded()\n> 576 |   await target.evaluate(async (element) => {\n      |                ^\n  577 |     await element.ownerDocument.fonts.ready\n  578 |     await new Promise<void>((resolve) =>\n  579 |       element.ownerDocument.defaultView!.requestAnimationFrame(() =>\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/acceptance.spec.ts:576:16"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "EPUB text reader sanitizes local chapters, navigates and disposes on source changes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2893,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reflows during live resizing without scroll and stays within the reader",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2519,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves local formatting by default and keeps mode anchors and side controls",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1633,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB nav contents and typography work in both modes without replacing the frame",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3961,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB ncx contents and typography work in both modes without replacing the frame",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3931,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB retains a character inside a long paragraph through typography, panels, resize and modes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1954,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4083,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 2.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1632,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 3.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1661,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB storage failure and unsupported books recover without remote access",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1404,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights and notes persist through the contextual toolbar and annotation drawer",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11853,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights align on rotated pages and rebuild after virtualized rendering",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1733,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "home and app respond in both themes without overflow",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1163,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "empty reader survives sidebar collapse and source actions remain available",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 692,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "keyboard entry, sidebar focus restoration, theme persistence and browser history work",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 803,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "browser library builds a tree, refreshes live handles and keeps file fallback flat",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11036,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reader renders local pages, text layer, navigation and malformed-file recovery",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1887,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF search, keyboard utilities and fullscreen work on a real text PDF",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2938,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "app bounds and library/PDF scrolling stay independent at short heights",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2277,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "compact library menu dismisses independently and restores panel focus",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1646,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library width resizes within bounds and top opener preserves title space",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1655,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF geometry and canvas stay stable after large scroll jumps and panel resize",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3165,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "zoom and fit preserve the current reading point and zoom advances from fit",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2309,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "scrollbar jumps update the page field and navigation starts from the visible page",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1810,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "a 1,001-page PDF opens without all-page rendering and supports a distant jump",
+      "project": "chromium-320",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 304,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library labels use embedded title or filename and the opener tooltip stays onscreen",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4592,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library and document loaders are centered, responsive and respect reduced motion",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5574,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "reader polish keeps tabs distinct, focus clear and motion accessible in both themes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6741,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2715,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading positions survive reload and rename without matching changed content",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6776,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cached workspace preserves tree, selection and panel context without retaining PDF bytes",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1509,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "native persisted directory reopens the PDF at its anchor and rejects changed content",
+      "project": "chromium-320",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 2,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF bookmarks retain named anchors across reload and rename and isolate changed files",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7433,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library filtering and recent PDF recovery preserve document metadata",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6348,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB highlights persist across view changes, reload and local edits",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 16457,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5004,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4505,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native margin and outside-page drags retain the intended anchor in both directions",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1483,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1393,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1184,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-320",
+      "status": "flaky",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30207,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('section[aria-labelledby=\"local-library-title\"]').getByRole('button', { name: /schema.pdf/ })\u001b[22m\n\n\n  2864 |         .locator('section[aria-labelledby=\"local-library-title\"]')\n  2865 |         .getByRole('button', { name: new RegExp(file.name) })\n> 2866 |         .click()\n       |          ^\n  2867 |       await page.getByRole('button', { name: 'Hide library' }).click()\n  2868 |       const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })\n  2869 |       await expect(toggle).toBeEnabled()\n    at open (/home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/shell.spec.ts:2866:10)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/shell.spec.ts:2906:5"
+          ]
+        },
+        {
+          "status": "passed",
+          "duration": 2380,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-320",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2070,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB text reader sanitizes local chapters, navigates and disposes on source changes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2830,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reflows during live resizing without scroll and stays within the reader",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2554,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves local formatting by default and keeps mode anchors and side controls",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1630,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB nav contents and typography work in both modes without replacing the frame",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4083,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB ncx contents and typography work in both modes without replacing the frame",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4058,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB retains a character inside a long paragraph through typography, panels, resize and modes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1999,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4172,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 2.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1655,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 3.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2335,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB storage failure and unsupported books recover without remote access",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1466,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights and notes persist through the contextual toolbar and annotation drawer",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11629,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights align on rotated pages and rebuild after virtualized rendering",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1740,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "home and app respond in both themes without overflow",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1215,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "empty reader survives sidebar collapse and source actions remain available",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 667,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "keyboard entry, sidebar focus restoration, theme persistence and browser history work",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 755,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "browser library builds a tree, refreshes live handles and keeps file fallback flat",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11001,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reader renders local pages, text layer, navigation and malformed-file recovery",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2523,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF search, keyboard utilities and fullscreen work on a real text PDF",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4322,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "app bounds and library/PDF scrolling stay independent at short heights",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2592,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "compact library menu dismisses independently and restores panel focus",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1014,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library width resizes within bounds and top opener preserves title space",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1550,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF geometry and canvas stay stable after large scroll jumps and panel resize",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3297,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "zoom and fit preserve the current reading point and zoom advances from fit",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2166,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "scrollbar jumps update the page field and navigation starts from the visible page",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1772,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "a 1,001-page PDF opens without all-page rendering and supports a distant jump",
+      "project": "chromium-375",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 303,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library labels use embedded title or filename and the opener tooltip stays onscreen",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4591,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library and document loaders are centered, responsive and respect reduced motion",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5279,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "reader polish keeps tabs distinct, focus clear and motion accessible in both themes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6862,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2762,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading positions survive reload and rename without matching changed content",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7051,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cached workspace preserves tree, selection and panel context without retaining PDF bytes",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1473,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "native persisted directory reopens the PDF at its anchor and rejects changed content",
+      "project": "chromium-375",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 2,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF bookmarks retain named anchors across reload and rename and isolate changed files",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8139,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library filtering and recent PDF recovery preserve document metadata",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6544,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB highlights persist across view changes, reload and local edits",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 13027,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5068,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4482,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native margin and outside-page drags retain the intended anchor in both directions",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1824,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2494,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1583,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2739,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2552,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB text reader sanitizes local chapters, navigates and disposes on source changes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2951,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reflows during live resizing without scroll and stays within the reader",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2582,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves local formatting by default and keeps mode anchors and side controls",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1776,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB nav contents and typography work in both modes without replacing the frame",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4143,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB ncx contents and typography work in both modes without replacing the frame",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4195,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB retains a character inside a long paragraph through typography, panels, resize and modes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2141,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5230,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 2.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1712,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 3.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1687,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB storage failure and unsupported books recover without remote access",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1423,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights and notes persist through the contextual toolbar and annotation drawer",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 12202,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights align on rotated pages and rebuild after virtualized rendering",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1925,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "home and app respond in both themes without overflow",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1229,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "empty reader survives sidebar collapse and source actions remain available",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 725,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "keyboard entry, sidebar focus restoration, theme persistence and browser history work",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 836,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "browser library builds a tree, refreshes live handles and keeps file fallback flat",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11541,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reader renders local pages, text layer, navigation and malformed-file recovery",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2936,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF search, keyboard utilities and fullscreen work on a real text PDF",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3916,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "app bounds and library/PDF scrolling stay independent at short heights",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2673,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "compact library menu dismisses independently and restores panel focus",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1748,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library width resizes within bounds and top opener preserves title space",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1990,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF geometry and canvas stay stable after large scroll jumps and panel resize",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3013,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "zoom and fit preserve the current reading point and zoom advances from fit",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3067,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "scrollbar jumps update the page field and navigation starts from the visible page",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2531,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "a 1,001-page PDF opens without all-page rendering and supports a distant jump",
+      "project": "chromium-768",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 254,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library labels use embedded title or filename and the opener tooltip stays onscreen",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4835,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library and document loaders are centered, responsive and respect reduced motion",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5467,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "reader polish keeps tabs distinct, focus clear and motion accessible in both themes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7436,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3271,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading positions survive reload and rename without matching changed content",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7772,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cached workspace preserves tree, selection and panel context without retaining PDF bytes",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1573,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "native persisted directory reopens the PDF at its anchor and rejects changed content",
+      "project": "chromium-768",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 2,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF bookmarks retain named anchors across reload and rename and isolate changed files",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8981,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library filtering and recent PDF recovery preserve document metadata",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7597,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB highlights persist across view changes, reload and local edits",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 13645,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5642,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 6465,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native margin and outside-page drags retain the intended anchor in both directions",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2569,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2229,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1566,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3670,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-768",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2754,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB text reader sanitizes local chapters, navigates and disposes on source changes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3151,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reflows during live resizing without scroll and stays within the reader",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2616,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves local formatting by default and keeps mode anchors and side controls",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1677,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB nav contents and typography work in both modes without replacing the frame",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4259,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB ncx contents and typography work in both modes without replacing the frame",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4246,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB retains a character inside a long paragraph through typography, panels, resize and modes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2182,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5629,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 2.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1749,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 3.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1784,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB storage failure and unsupported books recover without remote access",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1495,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights and notes persist through the contextual toolbar and annotation drawer",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8689,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights align on rotated pages and rebuild after virtualized rendering",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1959,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "home and app respond in both themes without overflow",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1324,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "empty reader survives sidebar collapse and source actions remain available",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 841,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "keyboard entry, sidebar focus restoration, theme persistence and browser history work",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 938,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "browser library builds a tree, refreshes live handles and keeps file fallback flat",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11217,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reader renders local pages, text layer, navigation and malformed-file recovery",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3390,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF search, keyboard utilities and fullscreen work on a real text PDF",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4267,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "app bounds and library/PDF scrolling stay independent at short heights",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1870,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "compact library menu dismisses independently and restores panel focus",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2428,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library width resizes within bounds and top opener preserves title space",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2959,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF geometry and canvas stay stable after large scroll jumps and panel resize",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3663,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "zoom and fit preserve the current reading point and zoom advances from fit",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2720,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "scrollbar jumps update the page field and navigation starts from the visible page",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2575,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "a 1,001-page PDF opens without all-page rendering and supports a distant jump",
+      "project": "chromium-1024",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 335,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library labels use embedded title or filename and the opener tooltip stays onscreen",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4961,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library and document loaders are centered, responsive and respect reduced motion",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5322,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "reader polish keeps tabs distinct, focus clear and motion accessible in both themes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8176,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3524,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading positions survive reload and rename without matching changed content",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 9337,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cached workspace preserves tree, selection and panel context without retaining PDF bytes",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2103,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "native persisted directory reopens the PDF at its anchor and rejects changed content",
+      "project": "chromium-1024",
+      "status": "skipped",
+      "attempts": [
+        {
+          "status": "skipped",
+          "duration": 3,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF bookmarks retain named anchors across reload and rename and isolate changed files",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 10528,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library filtering and recent PDF recovery preserve document metadata",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7549,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB highlights persist across view changes, reload and local edits",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11558,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7977,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7242,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native margin and outside-page drags retain the intended anchor in both directions",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2271,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2546,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1878,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3766,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-1024",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2903,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB text reader sanitizes local chapters, navigates and disposes on source changes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3201,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reflows during live resizing without scroll and stays within the reader",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2623,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves local formatting by default and keeps mode anchors and side controls",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1746,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB nav contents and typography work in both modes without replacing the frame",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4220,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB ncx contents and typography work in both modes without replacing the frame",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4176,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB retains a character inside a long paragraph through typography, panels, resize and modes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2230,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB progress, settings and bookmarks survive reload/reselection and isolate changed content",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5677,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 2.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1826,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB 3.0 RTL tables and layouts stay bounded in both modes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1793,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB storage failure and unsupported books recover without remote access",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1719,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights and notes persist through the contextual toolbar and annotation drawer",
+      "project": "chromium-1440",
+      "status": "flaky",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30755,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('.floating-popover').getByRole('button', { name: 'Delete highlight and note', exact: true })\u001b[22m\n\n\n  731 |     .locator('.floating-popover')\n  732 |     .getByRole('button', { name: 'Delete highlight and note', exact: true })\n> 733 |     .click()\n      |      ^\n  734 |   await expect(entries).toHaveCount(0)\n  735 |   await page.reload()\n  736 |   await select('deleted.pdf', bytes)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/shell.spec.ts:733:6"
+          ]
+        },
+        {
+          "status": "passed",
+          "duration": 14286,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF highlights align on rotated pages and rebuild after virtualized rendering",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2344,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "home and app respond in both themes without overflow",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1707,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "empty reader survives sidebar collapse and source actions remain available",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1210,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "keyboard entry, sidebar focus restoration, theme persistence and browser history work",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1088,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "browser library builds a tree, refreshes live handles and keeps file fallback flat",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 11965,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reader renders local pages, text layer, navigation and malformed-file recovery",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3667,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF search, keyboard utilities and fullscreen work on a real text PDF",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3577,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "app bounds and library/PDF scrolling stay independent at short heights",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3016,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "compact library menu dismisses independently and restores panel focus",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1825,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library width resizes within bounds and top opener preserves title space",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2946,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF geometry and canvas stay stable after large scroll jumps and panel resize",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3895,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "zoom and fit preserve the current reading point and zoom advances from fit",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3211,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "scrollbar jumps update the page field and navigation starts from the visible page",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2772,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "a 1,001-page PDF opens without all-page rendering and supports a distant jump",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4490,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library labels use embedded title or filename and the opener tooltip stays onscreen",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5094,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library and document loaders are centered, responsive and respect reduced motion",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4935,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "reader polish keeps tabs distinct, focus clear and motion accessible in both themes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8026,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "search excerpts wrap and selected PDF occurrences stay aligned after zoom and fit",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3686,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading positions survive reload and rename without matching changed content",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 9760,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "cached workspace preserves tree, selection and panel context without retaining PDF bytes",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2599,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "native persisted directory reopens the PDF at its anchor and rejects changed content",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7461,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF bookmarks retain named anchors across reload and rename and isolate changed files",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 10741,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "library filtering and recent PDF recovery preserve document metadata",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 8059,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB highlights persist across view changes, reload and local edits",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 12136,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7346,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB reading insights persist native checkpoints and resume after lifecycle pause and idle",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7182,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF native margin and outside-page drags retain the intended anchor in both directions",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2925,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 2864,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB insights storage rejection leaves reading usable and retry recovers",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 1928,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "PDF preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-1440",
+      "status": "flaky",
+      "attempts": [
+        {
+          "status": "timedOut",
+          "duration": 30386,
+          "errors": [
+            "\u001b[31mTest timeout of 30000ms exceeded.\u001b[39m",
+            "Error: locator.click: Test timeout of 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('section[aria-labelledby=\"local-library-title\"]').getByRole('button', { name: /schema.pdf/ })\u001b[22m\n\n\n  2864 |         .locator('section[aria-labelledby=\"local-library-title\"]')\n  2865 |         .getByRole('button', { name: new RegExp(file.name) })\n> 2866 |         .click()\n       |          ^\n  2867 |       await page.getByRole('button', { name: 'Hide library' }).click()\n  2868 |       const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })\n  2869 |       await expect(toggle).toBeEnabled()\n    at open (/home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/shell.spec.ts:2866:10)\n    at /home/runner/work/papertrail-reader/papertrail-reader/tests/e2e/shell.spec.ts:2906:5"
+          ]
+        },
+        {
+          "status": "passed",
+          "duration": 3597,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "EPUB preserves unsupported insights metadata while the document remains readable",
+      "project": "chromium-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 3077,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "local PDF and formatted EPUB remain readable through reselection and reload",
+      "project": "firefox-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 4132,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "local PDF and formatted EPUB remain readable through reselection and reload",
+      "project": "firefox-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 5532,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "local PDF and formatted EPUB remain readable through reselection and reload",
+      "project": "webkit-375",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 14117,
+          "errors": []
+        }
+      ]
+    },
+    {
+      "title": "local PDF and formatted EPUB remain readable through reselection and reload",
+      "project": "webkit-1440",
+      "status": "expected",
+      "attempts": [
+        {
+          "status": "passed",
+          "duration": 7677,
+          "errors": []
+        }
+      ]
+    }
+  ]
+}

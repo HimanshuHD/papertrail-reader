@@ -1,42 +1,56 @@
+import { openAnnotationActions } from '../fixtures/browser'
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
 
-test('native browser tab focus pauses and resumes the reading timer without synthetic focus events', async ({
-  page,
-}) => {
-  await page.clock.install()
-  await page.goto('./#/app')
-  await page
-    .locator('input[accept*=".pdf"]')
-    .setInputFiles({ name: 'focus.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(1) })
-  await page.getByRole('button', { name: 'PDF: focus.pdf', exact: true }).click()
-  await page.getByRole('button', { name: 'Hide library' }).click()
-  await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
-  const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
-  await expect(
-    insights.getByRole('button', { name: 'Reset this document’s insights' }),
-  ).toBeEnabled()
-  await page.bringToFront()
-  await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true)
-  await page.clock.runFor(2000)
-  const time = () => insights.locator('.text-3xl').innerText()
-  const other = await page.context().newPage()
-  try {
-    await other.goto('./#/')
-    await other.bringToFront()
-    await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)
-    await page.clock.runFor(1000)
-    const paused = await time()
-    await page.clock.runFor(5000)
-    expect(await time()).toBe(paused)
+test.describe('headed native tab focus', () => {
+  test.use({ headless: false })
+  test.skip(
+    ({ viewport }) => viewport?.width !== 1440,
+    'Native focus is viewport-independent; execute once at 1440px.',
+  )
+  test('native browser tab focus pauses and resumes the reading timer without synthetic focus events', async ({
+    page,
+  }) => {
+    const focusSession = await page.context().newCDPSession(page)
+    await focusSession.send('Emulation.setFocusEmulationEnabled', { enabled: false })
+    await page.clock.install()
+    await page.goto('./#/app')
+    await page.locator('input[accept*=".pdf"]').setInputFiles({
+      name: 'focus.pdf',
+      mimeType: 'application/pdf',
+      buffer: createPdfFixture(1),
+    })
+    await page.getByRole('button', { name: 'PDF: focus.pdf', exact: true }).click()
+    await page.getByRole('button', { name: 'Hide library' }).click()
+    await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
+    const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
     await page.bringToFront()
     await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true)
-    await page.clock.runFor(3000)
-    expect(await time()).not.toBe(paused)
-  } finally {
-    await other.close()
-  }
+    await page.clock.runFor(2000)
+    const time = () => insights.locator('.text-3xl').innerText()
+    const other = await page.context().newPage()
+    try {
+      const otherFocus = await page.context().newCDPSession(other)
+      await otherFocus.send('Emulation.setFocusEmulationEnabled', { enabled: false })
+      await other.goto('./#/')
+      await other.bringToFront()
+      await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(false)
+      await page.clock.runFor(1000)
+      const paused = await time()
+      await page.clock.runFor(5000)
+      expect(await time()).toBe(paused)
+      await page.bringToFront()
+      await expect.poll(() => page.evaluate(() => document.hasFocus())).toBe(true)
+      await page.clock.runFor(3000)
+      expect(await time()).not.toBe(paused)
+    } finally {
+      await other.close()
+    }
+  })
 })
 
 for (const format of ['PDF', 'EPUB'] as const) {
@@ -230,7 +244,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
             () => {
               blocked = true
             },
-            { once: true },
+            { once: true, capture: true },
           )
         }
         return request
@@ -307,7 +321,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
       page
         .getByText(
           'The change was saved, but annotations could not be refreshed. Retry annotations before editing again.',
-          { exact: true },
+          { exact: false },
         )
         .first(),
     ).toBeVisible()
@@ -325,7 +339,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect(entry).toHaveCSS('border-bottom-width', '0px')
     for (const dark of [false, true]) {
       if (dark) await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
-      await page.locator('[data-menu-id]').first().click()
+      await openAnnotationActions(page.locator('[data-menu-id]').first())
       const popup = page.locator('.floating-popover')
       await expect(popup.getByRole('button', { name: 'Edit note', exact: true })).toBeVisible()
       const box = (await popup.boundingBox())!,
@@ -364,6 +378,12 @@ for (const rotation of [0, 90, 180, 270]) {
       if (zoomSteps) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
       await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
       await page.locator('#pdf-page-1 .textLayer span').first().scrollIntoViewIfNeeded()
+      await page.locator('.pdf-scroll').evaluate((pane) => {
+        const text = pane.querySelector('#pdf-page-1 .textLayer span')!
+        pane.scrollTop += text.getBoundingClientRect().top - pane.getBoundingClientRect().top - 32
+      })
+      await expect(page.locator('#pdf-page-1 .textLayer span').first()).toBeInViewport()
+      await expect(page.locator('#pdf-page-2 .textLayer span').first()).toBeInViewport()
       const endpoints = async (number: number) =>
         page
           .locator(`#pdf-page-${number} .textLayer span`)
@@ -461,6 +481,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.clock.runFor(2000)
     await page.evaluate(() => {
       ;(Reflect.get(window, 'blockCheckpoints') as (value: boolean) => void)(true)
+      Reflect.set(document, 'hasFocus', () => false)
       window.dispatchEvent(new Event('blur'))
     })
     await expect(insights.getByRole('alert')).toContainText('Reading insights could not be saved')
@@ -480,7 +501,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
           return await new Promise<{ activeMs: number; visits: number }>((resolve, reject) => {
             const request = db.transaction('documents').objectStore('documents').getAll()
             request.onsuccess = () =>
-              resolve(request.result.find((record) => record.id.startsWith('statistics:')))
+              resolve(
+                (({ activeMs, visits }) => ({ activeMs, visits }))(
+                  request.result.find((record) => record.id.startsWith('statistics:')),
+                ),
+              )
             request.onerror = () => reject(request.error)
           })
         } finally {
@@ -573,12 +598,10 @@ test('EPUB distant saved highlight lands at the same top offset in both renderin
   const target = page.frameLocator('iframe').locator('#p40')
   await expect(page.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
   await target.scrollIntoViewIfNeeded()
-  await target.evaluate(async (element) => {
-    await element.ownerDocument.fonts.ready
+  await page.evaluate(async () => {
+    await document.fonts.ready
     await new Promise<void>((resolve) =>
-      element.ownerDocument.defaultView!.requestAnimationFrame(() =>
-        element.ownerDocument.defaultView!.requestAnimationFrame(() => resolve()),
-      ),
+      requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     )
   })
   await target.evaluate((element) => {

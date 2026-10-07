@@ -14,7 +14,7 @@ The quota failure is deliberately injected at the IndexedDB write boundary; the 
 
 ## Additional candidate checks
 
-Native browser tab switching verifies timer pause/resume using `bringToFront()` and real `document.hasFocus()` without synthetic focus events. Time advances through Playwright virtual time. This is browser tab focus, not an OS multi-window test. PDF/EPUB annotation menus retain light/dark captures with viewport bounds, dismissal, and selected-row border checks.
+The headed Chromium tab-focus case under Xvfb disables Playwright’s focus emulation and checks timer pause/resume using `bringToFront()` and real `document.hasFocus()` without synthetic focus events; it executes once at 1440px, with four deliberate duplicate-width skips. Time advances through Playwright virtual time. This is browser tab focus, not an OS multi-window test. PDF/EPUB annotation menus retain light/dark captures with viewport bounds, dismissal, and selected-row border checks.
 
 ## Remaining gates
 
@@ -32,3 +32,22 @@ Source `699f94c8044ead71f8c83db29203829c8cf53929`, checkout `be2b27fd0e12ebd82f7
 Corrections: install the virtual clock before the reading session; measure the selected PDF Range rather than the span box; reach actual 25% zoom from large fit-width baselines before native cross-page gestures; wait for EPUB restoration/font/layout readiness before capturing distant text. These are fixture corrections, not claimed product fixes. Expanded combinations and corrections require a fresh candidate run.
 
 Artifacts browser-summary 11461827053 and browser-review 11461354267 expire 14 October 2026. No passing release acceptance is inferred from this run.
+
+## Checks requiring the target environment
+
+These are not requested from the owner until automated acceptance and evidence inspection are complete. The available environment cannot drive the owner's desktop windows or macOS Safari. Record the candidate build SHA, URL, OS and full installed browser version for each result.
+
+1. On the candidate HTTPS deployment in installed Chrome and Edge, select a folder and individual files; reload, renew permissions and reselect. Open a PDF and formatted EPUB, switch documents and confirm saved positions/annotations remain isolated.
+2. In macOS Safari, use its file-selection fallback; repeat PDF/EPUB read, reload/reselection, notes, insights and storage-clear recovery. A Linux WebKit result remains separate.
+3. With the insights panel visible, read for several seconds, switch to another OS window for ten seconds, then return. The timer pauses while unfocused and resumes without needing a scroll. Repeat with both PDF and EPUB, and with a second browser window.
+4. On any devices included in the declared release support, verify selection, note menus and resizing/orientation at their actual input/viewport settings. Emulated-width results are retained separately.
+
+If release support is limited to the tested engines, document that explicit scope through #28 rather than checking untested products or devices as passed.
+
+## Second candidate — failed acceptance
+
+Source `719dfe030063e2f6ed646b2ece78b259dca68a81`, checkout `374fad21b17c1be51468f73895d63352129ef224`: [Browser E2E 37573574112](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37573574112) finished with **275 passed, 33 failed, three flaky, eight intentional skips** in 17.3 minutes. Frontend CI 37573552103 passed. Exact environment/outcomes are retained in `second-environment.json` and `second-outcomes.json`; compact artifact 11462121283 expires 14 October 2026.
+
+The selected PDF Range offset, missing-anchor recovery and loading/unavailable metadata cases passed. Remaining fixture errors: headless Playwright focus emulation keeps pages focused; retry interactions added legitimate active time and updatedAt changes; complete-event listener ordering let refresh happen before rejection; iframe animation-frame callbacks did not resolve; rotated text fell outside the viewport. Three timing flakes also involved PDF library reopening/actions.
+
+Next candidate uses headed native focus once under Xvfb with focus emulation disabled, pauses eligibility during quota retry and compares only activeMs/visits, blocks refresh in a capture-phase completion listener, waits for layout in the parent window, brings both rotated text lines into view, and settles library/trigger state before interaction. Acceptance is split into two jobs with independent artifacts; discovery verifies 160 + 159 cases with zero overlap (319 total). Trigger policy remains reviewed release-to-main opening/readiness. Both shards must pass; a failed shard does not cancel the other.
