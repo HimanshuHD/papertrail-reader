@@ -6,7 +6,6 @@ Owner explicitly approved release preparation under #19. Target: **v2.0.0**. #28
 
 #163 remains documentation reconciliation. After its owner merge, create one fresh `release/2.0.0` branch from updated main, update package/root-lock versions and CHANGELOG, validate the reviewed packaging PR, and verify the exact merged production build before publishing its tag/release. #26/#32/#44 are deferred post-release work, not completed tasks.
 
-
 ## Current checkpoint — #162 merged; release preparation active
 
 #162 merged as `15519092f7521d7ec9b6c0d7942be53043a55840`; main Frontend CI 37718788012 passed. Reviewed application/test source `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` passed Browser E2E 37585840311: 307 passed, zero failures/flakes and 12 intentional duplicate-width skips. Exact identity/outcomes and original reviewed captures remain in [native acceptance evidence](../evidence/native-161/README.md).
