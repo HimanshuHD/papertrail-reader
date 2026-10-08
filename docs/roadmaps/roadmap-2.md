@@ -1,5 +1,11 @@
 # Product Roadmap 2
 
+## Merged release packaging — 8 October 2026
+
+#164 merged as `d995c806d93725f990636ce0899388c613cb2bbb`. Packaging source `e973a6ec1f9579288eead6c8a7506143943fc6d9` passed Frontend CI 37738585921 and Browser E2E 37738585747: 307 passed, zero failures/flakes, 12 intentional skips (153+154 passed; 7+5 skips). Main validation 37739329262 passed; production deployment step succeeded. Owner checked deployed PDF/EPUB, saved positions, annotations and footer validation in #164. Package/root-lock/footer version: 2.0.0.
+
+Tag/GitHub release publication remains pending: the available connector has no create-tag/create-release operation. Intended immutable tag target: `d995c806d93725f990636ce0899388c613cb2bbb`; do not target a later documentation commit. #19 stays open until publication. #161/#28 are closed; #16 performance measurements remain incomplete. Milestone 5 has only #19; #26/#32/#44 are moved to the next roadmap. Historical sources, failed runs and manual-result provenance remain retained.
+
 ## Release packaging — 8 October 2026
 
 Owner completed all #161 validation and merged #163 (`872ec94c7b32c474e47cbf3ce904edfe9723b9d2`). #161/#28 are completed. #26/#32/#44 are moved out of milestone 5 for the next roadmap; #19 is its only open issue. Release sign-off is recorded for v2.0.0. One `release/2.0.0` branch starts from main `d70851fcb6cf52360110676e4deaf2232397487d`; package/root-lock versions are 2.0.0. Final packaging CI/browser acceptance, production verification and tag/publication remain pending. #16 performance-budget measurements remain open as a disclosed limitation; #139 remains ongoing bug intake. Prior pending validation/merge checkpoints are historical.
