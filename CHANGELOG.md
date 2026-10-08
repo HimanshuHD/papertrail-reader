@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.0.0 — PDF and EPUB reading library — release candidate
+
+Approved for release preparation on 8 October 2026; packaging validation, production deployment and tag publication are pending.
+
+Adds saved library/workspace state and reading positions, bookmarks and recents; formatted EPUB reading with Contents, typography and text-only controls; persistent PDF/EPUB highlights and notes with annotation navigation; local reading time and annotation counts; responsive independent utility panels and refined light/dark controls.
+
+Owner completed #161 validation and #28 acceptance. Prior automated Browser E2E 37585840311 passed 307 cases with zero failures/flakes and 12 intentional skips. Final packaging evidence will be recorded separately. File access remains permission-based; document bytes are not copied into workspace storage. Broader performance budgets remain open under #16. Tabs, desktop, staging and advanced delivery follow later. See [release record](docs/releases/v2.0.0.md).
+
 ## 1.0.0 — First browser PDF release — deployed 3 October 2026
 
 Responsive browser PDF reading with local folder/file selection, discovery/refresh, a resizable library, continuous selectable pages, navigation, zoom/fit, contents, fullscreen, keyboard help and light/dark themes. Search excerpts are bounded and highlighted; result clicks select exact PDF occurrences.
