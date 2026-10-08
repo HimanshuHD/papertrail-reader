@@ -2,7 +2,7 @@
 
 ## 2.0.0 — PDF and EPUB reading library — deployed 8 October 2026
 
-Owner approved release; #164 merged and production deployment succeeded on 8 October 2026. Stable tag/GitHub release publication is pending. Packaging Browser E2E 37738585747 passed 307 cases with zero failures/flakes and 12 intentional skips.
+Owner approved release; #164 merged and production deployment succeeded on 8 October 2026. Stable [v2.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.0.0) published 8 October 2026 at 12:23:17 Asia/Kolkata, targeting exact #164 merge `d995c806d93725f990636ce0899388c613cb2bbb`. Packaging Browser E2E 37738585747 passed 307 cases with zero failures/flakes and 12 intentional skips.
 
 Adds saved library/workspace state and reading positions, bookmarks and recents; formatted EPUB reading with Contents, typography and text-only controls; persistent PDF/EPUB highlights and notes with annotation navigation; local reading time and annotation counts; responsive independent utility panels and refined light/dark controls.
 
