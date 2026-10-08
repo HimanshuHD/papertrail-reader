@@ -1,12 +1,19 @@
 # Product Roadmap 2
 
+## Release sign-off — 8 October 2026
+
+Owner explicitly approved release preparation under #19. Target: **v2.0.0**. #28 acceptance is completed for the declared tested scope: Linux Chromium at five widths and Firefox/WebKit smoke subsets. This does not certify unreported installed browsers, physical devices, HTTPS permission behavior or real OS-window results. Additional #161 coverage and #16 performance measurements remain open and are disclosed release limitations.
+
+#163 remains documentation reconciliation. After its owner merge, create one fresh `release/2.0.0` branch from updated main, update package/root-lock versions and CHANGELOG, validate the reviewed packaging PR, and verify the exact merged production build before publishing its tag/release. #26/#32/#44 are deferred post-release work, not completed tasks.
+
+
 ## Current checkpoint — #162 merged; release preparation active
 
 #162 merged as `15519092f7521d7ec9b6c0d7942be53043a55840`; main Frontend CI 37718788012 passed. Reviewed application/test source `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` passed Browser E2E 37585840311: 307 passed, zero failures/flakes and 12 intentional duplicate-width skips. Exact identity/outcomes and original reviewed captures remain in [native acceptance evidence](../evidence/native-161/README.md).
 
 #161 now checks the exercised native drag/navigation/storage/menu/engine cases and retained evidence while explicitly leaving additional combinations and target checks open. #16 retains indexing/rendering/memory-budget acceptance; #28 retains actual supported-browser/HTTPS/OS-window/device checks. #139's oversized-PDF defect is merged; its status:new represents future bug intake, not a known unresolved blocker. #19 is in progress for proposed v2.0.0 preparation; no version/tag/release publication is claimed.
 
-Owner input is needed for actual target-environment results and #148's specific deployed PDF contrast/selection-at-zoom/rotation check, plus release support/version decisions. Additional automated permutations and performance measurements remain agent work. Existing milestones remain open until their complete scope is accepted; staging follows the major release.
+Owner release sign-off is recorded on 8 October for v2.0.0. #28 is completed for declared tested support; #148 owner contrast/selection/zoom verification is checked. There is no Rotate page UI: rotation cases use intrinsic PDF metadata fixtures. Additional #161 permutations and #16 performance measurements remain open; unreported actual browser/device results are not certified. Release packaging and delivery remain #19; staging follows release.
 
 Earlier checkpoints and runs below remain historical.
 
@@ -201,7 +208,7 @@ Owner merged #137 as `d7afbf58cf9448749bbd226018956035c5576076`. Accepted source
 
 ### PDF highlight visual corrections — #149, #150, #151
 
-PR #148 also joins nearby text fragments per line while preserving column gutters, composites each annotation once at a constant opacity, and uses pastel Yellow/Green/Blue/Pink. Active outlines do not darken the fill. Native selection uses translucent blue so canvas text remains visible. Regression checks cover overlapping fragments, line boundaries and column separation. Owner visual acceptance remains pending; verify wrapped paragraphs, selection legibility, active/inactive color consistency, zoom and rotated pages after deployment. Release Browser E2E remains tracked in #145/#28.
+PR #148 also joins nearby text fragments per line while preserving column gutters, composites each annotation once at a constant opacity, and uses pastel Yellow/Green/Blue/Pink. Active outlines do not darken the fill. Native selection uses translucent blue so canvas text remains visible. Regression checks cover overlapping fragments, line boundaries and column separation. Owner verification is checked in PR #148 for wrapped paragraphs, selection legibility, active/inactive color consistency and zoom. Intrinsic PDF rotation is automated fixture coverage, not a Rotate page feature. Release Browser E2E remains tracked in #145/#28.
 
 ### Highlight text contrast and selection follow-up — #151 / #152
 

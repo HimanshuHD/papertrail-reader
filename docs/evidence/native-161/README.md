@@ -1,5 +1,12 @@
 # Remaining native acceptance — #161
 
+## Release sign-off — 8 October 2026
+
+Owner explicitly approved release preparation under #19. Target: **v2.0.0**. #28 acceptance is completed for the declared tested scope: Linux Chromium at five widths and Firefox/WebKit smoke subsets. This does not certify unreported installed browsers, physical devices, HTTPS permission behavior or real OS-window results. Additional #161 coverage and #16 performance measurements remain open and are disclosed release limitations.
+
+#163 remains documentation reconciliation. After its owner merge, create one fresh `release/2.0.0` branch from updated main, update package/root-lock versions and CHANGELOG, validate the reviewed packaging PR, and verify the exact merged production build before publishing its tag/release. #26/#32/#44 are deferred post-release work, not completed tasks.
+
+
 Work in PR #162. Reviewed release-to-main Browser E2E [37585840311](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37585840311) passed on source `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd`, checkout `a2c84480ea13da0b4a0fbabd859433f8b427d28d`: **307 passed, zero failed, zero flaky, 12 intentional skips**. Frontend CI 37585690924 passed. The matrix distinguishes the executed scope from remaining release gates; earlier pending checkpoints below are historical.
 
 | Scope                           | Candidate coverage                                                                                                                                                                                                                          | Evidence state                                              |
@@ -39,10 +46,10 @@ The final evidence/tracker update changes documentation and retained captures on
 | Indexing/rendering/memory budgets and remaining resource/safety criteria                | Agent, #16              | Measured representative workloads and recorded cleanup/cancellation behavior                               |
 | Installed browser, HTTPS, permission renewal, actual device targets                     | Himanshu, #28           | Deployed build/URL, OS, full browser version, cases and outcomes; or an explicit narrower support decision |
 | Real OS multi-window reading-timer pause/resume                                         | Himanshu, #28           | PDF and EPUB on the declared target environment                                                            |
-| Older #148 deployed PDF glyph contrast, native drag/wrapped paragraphs at zoom/rotation | Himanshu, #28 / PR #148 | Confirm which of these cases the app review exercised and record build/browser/OS                          |
+| #148 deployed PDF contrast, native drag/wrapped paragraphs and zoom | Completed owner review, PR #148 | Owner checkbox checked; intrinsic rotation fixtures do not imply a Rotate page UI |
 | Proposed v2.0.0 support/version, publication and milestone closure                      | Himanshu, #19           | Release review and acceptance of complete milestone scope                                                  |
 
-Owner general app sign-off is recorded from 7 October. It does not assign unreported physical-device/installed-browser results. PR #148's later release-browser checkbox is now completed using #160/#162 evidence; its specific owner check remains open. The other audited recent merged PRs (#160/#159/#158/#155) have no unchecked validation items.
+Owner general app sign-off is recorded from 7 October. It does not assign unreported physical-device/installed-browser results. PR #148's later release-browser checkbox is now completed using #160/#162 evidence; its specific owner check is also checked. There is no user-facing Rotate page control; intrinsic rotation fixtures are separate automated coverage. The other audited recent merged PRs (#160/#159/#158/#155) have no unchecked validation items.
 
 ## Remaining gates
 
