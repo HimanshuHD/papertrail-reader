@@ -1,5 +1,11 @@
 # PaperTrail progress
 
+## v2.0.0 released — 8 October 2026
+
+Stable [v2.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.0.0) published at `2026-10-08T06:53:17Z` (12:23:17 Asia/Kolkata). Verified lightweight tag targets #164 merge `d995c806d93725f990636ce0899388c613cb2bbb`, not the later #165 documentation merge `c9daa4e8266d1ef0294fe2c63d3cf510eda21ab4`. Packaging source `e973a6ec1f9579288eead6c8a7506143943fc6d9` passed CI 37738585921 and Browser E2E 37738585747: 307 passed, zero failures/flakes, 12 intentional skips. Main validation/production publication 37739329262 passed; owner checked deployed PDF/EPUB, positions, annotations and footer. #165 documentation CI 37739722393 passed.
+
+#19 release delivery is completed. #161/#28 remain completed; #16 broader performance/reliability measurements remain incomplete and disclosed. #26/#32/#44 belong to the next roadmap; #139 remains ongoing intake. Milestone 5 has no open work after #19 closure; owner can close it. Roadmap #78 remains open for #16, not for already-delivered release packaging. Prior pending-tag/release checkpoints are historical and superseded.
+
 ## Merged release packaging — 8 October 2026
 
 #164 merged as `d995c806d93725f990636ce0899388c613cb2bbb`. Packaging source `e973a6ec1f9579288eead6c8a7506143943fc6d9` passed Frontend CI 37738585921 and Browser E2E 37738585747: 307 passed, zero failures/flakes, 12 intentional skips (153+154 passed; 7+5 skips). Main validation 37739329262 passed; production deployment step succeeded. Owner checked deployed PDF/EPUB, saved positions, annotations and footer validation in #164. Package/root-lock/footer version: 2.0.0.
