@@ -20,6 +20,7 @@ export default defineConfig({
   projects: [
     ...[320, 375, 768, 1024, 1440].map((width) => ({
       name: `chromium-${width}`,
+      testIgnore: '**/supported-browser.spec.ts',
       // Exercise native persisted handles in full Chromium, not the separate headless shell.
       use: {
         browserName: 'chromium' as const,
@@ -27,10 +28,13 @@ export default defineConfig({
         viewport: { width, height: 900 },
       },
     })),
-    ...(process.env.E2E_WEBKIT ? [375, 1440] : []).map((width) => ({
-      name: `webkit-${width}`,
-      use: { browserName: 'webkit' as const, viewport: { width, height: 900 } },
-    })),
+    ...(['firefox', 'webkit'] as const).flatMap((browserName) =>
+      [375, 1440].map((width) => ({
+        name: `${browserName}-${width}`,
+        testMatch: '**/supported-browser.spec.ts',
+        use: { browserName, viewport: { width, height: 900 } },
+      })),
+    ),
   ],
   webServer: {
     command: `npm run preview -- --host 127.0.0.1 --port 4174 --base ${base}`,

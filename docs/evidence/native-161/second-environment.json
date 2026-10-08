@@ -1,0 +1,15 @@
+{
+  "candidateSource": "719dfe030063e2f6ed646b2ece78b259dca68a81",
+  "testedCheckout": "374fad21b17c1be51468f73895d63352129ef224",
+  "run": "37573574112",
+  "platform": "linux",
+  "node": "v24.21.0",
+  "chromium": "153.0.8010.12",
+  "engines": {
+    "chromium": "153.0.8010.12",
+    "firefox": "155.0",
+    "webkit": "26.6"
+  },
+  "capturedAt": "2026-10-07T04:54:08.446Z",
+  "scope": "Headless Linux Chromium full suite and Firefox/WebKit smoke subset; viewport emulation does not certify devices, installed Chrome/Edge or macOS Safari."
+}

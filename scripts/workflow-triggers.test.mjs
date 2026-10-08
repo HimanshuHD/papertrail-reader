@@ -38,6 +38,11 @@ test('browser filters permit reviewed release-to-main PRs only and preserve whol
   assert.match(browser, /startsWith\(github.event.pull_request.head.ref, 'release\/'\)/)
   assert.match(browser, /github.event.pull_request.draft == false/)
   assert.ok(!browser.includes('\n  push:'))
+  assert.match(browser, /fail-fast: false/)
+  assert.match(browser, /shard: \[1, 2\]/)
+  assert.match(browser, /npm run test:e2e -- --shard=\$\{\{ matrix.shard \}\}\/2/)
+  assert.match(browser, /name: browser-review-\$\{\{ matrix.shard \}\}/)
+  assert.match(browser, /name: browser-summary-\$\{\{ matrix.shard \}\}/)
   const guard = browser.match(/ {4}if: >-\n([\s\S]*?) {4}name:/)[1].trim()
   for (const [head, base, draft, expected] of [
     ['release/1.1.0', 'main', false, true],

@@ -546,6 +546,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-page-shell {
+  /* Keep oversized pages inside the reachable scroll area. */
+  justify-content: safe center;
+}
 .pdf-page {
   isolation: isolate;
 }

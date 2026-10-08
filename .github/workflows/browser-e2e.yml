@@ -32,11 +32,16 @@ jobs:
       github.event.pull_request.base.ref == 'main' &&
       (github.event.pull_request.head.ref == 'release' ||
       startsWith(github.event.pull_request.head.ref, 'release/'))
-    name: Explicit Chromium acceptance
+    name: Explicit browser acceptance (shard ${{ matrix.shard }}/2)
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       E2E_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      E2E_SHARD: ${{ matrix.shard }}/2
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -47,16 +52,22 @@ jobs:
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run build
-      - name: Install Chromium for explicit acceptance
-        run: npx playwright install --with-deps chromium
+      - name: Install browser engines for explicit acceptance
+        run: npx playwright install --with-deps chromium firefox webkit
+      - name: Install native focus window manager
+        run: sudo apt-get install -y openbox
       - name: Record exact browser and candidate identity
         run: node scripts/browser-evidence.mjs
-      - run: npm run test:e2e
+      - name: Run browser acceptance with native window activation
+        run: >-
+          xvfb-run --auto-servernum sh -c
+          'openbox >/tmp/papertrail-window-manager.log 2>&1 &
+          npm run test:e2e -- --shard=${{ matrix.shard }}/2'
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-review
+          name: browser-review-${{ matrix.shard }}
           path: |
             playwright-report/
             test-results/
@@ -67,11 +78,16 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: browser-summary
+          name: browser-summary-${{ matrix.shard }}
           path: |
             browser-evidence/
             test-results/**/error-context.md
+            test-results/acceptance-*/test-failed*.png
+            test-results/acceptance-*-chromium-1440/trace.zip
             test-results/**/epub*.png
+            test-results/**/pdf-annotation-actions*.png
+            test-results/**/pdf-native-drag*.png
+            test-results/**/supported-reader*.png
             test-results/shell-EPUB-*/test-failed*.png
             test-results/shell-EPUB-retains*-chromium-1440/trace.zip
           if-no-files-found: ignore

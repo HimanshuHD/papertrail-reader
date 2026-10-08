@@ -1,8 +1,12 @@
 # Product Roadmap 2
 
-## Current checkpoint — #160 acceptance passed; owner merge pending
+## Current checkpoint — #160 merged; milestone 4 closed; #161 active
 
-#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 is ready for owner merge; #145/#15 remain open until merge. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. After #160 merge, annotation milestone 4 can close; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 merged as `c8434c3745db3ae9e5209ad12750b9f8779cb479`; #145/#15 are completed and stale active labels removed. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. Owner closed annotation milestone 4. #161 is active on `release/161-native-acceptance`; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+
+## Active reliability acceptance — #161 / PR #162
+
+The next candidate expands native selection, saved-highlight navigation and statistics recovery coverage, plus Firefox/WebKit smoke subsets alongside the full Chromium suite. Browser E2E 37585840311 passed on `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` (307 passed, zero failures/flakes, 12 intentional skips), with Frontend CI 37585690924 passing. Exact source/engine/results and reviewed captures are retained; use the [acceptance matrix](../evidence/native-161/README.md) for executed scope and remaining visual/selection/target-environment gates. Installed browser/device/OS checks are not inferred from emulated widths or headless engines. #16/#28/#78 remain open until their own acceptance is met; #19 is the next major release gate, followed by staging/deployment planning.
 
 ## Current checkpoint — #159 merged; #145 preparation active
 

@@ -1,3 +1,5 @@
+import { openAnnotationActions } from '../fixtures/browser'
+import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
 import {
@@ -640,53 +642,6 @@ async function capture(page: Page, info: TestInfo, name: string) {
   await info.attach(name, { path, contentType: 'image/png' })
 }
 
-function createPdfFixture(
-  pageCount = 2,
-  title?: string,
-  searchFixture = false,
-  rotation = 0,
-): Buffer {
-  const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
-  const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
-    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageCount} >>`,
-    '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
-  ]
-  for (let i = 0; i < pageCount; i++) {
-    const label = i === 0 ? 'First page' : i === 1 ? 'Second page' : `Page ${i + 1}`
-    const stream =
-      searchFixture && i === 1
-        ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
-        : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
-    objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
-    )
-    objects.push(
-      `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
-    )
-  }
-
-  const infoId = title ? objects.push(`<< /Title (${title}) >>`) : null
-  let pdf = '%PDF-1.4\n'
-  const offsets = [0]
-
-  objects.forEach((body, index) => {
-    offsets.push(Buffer.byteLength(pdf, 'ascii'))
-    pdf += `${index + 1} 0 obj\n${body}\nendobj\n`
-  })
-
-  const xrefOffset = Buffer.byteLength(pdf, 'ascii')
-  pdf += `xref\n0 ${objects.length + 1}\n`
-  pdf += '0000000000 65535 f \n'
-  for (const offset of offsets.slice(1)) {
-    pdf += `${String(offset).padStart(10, '0')} 00000 n \n`
-  }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R ${infoId ? `/Info ${infoId} 0 R` : ''} >>\n`
-  pdf += `startxref\n${xrefOffset}\n%%EOF\n`
-
-  return Buffer.from(pdf, 'ascii')
-}
-
 test('PDF highlights and notes persist through the contextual toolbar and annotation drawer', async ({
   page,
 }, info) => {
@@ -697,6 +652,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
     await page
       .locator('input[accept*=".pdf"]')
       .setInputFiles({ name, mimeType: 'application/pdf', buffer })
+    if (await show.isVisible()) await show.click()
     await page
       .getByRole('region', { name: 'Library documents', exact: true })
       .getByRole('button', { name: `PDF: ${name}`, exact: true })
@@ -736,7 +692,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('A persistent PDF note')
   await verifyAnnotationOverview(page, info, 'PDF')
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page.locator('.floating-popover select').first().selectOption('pink')
   await capture(page, info, 'pdf-annotation-notes')
   await page.reload()
@@ -744,7 +700,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   const toggle = page.getByRole('button', { name: 'Annotations', exact: true })
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   // Reflow of the sibling document pane must not dismiss an anchored panel menu.
   await page.locator('.pdf-scroll').dispatchEvent('scroll')
   await expect(
@@ -772,7 +728,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await select('original-again.pdf', bytes)
   if (!(await panel.isVisible())) await toggle.click()
   await expect(entries).toHaveCount(1)
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
@@ -2579,7 +2535,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   const saved = panel.locator('[data-annotation-id]')
   await expect(saved).toHaveCount(1)
   await saved.first().click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Add note', exact: true })
@@ -2601,7 +2557,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await open()
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await saved.first().click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Edit note', exact: true })
@@ -2627,7 +2583,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await expect(reader.getByTestId('highlight-count')).toHaveText('1')
   await expect(reader.getByTestId('note-count')).toHaveText('0')
   await reader.getByRole('button', { name: 'See annotations', exact: true }).click()
-  await panel.locator('[data-menu-id]').first().click()
+  await openAnnotationActions(panel.locator('[data-menu-id]').first())
   await page
     .locator('.floating-popover')
     .getByRole('button', { name: 'Delete highlight and note', exact: true })
@@ -2773,6 +2729,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(idleTime)
     const saved = await storedTime()
     await page.reload()
+    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open()
     await expect.poll(storedTime).toBeGreaterThanOrEqual(saved)
     await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2783,6 +2740,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(0)
     const other = await page.context().newPage()
     await other.goto('./#/app')
+    await expect(other.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open(other)
     const otherInsights = other.getByRole('region', { name: 'Local reading insights', exact: true })
     await otherInsights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2797,6 +2755,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.evaluate(() => window.dispatchEvent(new Event('pageshow')))
     await insights.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(insights.getByRole('alert')).toHaveCount(0)
+    // Retry clears the notice before native IndexedDB finishes opening the new visit.
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
     await page.clock.runFor(16_000)
     await expect.poll(storedTime).toBeGreaterThan(0)
   })
@@ -2887,5 +2849,106 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect(
       insights.getByRole('button', { name: 'Reset this document’s insights' }),
     ).toBeEnabled()
+  })
+}
+
+for (const format of ['PDF', 'EPUB'] as const) {
+  test(`${format} preserves unsupported insights metadata while the document remains readable`, async ({
+    page,
+  }) => {
+    const file =
+      format === 'PDF'
+        ? { name: 'schema.pdf', mimeType: 'application/pdf', buffer: createPdfFixture(1) }
+        : {
+            name: 'schema.epub',
+            mimeType: 'application/epub+zip',
+            buffer: Buffer.from(createEpubFixture()),
+          }
+    const open = async () => {
+      const show = page.getByRole('button', { name: 'Show library', exact: true })
+      if (await show.isVisible()) await show.click()
+      await page.locator('input[accept*=".pdf"]').setInputFiles(file)
+      if (await show.isVisible()) await show.click()
+      const entry = page
+        .locator('section[aria-labelledby="local-library-title"]')
+        .getByRole('button', { name: new RegExp(file.name) })
+      const toggle = page.getByRole('button', { name: 'Reading insights', exact: true })
+      // A cached selection can stay pressed even when its file needs reopening.
+      // Open the live entry, then dismiss the mobile library before locating reader controls.
+      await expect(entry).toBeEnabled({ timeout: 15000 })
+      await entry.click()
+      const hide = page.getByRole('button', { name: 'Hide library' })
+      if (await hide.isVisible()) await hide.click()
+      await expect(toggle).toBeEnabled({ timeout: 15000 })
+      if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+    }
+    await page.goto('./#/app')
+    await open()
+    const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeEnabled()
+    await page.goto('./#/')
+    const unsupportedId = await page.evaluate(async () => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-statistics')
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      try {
+        return await new Promise<string>((resolve, reject) => {
+          const tx = db.transaction('documents', 'readwrite'),
+            store = tx.objectStore('documents')
+          const request = store.getAll()
+          let id = ''
+          request.onsuccess = () => {
+            const summary = request.result.find(
+              (record) => typeof record.id === 'string' && record.id.startsWith('statistics:'),
+            )
+            id = summary.id
+            store.put({ ...summary, version: 999 })
+          }
+          tx.oncomplete = () => resolve(id)
+          tx.onabort = () => reject(tx.error)
+        })
+      } finally {
+        db.close()
+      }
+    })
+    await page.goto('./#/app')
+    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await open()
+    await expect(insights).toContainText('Local reading insights are unavailable')
+    await insights.getByRole('button', { name: 'Retry', exact: true }).click()
+    await expect(insights).toContainText('Local reading insights are unavailable')
+    if (format === 'PDF')
+      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+    else
+      await expect(
+        page
+          .getByRole('region', { name: 'EPUB reader' })
+          .frameLocator('iframe')
+          .getByRole('heading', { name: 'First chapter' }),
+      ).toBeVisible()
+    const preserved = await page.evaluate(async (id) => {
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        const request = indexedDB.open('papertrail-statistics')
+        request.onsuccess = () => resolve(request.result)
+        request.onerror = () => reject(request.error)
+      })
+      try {
+        return await new Promise<number>((resolve, reject) => {
+          const request = db.transaction('documents').objectStore('documents').get(id)
+          request.onsuccess = () => resolve(request.result.version)
+          request.onerror = () => reject(request.error)
+        })
+      } finally {
+        db.close()
+      }
+    }, unsupportedId)
+    expect(preserved).toBe(999)
+    await expect(
+      insights.getByRole('button', { name: 'Reset this document’s insights' }),
+    ).toBeDisabled()
   })
 }

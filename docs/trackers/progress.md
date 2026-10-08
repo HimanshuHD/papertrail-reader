@@ -1,8 +1,14 @@
 # PaperTrail progress
 
-## Current checkpoint — #160 acceptance passed; owner merge pending
+## Current checkpoint — #160 merged; milestone 4 closed; #161 active
 
-#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 is ready for owner merge; #145/#15 remain open until merge. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. After #160 merge, annotation milestone 4 can close; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+#145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 merged as `c8434c3745db3ae9e5209ad12750b9f8779cb479`; #145/#15 are completed and stale active labels removed. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. Owner closed annotation milestone 4. #161 is active on `release/161-native-acceptance`; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
+
+## Active #161 acceptance candidate — PR #162
+
+`release/161-native-acceptance` adds native IndexedDB unsupported-schema preservation and quota-checkpoint retry cases for PDF/EPUB, real pointer cross-page/rotated gap/outside/re-entry drags and cancellation, and distant saved-highlight 24px top-offset checks. Further fixtures add missing-anchor recovery, cancelled-draft isolation, committed-refresh recovery, loading/unavailable metadata, native tab focus pause/resume and bounded light/dark action menus. The Chromium five-width suite is retained. Firefox/WebKit smoke subsets add file fallback, reload/reselection, formatted EPUB, mode switching, resize, dark appearance and insights; exact engine versions are captured by the workflow. Browser E2E [37585840311](https://github.com/HimanshuHD/papertrail-reader/actions/runs/37585840311) passed on `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd`: 307 passed, zero failures/flakes and 12 intentional duplicate-width skips. Frontend CI 37585690924 passed. Exact identity, all case outcomes, original reviewed mobile/desktop menu captures and failure history are retained in the acceptance evidence. Broader visual/selection permutations and actual target environments remain pending.
+
+[Remaining acceptance matrix](../evidence/native-161/README.md) records tested scope and gaps. Installed Chrome/Edge, macOS Safari, real devices, OS window focus delivery and HTTPS remain uncertified by headless Linux engine runs. #161/#16/#28/#78 remain open; major release #19 follows acceptance.
 
 ## Current checkpoint — #159 merged; #145 preparation active
 
