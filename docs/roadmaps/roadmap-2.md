@@ -1,5 +1,9 @@
 # Product Roadmap 2
 
+## Release packaging — 8 October 2026
+
+Owner completed all #161 validation and merged #163 (`872ec94c7b32c474e47cbf3ce904edfe9723b9d2`). #161/#28 are completed. #26/#32/#44 are moved out of milestone 5 for the next roadmap; #19 is its only open issue. Release sign-off is recorded for v2.0.0. One `release/2.0.0` branch starts from main `d70851fcb6cf52360110676e4deaf2232397487d`; package/root-lock versions are 2.0.0. Final packaging CI/browser acceptance, production verification and tag/publication remain pending. #16 performance-budget measurements remain open as a disclosed limitation; #139 remains ongoing bug intake. Prior pending validation/merge checkpoints are historical.
+
 ## Release sign-off — 8 October 2026
 
 Owner explicitly approved release preparation under #19. Target: **v2.0.0**. #28 acceptance is completed for the declared tested scope: Linux Chromium at five widths and Firefox/WebKit smoke subsets. This does not certify unreported installed browsers, physical devices, HTTPS permission behavior or real OS-window results. Additional #161 coverage and #16 performance measurements remain open and are disclosed release limitations.
