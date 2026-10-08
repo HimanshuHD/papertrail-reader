@@ -1,12 +1,22 @@
 # Product Roadmap 2
 
-## Current checkpoint — #160 merged; milestone 4 closed; #161 active
+## Current checkpoint — #162 merged; release preparation active
+
+#162 merged as `15519092f7521d7ec9b6c0d7942be53043a55840`; main Frontend CI 37718788012 passed. Reviewed application/test source `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` passed Browser E2E 37585840311: 307 passed, zero failures/flakes and 12 intentional duplicate-width skips. Exact identity/outcomes and original reviewed captures remain in [native acceptance evidence](../evidence/native-161/README.md).
+
+#161 now checks the exercised native drag/navigation/storage/menu/engine cases and retained evidence while explicitly leaving additional combinations and target checks open. #16 retains indexing/rendering/memory-budget acceptance; #28 retains actual supported-browser/HTTPS/OS-window/device checks. #139's oversized-PDF defect is merged; its status:new represents future bug intake, not a known unresolved blocker. #19 is in progress for proposed v2.0.0 preparation; no version/tag/release publication is claimed.
+
+Owner input is needed for actual target-environment results and #148's specific deployed PDF contrast/selection-at-zoom/rotation check, plus release support/version decisions. Additional automated permutations and performance measurements remain agent work. Existing milestones remain open until their complete scope is accepted; staging follows the major release.
+
+Earlier checkpoints and runs below remain historical.
+
+## Historical checkpoint — #160 merged; milestone 4 closed; #161 active
 
 #145 candidate `2ed4f36688686273f216cf70ec7198de5d6d7267` passed Frontend CI 37568950850 and Browser E2E 37568965714: 192 passed, zero failures/flakes, eight intentional duplicate long-PDF/native-handle skips. PDF/EPUB light/dark captures were inspected; exact identity, outcomes and curated original screenshots are retained in [acceptance evidence](../evidence/annotations-145/README.md). #160 merged as `c8434c3745db3ae9e5209ad12750b9f8779cb479`; #145/#15 are completed and stale active labels removed. Residual native coverage is split into #161 under #28/#16 in reliability milestone 6. Owner closed annotation milestone 4. #161 is active on `release/161-native-acceptance`; Roadmap 2 remains open for reliability/browser gates and #19 major release. Earlier pending-run/coverage checkpoints below are historical and superseded.
 
-## Active reliability acceptance — #161 / PR #162
+## Merged automated acceptance — #161 / PR #162
 
-The next candidate expands native selection, saved-highlight navigation and statistics recovery coverage, plus Firefox/WebKit smoke subsets alongside the full Chromium suite. Browser E2E 37585840311 passed on `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` (307 passed, zero failures/flakes, 12 intentional skips), with Frontend CI 37585690924 passing. Exact source/engine/results and reviewed captures are retained; use the [acceptance matrix](../evidence/native-161/README.md) for executed scope and remaining visual/selection/target-environment gates. Installed browser/device/OS checks are not inferred from emulated widths or headless engines. #16/#28/#78 remain open until their own acceptance is met; #19 is the next major release gate, followed by staging/deployment planning.
+Merged #162 expands native selection, saved-highlight navigation and statistics recovery coverage, plus Firefox/WebKit smoke subsets alongside the full Chromium suite. Browser E2E 37585840311 passed on `ea2e72b7c810f3c89ba7d3269a660d9dd966a6cd` (307 passed, zero failures/flakes, 12 intentional skips), with Frontend CI 37585690924 passing. Exact source/engine/results and reviewed captures are retained; use the [acceptance matrix](../evidence/native-161/README.md) for executed scope and remaining visual/selection/target-environment gates. Installed browser/device/OS checks are not inferred from emulated widths or headless engines. #16/#28/#78 remain open until their own acceptance is met; #19 is the next major release gate, followed by staging/deployment planning.
 
 ## Current checkpoint — #159 merged; #145 preparation active
 

@@ -28,6 +28,22 @@ Run 37583116123 (`7cf07f9`) failed with 296 passed, ten failed, one flaky and 12
 
 The final evidence/tracker update changes documentation and retained captures only. Application, test and workflow files remain identical to the browser-tested source above.
 
+## Merge handoff and remaining ownership — 8 October 2026
+
+#162 merged as `15519092f7521d7ec9b6c0d7942be53043a55840`; main CI 37718788012 passed. The final source/results below remain the exact reviewed browser evidence. Later tracker-only changes do not create a new browser run.
+
+| Remaining check                                                                         | Owner                   | Evidence needed                                                                                            |
+| --------------------------------------------------------------------------------------- | ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Additional multiline/blank-margin and changed-anchor combinations                       | Agent, #161             | Focused implementation/tests and the gated release browser run                                             |
+| Detailed marker/tooltip/hover/reflow visual matrix                                      | Agent, #161             | Exact-source captures and inspection                                                                       |
+| Indexing/rendering/memory budgets and remaining resource/safety criteria                | Agent, #16              | Measured representative workloads and recorded cleanup/cancellation behavior                               |
+| Installed browser, HTTPS, permission renewal, actual device targets                     | Himanshu, #28           | Deployed build/URL, OS, full browser version, cases and outcomes; or an explicit narrower support decision |
+| Real OS multi-window reading-timer pause/resume                                         | Himanshu, #28           | PDF and EPUB on the declared target environment                                                            |
+| Older #148 deployed PDF glyph contrast, native drag/wrapped paragraphs at zoom/rotation | Himanshu, #28 / PR #148 | Confirm which of these cases the app review exercised and record build/browser/OS                          |
+| Proposed v2.0.0 support/version, publication and milestone closure                      | Himanshu, #19           | Release review and acceptance of complete milestone scope                                                  |
+
+Owner general app sign-off is recorded from 7 October. It does not assign unreported physical-device/installed-browser results. PR #148's later release-browser checkbox is now completed using #160/#162 evidence; its specific owner check remains open. The other audited recent merged PRs (#160/#159/#158/#155) have no unchecked validation items.
+
 ## Remaining gates
 
 - Additional multiline/blank-margin permutations beyond the listed cases; the existing margin test and expanded cross-page/rotation tests are complementary.
