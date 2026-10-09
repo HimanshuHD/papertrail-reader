@@ -1,5 +1,7 @@
 # PaperTrail release roadmaps
 
+> Historical snapshot — archived from live planning on 9 October 2026. The owner reports the Wiki pages published. Use [Wiki roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps), [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) and linked issue acceptance for current work. This file is retained for evidence and is no longer reconciled after merges.
+
 ## Current post-EPUB roadmap plan — 5 October 2026
 
 Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.

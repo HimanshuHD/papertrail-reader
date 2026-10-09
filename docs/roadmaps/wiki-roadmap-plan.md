@@ -1,5 +1,7 @@
 # Wiki roadmap adoption plan
 
+> Historical snapshot — archived from live planning on 9 October 2026. The owner reports the Wiki pages published. Use [Wiki roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps), [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) and linked issue acceptance for current work. This file is retained for evidence and is no longer reconciled after merges.
+
 Decision: finish Roadmap 2 annotations, reliability and major release before advanced deployment and staging work. EPUB milestone 3 is closed (0 open, 10 completed).
 
 ## Ownership

@@ -1,12 +1,12 @@
 # PaperTrail documentation
 
-Choose a category below. The repository [README](../README.md) links here; each guide provides Previous · Documentation home · Next navigation within its category. Markdown and live issues are current; the roadmap PDF and historical evidence are snapshots.
+Choose a category below. The repository [README](../README.md) links here; each guide provides Previous · Documentation home · Next navigation within its category. Technical Markdown remains maintained; planning/status live in the Wiki and GitHub milestones/issues. Repository roadmaps/trackers and the roadmap PDF are historical snapshots.
 
 ## Suggested reading paths
 
 - Use the reader: Usage → release support and limitations.
 - Contribute: Local setup → Contributing → issue policy → browser testing.
-- Plan delivery: Roadmap 2 → progress tracker → milestone issues.
+- Plan delivery: [Wiki Roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps) → [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) → issue acceptance.
 - Understand the product: Architecture overview → Vue architecture → reader shell.
 - Publish or recover: Deployment architecture → publishing guide → verification ledger.
 
@@ -18,13 +18,14 @@ Choose a category below. The repository [README](../README.md) links here; each 
 - [Local setup](getting-started/local-setup.md)
 - [Contributing](getting-started/contributing.md)
 
-### [Roadmaps](roadmaps/README.md)
+### [Wiki Roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps)
 
-- [PaperTrail release roadmaps](roadmaps/product-roadmaps.md)
-- [Product Roadmap 2](roadmaps/roadmap-2.md)
-- [Product Roadmap 3](roadmaps/roadmap-3.md)
+- [Roadmap 1](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmap-1)
+- [Roadmap 2](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmap-2)
+- [Roadmap 3](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmap-3)
+- [Historical repository snapshots](roadmaps/README.md)
 
-### [Trackers](trackers/README.md)
+### [Historical trackers](trackers/README.md)
 
 - [PaperTrail progress](trackers/progress.md)
 - [Current status audit](trackers/status-audit.md)

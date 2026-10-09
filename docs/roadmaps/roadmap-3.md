@@ -1,5 +1,7 @@
 # Product Roadmap 3
 
+> Historical snapshot — archived from live planning on 9 October 2026. The owner reports the Wiki pages published. Use [Wiki roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps), [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) and linked issue acceptance for current work. This file is retained for evidence and is no longer reconciled after merges.
+
 ## Scope update — 9 October 2026
 
 Before Roadmap 3 implementation, finish Roadmap 2 #16's outstanding measurement evidence and reconcile #78. Existing next-roadmap/deferred tasks remain open. New child: [#167 — developer-only performance panel](https://github.com/HimanshuHD/papertrail-reader/issues/167), status:new. Implement opt-in diagnostic builds, lifecycle timings/resource counters, capability-labelled memory readings and local JSON export; default production builds omit the diagnostics. This feature does not replace or certify #16 measurement acceptance.

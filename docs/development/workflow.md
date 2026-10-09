@@ -4,7 +4,7 @@ GitHub-first development continues: issue -> branch from main -> issue-linked co
 
 Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 adds ESLint, Prettier and Vitest/Vue Test Utils component checks to this same workflow. Browser E2E setup is tracked in #37. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
-Post-merge #21: reconcile completed issue evidence, parent checklists and docs/progress.md/roadmap.md. Real merge verification passed in run 36887472079; PR #36 was also reconciled successfully in run 36894959027. Keep partial and deferred issues open.
+Post-merge #21: reconcile completed issue evidence, parent acceptance checklists and milestone/Wiki references. Real merge verification passed in run 36887472079; PR #36 was also reconciled successfully in run 36894959027. Keep partial and deferred issues open.
 
 Status lifecycle: Backlog -> In progress -> In review -> Completed. Also use Blocked or Deferred with explicit reasons. PRs use Closes only for completed scope and Refs for partial work. Completed history is retained.
 
@@ -20,7 +20,7 @@ Node.js 24.12+ (24.x): npm ci; npm run dev; npm run type-check; npm run build; n
 
 ## Post-merge writes
 
-merge-tracking.yml reconciles live closed issues, parent checklists and progress/roadmap documents. It serializes tracking runs and retries SHA conflicts. If main protection later blocks direct documentation writes, move tracking changes into a PR. #21 is completed; incomplete product and deployment checks remain open.
+merge-tracking.yml reconciles completed issue evidence and parent acceptance checklists only. It has read-only repository contents permission and does not write roadmap/progress documents or Wiki pages. Milestones and Wiki planning are maintained through the approved issue/milestone process and owner Wiki editing. #21 is completed; incomplete product and deployment checks remain open.
 
 ## Quality checks (#22)
 

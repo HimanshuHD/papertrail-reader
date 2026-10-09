@@ -1,5 +1,7 @@
 # PaperTrail progress
 
+> Historical snapshot — archived from live planning on 9 October 2026. The owner reports the Wiki pages published. Use [Wiki roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps), [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) and linked issue acceptance for current work. This file is retained for evidence and is no longer reconciled after merges.
+
 ## Pending-task audit — 9 October 2026
 
 v2.0.0 is published and #166 merged. Completed feature/release issues remain closed, including #19/#28/#161/#139. Roadmap 2 #16 retains missing measurement evidence; its owner-checked original acceptance is preserved, not converted into numeric results. #78 stays open until that scope is reconciled. Open #129/#130/#146/#26/#32/#44/#17/#18 belong to Roadmap 3, and #4/#23/#27 remain deferred desktop tasks. #129's milestone 6 assignment is stale planning metadata requiring owner reassignment after Wiki planning. #26 remaining scope status:new. New Roadmap 3 child #167 is a developer-only performance panel with instrumentation omitted from default production builds; no feature implementation starts in this documentation change.

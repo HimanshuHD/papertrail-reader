@@ -1,8 +1,10 @@
-# Trackers
+# Historical trackers and maintenance
 
-Read guides in the following order. Return to [Documentation home](../README.md) for other categories.
+Current delivery status belongs to [GitHub issues](https://github.com/HimanshuHD/papertrail-reader/issues) and [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones); roadmap scope belongs to the [Wiki](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps).
 
-- [PaperTrail progress](progress.md)
-- [Current status audit](status-audit.md)
-- [First-release bug tracking](first-release-bugs.md)
-- [Branch maintenance](branch-maintenance.md)
+- [Progress archive](progress.md) — historical; no automatic writes.
+- [Status-audit archive](status-audit.md) — historical.
+- [First-release bug evidence](first-release-bugs.md) — historical evidence.
+- [Branch maintenance](branch-maintenance.md) — operational guidance.
+
+[Documentation home](../README.md)

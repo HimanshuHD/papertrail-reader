@@ -1,5 +1,7 @@
 # Product Roadmap 2
 
+> Historical snapshot — archived from live planning on 9 October 2026. The owner reports the Wiki pages published. Use [Wiki roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps), [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) and linked issue acceptance for current work. This file is retained for evidence and is no longer reconciled after merges.
+
 ## v2.0.0 released — 8 October 2026
 
 Stable [v2.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.0.0) published at `2026-10-08T06:53:17Z` (12:23:17 Asia/Kolkata). Verified lightweight tag targets #164 merge `d995c806d93725f990636ce0899388c613cb2bbb`, not the later #165 documentation merge `c9daa4e8266d1ef0294fe2c63d3cf510eda21ab4`. Packaging source `e973a6ec1f9579288eead6c8a7506143943fc6d9` passed CI 37738585921 and Browser E2E 37738585747: 307 passed, zero failures/flakes, 12 intentional skips. Main validation/production publication 37739329262 passed; owner checked deployed PDF/EPUB, positions, annotations and footer. #165 documentation CI 37739722393 passed.
