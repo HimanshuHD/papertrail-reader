@@ -1,6 +1,6 @@
 # Issue, label and milestone policy
 
-GitHub issue state is authoritative; [the progress tracker](../trackers/progress.md) summarizes delivery and links the owning [roadmap](../roadmaps/product-roadmaps.md). Roadmap 2 owner is #78; Roadmap 3 owner is #107. Roadmap 1 #1 is completed.
+GitHub issue state and acceptance are authoritative. [Wiki Roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps) owns planning; [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) group delivery. Repository roadmaps/progress files are historical archives.
 
 ## Lifecycle
 
@@ -25,7 +25,7 @@ Bugs use `severity:critical` for unusable core reading/data loss, `severity:high
 
 Assign planned issues to the actual owning milestone. Group related symptoms only when they share actionable scope. Link parent and children reciprocally, retain acceptance checklists, and record branch, commits, PR, test evidence and merge source. `Refs #N` keeps an issue open for outstanding acceptance; use `Closes #N` only when completion is justified. The owner merges PRs.
 
-PRs start in draft and become ready only after Frontend CI passes. Automatic Browser E2E runs at draft → ready for review for eligible non-docs PRs only. Updates to a ready PR get Frontend CI; deliberately dispatch Browser E2E when later changes require it. Publishing previews remains manual. Reconcile tracker, roadmap, issue labels and acceptance after merge.
+PRs start in draft and become ready only after Frontend CI passes. Automatic Browser E2E runs at draft → ready for review for eligible non-docs PRs only. Updates to a ready PR get Frontend CI; deliberately dispatch Browser E2E when later changes require it. Publishing previews remains manual. Reconcile issue labels/acceptance and milestone grouping after merge; update Wiki scope/decisions when necessary. Do not write current status to repository tracker archives.
 
 ---
 

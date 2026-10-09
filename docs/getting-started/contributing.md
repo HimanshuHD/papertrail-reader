@@ -2,15 +2,15 @@
 
 ## Start with an issue
 
-Use Roadmap 2 #78 (or Roadmap 3 #107 for later workspace scope) and [the progress tracker](../trackers/progress.md) to choose work. Check for existing issues before creating another. Describe scope, acceptance criteria, dependencies and the agreed GitHub milestone.
+Use [Wiki Roadmaps](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmaps) and [milestones](https://github.com/HimanshuHD/papertrail-reader/milestones) to choose work. Check for existing issues before creating another. Describe scope, acceptance criteria, dependencies and the agreed GitHub milestone.
 
 ## Status lifecycle
 
-Backlog → In progress → In review → Completed. Use Blocked with the blocking issue and reason when applicable. GitHub issue open/closed state is authoritative; docs/trackers/progress.md is the readable cross-issue index.
+Backlog → In progress → In review → Completed. Use Blocked with the blocking issue and reason when applicable. GitHub issue open/closed state is authoritative; milestones group current work and the Wiki records roadmap scope.
 
-- At start: update the issue body and progress.md; record the branch and blockers.
+- At start: update the issue body and status label; record the branch and blockers.
 - At review: link the PR, implementation commits and validation evidence.
-- At merge: close completed issues through PR closing keywords and record merged PR/commit evidence. Update progress.md in a follow-up when necessary.
+- At merge: close completed issues through PR closing keywords and record merged PR/commit evidence. Reconcile the milestone and Wiki decisions when necessary.
 - Never close an issue solely because files were added. Meet acceptance criteria; split unfinished scope into linked follow-ups.
 
 ## Git conventions
@@ -27,7 +27,7 @@ Record what was checked and the result. For documentation, verify links and file
 
 ## Documentation
 
-Update [the documentation index](../README.md) when adding documents. Follow [documentation conventions](../development/documentation-conventions.md) and [issue policy](../development/issue-policy.md). Update docs/trackers/progress.md when work status changes. The roadmap PDF is a planning snapshot; record changed decisions in Markdown and a linked issue.
+Update [the documentation index](../README.md) when adding documents. Follow [documentation conventions](../development/documentation-conventions.md) and [issue policy](../development/issue-policy.md). Record work status in the issue and milestone; changed planning decisions belong in the Wiki. Repository tracker/roadmap files are historical snapshots.
 
 ## Web-first scope and deferral
 
