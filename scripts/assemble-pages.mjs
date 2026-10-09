@@ -6,7 +6,9 @@ async function validateArtifact(folder) {
   for (const item of await readdir(folder, { withFileTypes: true })) {
     if (
       item.isSymbolicLink() ||
-      ['.git', '.deployment-state.json', 'preview', 'CNAME'].includes(item.name)
+      ['.git', '.deployment-state.json', '.publication-receipt.json', 'preview', 'CNAME'].includes(
+        item.name,
+      )
     )
       throw new Error('Reserved or linked artifact path')
     if (item.isDirectory()) await validateArtifact(path.join(folder, item.name))
@@ -22,20 +24,29 @@ export async function assemble({ site, artifact, kind, pr, sha, runId, retirePRs
   } catch (error) {
     if (error.code !== 'ENOENT') throw error
   }
-  if (!['production', 'preview', 'retire'].includes(kind))
+  if (!['production', 'preview', 'retire', 'reconcile'].includes(kind))
     throw new Error('Invalid deployment kind')
-  if (kind !== 'production' && !/^[1-9]\d*$/.test(String(pr))) throw new Error('Invalid PR number')
-  if (kind !== 'retire') await validateArtifact(artifact)
+  if (['preview', 'retire'].includes(kind) && !/^[1-9]\d*$/.test(String(pr)))
+    throw new Error('Invalid PR number')
+  if (['production', 'preview'].includes(kind)) await validateArtifact(artifact)
   if (kind === 'production' && state.production && Number(runId) < Number(state.production.runId))
-    return
+    kind = 'reconcile'
   if (kind === 'production') {
     for (const item of await readdir(site)) {
-      if (!['.git', 'preview', '.deployment-state.json', 'CNAME'].includes(item))
+      if (
+        ![
+          '.git',
+          'preview',
+          '.deployment-state.json',
+          '.publication-receipt.json',
+          'CNAME',
+        ].includes(item)
+      )
         await rm(path.join(site, item), { recursive: true, force: true })
     }
     await cp(artifact, site, { recursive: true })
     state.production = { sha, runId }
-  } else {
+  } else if (kind !== 'reconcile') {
     const target = path.join(site, 'preview', 'pr-' + pr)
     await rm(target, { recursive: true, force: true })
     await mkdir(target, { recursive: true })

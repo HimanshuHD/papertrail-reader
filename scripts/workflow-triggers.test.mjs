@@ -142,3 +142,13 @@ test('main identity reports docs-only false, application true, and renamed sourc
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('publisher queues overlaps and schedules trusted main recovery with post-deploy acknowledgment', () => {
+  const pages = read('.github/workflows/pages.yml')
+  assert.match(pages, /queue: max/)
+  assert.match(pages, /schedule:/)
+  assert.match(pages, /github.event_name == 'schedule' && github.ref == 'refs\/heads\/main'/)
+  assert.match(pages, /recoverPublication/)
+  assert.match(pages, /if: steps.deploy.outcome == 'success'/)
+  assert.ok(pages.indexOf('Record successful deployment receipt') > pages.indexOf('id: deploy'))
+})
