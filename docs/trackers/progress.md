@@ -1,5 +1,9 @@
 # PaperTrail progress
 
+## Pending-task audit — 9 October 2026
+
+v2.0.0 is published and #166 merged. Completed feature/release issues remain closed, including #19/#28/#161/#139. Roadmap 2 #16 retains missing measurement evidence; its owner-checked original acceptance is preserved, not converted into numeric results. #78 stays open until that scope is reconciled. Open #129/#130/#146/#26/#32/#44/#17/#18 belong to Roadmap 3, and #4/#23/#27 remain deferred desktop tasks. #129's milestone 6 assignment is stale planning metadata requiring owner reassignment after Wiki planning. #26 remaining scope status:new. New Roadmap 3 child #167 is a developer-only performance panel with instrumentation omitted from default production builds; no feature implementation starts in this documentation change.
+
 ## v2.0.0 released — 8 October 2026
 
 Stable [v2.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.0.0) published at `2026-10-08T06:53:17Z` (12:23:17 Asia/Kolkata). Verified lightweight tag targets #164 merge `d995c806d93725f990636ce0899388c613cb2bbb`, not the later #165 documentation merge `c9daa4e8266d1ef0294fe2c63d3cf510eda21ab4`. Packaging source `e973a6ec1f9579288eead6c8a7506143943fc6d9` passed CI 37738585921 and Browser E2E 37738585747: 307 passed, zero failures/flakes, 12 intentional skips. Main validation/production publication 37739329262 passed; owner checked deployed PDF/EPUB, positions, annotations and footer. #165 documentation CI 37739722393 passed.

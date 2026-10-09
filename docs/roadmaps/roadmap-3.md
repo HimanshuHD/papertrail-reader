@@ -1,5 +1,11 @@
 # Product Roadmap 3
 
+## Scope update — 9 October 2026
+
+Before Roadmap 3 implementation, finish Roadmap 2 #16's outstanding measurement evidence and reconcile #78. Existing next-roadmap/deferred tasks remain open. New child: [#167 — developer-only performance panel](https://github.com/HimanshuHD/papertrail-reader/issues/167), status:new. Implement opt-in diagnostic builds, lifecycle timings/resource counters, capability-labelled memory readings and local JSON export; default production builds omit the diagnostics. This feature does not replace or certify #16 measurement acceptance.
+
+- [ ] #167 — developer-only reader performance diagnostics, bounded sampling and private local export.
+
 ## Current planning decision — 5 October 2026
 
 EPUB milestone 3 is closed with zero open and ten completed issues. Roadmap 2 #78 continues with annotations parent #15 and new children #140 (storage/anchors), #141 (PDF highlights), #142 (EPUB highlights), #143 (notes/panel), #144 (local statistics) and #145 (acceptance), all assigned to milestone 4. Implement one branch at a time from updated main, in that order.
