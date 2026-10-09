@@ -88,7 +88,22 @@ export async function recoverPublication({ github, owner, repo }) {
     if (data.workflow_runs.length < 100) break
   }
   const acknowledged = state && JSON.stringify(state) === JSON.stringify(receipt)
-  const changed = selected && selected.head_sha !== state?.production?.sha
+  let changed = selected && selected.head_sha !== state?.production?.sha
+  if (changed && state?.production?.sha) {
+    const { data: comparison } = await github.rest.repos.compareCommits({
+      owner,
+      repo,
+      base: state.production.sha,
+      head: selected.head_sha,
+    })
+    // Do not turn a documentation-only merge into a scheduled production deployment.
+    changed = !eligibleMainBuild({
+      buildSha: state.production.sha,
+      mainSha: selected.head_sha,
+      status: comparison.status,
+      files: comparison.files,
+    })
+  }
   if (changed)
     return {
       retirePRs,

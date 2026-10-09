@@ -143,3 +143,22 @@ test('API errors are visible failures, not false successful acknowledgments', as
   }
   await assert.rejects(recoverPublication(input), /Forbidden/)
 })
+
+test('documentation-only descendants do not republish an acknowledged production site', async () => {
+  const saved = { production: { sha: 'published', runId: 20 }, previews: {} }
+  const plan = await recoverPublication(
+    fixture({
+      saved,
+      receipt: saved,
+      comparison: { status: 'ahead', files: [{ filename: 'docs/guide.md' }] },
+    }),
+  )
+  assert.equal(plan.outputs.skip, 'true')
+})
+
+test('a newer build containing missed website changes is recovered', async () => {
+  const saved = { production: { sha: 'published', runId: 20 }, previews: {} }
+  const plan = await recoverPublication(fixture({ saved, receipt: saved }))
+  assert.equal(plan.outputs.kind, 'production')
+  assert.equal(plan.outputs.sha, 'main')
+})
