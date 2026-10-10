@@ -1,12 +1,26 @@
 # Deployment, previews and releases
 
+## Publication recovery — #44
+
+The shared publisher uses `concurrency.queue: max` with `cancel-in-progress: false`. GitHub retains up to 100 pending publishers rather than replacing the single pending run. Queue capacity, manual cancellation and deployment failures still require reconciliation; queue order is not a source-freshness guarantee. See [GitHub concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).
+
+On main, a scheduled recovery runs at minutes 17 and 47 each hour. GitHub schedules are best effort and can be delayed or dropped; this is not a delivery-time SLA. Recovery examines up to 300 completed main push runs of `ci.yml`, requires a successful **Validate and build website** job and an unexpired `web-build`, and applies the existing same-repository/current-main or verified documentation-only-descendant checks. A cancelled or failed overall CI run can therefore recover a successful frontend artifact without accepting a failed frontend build. Downloaded SHA/run identity is still verified before copying static files.
+
+Recovery also retires closed published previews while preserving production and open previews. An aggregate-only reconciliation needs no build artifact. Stale production requests cannot overwrite newer production, but their retirement work is retained. Documentation-only pushes still skip their dependent publisher; scheduled reconciliation may publish a newer validated artifact or cleanup independently.
+
+`pages-state/.deployment-state.json` records desired aggregate content. `.publication-receipt.json` is written **only after** successful Pages deployment and records the acknowledged aggregate state. A committed site without a matching receipt is republished on recovery, even if its generated files have not changed. An acknowledged current site with no closed previews is a no-op. Artifacts cannot supply either state file; both are reserved paths. API errors fail visibly rather than being treated as successful publication.
+
+For immediate recovery, rerun the cancelled publisher/CI or dispatch **Publish website** on main with a blank PR number after green CI. If artifacts have expired, run fresh main CI; recovery does not bypass trust checks. If newer website changes have no successful frontend artifact, fix their CI first. Check the deployment summary and live `build.json`/`deployment.json`; a saved branch alone does not prove a live deployment.
+
+Local regression coverage includes cancelled publishers, deployment failure before receipt, closed/open preview coexistence, stale production plus retirement, failed frontend jobs, expired artifacts, foreign sources, source freshness and acknowledged no-ops. Live overlapping main/preview/retirement acceptance remains pending until the workflow is merged and run on main. #44 remains open for that evidence; #26 remains the parent delivery tracker. Staging and immutable versioned promotion remain #130 and #32.
+
 ## Current workflow refinement — #100
 
 Implementation in the Preparation milestone (#78). Frontend CI remains unconditional on main pushes and PR updates, preserving required checks and current-head preview artifacts. After a successful website-affecting main build, CI calls pages.yml as a dependent reusable job using its own run ID and artifact. The separate workflow_run publisher subscription is removed. Docs/tracker-only main builds finish validation without a publishing workflow run; the dependent publication job is skipped. Manual Publish website remains available on main for numbered PR previews or production recovery.
 
-Browser E2E uses whole-PR changed-path filters. Automatic Browser E2E runs only when an eligible PR transitions from draft to ready for review (`ready_for_review`). Docs/tracker-only PRs are excluded. Opening, updating or reopening a PR does not trigger Browser E2E, even when it is already ready for review; use manual dispatch to validate later commits. Application/test/dependency/workflow changes remain eligible at the readiness transition. No automatic main Browser E2E trigger is added. Manual dispatch bypasses path/draft filtering. GitHub path filters consider only the first 300 changed files; unusually large PRs require deliberate manual Browser E2E. Browser E2E must remain optional, not a branch-protection-required check, because a filtered-out workflow cannot satisfy a required check.
+Automatic Browser E2E runs only for a non-draft `release` or `release/*` PR targeting `main`, opened for review or transitioned to ready for review. Whole-PR docs-only path filters apply. Feature/staging PRs, updates, reopen events, main pushes and manual dispatch do not run browsers. To retest a changed release candidate, return its PR to draft and mark it ready again; local Playwright remains available for debugging. Keep Browser E2E optional in branch protection because filtered workflows cannot satisfy a required check.
 
-Publication still checks source SHA/run identity, current-main eligibility, stale-build protection, aggregate preview preservation and retirement. Main CI does not cancel an active main publication when another push arrives; PR CI remains cancelable. GitHub's one-pending-run concurrency limitation remains #44, not solved here. Automatic deployment appears under Frontend CI → Publish validated production build / publish; standalone Publish website now denotes manual dispatch. Failed frontend validation cannot call publication. No duplicate production build is introduced.
+Publication still checks source SHA/run identity, current-main eligibility, stale-build protection, aggregate preview preservation and retirement. Main CI does not cancel an active main publication when another push arrives; PR CI remains cancelable. #44 adds the queued publisher and scheduled recovery described above. Automatic deployment appears under Frontend CI → Publish validated production build / publish; standalone Publish website handles manual dispatch and scheduled recovery. Failed frontend validation cannot call publication. No duplicate production build is introduced.
 
 Validation: nine pipeline tests pass locally, including real Git diffs for docs-only/application changes and source→docs renames, workflow dependency/permission boundaries, current-run binding, whole-PR mixed changes, manual dispatch and existing artifact/preview safeguards. Remote draft CI and review-ready Browser E2E must pass before review. Actual docs-only/main/preview behavior requires post-merge run evidence before #100 closes. #106 documentation reorganization follows; no files are moved in this implementation.
 
@@ -46,7 +60,7 @@ A failed build is not deployed. After merging, verify CI, publisher conclusion, 
 
 #32 remains open for tag validation, immutable version URLs, artifacts/checksums and explicit promotion/rollback. Tags currently do not overwrite the main website. Until that implementation is accepted, rollback is a reviewed revert on main with successful CI and deployment.
 
-GitHub may cancel a pending publisher during overlapping manual/production events even with cancel-in-progress:false. #44 tracks durable reconciliation. Check the live source SHA after a burst; retry the relevant CI job if needed. See deployment-architecture.md for observed recovery evidence.
+The queue and scheduled reconciliation described above recover missed publication and retirement work. Check the live source SHA after overlapping events; use manual recovery if a schedule is delayed.
 
 ## Base paths and storage
 
@@ -62,7 +76,7 @@ package.json is the version source of truth. Vite embeds it at build time; produ
 
 Publisher starts only manually or after main-branch Frontend CI completion. Automatic publication requires successful push CI and the current main SHA; feature-branch PR builds do not wake it. CI no longer subscribes to PR closure. A failed main build can produce a skipped publisher entry; docs-only main builds verify identity and summarize their skip without deploying.
 
-Each actual publication checks active previews and retires closed PRs. A closed-without-merge preview can remain live until the next publication; docs-only skipped publication does not retire previews. Every started publish job records a clear outcome; successful deployments include URLs, source SHA, PR and build run. Manual republish supports recovery even when generated state is unchanged. See [workflow-audit.md](../development/workflow-audit.md).
+Each actual publication and scheduled reconciliation checks active previews and retires closed PRs. A closed-without-merge preview remains live until the next successful publication or recovery; docs-only skipped publication does not itself retire previews. Every started publish job records a clear outcome; successful deployments include URLs, source SHA, PR and build run. Manual republish supports recovery even when generated state is unchanged. See [workflow-audit.md](../development/workflow-audit.md).
 
 Main artifact freshness permits documentation-only descendants such as merge-tracker commits, so tracker updates cannot suppress a valid website merge deployment. Newer website changes, divergent history or a truncated comparison reject the older artifact.
 

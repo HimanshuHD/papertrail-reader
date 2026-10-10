@@ -88,3 +88,35 @@ test('publication retires closed previews while preserving production and open p
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('aggregate recovery preserves the live sources and applies retirements even with a stale production request', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'papertrail-recovery-'))
+  try {
+    const site = path.join(root, 'site'),
+      artifact = path.join(root, 'artifact')
+    await mkdir(artifact)
+    await writeFile(path.join(artifact, 'index.html'), 'current')
+    await assemble({ site, artifact, kind: 'production', sha: 'current', runId: 30 })
+    for (const pr of [7, 8])
+      await assemble({ site, artifact, kind: 'preview', pr, sha: 'preview', runId: 31 })
+    await writeFile(path.join(site, '.publication-receipt.json'), 'old receipt')
+    await assemble({ site, kind: 'reconcile', retirePRs: [7] })
+    assert.equal(await readFile(path.join(site, 'index.html'), 'utf8'), 'current')
+    assert.equal(await readFile(path.join(site, 'preview/pr-8/index.html'), 'utf8'), 'current')
+    await assemble({ site, artifact, kind: 'production', sha: 'stale', runId: 20, retirePRs: [8] })
+    const state = JSON.parse(await readFile(path.join(site, '.deployment-state.json'), 'utf8'))
+    assert.equal(state.production.sha, 'current')
+    assert.equal(state.previews[8].status, 'retired')
+    assert.equal(
+      await readFile(path.join(site, '.publication-receipt.json'), 'utf8'),
+      'old receipt',
+    )
+    await writeFile(path.join(artifact, '.publication-receipt.json'), 'forged')
+    await assert.rejects(
+      assemble({ site, artifact, kind: 'production', sha: 'bad', runId: 40 }),
+      /Reserved/,
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})
