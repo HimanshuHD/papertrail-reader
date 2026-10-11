@@ -2,17 +2,34 @@ name: Publish website
 on:
   workflow_call:
     inputs:
-      build_run:
-        description: 'Current CI run whose successful frontend job produced web-build'
+      branch:
+        required: true
+        type: string
+      promotion_run:
         required: true
         type: string
   schedule:
     - cron: '17,47 * * * *'
+  pull_request_target:
+    branches: [main, staging]
+    types: [closed, converted_to_draft, reopened]
   workflow_dispatch:
     inputs:
+      branch:
+        description: 'Target environment branch'
+        type: choice
+        options: [staging, main]
+        default: staging
+      operation:
+        description: 'Preview, saved-state recovery, or explicit rollback'
+        type: choice
+        options: [preview, reconcile, rollback]
+        default: preview
       pr_number:
-        description: 'Open PR number to deploy; leave blank to republish main'
-        required: false
+        description: 'Ready PR number for preview'
+        type: string
+      archive_id:
+        description: 'Published archive tree-SHA/run-ID for rollback'
         type: string
 permissions:
   contents: read
@@ -22,121 +39,128 @@ concurrency:
   queue: max
 jobs:
   publish:
-    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    if: github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     permissions:
       actions: read
       contents: write
+      pull-requests: read
       pages: write
       id-token: write
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: main
-      - name: Select a trusted successful build
+          ref: ${{ inputs.branch == 'staging' && 'staging' || 'main' }}
+      - name: Select trusted publication operation
         id: select
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         env:
-          BUILD_RUN: ${{ inputs.build_run }}
+          BRANCH: ${{ inputs.branch }}
+          OPERATION: ${{ inputs.operation }}
+          PR_NUMBER: ${{ inputs.pr_number }}
+          ARCHIVE_ID: ${{ inputs.archive_id }}
+          PROMOTION_RUN: ${{ inputs.promotion_run }}
         with:
           script: |
-            const { owner, repo } = context.repo;
-            const { previewDecision, eligibleMainBuild } = await import(require('node:url').pathToFileURL(process.cwd() + '/scripts/deploy-policy.mjs').href);
-            const manual = context.eventName === 'workflow_dispatch';
-            const requested = context.payload.inputs?.pr_number?.trim() || '';
-            const recovery = context.eventName === 'schedule';
-            let run, selectedPR;
-            if (recovery) {
-              const { recoverPublication } = await import(require('node:url').pathToFileURL(process.cwd() + '/scripts/publication-recovery.mjs').href);
-              const plan = await recoverPublication({ github, owner, repo });
-              require('node:fs').writeFileSync('retired-prs.json',JSON.stringify(plan.retirePRs));
-              for (const [key,value] of Object.entries(plan.outputs)) core.setOutput(key,value);
-              core.summary.addRaw('Recovery: '+plan.reason+'\\n').write();
+            const fs=require('node:fs');
+            const {owner,repo}=context.repo;
+            const {selectCandidate,readPublished,closedPreviews}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const state=await readPublished(github,owner,repo);
+            const receipt=await readPublished(github,owner,repo,'.publication-receipt.json');
+            const retired=await closedPreviews(github,owner,repo,state);
+            const notices=[];
+            for(const [number,preview] of Object.entries(state?.previews || {})) {
+              if(preview.status!=='active' || retired.includes(Number(number))) continue;
+              const pr=(await github.rest.pulls.get({owner,repo,pull_number:Number(number)})).data;
+              if(Boolean(preview.draft)!==Boolean(pr.draft)) notices.push({pr:Number(number),draft:Boolean(pr.draft)});
+            }
+            fs.writeFileSync('preview-notices.json',JSON.stringify(notices));
+            fs.writeFileSync('retired-prs.json',JSON.stringify(retired));
+            const branch=process.env.BRANCH || 'main';
+            if(!['main','staging'].includes(branch)) throw Error('Unsupported branch');
+            let plan;
+            if(process.env.PROMOTION_RUN) {
+              if(process.env.PROMOTION_RUN!==String(context.runId)) throw Error('Promotion must belong to this integration run');
+              core.setOutput('promotion','true');
+              core.setOutput('kind','publish');
               return;
             }
-            if (!manual) {
-              if (process.env.BUILD_RUN !== String(context.runId)) throw new Error('Reusable publisher requires its current CI run');
-              run = (await github.rest.actions.getWorkflowRun({owner,repo,run_id:context.runId})).data;
-            }
-            const skip = reason => { core.setOutput('skip','true'); core.setOutput('reason',reason); };
-            if (manual) {
-              if (requested) {
-                if (!/^[1-9]\d*$/.test(requested)) throw new Error('Enter a positive PR number');
-                selectedPR = (await github.rest.pulls.get({owner,repo,pull_number:Number(requested)})).data;
-                if (selectedPR.state !== 'open' || selectedPR.base.ref !== 'main' || selectedPR.head.repo?.full_name !== owner + '/' + repo) throw new Error('Choose an open same-repository PR targeting main');
-              }
-              const runs = await github.rest.actions.listWorkflowRuns({ owner, repo, workflow_id: 'ci.yml', ...(selectedPR ? {head_sha:selectedPR.head.sha,event:'pull_request'} : {branch:'main',event:'push'}), status:'success', per_page:10 });
-              run = runs.data.workflow_runs.find(r => !selectedPR || r.head_sha === selectedPR.head.sha);
-              if (!run) throw new Error('The current commit has no successful CI build; wait for CI or fix it first');
-            }
-            if (run.head_repository?.full_name !== owner + '/' + repo || !['push','pull_request'].includes(run.event)) { skip('Build is not eligible for publication'); return; }
-            let kind='production', prNumber='';
-            if (run.event === 'pull_request') {
-              if (!manual || !selectedPR) { skip('PR previews require manual dispatch'); return; }
-              const fresh=(await github.rest.pulls.get({owner,repo,pull_number:selectedPR.number})).data;
-              kind=previewDecision({manual,state:fresh.state,currentSha:fresh.head.sha,buildSha:run.head_sha,sameRepo:fresh.head.repo?.full_name===owner+'/'+repo,target:fresh.base.ref});
-              if (kind==='skip') throw new Error('PR head changed; rebuild and retry');
-              prNumber=fresh.number;
+            if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='preview') {
+              if(!/^[1-9]\d*$/.test(process.env.PR_NUMBER)) throw Error('Enter a positive ready PR number');
+              plan=await selectCandidate({github,owner,repo,branch,prNumber:process.env.PR_NUMBER});
+              fs.writeFileSync('promotion-plan.json',JSON.stringify(plan));
+              core.setOutput('kind','publish'); core.setOutput('run_id',plan.runId);
+            } else if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='rollback') {
+              const id=process.env.ARCHIVE_ID;
+              if(!/^[0-9a-f]{40}-[0-9]+$/.test(id)) throw Error('Enter a published archive tree-SHA/run-ID');
+              const history=await readPublished(github,owner,repo,'.deployment-history.json');
+              const channel=branch==='main'?'production':'staging';
+              if(!history?.[channel]?.[id]) throw Error('Archive is not a previously successful publication');
+              const target=(await github.rest.repos.getBranch({owner,repo,branch})).data;
+              plan={channel,branch,sourceSha:history[channel][id].sourceSha,holdSha:target.commit.sha,archiveId:id,rollback:true,...{tree:history[channel][id].tree,runId:history[channel][id].runId}};
+              fs.writeFileSync('promotion-plan.json',JSON.stringify(plan)); core.setOutput('kind','rollback');
             } else {
-              const main=(await github.rest.repos.getBranch({owner,repo,branch:'main'})).data;
-              const comparison=run.head_sha===main.commit.sha ? null : (await github.rest.repos.compareCommits({owner,repo,base:run.head_sha,head:main.commit.sha})).data;
-              if (run.head_branch!=='main' || !eligibleMainBuild({buildSha:run.head_sha,mainSha:main.commit.sha,status:comparison?.status,files:comparison?.files})) { skip('Main build is superseded by website changes or cannot be verified'); return; }
+              if(!state) { core.setOutput('skip','true'); return; }
+              if(!retired.length && !notices.length && JSON.stringify(state)===JSON.stringify(receipt)) { core.setOutput('skip','true'); core.summary.addRaw('Publication is already acknowledged; no closed previews.').write(); return; }
+              core.setOutput('kind','reconcile');
             }
-            core.setOutput('kind',kind);
-            core.setOutput('pr',prNumber);
-            core.setOutput('run_id',run.id);
-            core.setOutput('sha',run.head_sha);
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        if: steps.select.outputs.skip != 'true' && steps.select.outputs.kind != 'reconcile'
+        if: steps.select.outputs.promotion == 'true'
         with:
-          name: web-build
-          path: incoming
+          name: promotion-${{ inputs.branch }}
+          path: .
           github-token: ${{ github.token }}
-          run-id: ${{ steps.select.outputs.run_id }}
-      - name: Verify artifact identity
-        id: verify
-        if: steps.select.outputs.skip != 'true' && steps.select.outputs.kind != 'reconcile'
-        env:
-          EXPECTED_SHA: ${{ steps.select.outputs.sha }}
-          EXPECTED_RUN: ${{ steps.select.outputs.run_id }}
-          MANUAL: ${{ github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' }}
-        run: |
-          node --input-type=module -e "import fs from 'node:fs'; const b=JSON.parse(fs.readFileSync('incoming/build.json','utf8')); if(b.sha!==process.env.EXPECTED_SHA || String(b.runId)!==process.env.EXPECTED_RUN) throw Error('Artifact identity mismatch'); fs.appendFileSync(process.env.GITHUB_OUTPUT, 'publish='+String(process.env.MANUAL==='true' || b.publish!==false)+'\\n')"
-      - name: Enable aggregate-only recovery
-        id: reconcile
-        if: steps.select.outputs.skip != 'true' && steps.select.outputs.kind == 'reconcile'
-        run: echo "publish=true" >> "$GITHUB_OUTPUT"
-      - name: Find closed published previews
-        if: github.event_name != 'schedule' && steps.select.outputs.skip != 'true' && (steps.verify.outputs.publish == 'true' || steps.reconcile.outputs.publish == 'true')
+          run-id: ${{ inputs.promotion_run }}
+      - name: Recheck branch freshness and trusted candidate run
+        id: candidate
+        if: steps.select.outputs.promotion == 'true'
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            const { owner, repo } = context.repo;
-            let state = {previews:{}};
-            try {
-              const file=(await github.rest.repos.getContent({owner,repo,path:'.deployment-state.json',ref:'pages-state'})).data;
-              state=JSON.parse(Buffer.from(file.content,'base64').toString('utf8'));
-            } catch(error) { if(error.status!==404) throw error; }
-            const retired=[];
-            for(const [number,preview] of Object.entries(state.previews || {})) {
-              if(preview.status!=='active') continue;
-              const pr=(await github.rest.pulls.get({owner,repo,pull_number:Number(number)})).data;
-              if(pr.state==='closed') retired.push(Number(number));
+            const fs=require('node:fs');
+            const p=JSON.parse(fs.readFileSync('promotion-plan.json'));
+            const {selectCandidate}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const fresh=await selectCandidate({github,...context.repo,branch:p.branch,sourceSha:p.sourceSha,manualRun:p.manualRun});
+            if(fresh.skip) { core.setOutput('skip','true'); core.summary.addRaw(fresh.reason).write(); return; }
+            for(const key of ['tree','headSha','pr','runId','channel']) if(String(p[key])!==String(fresh[key])) throw Error('Promotion candidate changed: '+key);
+            core.setOutput('run_id',p.runId);
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: steps.select.outputs.kind == 'publish' && steps.candidate.outputs.skip != 'true'
+        with:
+          name: candidate-build
+          path: incoming
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.candidate.outputs.run_id || steps.select.outputs.run_id }}
+      - name: Verify source, channel and all artifact checksums
+        id: verify
+        if: steps.select.outputs.kind == 'publish' && steps.candidate.outputs.skip != 'true'
+        env:
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node scripts/verify-delivery.mjs
+      - name: Recheck publication boundary
+        if: steps.select.outputs.kind == 'rollback' || (steps.select.outputs.kind == 'publish' && steps.verify.outputs.publish == 'true')
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const p=JSON.parse(require('node:fs').readFileSync('promotion-plan.json'));
+            const {owner,repo}=context.repo;
+            if(p.channel==='preview') {
+              const pr=(await github.rest.pulls.get({owner,repo,pull_number:Number(p.pr)})).data;
+              const {previewEligible}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+              if(!previewEligible(pr,owner+'/'+repo) || pr.head.sha!==p.headSha || pr.base.sha!==p.baseSha) throw Error('Preview changed while publishing; refresh CI/request');
+            } else {
+              const branch=(await github.rest.repos.getBranch({owner,repo,branch:p.branch})).data;
+              if(branch.commit.sha!==(p.holdSha || p.sourceSha)) throw Error('Branch advanced while publishing; retry latest candidate');
             }
-            require('node:fs').writeFileSync('retired-prs.json',JSON.stringify(retired));
-            core.summary.addRaw('Closed previews to retire: '+(retired.join(', ') || 'none')+'\n').write();
-      - name: Preserve production and all previews
+      - name: Preserve deployment channels and retained rollback artifacts
         id: assemble
-        if: steps.select.outputs.skip != 'true' && (steps.verify.outputs.publish == 'true' || steps.reconcile.outputs.publish == 'true')
+        if: steps.select.outputs.skip != 'true' && steps.candidate.outputs.skip != 'true' && (steps.select.outputs.kind != 'publish' || steps.verify.outputs.publish == 'true')
         env:
           KIND: ${{ steps.select.outputs.kind }}
-          PR_NUMBER: ${{ steps.select.outputs.pr }}
-          BUILD_SHA: ${{ steps.select.outputs.sha }}
-          BUILD_RUN: ${{ steps.select.outputs.run_id }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -148,64 +172,43 @@ jobs:
             git -C _site checkout --orphan pages-state
             git -C _site rm -rf .
           fi
-          node --input-type=module -e "import fs from 'node:fs'; import {assemble} from './scripts/assemble-pages.mjs'; await assemble({site:'_site',artifact:'incoming',kind:process.env.KIND,pr:process.env.PR_NUMBER,sha:process.env.BUILD_SHA,runId:process.env.BUILD_RUN,retirePRs:JSON.parse(fs.readFileSync('retired-prs.json','utf8'))})"
+          node scripts/assemble-delivery.mjs
           git -C _site add -A
           if ! git -C _site diff --cached --quiet; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-            git -C _site commit -m "deploy: update ${KIND} website build"
+            git -C _site commit -m "deploy: reconcile publication channels"
             git -C _site push origin HEAD:pages-state
-          else
-            echo "changed=false" >> "$GITHUB_OUTPUT"
           fi
+          mkdir _upload
+          rsync -a --exclude=.git --exclude=.deployment-archives _site/ _upload/
+          echo "publish=true" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
-        if: steps.select.outputs.skip != 'true' && (steps.verify.outputs.publish == 'true' || steps.reconcile.outputs.publish == 'true')
+        if: steps.assemble.outputs.publish == 'true'
         with:
-          path: _site
+          path: _upload
       - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
         id: deploy
-        if: steps.select.outputs.skip != 'true' && (steps.verify.outputs.publish == 'true' || steps.reconcile.outputs.publish == 'true')
-      - name: Record successful deployment receipt
+        if: steps.assemble.outputs.publish == 'true'
+      - name: Verify live channel identity and critical assets
         if: steps.deploy.outcome == 'success'
-        run: |
-          cp _site/.deployment-state.json _site/.publication-receipt.json
-          git -C _site add .publication-receipt.json
-          if ! git -C _site diff --cached --quiet; then
-            git -C _site commit -m "deploy: acknowledge successful Pages publication"
-            git -C _site push origin HEAD:pages-state
-          fi
-      - name: Record URLs
-        if: steps.select.outputs.skip != 'true' && (steps.verify.outputs.publish == 'true' || steps.reconcile.outputs.publish == 'true')
         env:
           SITE_URL: ${{ steps.deploy.outputs.page_url }}
-          KIND: ${{ steps.select.outputs.kind }}
-          PR_NUMBER: ${{ steps.select.outputs.pr }}
+        run: node scripts/verify-live.mjs
+      - name: Acknowledge successful publication
+        if: success() && steps.deploy.outcome == 'success'
         run: |
-          echo "Production: ${SITE_URL}" >> "$GITHUB_STEP_SUMMARY"
-          if [ -n "$PR_NUMBER" ]; then
-            echo "PR ${PR_NUMBER}: ${SITE_URL}preview/pr-${PR_NUMBER}/ (${KIND})" >> "$GITHUB_STEP_SUMMARY"
+          node scripts/acknowledge-publication.mjs
+          git -C _site add .publication-receipt.json .deployment-history.json
+          if ! git -C _site diff --cached --quiet; then
+            git -C _site commit -m "deploy: acknowledge verified live publication"
+            git -C _site push origin HEAD:pages-state
           fi
-      - name: Record publication outcome
+      - name: Record publication outcome and synchronization requirements
         if: always()
         env:
-          JOB_STATUS: ${{ job.status }}
-          SKIP: ${{ steps.select.outputs.skip }}
-          REASON: ${{ steps.select.outputs.reason }}
-          PUBLISH: ${{ steps.verify.outputs.publish }}
-          CHANGED: ${{ steps.assemble.outputs.changed }}
+          STATUS: ${{ job.status }}
           DEPLOYED: ${{ steps.deploy.outcome }}
-          KIND: ${{ steps.select.outputs.kind }}
-          SOURCE_SHA: ${{ steps.select.outputs.sha }}
-          BUILD_RUN: ${{ steps.select.outputs.run_id }}
-          PR_NUMBER: ${{ steps.select.outputs.pr }}
+          SITE_URL: ${{ steps.deploy.outputs.page_url }}
         run: |
-          if [ "$JOB_STATUS" = 'failure' ]; then
-            echo 'Publication failed: inspect the failed step; no successful deployment is claimed.' >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$DEPLOYED" = 'success' ]; then
-            echo "Deployed ${KIND}. PR: ${PR_NUMBER:-none}. Source: ${SOURCE_SHA}. CI run: ${BUILD_RUN}." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$SKIP" = 'true' ]; then
-            echo "Deployment skipped: ${REASON}." >> "$GITHUB_STEP_SUMMARY"
-          elif [ "$PUBLISH" = 'false' ]; then
-            echo 'Deployment skipped: documentation-only main changes; website unchanged.' >> "$GITHUB_STEP_SUMMARY"
-          else
-            echo "Publication ended with status ${JOB_STATUS}; no successful deployment is claimed." >> "$GITHUB_STEP_SUMMARY"
-          fi
+          echo "Publication status: $STATUS. Pages action: ${DEPLOYED:-not run}. URL: $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
+          echo "A Pages success without live verification/receipt is not accepted delivery. Fix failures or run saved-state reconciliation." >> "$GITHUB_STEP_SUMMARY"
+          echo "After production hotfixes/release fixes, synchronize main/release into staging and any active release branch using reviewed PRs." >> "$GITHUB_STEP_SUMMARY"

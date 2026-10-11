@@ -1,0 +1,28 @@
+name: Integrate and promote
+on:
+  push:
+    branches: [main, staging]
+  schedule:
+    - cron: '23,53 * * * *'
+  workflow_run:
+    workflows: [Frontend CI]
+    types: [completed]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  channel:
+    if: github.event_name != 'workflow_run' || (github.event.workflow_run.event == 'workflow_dispatch' && github.event.workflow_run.conclusion == 'success')
+    strategy:
+      fail-fast: false
+      matrix:
+        branch: [main, staging]
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/channel-delivery.yml
+    with:
+      branch: ${{ matrix.branch }}

@@ -5,3 +5,11 @@ package-lock.json
 docs/*.pdf
 _site/
 incoming/
+candidate/
+_upload/
+promotion-plan.json
+verified-build.json
+retired-prs.json
+preview-notices.json
+# Historical browser log excerpt is intentionally truncated, not a JSON document.
+docs/evidence/native-161/fifth-outcomes.json
