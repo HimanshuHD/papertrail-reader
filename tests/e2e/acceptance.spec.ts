@@ -12,7 +12,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       let release: (() => void) | undefined
       indexedDB.open = ((name: string, version?: number) => {
         const request = version === undefined ? open(name) : open(name, version)
-        if (name === 'papertrail-annotations') {
+        if (
+          name ===
+          'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        ) {
           let delivered = false
           request.addEventListener('success', (event) => {
             if (delivered) return
@@ -92,7 +95,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.goto('./#/')
     await page.evaluate(async (kind) => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-annotations')
+        const request = indexedDB.open(
+          'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })
@@ -136,7 +141,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const open = indexedDB.open.bind(indexedDB)
       let blocked = true
       indexedDB.open = ((name: string, version?: number) => {
-        if (blocked && name === 'papertrail-annotations')
+        if (
+          blocked &&
+          name ===
+            'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        )
           throw new DOMException('Injected unavailable metadata', 'SecurityError')
         return version === undefined ? open(name) : open(name, version)
       }) as typeof indexedDB.open
@@ -184,13 +193,21 @@ for (const format of ['PDF', 'EPUB'] as const) {
       let armed = false,
         blocked = false
       indexedDB.open = ((name: string, version?: number) => {
-        if (blocked && name === 'papertrail-annotations')
+        if (
+          blocked &&
+          name ===
+            'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        )
           throw new DOMException('Injected post-commit refresh rejection', 'SecurityError')
         return version === undefined ? open(name) : open(name, version)
       }) as typeof indexedDB.open
       IDBObjectStore.prototype.put = function (...args) {
         const request = put.apply(this, args)
-        if (armed && this.transaction.db.name === 'papertrail-annotations') {
+        if (
+          armed &&
+          this.transaction.db.name ===
+            'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        ) {
           armed = false
           // The write already owns an open connection; reject subsequent refresh opens.
           blocked = true
@@ -255,7 +272,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     expect(
       await page.evaluate(async () => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('papertrail-annotations')
+          const request = indexedDB.open(
+            'papertrail-annotations' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onsuccess = () => resolve(request.result)
           request.onerror = () => reject(request.error)
         })

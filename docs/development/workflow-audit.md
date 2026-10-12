@@ -1,5 +1,13 @@
 # Workflow trigger audit
 
+## Current policy — #130 staging integration
+
+Ready PR validation, candidate artifact reuse, staging post-merge Browser E2E and production release/hotfix acceptance are defined in [the operator guide](../deployment/publishing.md). Branch pushes promote only identity-matched successful candidates. Trusted cleanup and scheduled reconciliation preserve channels and write receipts only after live verification. Draft application work and metadata-only PR edits do not run application CI; main/staging recovery is explicit. Main-merge issue reconciliation still does not write repository planning snapshots.
+
+The first staging merge and subsequent main activation require actual acceptance; older release-only Browser E2E and blank-number manual publishing instructions below are historical. #44 live acceptance remains linked to #130; immutable release URL/tag automation remains #32.
+
+## Historical workflow audit records
+
 ## Publication recovery — #44
 
 The shared publisher uses `concurrency.queue: max` with `cancel-in-progress: false`. GitHub retains up to 100 pending publishers rather than replacing the single pending run. Queue capacity, manual cancellation and deployment failures still require reconciliation; queue order is not a source-freshness guarantee. See [GitHub concurrency documentation](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency).

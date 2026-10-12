@@ -27,7 +27,7 @@ npm run build
 npm run test:e2e
 ```
 
-Browser E2E uses the Playwright version pinned in package-lock. CI runs the fast frontend checks on pull requests and runs Browser E2E only when a reviewed `release` or `release/*` PR targeting `main` opens or becomes ready. Feature PRs use ordinary CI; browser acceptance is recorded before release.
+Browser E2E uses the Playwright version pinned in package-lock. Ready PRs run frontend candidate checks; drafts do not. Staging merges run Browser E2E against the verified staging artifact. Ready `release/*` and `hotfix/*` PRs targeting `main` run production-candidate Browser E2E on every accepted revision. Deployment promotes matching validated artifacts instead of rebuilding unrelated content.
 
 ## Roadmap and documentation
 
@@ -37,7 +37,7 @@ Technical guides and evidence remain at [docs/README.md](docs/README.md), includ
 
 ## Production and previews
 
-Production: [himanshuhd.github.io/papertrail-reader](https://himanshuhd.github.io/papertrail-reader/). Successful builds merged to main publish automatically. PR previews publish on demand from Actions → Publish website with the PR number. See [deployment verification](docs/deployment/verification.md) for source SHAs and run evidence.
+Production: [himanshuhd.github.io/papertrail-reader](https://himanshuhd.github.io/papertrail-reader/). Validated release/hotfix merges to main promote production; staging merges publish the separate staging URL after browser acceptance. Eligible ready PR previews publish on demand from Actions → Publish website with target branch, preview operation and PR number. See [delivery operations](docs/deployment/publishing.md) for bootstrap, owner settings, hotfixes, recovery and rollback. See [deployment verification](docs/deployment/verification.md) for source SHAs and run evidence.
 
 ## License
 

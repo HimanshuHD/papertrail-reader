@@ -15,15 +15,15 @@ Backlog → In progress → In review → Completed. Use Blocked with the blocki
 
 ## Git conventions
 
-Branch from current main: feature/<issue>-<name>, fix/<issue>-<name> or chore/<issue>-<name>.
+Branch feature/<issue>-<name>, fix/<issue>-<name> or chore/<issue>-<name> from updated staging and target staging. release/<package-version> branches come from accepted staging and target main; hotfix/* branches come from main and target main. Synchronize release/hotfix corrections back into staging through reviewed PRs. See [delivery operations](../deployment/publishing.md).
 
 Commit example: docs: add roadmap and issue tracker (refs #2).
 
-PRs use Closes #N only for complete scope and Refs #N for partial work. Cross-links persist even when squash merging. Prefer squash merge after review and required checks; delete merged branches.
+PRs use Closes #N only for complete scope and Refs #N for partial work. Cross-links persist even when squash merging. Squash/merge is permitted after current-base validation; promotion requires identical validated and merged content trees. Delete merged implementation branches, retain main/staging/pages-state.
 
 ## Validation
 
-Record what was checked and the result. For documentation, verify links and file integrity. Once application tooling exists, use the actual lint/type/test/build scripts and browser checks when needed. Real desktop features require supported-platform evidence. Do not claim CI passed before it exists or before a run succeeds.
+Record what was checked and the result. For documentation, verify links and file integrity. Once application tooling exists, use the actual lint/type/test/build scripts and browser checks when needed. Ready staging PRs run frontend candidate checks; staging integration runs Browser E2E. Ready release/hotfix PRs run frontend and production-candidate Browser E2E on each revision. Drafts do not automatically validate. Real desktop features require supported-platform evidence. Do not claim CI passed before it exists or before a run succeeds.
 
 ## Documentation
 

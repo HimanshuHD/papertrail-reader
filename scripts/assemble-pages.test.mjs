@@ -120,3 +120,82 @@ test('aggregate recovery preserves the live sources and applies retirements even
     await rm(root, { recursive: true, force: true })
   }
 })
+
+test('staging survives production promotion, production survives staging failure/reconcile, and rollback holds preserve identity', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'papertrail-channels-'))
+  try {
+    const site = path.join(root, 'site'),
+      artifact = path.join(root, 'artifact')
+    await mkdir(artifact)
+    await writeFile(path.join(artifact, 'index.html'), 'release')
+    const tree = 'a'.repeat(40)
+    await assemble({
+      site,
+      artifact,
+      kind: 'production',
+      sha: 'main',
+      sourceSha: 'merged-main',
+      tree,
+      runId: 40,
+      version: '2.1.0',
+    })
+    await assemble({
+      site,
+      artifact,
+      kind: 'staging',
+      sha: 'stage',
+      sourceSha: 'merged-stage',
+      tree,
+      runId: 41,
+      version: '2.1.0',
+    })
+    assert.equal(
+      JSON.parse(await readFile(path.join(site, 'staging/channel.json'), 'utf8')).aligned,
+      true,
+    )
+    await writeFile(path.join(artifact, 'index.html'), 'next release')
+    await assemble({
+      site,
+      artifact,
+      kind: 'production',
+      sha: 'new',
+      tree: 'b'.repeat(40),
+      runId: 42,
+    })
+    assert.equal(await readFile(path.join(site, 'staging/index.html'), 'utf8'), 'release')
+    assert.equal(
+      JSON.parse(await readFile(path.join(site, 'staging/channel.json'), 'utf8')).aligned,
+      false,
+    )
+    const archive = path.join(site, '.deployment-archives/production/' + tree + '-40')
+    await assemble({
+      site,
+      artifact: archive,
+      kind: 'production',
+      sha: 'main',
+      tree,
+      runId: 40,
+      sourceSha: 'merged-main',
+      holdSha: 'new-main',
+      rollback: true,
+      archiveId: tree + '-40',
+    })
+    const state = JSON.parse(await readFile(path.join(site, '.deployment-state.json'), 'utf8'))
+    assert.equal(state.rollbackHold.production, 'new-main')
+    assert.equal(state.production.sourceSha, 'merged-main')
+    assert.equal(await readFile(path.join(site, 'index.html'), 'utf8'), 'release')
+    await assemble({ site, artifact, kind: 'preview', pr: 170, branch: 'staging', runId: 43 })
+    await assemble({ site, kind: 'reconcile', previewNotices: [{ pr: 170, draft: true }] })
+    assert.equal(
+      JSON.parse(await readFile(path.join(site, 'preview/pr-170/channel.json'), 'utf8')).draft,
+      true,
+    )
+    await assemble({ site, kind: 'reconcile', retirePRs: [170] })
+    assert.match(
+      await readFile(path.join(site, 'preview/pr-170/index.html'), 'utf8'),
+      /href="\.\.\/\.\.\/staging\/"/,
+    )
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

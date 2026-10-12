@@ -1,5 +1,25 @@
 <script setup lang="ts">
+import { ref, onMounted } from 'vue'
 import { version } from '../../package.json'
+
+const channel: string = import.meta.env.VITE_DEPLOY_CHANNEL || 'production'
+const channelLabel = channel === 'staging' ? 'Staging' : 'Production'
+const notice = ref('')
+onMounted(async () => {
+  if (!['staging', 'preview'].includes(channel)) return
+  try {
+    const response = await fetch(import.meta.env.BASE_URL + 'channel.json')
+    if (!response.ok) return
+    const data = await response.json()
+    if (channel === 'staging')
+      notice.value = data.aligned
+        ? `Staging matches production v${data.productionVersion}. No unreleased changes.`
+        : 'Staging contains unreleased changes.'
+    else if (data.draft) notice.value = 'Published revision · PR currently draft'
+  } catch {
+    /* A static/local preview may have no channel status file. */
+  }
+})
 
 const repository = 'https://github.com/HimanshuHD/papertrail-reader'
 const buildSha: string = import.meta.env.VITE_BUILD_SHA || ''
@@ -16,7 +36,7 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
       <span v-if="pr"
         >Preview · <a :href="`${repository}/pull/${pr}`">PR #{{ pr }}</a></span
       >
-      <span v-else>Production · v{{ version }}</span>
+      <span v-else>{{ channelLabel }} · v{{ version }}</span>
       <span v-if="branch"
         >Branch <a :href="branchUrl">{{ branch }}</a></span
       >
@@ -24,7 +44,8 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
         >SHA <a :href="`${repository}/commit/${sha}`" :title="sha">{{ sha.slice(0, 7) }}</a></span
       >
     </template>
-    <span v-else>Development · SHA unavailable</span>
+    <span v-if="notice" role="status">{{ notice }}</span>
+    <span v-if="!sha">Development · SHA unavailable</span>
   </footer>
 </template>
 

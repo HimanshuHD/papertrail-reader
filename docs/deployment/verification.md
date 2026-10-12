@@ -1,5 +1,33 @@
 # Deployment verification
 
+## #130 operational acceptance
+
+Status: implementation under review; no new live deployment/recovery/rollback result is claimed. Keep unchecked cases in #130/#44/#32 until actual run/source evidence is recorded. Local tests and CI are separate evidence.
+
+| Scenario                                            | Expected result                                                                                  | Evidence required                                                        |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Draft PR / ready / ready update / return to draft   | Draft does not validate; ready current candidate validates; old work cancels on draft            | Event/run IDs and latest head/base                                       |
+| Main arbitrary feature or fork preview              | Publication rejected                                                                             | Failed selection with no upload/deploy                                   |
+| Staging PR manual preview                           | Correct PR/path/identity; production/staging unchanged                                           | Candidate run, preview footer/build.json and aggregate                   |
+| Merge/squash to staging                             | Tree equals accepted candidate; staging E2E tests downloaded bytes; stable staging publishes     | Candidate tree/run, browser results, merged source and receipt           |
+| Staging E2E failure                                 | Existing live staging remains; release blocked                                                   | Failure run and unchanged deployed source                                |
+| Main release/hotfix ready update                    | Full candidate CI and both production browser shards rerun                                       | Latest candidate run and source/tree                                     |
+| Production merge                                    | Verified candidate promoted without rebuilding; staging survives                                 | Main merge, artifact hashes, live checks and receipt                     |
+| Closed without merge / merged / draft / reopened    | Retirement/draft notice independent; reopened preview requires manual refresh                    | Cleanup run and live preview page                                        |
+| Base/head changes or wrong merged tree              | Promotion rejected                                                                               | Failed identity gate and unchanged published channel                     |
+| Cancelled/missed publication or saved-state failure | Eventual eligible channel recovery; no false receipt                                             | Cancelled/failed run, recovery run and matching desired/receipt          |
+| Expired artifact / API failure                      | Visible failure; fresh validation required                                                       | Failure/recovery runs                                                    |
+| Rollback                                            | Published archive restored for one channel; other channels survive; hold prevents automatic undo | History/archive ID, live identity, hold and subsequent source correction |
+| Hotfix synchronization                              | Fix reaches staging and active release through reviewed PRs                                      | Linked sync PRs and current-base acceptance                              |
+| Storage isolation                                   | Production metadata preserved; staging/preview cannot restore production handles or annotations  | Browser checks across the actual channel URLs                            |
+| Staging alignment                                   | Banner reflects exact tree equality; staging remains available                                   | Channel identities and footer                                            |
+
+Owner-only setup: required Candidate validation/up-to-date branch protections and github-pages allowed branches/reviewers. Confirm configuration rather than inferring it from green CI. See [operator guide](publishing.md).
+
+## Historical evidence
+
+The records below describe older workflow versions. Their dates, revisions, run IDs and owner acceptance are preserved; pending-work statements there are superseded by the current issues and Wiki.
+
 ## Preparation reconciliation — #109 merged — 3 October 2026
 
 #109 merged as `2cfe48827989392ea7dcf753fb0be1dafb9bb5d7`. Main CI 37117659748 and its dependent production publisher passed; merge reconciliation 37117659837 wrote docs/trackers/progress.md in d28d563. #106 is closed. This verifies workflow/job/source-path evidence, not another visual browser-product audit. The v1.0.0 tag remains b2eb932.

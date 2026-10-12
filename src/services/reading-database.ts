@@ -1,6 +1,11 @@
+import { environmentDatabaseName } from './environment-storage'
+
 /** Connections are short-lived so upgrades/deletion by another tab cannot leave stale handles. */
 export class ReadingMetadataDatabase {
-  constructor(private readonly databaseName = 'papertrail-reading') {}
+  private readonly databaseName: string
+  constructor(databaseName = 'papertrail-reading') {
+    this.databaseName = environmentDatabaseName(databaseName)
+  }
 
   private open(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {

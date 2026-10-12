@@ -12,6 +12,8 @@ export default defineConfig([
     'node_modules/**',
     '_site/**',
     'incoming/**',
+    'candidate/**',
+    '_upload/**',
     'playwright-report/**',
     'test-results/**',
   ]),

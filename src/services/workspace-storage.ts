@@ -1,3 +1,4 @@
+import { environmentDatabaseName } from './environment-storage'
 import type { DiscoveredDocument, LibraryDocumentMetadata } from '../features/library/discovery'
 import type { BrowserLibrarySelection } from '../features/library/browser-selection'
 
@@ -117,7 +118,10 @@ function validateSnapshot(value: unknown): WorkspaceSnapshot | null {
 
 /** Stores metadata and permission-bearing handles, never File/Blob document bytes. */
 export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
-  constructor(private readonly databaseName = 'papertrail-workspace') {}
+  private readonly databaseName: string
+  constructor(databaseName = 'papertrail-workspace') {
+    this.databaseName = environmentDatabaseName(databaseName)
+  }
   private async transaction<T>(
     run: (store: IDBObjectStore, result: (value: T) => void) => void,
   ): Promise<T> {
