@@ -9,6 +9,32 @@ import { execFileSync } from 'node:child_process'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
+test('candidate jobs skip checklist edits on merged and closed PRs but keep ready and manual validation', () => {
+  const conditions = [...read('.github/workflows/ci.yml').matchAll(/^    if: (.+)$/gm)].map(
+    (match) => match[1],
+  )
+  assert.equal(conditions.length, 3)
+  const allowed = (state, event, action = 'edited') => {
+    const github = {
+      event_name: event,
+      ref: 'refs/heads/main',
+      event: { action, changes: {}, pull_request: { state, draft: false, base: { ref: 'main' } } },
+    }
+    const needs = { frontend: { outputs: { website: 'true' } } }
+    return conditions.map((condition) =>
+      new Function('github', 'needs', 'always', 'return (' + condition + ')')(
+        github,
+        needs,
+        () => true,
+      ),
+    )
+  }
+  assert.deepEqual(allowed('closed', 'pull_request'), [false, false, false])
+  assert.deepEqual(allowed('open', 'pull_request', 'synchronize'), [true, true, true])
+  assert.deepEqual(allowed('open', 'pull_request'), [false, true, true])
+  assert.deepEqual(allowed('closed', 'workflow_dispatch'), [true, true, true])
+})
+
 test('ready-only CI validates both targets and gates production browser acceptance', () => {
   const ci = read('.github/workflows/ci.yml')
   assert.match(ci, /branches: \[main, staging\]/)

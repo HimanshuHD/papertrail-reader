@@ -14,7 +14,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base != null))
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -51,7 +51,7 @@ jobs:
           overwrite: true
   browser:
     needs: frontend
-    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false)) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     uses: ./.github/workflows/browser-e2e.yml
     with:
       build_run: ${{ format('{0}', github.run_id) }}
@@ -61,7 +61,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     runs-on: ubuntu-latest
     steps:
