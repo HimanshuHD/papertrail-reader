@@ -1,7 +1,7 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
 > Implementation reference: PR #170 / issue #130, workflow source commit `80349c1a7310413f263a96a152c443ee18812705`.
-> Prepared 12 October 2026. The first five workflow snapshots use the reference commit; merge-tracking below reflects the staging-reconciliation revision in PR #170. These workflows are proposed on `feat/130-staging-delivery`; this guide does not claim main activation, live staging acceptance or owner settings are complete.
+> Prepared 12 October 2026. CI and merge-tracking snapshots include the subsequent fixes in PR #170; merge-tracking below reflects the staging-reconciliation revision in PR #170. These workflows are proposed on `feat/130-staging-delivery`; this guide does not claim main activation, live staging acceptance or owner settings are complete.
 > This is a standalone reading guide. Existing deployment documents remain unchanged. Planning remains in GitHub Wiki and milestones.
 
 ## How to read this guide
@@ -316,7 +316,7 @@ Candidate and promotion artifacts plus browser reports/traces/screenshots are re
 
 ## Complete workflow files and explanations
 
-The first five YAML files are exact workflow source at the reference commit. The sixth is the updated staging/main reconciliation workflow in this PR. It is included for learning and review; edit the actual files under `.github/workflows/` when changing behavior. Future workflow changes should refresh this snapshot and reference.
+CI and merge-tracking show the updated PR implementation; the other four workflow files use the reference commit. It is included for learning and review; edit the actual files under `.github/workflows/` when changing behavior. Future workflow changes should refresh this snapshot and reference.
 
 ### GitHub Actions vocabulary
 
@@ -406,6 +406,7 @@ jobs:
       source_sha: ${{ github.event.pull_request.head.sha || github.sha }}
   gate:
     name: Candidate validation
+    timeout-minutes: 20
     if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
     needs: [frontend, browser]
     runs-on: ubuntu-latest
@@ -420,9 +421,9 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            const {selectCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const {waitForCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
             const pr=context.payload.pull_request;
-            const p=await selectCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number});
+            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha},{onWait:attempt=>core.info('Waiting for current full CI acceptance; poll '+attempt)});
             p.channel=branchChannel(pr.base.ref);
             require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(p));
             core.setOutput('run_id',p.runId);
@@ -1093,3 +1094,7 @@ After merging to main, main evidence is added separately. Status labels, Wiki, m
 - [Preparation milestone](https://github.com/HimanshuHD/papertrail-reader/milestone/7): delivery grouping.
 
 This standalone guide preserves the explanation requested in chat without rewriting older docs or claiming unperformed acceptance.
+
+## Checklist-edit CI timing
+
+A title/body/checklist edit may occur while full CI for the same commit is still running. Its metadata gate waits up to 15 minutes, polling every 15 seconds for a successful current artifact. It checks the original head/base on every poll and still verifies artifact identity/checksums. Changed source, ineligible PRs and API errors fail rather than being treated as acceptance. If no accepted artifact appears within the limit, the gate fails; rerun after fixing/finishing full CI. This wait never runs application tests or publishes a site.

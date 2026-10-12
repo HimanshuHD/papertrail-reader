@@ -60,6 +60,7 @@ jobs:
       source_sha: ${{ github.event.pull_request.head.sha || github.sha }}
   gate:
     name: Candidate validation
+    timeout-minutes: 20
     if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
     needs: [frontend, browser]
     runs-on: ubuntu-latest
@@ -74,9 +75,9 @@ jobs:
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            const {selectCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const {waitForCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
             const pr=context.payload.pull_request;
-            const p=await selectCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number});
+            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha},{onWait:attempt=>core.info('Waiting for current full CI acceptance; poll '+attempt)});
             p.channel=branchChannel(pr.base.ref);
             require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(p));
             core.setOutput('run_id',p.runId);

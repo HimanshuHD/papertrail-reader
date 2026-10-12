@@ -144,9 +144,41 @@ export async function selectCandidate({
       retired: false,
     }
   }
-  throw new Error(
-    'No successful current candidate artifact; run fresh CI, including required browser acceptance',
+  throw Object.assign(
+    new Error(
+      'No successful current candidate artifact; run fresh CI, including required browser acceptance',
+    ),
+    { code: 'CANDIDATE_NOT_READY' },
   )
+}
+
+export async function waitForCandidate(
+  options,
+  {
+    attempts = 61,
+    intervalMs = 15000,
+    pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    onWait = () => {},
+  } = {},
+) {
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const pr = (
+      await options.github.rest.pulls.get({
+        owner: options.owner,
+        repo: options.repo,
+        pull_number: Number(options.prNumber),
+      })
+    ).data
+    if (pr.head.sha !== options.expectedHead || pr.base.sha !== options.expectedBase)
+      throw new Error('PR head or base changed while waiting; use current candidate validation')
+    try {
+      return await selectCandidate(options)
+    } catch (error) {
+      if (error.code !== 'CANDIDATE_NOT_READY' || attempt === attempts) throw error
+      onWait(attempt)
+      await pause(intervalMs)
+    }
+  }
 }
 
 export async function closedPreviews(github, owner, repo, state) {

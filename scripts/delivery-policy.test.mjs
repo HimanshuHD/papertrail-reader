@@ -1,6 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { previewEligible, selectCandidate, closedPreviews } from './delivery-policy.mjs'
+import {
+  previewEligible,
+  selectCandidate,
+  closedPreviews,
+  waitForCandidate,
+} from './delivery-policy.mjs'
 
 const sha = 'a'.repeat(40),
   head = 'b'.repeat(40),
@@ -137,4 +142,69 @@ test('closed published previews retire while an open draft stays published', asy
     await closedPreviews(open.github, 'owner', 'repo', { previews: { 170: { status: 'active' } } }),
     [],
   )
+})
+
+test('metadata validation waits for full CI then reuses its accepted artifact', async () => {
+  const input = fixture()
+  let polls = 0
+  input.github.rest.actions.listWorkflowRuns = async () => ({
+    data: {
+      workflow_runs:
+        ++polls < 3
+          ? []
+          : [{ id: 42, conclusion: 'success', head_repository: { full_name: 'owner/repo' } }],
+    },
+  })
+  let waits = 0
+  const plan = await waitForCandidate(
+    { ...input, prNumber: 170, expectedHead: head, expectedBase: sha },
+    {
+      attempts: 3,
+      pause: async () => {
+        waits++
+      },
+    },
+  )
+  assert.equal(plan.runId, '42')
+  assert.equal(waits, 2)
+})
+
+test('metadata validation cannot accept failed artifacts and stops at the retry limit', async () => {
+  let waits = 0
+  await assert.rejects(
+    waitForCandidate(
+      {
+        ...fixture({ run: { conclusion: 'failure' } }),
+        prNumber: 170,
+        expectedHead: head,
+        expectedBase: sha,
+      },
+      {
+        attempts: 2,
+        pause: async () => {
+          waits++
+        },
+      },
+    ),
+    /No successful/,
+  )
+  assert.equal(waits, 1)
+})
+
+test('metadata validation immediately rejects changed source and ineligible PRs', async () => {
+  for (const input of [
+    { ...fixture(), expectedHead: sha },
+    { ...fixture({ pull: { ...pr, draft: true } }), expectedHead: head },
+  ])
+    await assert.rejects(
+      waitForCandidate(
+        { ...input, prNumber: 170, expectedBase: sha },
+        {
+          pause: async () => {
+            assert.fail('Invalid source must not wait')
+          },
+        },
+      ),
+      /changed|ready/,
+    )
 })
