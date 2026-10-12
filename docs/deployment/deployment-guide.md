@@ -1,7 +1,7 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
 > Implementation reference: PR #170 / issue #130, workflow source commit `80349c1a7310413f263a96a152c443ee18812705`.
-> Prepared 12 October 2026. These workflows are proposed on `feat/130-staging-delivery`; this guide does not claim main activation, live staging acceptance or owner settings are complete.
+> Prepared 12 October 2026. The first five workflow snapshots use the reference commit; merge-tracking below reflects the staging-reconciliation revision in PR #170. These workflows are proposed on `feat/130-staging-delivery`; this guide does not claim main activation, live staging acceptance or owner settings are complete.
 > This is a standalone reading guide. Existing deployment documents remain unchanged. Planning remains in GitHub Wiki and milestones.
 
 ## How to read this guide
@@ -316,7 +316,7 @@ Candidate and promotion artifacts plus browser reports/traces/screenshots are re
 
 ## Complete workflow files and explanations
 
-The following YAML is the exact workflow source at the reference commit. It is included for learning and review; edit the actual files under `.github/workflows/` when changing behavior. Future workflow changes should refresh this snapshot and reference.
+The first five YAML files are exact workflow source at the reference commit. The sixth is the updated staging/main reconciliation workflow in this PR. It is included for learning and review; edit the actual files under `.github/workflows/` when changing behavior. Future workflow changes should refresh this snapshot and reference.
 
 ### GitHub Actions vocabulary
 
@@ -1012,78 +1012,67 @@ jobs:
 
 18. **Always-recorded summary.** Shows outcome/URL, reminds that successful live verification is required, and records explicit hotfix/release synchronization requirements. It does not silently merge branches.
 
-### merge-tracking.yml — Existing issue reconciliation
+### merge-tracking.yml — Staging and main issue reconciliation
 
-[Source file](https://github.com/HimanshuHD/papertrail-reader/blob/80349c1a7310413f263a96a152c443ee18812705/.github/workflows/merge-tracking.yml)
+Source: `.github/workflows/merge-tracking.yml` and `scripts/merge-tracking.mjs` in PR #170. This replaces the earlier main-only workflow snapshot.
 
 ```yaml
 name: Reconcile merged issue tracking
 on:
-  pull_request:
+  pull_request_target:
     types: [closed]
-    branches: [main]
+    branches: [main, staging]
 permissions:
   contents: read
   issues: write
 concurrency:
   group: merge-tracking
   cancel-in-progress: false
+  queue: max
 jobs:
   reconcile:
-    if: github.event.pull_request.merged == true
+    if: github.event.pull_request.merged == true && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.ref }}
+          persist-credentials: false
       - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
-            const { owner, repo } = context.repo;
-            const pr = context.payload.pull_request;
-            if (!pr?.merged || pr.base.ref !== 'main') return;
-            const issues = await github.paginate(github.rest.issues.listForRepo, { owner, repo, state: 'all', per_page: 100 });
-            const byNumber = new Map(issues.filter(i => !i.pull_request).map(i => [i.number, i]));
-            const refs = new Set([...((pr.body || '').matchAll(/(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)/gi))].map(m => Number(m[1])));
-            const evidence = 'Completed by merged PR #' + pr.number + '; merge commit \`' + pr.merge_commit_sha + '\`.';
-            for (const n of refs) {
-              const issue = byNumber.get(n);
-              if (!issue || issue.state !== 'closed' || (issue.state_reason && issue.state_reason !== 'completed')) continue;
-              let body = issue.body || '';
-              body = body.replace(/Status: (?:Backlog|In progress|In review|Blocked)/g, 'Status: Completed');
-              if (!body.includes(evidence)) body += '\n\n## Merge evidence\n' + evidence + '\n';
-              body = body.replace('- [ ] PR merged to main.', '- [x] PR merged to main.');
-              if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: n, body });
-            }
-            for (const issue of byNumber.values()) {
-              if (issue.state !== 'open') continue;
-              let body = issue.body || '';
-              body = body.replace(/^- \[[ x]\] #(\d+)\s*$/gm, (line, n) => {
-                const child = byNumber.get(Number(n));
-                return child ? '- [' + (child.state === 'closed' && (!child.state_reason || child.state_reason === 'completed') ? 'x' : ' ') + '] #' + n : line;
-              });
-              if (issue.number === 1) {
-                body = body.replace(/## Current work\n[\s\S]*?(?=\n## |$)/, '## Current work\nMerged PR #' + pr.number + ' reconciled at ' + pr.merged_at + '. See the milestone checklist and live issue statuses for remaining work.\n');
-                const section = '## Latest merge\nPR #' + pr.number + ' merged at ' + pr.merged_at + '. Commit: \`' + pr.merge_commit_sha + '\`.\n\n';
-                body = body.replace(/## Latest merge\n[\s\S]*?(?=\n## |$)/, '').trim() + '\n\n' + section;
-              }
-              if (body !== issue.body) await github.rest.issues.update({ owner, repo, issue_number: issue.number, body });
-            }
+            const {reconcileMergedIssues}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/merge-tracking.mjs').href);
+            const result=await reconcileMergedIssues({github,...context.repo,pr:context.payload.pull_request});
+            await core.summary.addRaw('Reconciled '+result.updated+' issue bodies for '+context.payload.pull_request.base.ref+'. Merge evidence does not assert live deployment or acceptance.').write();
 ```
 
 #### Block-by-block explanation
 
-1. **Unchanged scope.** This existing file was not rewritten by #170. It runs only for closed PRs targeting main and only if actually merged. Staging merges do not run it.
+1. **Triggers.** A merged, same-repository PR targeting staging or main starts reconciliation. Closed unmerged PRs and forks are excluded. `pull_request_target` supplies trusted target-branch workflow context.
+2. **Permissions and queue.** The job can read source and update issues. A shared queue serializes staging/main issue writes without cancelling an active reconciliation.
+3. **Trusted checkout.** Only the target branch is checked out, with credentials disabled. PR head code is never checked out or executed with issue-write permissions.
+4. **Reusable logic.** github-script imports `scripts/merge-tracking.mjs`, passing the GitHub client, repository and merge payload. Six regression cases cover references, staging/main semantics, retries, parents and exclusions.
+5. **Issue selection.** Closing directives such as `Fixes #131` and explicit reference lines such as `Refs #130, #44` identify linked issues. Incidental issue numbers elsewhere do not select issues. The helper reads actual issue states and excludes PRs.
+6. **Staging evidence.** Linked issues receive PR/branch/merge-SHA evidence and an explicit reminder that implementation integration is separate from browser/deployment acceptance and production release. The exact `PR merged to staging.` checklist item is checked if present. Issues are not automatically closed, status labels are not changed, and main/live acceptance is not checked.
+7. **Main evidence.** Main merges receive separate evidence and check the exact main merge item. Textual completion status changes only for referenced issues already closed as completed. Open acceptance remains open.
+8. **Parent checklists.** Plain child lines such as `- [ ] #131` reflect actual completed closure, never merely staging integration. Detailed acceptance lines remain untouched.
+9. **Retry safety.** Evidence is not appended twice for the same PR/branch/merge identity. A rerun with unchanged issue contents performs no redundant writes.
+10. **Planning boundaries.** No Wiki/milestone/status-label updates and no legacy issue #1 Current work/Latest merge rewriting. Those require deliberate acceptance reconciliation.
+11. **Summary.** Reports the count of changed issue bodies and explicitly avoids claiming live deployment. This workflow is independent of E2E/publication: a merge may be recorded even if its later deployment fails.
 
-2. **Permissions/concurrency.** Read source, write issues, serialize reconciliation. It does not deploy or edit Wiki/milestones.
+## Staging merge reconciliation in everyday use
 
-3. **Issue map.** Fetches all issue pages, excludes PRs, and indexes by issue number.
+In a PR body, use an explicit line such as `Refs #130, #44` when acceptance remains pending. Closing directives are also recognized for evidence; staging integration alone never causes this helper to close an issue. GitHub's own default-branch closing behavior is separate.
 
-4. **Closing references.** Finds Closes/Fixes/Resolves #N expressions in the PR body. Only already-closed completed issues are reconciled; it does not itself close arbitrary issues.
+After merging to staging:
 
-5. **Evidence/body updates.** Updates recognized textual status values, adds PR/merge-SHA evidence if absent, and checks the exact PR-merged-to-main checklist entry. It does not change status labels.
+- Merge evidence is recorded on linked issues.
+- The staging merge checklist item is checked when present.
+- Parent child-completion checks reflect actual closed/completed issues.
+- Browser/deployment checks and final release acceptance remain pending until verified.
 
-6. **Parent checklist updates.** Updates plain child checklist lines like - [ ] #123 using actual child completion state. More detailed lines are not matched by that simple expression.
-
-7. **Legacy issue #1.** Updates its Current work and Latest merge sections. This is retained legacy behavior, not Wiki roadmap management.
+After merging to main, main evidence is added separately. Status labels, Wiki, milestones and final issue closure remain an explicit acceptance decision. The existing owner-configured GitHub closing behavior is not overridden.
 
 ## Current limits and acceptance ownership
 
@@ -1091,7 +1080,7 @@ jobs:
 - #44 live overlapping-publication/recovery acceptance remains open and deferred to the final workflow setup.
 - #32 retains automated versioned release/tag/package/retention work; retained-channel rollback primitives do not complete it.
 - Browser engines still install per runner; npm cache does not change that.
-- merge-tracking remains main-only, does not update labels and includes legacy issue #1 handling.
+- merge-tracking supports staging/main evidence and parent checks; it does not auto-close pending issues, change labels, or update Wiki/milestones.
 - Scheduled execution and some manual/event handlers require main/default-branch activation.
 - Shared github-pages approval covers all publication operations; separate environment approval policies require a different design.
 
