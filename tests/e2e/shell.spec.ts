@@ -2716,7 +2716,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     const storedTime = () =>
       page.evaluate(async () => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('papertrail-statistics')
+          const request = indexedDB.open(
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onsuccess = () => resolve(request.result)
           request.onerror = () => reject(request.error)
         })
@@ -2846,7 +2848,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const original = indexedDB.open.bind(indexedDB)
       let blocked = true
       indexedDB.open = ((name: string, version?: number) => {
-        if (blocked && name === 'papertrail-statistics')
+        if (
+          blocked &&
+          name ===
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        )
           throw new DOMException('Test storage rejection', 'SecurityError')
         return version === undefined ? original(name) : original(name, version)
       }) as typeof indexedDB.open
@@ -2929,7 +2935,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.goto('./#/')
     const unsupportedId = await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-statistics')
+        const request = indexedDB.open(
+          'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })
@@ -2970,7 +2978,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
       ).toBeVisible()
     const preserved = await page.evaluate(async (id) => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-statistics')
+        const request = indexedDB.open(
+          'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })

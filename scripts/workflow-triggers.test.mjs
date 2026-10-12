@@ -10,7 +10,7 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
 test('candidate jobs skip checklist edits on merged and closed PRs but keep ready and manual validation', () => {
-  const conditions = [...read('.github/workflows/ci.yml').matchAll(/^    if: (.+)$/gm)].map(
+  const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
     (match) => match[1],
   )
   assert.equal(conditions.length, 3)
