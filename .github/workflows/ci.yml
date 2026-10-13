@@ -61,41 +61,13 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual')))
+    if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual')))
     needs: [frontend, browser]
     outputs:
-      candidate_run: ${{ steps.previous.outputs.run_id || github.run_id }}
+      candidate_run: ${{ github.run_id }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        if: github.event.action == 'edited' && github.event.changes.base == null
-        with:
-          persist-credentials: false
-      - name: Reuse accepted candidate for a metadata-only edit
-        id: previous
-        if: github.event.action == 'edited' && github.event.changes.base == null
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
-        with:
-          script: |
-            const {waitForCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
-            const pr=context.payload.pull_request;
-            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha,candidateAcceptance:true,excludeRun:context.runId},{onWait:attempt=>core.info('Waiting for current candidate gate acceptance; poll '+attempt)});
-            p.channel=branchChannel(pr.base.ref);
-            require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(p));
-            core.setOutput('run_id',p.runId);
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
-        if: github.event.action == 'edited' && github.event.changes.base == null
-        with:
-          name: candidate-build
-          path: incoming
-          github-token: ${{ github.token }}
-          run-id: ${{ steps.previous.outputs.run_id }}
-      - name: Verify target artifact without repeating application tests
-        if: github.event.action == 'edited' && github.event.changes.base == null
-        env:
-          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
-        run: node scripts/verify-delivery.mjs
-      - if: github.event.action != 'edited' || github.event.changes.base != null
+      - name: Verify required candidate checks
         env:
           FRONTEND: ${{ needs.frontend.result }}
           BROWSER: ${{ needs.browser.result }}

@@ -2,8 +2,6 @@ name: Integrate and promote
 on:
   push:
     branches: [main, staging]
-  schedule:
-    - cron: '23,53 * * * *'
   workflow_run:
     workflows: [Frontend CI]
     branches: [main, staging]
@@ -17,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        branch: [main, staging]
+        branch: ${{ fromJSON(format('["{0}"]', github.event.workflow_run.head_branch || github.ref_name)) }}
     permissions:
       actions: read
       contents: write
