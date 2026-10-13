@@ -360,7 +360,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base != null))
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -397,7 +397,7 @@ jobs:
           overwrite: true
   browser:
     needs: frontend
-    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false)) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     uses: ./.github/workflows/browser-e2e.yml
     with:
       build_run: ${{ format('{0}', github.run_id) }}
@@ -407,7 +407,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     runs-on: ubuntu-latest
     steps:
@@ -1098,3 +1098,19 @@ This standalone guide preserves the explanation requested in chat without rewrit
 ## Checklist-edit CI timing
 
 A title/body/checklist edit may occur while full CI for the same commit is still running. Its metadata gate waits up to 15 minutes, polling every 15 seconds for a successful current artifact. It checks the original head/base on every poll and still verifies artifact identity/checksums. Changed source, ineligible PRs and API errors fail rather than being treated as acceptance. If no accepted artifact appears within the limit, the gate fails; rerun after fixing/finishing full CI. This wait never runs application tests or publishes a site.
+
+## Editing a merged or closed PR
+
+Candidate jobs require an open ready PR. Updating checklists or descriptions after closure/merge skips candidate validation; it does not attempt to publish or reuse a closed PR artifact. Existing merge/deployment evidence remains associated with its recorded source.
+
+## First staging browser run — corrective follow-up
+
+Integration run 38277443499 on staging merge `08b1cb7` verified the candidate but failed Browser E2E: 42 failed, 265 passed and 12 intentional skips across the two shards. Publication was correctly skipped; this is not accepted staging delivery.
+
+Follow-up PR #172 uses the retained `feat/130-staging-delivery` branch synchronized to staging. It covers:
+
+- Closed/merged PR checklist edits skip candidate validation (failed metadata run 38277731581).
+- All statistics database reads and fault-injection hooks use the staging namespace; forty failed reading-insights cases used the production name.
+- Narrow cross-page native-drag geometry has sufficient height for both pages and validates every endpoint hits the text layer, preventing the wrapping staging footer being selected. Full text/anchor assertions remain intact.
+
+Local validation is separate from native browser acceptance. Local Chromium installation failed due an invalid download, so native corrected cases must be accepted by the next integration Browser E2E after the fix merges. Earlier failed-run evidence is retained, not replaced with a success claim.

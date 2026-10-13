@@ -351,6 +351,9 @@ for (const rotation of [0, 90, 180, 270]) {
     test(`PDF native cross-page drag keeps its anchor through gaps and re-entry at ${rotation} degrees at ${25 + zoomSteps * 25}% zoom`, async ({
       page,
     }, info) => {
+      // Both complete page endpoints must fit above the wrapping deployment footer.
+      // Preserve the project width; this geometry test needs room for two pages at 50%.
+      await page.setViewportSize({ width: page.viewportSize()!.width, height: 1200 })
       await page.goto('./#/app')
       await page.locator('input[accept*=".pdf"]').setInputFiles({
         name: 'drag.pdf',
@@ -390,6 +393,15 @@ for (const rotation of [0, 90, 180, 270]) {
           }, rotation)
       const first = await endpoints(1),
         second = await endpoints(2)
+      // Partial visibility is insufficient: starting on the footer would test native
+      // UI text selection rather than the reader's drag guard.
+      for (const point of [first.start, first.end, second.start, second.end])
+        expect(
+          await page.evaluate(
+            ({ x, y }) => Boolean(document.elementFromPoint(x, y)?.closest('.textLayer')),
+            point,
+          ),
+        ).toBe(true)
       const one = (await page.locator('#pdf-page-1').boundingBox())!,
         two = (await page.locator('#pdf-page-2').boundingBox())!
       for (const backward of [false, true]) {
@@ -436,7 +448,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const put = IDBObjectStore.prototype.put
       let blocked = false
       IDBObjectStore.prototype.put = function (...args) {
-        if (blocked && this.transaction.db.name === 'papertrail-statistics')
+        if (
+          blocked &&
+          this.transaction.db.name ===
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        )
           throw new DOMException('Injected checkpoint quota failure', 'QuotaExceededError')
         return put.apply(this, args)
       }
@@ -480,7 +496,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     const read = () =>
       page.evaluate(async () => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('papertrail-statistics')
+          const request = indexedDB.open(
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onsuccess = () => resolve(request.result)
           request.onerror = () => reject(request.error)
         })
