@@ -58,7 +58,19 @@
       "version": "2.0.0",
       "branch": "staging",
       "archiveId": "201a4e21818920beef0081acc3c226bc61b0d039-38389088888",
-      "publishedAt": "2026-10-13T11:38:07.142Z"
+      "publishedAt": "2026-10-13T12:22:49.212Z"
+    }
+  },
+  "production": {
+    "201a4e21818920beef0081acc3c226bc61b0d039-38389227804": {
+      "sha": "3a05b0f937e7c452ad118d892137410dc01d2be6",
+      "runId": "38389227804",
+      "sourceSha": "1a8399f667527eab7f2ce32fb0f8dc704bfb1d8f",
+      "tree": "201a4e21818920beef0081acc3c226bc61b0d039",
+      "version": "2.0.0",
+      "branch": "main",
+      "archiveId": "201a4e21818920beef0081acc3c226bc61b0d039-38389227804",
+      "publishedAt": "2026-10-13T12:22:49.209Z"
     }
   }
 }
