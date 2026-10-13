@@ -1,22 +1,24 @@
 name: Frontend CI
 on:
   pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
-  push:
-    branches: [main]
+    branches: [main, staging]
+    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled]
+  workflow_dispatch:
 permissions:
   contents: read
+  actions: read
+  pull-requests: read
 concurrency:
-  group: frontend-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: frontend-ci-${{ github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && format('visual-{0}', github.event.pull_request.number) || (github.event.action == 'labeled' || (github.event.action == 'edited' && github.event.changes.base == null)) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   frontend:
     name: Validate and build website
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))
     outputs:
-      publish: ${{ steps.identity.outputs.publish }}
+      website: ${{ steps.build.outputs.publish }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -30,43 +32,90 @@ jobs:
       - run: npm run lint
       - run: npm run format:check
       - run: npm test
-      - name: Build for production or PR path
+      - run: npm run type-check
+      - name: Build channel-specific candidates
+        id: build
         env:
-          VITE_BUILD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          VITE_BRANCH_NAME: ${{ github.head_ref || github.ref_name }}
-          VITE_PR_NUMBER: ${{ github.event.pull_request.number }}
+          TARGET_BRANCH: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          SOURCE_BRANCH: ${{ github.head_ref || github.ref_name }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
           BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
-        run: |
-          if [ -n "$PR_NUMBER" ]; then
-            DEPLOY_BASE="${BASE_PATH}preview/pr-${PR_NUMBER}/"
-          else
-            DEPLOY_BASE="$BASE_PATH"
-          fi
-          npm run build -- --base "$DEPLOY_BASE"
-      - name: Record artifact identity
-        id: identity
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-          BUILD_EVENT: ${{ github.event_name }}
-          BEFORE_SHA: ${{ github.event.before }}
-        run: |
-          node scripts/build-info.mjs
+        run: node scripts/build-candidates.mjs
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: web-build
-          path: dist/
-          retention-days: 7
-  publish:
-    name: Publish validated production build
+          name: candidate-build
+          path: candidate/
+          retention-days: 30
+          overwrite: true
+  browser:
     needs: frontend
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.frontend.outputs.publish == 'true'
-    permissions:
-      actions: read
-      contents: write
-      pages: write
-      id-token: write
-    uses: ./.github/workflows/pages.yml
+    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false)) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    uses: ./.github/workflows/browser-e2e.yml
     with:
       build_run: ${{ format('{0}', github.run_id) }}
+      channel: production
+      source_ref: ${{ github.sha }}
+      source_sha: ${{ github.event.pull_request.head.sha || github.sha }}
+  gate:
+    name: Candidate validation
+    timeout-minutes: 20
+    if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual')))
+    needs: [frontend, browser]
+    outputs:
+      candidate_run: ${{ steps.previous.outputs.run_id || github.run_id }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        if: github.event.action == 'edited' && github.event.changes.base == null
+        with:
+          persist-credentials: false
+      - name: Reuse accepted candidate for a metadata-only edit
+        id: previous
+        if: github.event.action == 'edited' && github.event.changes.base == null
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const {waitForCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const pr=context.payload.pull_request;
+            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha},{onWait:attempt=>core.info('Waiting for current full CI acceptance; poll '+attempt)});
+            p.channel=branchChannel(pr.base.ref);
+            require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(p));
+            core.setOutput('run_id',p.runId);
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: github.event.action == 'edited' && github.event.changes.base == null
+        with:
+          name: candidate-build
+          path: incoming
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.previous.outputs.run_id }}
+      - name: Verify target artifact without repeating application tests
+        if: github.event.action == 'edited' && github.event.changes.base == null
+        env:
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node scripts/verify-delivery.mjs
+      - if: github.event.action != 'edited' || github.event.changes.base != null
+        env:
+          FRONTEND: ${{ needs.frontend.result }}
+          BROWSER: ${{ needs.browser.result }}
+          TARGET: ${{ github.event.pull_request.base.ref || github.ref_name }}
+          WEBSITE: ${{ needs.frontend.outputs.website }}
+        run: |
+          test "$FRONTEND" = success
+          if [ "$TARGET" = main ] && [ "$WEBSITE" = true ]; then test "$BROWSER" = success; fi
+
+  visual-qa:
+    name: Visual QA
+    needs: gate
+    if: always() && needs.gate.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/visual-qa.yml
+    with:
+      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
+      profile: auto
+      tooling_sha: ${{ github.event.pull_request.base.sha }}
+      candidate_run: ${{ needs.gate.outputs.candidate_run }}

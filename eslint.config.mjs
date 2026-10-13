@@ -12,8 +12,13 @@ export default defineConfig([
     'node_modules/**',
     '_site/**',
     'incoming/**',
+    'candidate/**',
+    '_upload/**',
     'playwright-report/**',
     'test-results/**',
+    'visual-evidence/**',
+    'visual-results/**',
+    'visual-report/**',
   ]),
   {
     files: ['**/*.{js,mjs,ts,vue}'],

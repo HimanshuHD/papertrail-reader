@@ -1,0 +1,87 @@
+name: Validate promotion channel
+on:
+  workflow_call:
+    inputs:
+      branch:
+        required: true
+        type: string
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.plan.outputs.skip == 'true' || steps.verify.outputs.publish == 'false' }}
+      run_id: ${{ steps.plan.outputs.run_id }}
+      sha: ${{ steps.plan.outputs.sha }}
+      source_ref: ${{ steps.plan.outputs.source_ref }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.branch }}
+          persist-credentials: false
+      - name: Select validated candidate for this channel
+        id: plan
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          BRANCH: ${{ inputs.branch }}
+        with:
+          script: |
+            const branch=process.env.BRANCH;
+            if(!['main','staging'].includes(branch)) throw Error('Unsupported channel');
+            if(context.eventName==='push' && context.ref!=='refs/heads/'+branch) { core.setOutput('skip','true'); return; }
+            if(context.eventName==='workflow_run' && context.payload.workflow_run.head_branch!==branch) { core.setOutput('skip','true'); return; }
+            const {selectCandidate}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
+            const plan=await selectCandidate({github,...context.repo,branch,sourceSha:context.eventName==='push'?context.sha:undefined,manualRun:context.eventName==='workflow_run'?context.payload.workflow_run.id:undefined});
+            if(plan.skip) { core.setOutput('skip','true'); core.summary.addRaw(plan.reason).write(); return; }
+            if(context.eventName==='workflow_run') plan.manualRun=String(context.payload.workflow_run.id);
+            require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(plan));
+            core.setOutput('run_id',plan.runId);
+            core.setOutput('sha',plan.headSha);
+            core.setOutput('source_ref',plan.sourceSha);
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        if: steps.plan.outputs.skip != 'true'
+        with:
+          name: candidate-build
+          path: incoming
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.plan.outputs.run_id }}
+      - name: Verify merged content and candidate checksums
+        id: verify
+        if: steps.plan.outputs.skip != 'true'
+        env:
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node scripts/verify-delivery.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        if: steps.plan.outputs.skip != 'true' && steps.verify.outputs.publish == 'true'
+        with:
+          name: promotion-${{ inputs.branch }}
+          path: |
+            promotion-plan.json
+            verified-build.json
+          retention-days: 30
+          overwrite: true
+  browser:
+    needs: select
+    if: inputs.branch == 'staging' && needs.select.outputs.skip != 'true'
+    uses: ./.github/workflows/browser-e2e.yml
+    with:
+      build_run: ${{ needs.select.outputs.run_id }}
+      channel: staging
+      source_sha: ${{ needs.select.outputs.sha }}
+      source_ref: ${{ needs.select.outputs.source_ref }}
+  publish:
+    needs: [select, browser]
+    if: always() && needs.select.result == 'success' && needs.select.outputs.skip != 'true' && (inputs.branch == 'main' || needs.browser.result == 'success')
+    permissions:
+      actions: read
+      contents: write
+      pull-requests: read
+      pages: write
+      id-token: write
+    uses: ./.github/workflows/pages.yml
+    with:
+      branch: ${{ inputs.branch }}
+      promotion_run: ${{ format('{0}', github.run_id) }}

@@ -1,73 +1,101 @@
-import assert from 'node:assert/strict'
-import fs from 'node:fs'
 import test from 'node:test'
-import vm from 'node:vm'
+import assert from 'node:assert/strict'
+import { reconcileMergedIssues, referencedIssues } from './merge-tracking.mjs'
 
-test('merge reconciliation updates issue evidence and parent checklists without repository writes', async () => {
-  const workflow = fs.readFileSync('.github/workflows/merge-tracking.yml', 'utf8')
-  assert.match(workflow, /contents: read/)
-  assert.match(workflow, /issues: write/)
-  const script = workflow
-    .split('          script: |\n')[1]
-    .split('\n')
-    .map((line) => line.replace(/^ {12}/, ''))
-    .join('\n')
-  const issues = [
-    {
-      number: 11,
-      state: 'closed',
-      state_reason: 'completed',
-      body: 'Status: In review\n- [ ] PR merged to main.',
-    },
-    { number: 12, state: 'open', body: '- [ ] #11\n- [x] #13' },
-    {
-      number: 13,
-      state: 'closed',
-      state_reason: 'not_planned',
-      body: 'Deferred',
-    },
-  ]
+const pr = {
+  number: 170,
+  merged: true,
+  base: { ref: 'staging' },
+  head: { repo: { full_name: 'owner/repo' } },
+  merge_commit_sha: 'abc',
+  body: 'Refs #130.\nFixes #131',
+}
+function fixture(issues) {
   const updates = []
   const github = {
-    paginate: async () => issues,
     rest: {
       issues: {
-        listForRepo: () => {},
-        update: async (update) => updates.push(update),
-      },
-      repos: new Proxy(
-        {},
-        {
-          get: () => {
-            throw new Error('Repository tracking writes are forbidden')
-          },
+        listForRepo() {},
+        async update(update) {
+          updates.push(update)
+          Object.assign(
+            issues.find((i) => i.number === update.issue_number),
+            update,
+          )
         },
-      ),
-    },
-  }
-  const context = {
-    repo: { owner: 'fixture', repo: 'reader' },
-    payload: {
-      pull_request: {
-        merged: true,
-        number: 20,
-        base: { ref: 'main' },
-        body: 'Closes #11',
-        merge_commit_sha: 'fixture',
-        merged_at: '2026-10-09T00:00:00Z',
       },
     },
+    async paginate() {
+      return issues
+    },
   }
-  const run = () => vm.runInNewContext(`(async () => {\n${script}\n})()`, { github, context })
-  await run()
-  const completed = updates.find((update) => update.issue_number === 11)
+  return { github, updates, owner: 'owner', repo: 'repo' }
+}
+test('only explicit references and closing directives are selected', () => {
+  assert.deepEqual(
+    [...referencedIssues('Refs #130, #44\nFixes #131\nScreenshot #999')],
+    [131, 130, 44],
+  )
+})
+test('staging records implementation without closing issues or completing main acceptance', async () => {
+  const issue = {
+    number: 130,
+    state: 'open',
+    body: 'Status: In progress\n- [ ] PR merged to staging.\n- [ ] PR merged to main.\n- [ ] Live acceptance.',
+  }
+  const f = fixture([issue])
+  await reconcileMergedIssues({ ...f, pr })
+  assert.match(issue.body, /Staging integration evidence/)
+  assert.match(issue.body, /\[x\] PR merged to staging/)
+  assert.match(issue.body, /\[ \] PR merged to main/)
+  assert.match(issue.body, /\[ \] Live acceptance/)
+  assert.equal(issue.state, 'open')
+  assert.deepEqual(Object.keys(f.updates[0]).sort(), ['body', 'issue_number', 'owner', 'repo'])
+})
+test('retries are idempotent', async () => {
+  const f = fixture([{ number: 130, state: 'open', body: '' }])
+  await reconcileMergedIssues({ ...f, pr })
+  assert.equal((await reconcileMergedIssues({ ...f, pr })).updated, 0)
+})
+test('main completes only already-completed referenced issues and keeps open acceptance', async () => {
+  const completed = {
+    number: 131,
+    state: 'closed',
+    state_reason: 'completed',
+    body: 'Status: In progress\n- [ ] PR merged to main.',
+  }
+  const open = { number: 130, state: 'open', body: 'Status: In progress\n- [ ] Live acceptance.' }
+  const f = fixture([completed, open])
+  await reconcileMergedIssues({ ...f, pr: { ...pr, base: { ref: 'main' } } })
   assert.match(completed.body, /Status: Completed/)
-  assert.match(completed.body, /\[x\] PR merged to main/)
-  assert.match(completed.body, /Completed by merged PR #20/)
-  assert.equal(updates.find((update) => update.issue_number === 12).body, '- [x] #11\n- [ ] #13')
-  assert.ok(!updates.some((update) => update.issue_number === 13))
-  updates.length = 0
-  context.payload.pull_request.merged = false
-  await run()
-  assert.equal(updates.length, 0)
+  assert.match(open.body, /Status: In progress/)
+  assert.equal(open.state, 'open')
+})
+test('parent checks follow actual completion and legacy roadmap text stays untouched', async () => {
+  const parent = {
+    number: 1,
+    state: 'open',
+    body: '## Current work\nWiki owns planning.\n- [ ] #131\n- [x] #132\n- [ ] #999',
+  }
+  const f = fixture([
+    parent,
+    { number: 131, state: 'closed', state_reason: 'completed', body: '' },
+    { number: 132, state: 'closed', state_reason: 'not_planned', body: '' },
+  ])
+  await reconcileMergedIssues({ ...f, pr })
+  assert.match(parent.body, /Wiki owns planning/)
+  assert.match(parent.body, /\[x\] #131/)
+  assert.match(parent.body, /\[ \] #132/)
+  assert.match(parent.body, /\[ \] #999/)
+  assert.doesNotMatch(parent.body, /Latest merge/)
+})
+test('closed unmerged PRs, forks and unsupported targets perform no writes', async () => {
+  const f = fixture([{ number: 130, state: 'open', body: '' }])
+  for (const invalid of [
+    { ...pr, merged: false },
+    { ...pr, head: { repo: { full_name: 'fork/repo' } } },
+    { ...pr, base: { ref: 'other' } },
+  ])
+    assert.equal((await reconcileMergedIssues({ ...f, pr: invalid })).updated, 0)
+  assert.equal(f.updates.length, 0)
 })

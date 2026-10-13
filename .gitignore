@@ -51,3 +51,19 @@ Thumbs.db
 /test-results/
 
 browser-evidence/
+
+# Validated delivery candidates and aggregate publication workspaces
+candidate/
+incoming/
+_site/
+_upload/
+promotion-plan.json
+verified-build.json
+retired-prs.json
+preview-notices.json
+
+# Visual QA evidence (approved baselines remain tracked)
+visual-evidence/
+visual-results/
+visual-report/
+visual-plan.json

@@ -1,4 +1,4 @@
-export function retiredPreviewHtml({ pr, demo = false }) {
+export function retiredPreviewHtml({ pr, demo = false, environment = 'production' }) {
   if (!/^[1-9]\d*$/.test(String(pr))) throw new Error('Invalid PR number')
   return `<!doctype html>
 <html lang="en">
@@ -43,7 +43,7 @@ export function retiredPreviewHtml({ pr, demo = false }) {
         <h1 id="status-title">This preview has closed.</h1>
         <p class="description">This temporary build is no longer active. Continue with the latest PaperTrail application, or visit the pull request to review its changes.</p>
         <div class="actions">
-          <a class="button primary" href="../../">Open PaperTrail <span aria-hidden="true">&nbsp;↗</span></a>
+          <a class="button primary" href="${environment === 'staging' ? '../../staging/' : '../../'}">Open PaperTrail <span aria-hidden="true">&nbsp;↗</span></a>
           <a class="button secondary" href="https://github.com/HimanshuHD/papertrail-reader/pull/${pr}">View pull request</a>
         </div>
         <p class="detail">${demo ? 'This is a sample of the closed-preview design. The PR preview is still active until its pull request is closed or merged.' : 'Preview links are retired when their pull request is closed or merged. Your local documents are not stored on this page.'}</p>

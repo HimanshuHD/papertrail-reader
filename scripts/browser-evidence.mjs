@@ -1,6 +1,13 @@
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
 import { execFileSync } from 'node:child_process'
 import { chromium, firefox, webkit } from '@playwright/test'
+
+let testedArtifact = null
+try {
+  testedArtifact = JSON.parse(await readFile('dist/build.json', 'utf8'))
+} catch (error) {
+  if (error.code !== 'ENOENT') throw error
+}
 
 const browser = await chromium.launch({ channel: 'chromium' })
 const versions = { chromium: browser.version() }
@@ -18,6 +25,8 @@ try {
     'browser-evidence/environment.json',
     JSON.stringify(
       {
+        artifactIdentity: testedArtifact,
+        attempt: process.env.GITHUB_RUN_ATTEMPT,
         candidateSource: process.env.E2E_SOURCE_SHA,
         testedCheckout: execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(),
         run: process.env.GITHUB_RUN_ID,

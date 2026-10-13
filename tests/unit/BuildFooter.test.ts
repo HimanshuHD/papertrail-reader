@@ -1,10 +1,13 @@
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { version } from '../../package.json'
 import BuildFooter from '../../src/components/BuildFooter.vue'
 
 const sha = '1234567890abcdef1234567890abcdef12345678'
-afterEach(() => vi.unstubAllEnvs())
+afterEach(() => {
+  vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
+})
 
 describe('deployment footer', () => {
   it('identifies a preview PR and links the displayed SHA to the full commit', () => {
@@ -51,4 +54,39 @@ describe('deployment footer', () => {
     expect(wrapper.find('a').exists()).toBe(false)
     wrapper.unmount()
   })
+})
+
+it('labels staging and shows only server-confirmed alignment', async () => {
+  vi.stubEnv('VITE_BUILD_SHA', sha)
+  vi.stubEnv('VITE_DEPLOY_CHANNEL', 'staging')
+  vi.stubEnv('VITE_PR_NUMBER', '')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ aligned: true, productionVersion: '2.1.0' }),
+    }),
+  )
+  const wrapper = mount(BuildFooter)
+  await flushPromises()
+  expect(wrapper.text()).toContain('Staging · v')
+  expect(wrapper.get('[role="status"]').text()).toBe(
+    'Staging matches production v2.1.0. No unreleased changes.',
+  )
+  wrapper.unmount()
+})
+
+it('keeps a published preview visible while identifying its draft state', async () => {
+  vi.stubEnv('VITE_BUILD_SHA', sha)
+  vi.stubEnv('VITE_DEPLOY_CHANNEL', 'preview')
+  vi.stubEnv('VITE_PR_NUMBER', '170')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn().mockResolvedValue({ ok: true, json: async () => ({ draft: true }) }),
+  )
+  const wrapper = mount(BuildFooter)
+  await flushPromises()
+  expect(wrapper.text()).toContain('PR #170')
+  expect(wrapper.get('[role="status"]').text()).toContain('PR currently draft')
+  wrapper.unmount()
 })

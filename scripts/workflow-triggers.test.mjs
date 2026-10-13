@@ -1,92 +1,143 @@
 import test from 'node:test'
-import vm from 'node:vm'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { execFileSync } from 'node:child_process'
-import { affectsWebsite } from './deploy-policy.mjs'
 
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
-test('required frontend CI remains unconditional and automatic publication depends on its artifact', () => {
-  const ci = read('.github/workflows/ci.yml')
-  const pages = read('.github/workflows/pages.yml')
-  assert.ok(!ci.includes('paths-ignore:'))
-  assert.match(ci, /needs: frontend/)
-  assert.match(ci, /needs.frontend.outputs.publish == 'true'/)
-  assert.match(ci, /uses: .\/\.github\/workflows\/pages.yml/)
-  assert.match(ci, /publish: \$\{\{ steps.identity.outputs.publish \}\}/)
-  assert.ok(!pages.includes('workflow_run:'))
-  assert.match(pages, /workflow_call:/)
-  assert.match(pages, /workflow_dispatch:/)
-  assert.match(pages, /process.env.BUILD_RUN !== String\(context.runId\)/)
-  assert.match(pages, /Artifact identity mismatch/)
-  assert.match(pages, /cancel-in-progress: false/)
-  assert.match(ci, /cancel-in-progress: \$\{\{ github.event_name == 'pull_request' \}\}/)
+test('ready candidates validate before optional labelled QA; labels do not bypass candidate checks', () => {
+  const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
+    (match) => match[1],
+  )
+  assert.equal(conditions.length, 4)
+  const allowed = ({
+    state = 'open',
+    event = 'pull_request',
+    action = 'synchronize',
+    base = 'staging',
+    draft = false,
+    label = 'qa:visual',
+    sameRepo = true,
+    gateResult = 'success',
+    labels = ['qa:visual'],
+  } = {}) => {
+    const github = {
+      event_name: event,
+      ref: base === 'main' ? 'refs/heads/main' : 'refs/heads/staging',
+      repository: 'owner/repo',
+      event: {
+        action,
+        changes: {},
+        label: { name: label },
+        pull_request: {
+          number: 300,
+          state,
+          draft,
+          labels: labels.map((name) => ({ name })),
+          base: { ref: base },
+          head: { repo: { full_name: sameRepo ? 'owner/repo' : 'fork/repo' } },
+        },
+      },
+    }
+    const needs = { frontend: { outputs: { website: 'true' } }, gate: { result: gateResult } }
+    const evaluate = (expression) =>
+      new Function(
+        'github',
+        'needs',
+        'always',
+        'contains',
+        'return (' +
+          expression.replaceAll(
+            'github.event.pull_request.labels.*.name',
+            'github.event.pull_request.labels.map(label=>label.name)',
+          ) +
+          ')',
+      )(
+        github,
+        needs,
+        () => true,
+        (values, value) => values.includes(value),
+      )
+    const first = evaluate(conditions[0])
+    needs.frontend.outputs.website = first ? 'true' : undefined
+    const browser = evaluate(conditions[1])
+    const gate = evaluate(conditions[2])
+    if (!gate) needs.gate.result = 'skipped'
+    return [first, browser, gate, evaluate(conditions[3])]
+  }
+  assert.deepEqual(allowed(), [true, false, true, true])
+  assert.deepEqual(allowed({ labels: [] }), [true, false, true, false])
+  assert.deepEqual(allowed({ action: 'labeled' }), [true, false, true, true])
+  assert.deepEqual(allowed({ action: 'labeled', label: 'type:enhancement' }), [
+    false,
+    false,
+    false,
+    false,
+  ])
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, true])
+  assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
+  assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
+  assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])
+  assert.deepEqual(allowed({ gateResult: 'failure' }), [true, false, true, false])
+  assert.deepEqual(allowed({ gateResult: 'skipped' }), [true, false, true, false])
+  assert.deepEqual(allowed({ event: 'workflow_dispatch', state: 'closed' }), [
+    true,
+    false,
+    true,
+    false,
+  ])
+  assert.deepEqual(allowed({ event: 'workflow_dispatch', base: 'main', state: 'closed' }), [
+    true,
+    true,
+    true,
+    false,
+  ])
 })
 
-test('browser filters permit reviewed release-to-main PRs only and preserve whole-PR path filtering', () => {
-  const browser = read('.github/workflows/browser-e2e.yml')
-  assert.match(browser, /types: \[opened, ready_for_review\]/)
-  assert.ok(!browser.includes('workflow_dispatch:'))
-  assert.match(browser, /branches: \[main\]/)
-  assert.match(browser, /github.event.pull_request.base.ref == 'main'/)
-  assert.match(browser, /github.event.pull_request.head.ref == 'release'/)
-  assert.match(browser, /startsWith\(github.event.pull_request.head.ref, 'release\/'\)/)
-  assert.match(browser, /github.event.pull_request.draft == false/)
-  assert.ok(!browser.includes('\n  push:'))
-  assert.match(browser, /fail-fast: false/)
-  assert.match(browser, /shard: \[1, 2\]/)
-  assert.match(browser, /npm run test:e2e -- --shard=\$\{\{ matrix.shard \}\}\/2/)
-  assert.match(browser, /name: browser-review-\$\{\{ matrix.shard \}\}/)
-  assert.match(browser, /name: browser-summary-\$\{\{ matrix.shard \}\}/)
-  const guard = browser.match(/ {4}if: >-\n([\s\S]*?) {4}name:/)[1].trim()
-  for (const [head, base, draft, expected] of [
-    ['release/1.1.0', 'main', false, true],
-    ['release', 'main', false, true],
-    ['feat/epub', 'main', false, false],
-    ['release/1.1.0', 'staging', false, false],
-    ['release/1.1.0', 'main', true, false],
-    ['releases/1.1.0', 'main', false, false],
-  ]) {
-    assert.equal(
-      vm.runInNewContext(guard, {
-        github: { event: { pull_request: { head: { ref: head }, base: { ref: base }, draft } } },
-        startsWith: (value, prefix) => value.startsWith(prefix),
-      }),
-      expected,
-    )
-  }
-
-  const patterns = [...browser.matchAll(/^ {6}- '([^']+)'$/gm)].map((m) => m[1])
-  const ignored = (p) =>
-    patterns.some((pattern) => {
-      if (pattern.endsWith('/**')) return p.startsWith(pattern.slice(0, -2))
-      if (pattern.endsWith('.*')) return p.startsWith(pattern.slice(0, -1)) && !p.includes('/')
-      return pattern === p
-    })
-  for (const paths of [
-    ['docs/roadmap.md', 'README.md'],
-    ['docs/progress.md'],
-    ['.github/ISSUE_TEMPLATE/bug.yml', '.gitignore'],
-    ['src/App.vue', 'docs/guide.md'],
-    ['package-lock.json'],
-    ['.github/workflows/browser-e2e.yml'],
-    ['tests/e2e/shell.spec.ts'],
-    ['unknown.config'],
-  ])
-    assert.equal(
-      paths.some((p) => !ignored(p)),
-      affectsWebsite(paths),
-    )
-  // A later docs-only commit must not hide application files already present in the PR diff.
-  assert.equal(
-    ['src/App.vue', 'docs/later.md'].some((p) => !ignored(p)),
-    true,
+test('ready-only CI validates both targets and gates production browser acceptance', () => {
+  const ci = read('.github/workflows/ci.yml')
+  assert.match(ci, /branches: \[main, staging\]/)
+  assert.match(
+    ci,
+    /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled\]/,
   )
+  assert.match(ci, /github.event.pull_request.draft == false/)
+  assert.match(ci, /name: Candidate validation/)
+  assert.match(ci, /name: candidate-build/)
+  assert.ok(!ci.includes('  push:'))
+  assert.ok(!ci.includes('uses: ./.github/workflows/pages.yml'))
+})
+
+test('browser accepts prebuilt artifacts instead of rebuilding and preserves native cross-browser evidence', () => {
+  const browser = read('.github/workflows/browser-e2e.yml')
+  assert.match(browser, /workflow_call:/)
+  assert.match(browser, /name: candidate-build/)
+  assert.match(browser, /verifyCandidate/)
+  assert.ok(!browser.includes('npm run build'))
+  assert.match(browser, /shard: \[1, 2\]/)
+  assert.match(browser, /chromium firefox webkit/)
+  assert.match(browser, /xvfb-run/)
+  assert.match(browser, /browser-summary-/)
+})
+
+test('serialized publication preserves trusted cleanup, fresh candidate checks and post-verification receipts', () => {
+  const pages = read('.github/workflows/pages.yml')
+  assert.match(pages, /queue: max/)
+  assert.match(pages, /cancel-in-progress: false/)
+  assert.match(pages, /pull_request_target:/)
+  assert.match(pages, /types: \[closed, converted_to_draft, reopened\]/)
+  assert.match(pages, /Recheck branch freshness/)
+  assert.ok(
+    pages.indexOf('node scripts/verify-live.mjs') <
+      pages.indexOf('node scripts/acknowledge-publication.mjs'),
+  )
+  const delivery = read('.github/workflows/channel-delivery.yml')
+  assert.match(delivery, /needs.browser.result == 'success'/)
+  assert.match(delivery, /node scripts\/verify-delivery.mjs/)
 })
 
 test('main identity reports docs-only false, application true, and renamed source true', () => {
@@ -143,12 +194,28 @@ test('main identity reports docs-only false, application true, and renamed sourc
   }
 })
 
-test('publisher queues overlaps and schedules trusted main recovery with post-deploy acknowledgment', () => {
-  const pages = read('.github/workflows/pages.yml')
-  assert.match(pages, /queue: max/)
-  assert.match(pages, /schedule:/)
-  assert.match(pages, /github.event_name == 'schedule' && github.ref == 'refs\/heads\/main'/)
-  assert.match(pages, /recoverPublication/)
-  assert.match(pages, /if: steps.deploy.outcome == 'success'/)
-  assert.ok(pages.indexOf('Record successful deployment receipt') > pages.indexOf('id: deploy'))
+test('visual and unrelated label runs cannot cancel current frontend candidate validation', () => {
+  const expression = read('.github/workflows/ci.yml').match(
+    /group: frontend-ci-\$\{\{ (.+) \}\}/,
+  )[1]
+  const group = new Function('github', 'format', 'return (' + expression + ')')
+  const github = {
+    run_id: 42,
+    ref: 'refs/pull/176/merge',
+    event: {
+      action: 'synchronize',
+      changes: {},
+      label: { name: '' },
+      pull_request: { number: 176 },
+    },
+  }
+  const format = (template, value) => template.replace('{0}', value)
+  assert.equal(group(github, format), 176)
+  github.event.action = 'labeled'
+  github.event.label.name = 'qa:visual'
+  assert.equal(group(github, format), 'visual-176')
+  github.event.label.name = 'type:enhancement'
+  assert.equal(group(github, format), 'metadata-42')
+  github.run_id = 43
+  assert.equal(group(github, format), 'metadata-43')
 })

@@ -1,6 +1,6 @@
 # GitHub-first web development
 
-GitHub-first development continues: issue -> branch from main -> issue-linked commits -> PR -> CI -> review -> merge. No setup required on the owner's computer.
+GitHub-first development continues: issue -> branch from staging -> issue-linked commits -> ready PR to staging -> candidate CI/review -> merge -> staging E2E/deploy. Release/hotfix PRs target main with production-candidate Browser E2E; see [deployment operations](../deployment/publishing.md). No setup required on the owner's computer.
 
 Frontend CI: clean npm ci from the committed lockfile, strict Vue/config type checks and production build. #22 adds ESLint, Prettier and Vitest/Vue Test Utils component checks to this same workflow. Browser E2E setup is tracked in #37. Browser E2E covers selection fixtures, navigation, persistence and fallbacks. Rust CI waits for the desktop phase.
 
@@ -12,7 +12,7 @@ Issue parent mapping: #5 -> #21/#22/#35/#37; #9 -> #24/#25; #19 -> #26/#28; defe
 
 Commit lockfiles, pin action SHAs and restrict token permissions. Release publication must respect agreed audience. Private GitHub source is not proof of private hosting.
 
-Next after PR #29: finish frontend quality #22 and UI/state #6, then browser selection #8. Tauri is no longer the next implementation step.
+The original #29 foundation sequence is historical. Current scope and next increments are tracked in the Wiki and milestones; desktop remains deferred.
 
 ## Commands
 
@@ -32,7 +32,7 @@ Dependencies are pinned exactly with a committed npm lockfile. Prettier excludes
 
 ## Deployment identifier footer (#35, PR #38)
 
-CI embeds the source head SHA and PR number at build time. The footer shows Preview / PR number with a short SHA linked to the full commit, or Production / main with its SHA. Local builds without CI metadata show Development / SHA unavailable. Rerun Publish website with PR number 38 after the new head passes CI to inspect this footer; the existing preview stays on its previously published build until manual deployment.
+CI embeds the source head SHA and PR number at build time. The footer shows Preview / PR number with a short SHA linked to the full commit, or Staging / staging or Production / main with the validated head SHA. Per-channel deployment.json retains the final merged source and artifact/tree identities. Local builds without CI metadata show Development / SHA unavailable. Manually publish the appropriate eligible current PR after its candidate gate passes to inspect the footer; the existing preview stays on its previously published build until manual deployment.
 
 ---
 

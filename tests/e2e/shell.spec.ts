@@ -482,7 +482,11 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
       page.evaluate(
         () =>
           new Promise<boolean>((resolve, reject) => {
-            const request = indexedDB.open('papertrail-epub-reading', 1)
+            const request = indexedDB.open(
+              'papertrail-epub-reading' +
+                (location.pathname.includes('/staging/') ? ':staging' : ''),
+              1,
+            )
             request.onerror = () => reject(request.error)
             request.onsuccess = () => {
               const database = request.result
@@ -579,7 +583,10 @@ test('EPUB storage failure and unsupported books recover without remote access',
   await page.addInitScript(() => {
     const open = indexedDB.open.bind(indexedDB)
     indexedDB.open = (name, version) => {
-      if (name === 'papertrail-epub-reading')
+      if (
+        name ===
+        'papertrail-epub-reading' + (location.pathname.includes('/staging/') ? ':staging' : '')
+      )
         throw new DOMException('Storage unavailable', 'QuotaExceededError')
       return version === undefined ? open(name) : open(name, version)
     }
@@ -1885,10 +1892,18 @@ test('PDF reading positions survive reload and rename without matching changed c
   }
   const savedPage = () =>
     page.evaluate(async () => {
-      if (!(await indexedDB.databases()).some((database) => database.name === 'papertrail-reading'))
+      if (
+        !(await indexedDB.databases()).some(
+          (database) =>
+            database.name ===
+            'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
+      )
         return null
       return new Promise<number | null>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-reading')
+        const request = indexedDB.open(
+          'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onerror = () => reject(request.error)
         request.onsuccess = () => {
           const db = request.result
@@ -1915,7 +1930,9 @@ test('PDF reading positions survive reload and rename without matching changed c
     page.evaluate(
       async () =>
         new Promise<{ fitMode: string; zoom: number } | null>((resolve, reject) => {
-          const request = indexedDB.open('papertrail-reading')
+          const request = indexedDB.open(
+            'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onerror = () => reject(request.error)
           request.onsuccess = () => {
             const db = request.result
@@ -1983,9 +2000,18 @@ test('PDF reading positions survive reload and rename without matching changed c
 
 async function readSavedWorkspace(page: Page) {
   return page.evaluate(async () => {
-    if (!(await indexedDB.databases()).some((db) => db.name === 'papertrail-workspace')) return null
+    if (
+      !(await indexedDB.databases()).some(
+        (db) =>
+          db.name ===
+          'papertrail-workspace' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+      )
+    )
+      return null
     return new Promise<Record<string, unknown> | null>((resolve, reject) => {
-      const open = indexedDB.open('papertrail-workspace')
+      const open = indexedDB.open(
+        'papertrail-workspace' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+      )
       open.onerror = () => reject(open.error)
       open.onsuccess = () => {
         const db = open.result
@@ -2034,7 +2060,10 @@ test('cached workspace preserves tree, selection and panel context without retai
       name: 'book.pdf',
     })
     await new Promise<void>((resolve, reject) => {
-      const open = indexedDB.open('papertrail-workspace', 1)
+      const open = indexedDB.open(
+        'papertrail-workspace' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        1,
+      )
       open.onupgradeneeded = () => open.result.createObjectStore('workspace')
       open.onerror = () => reject(open.error)
       open.onsuccess = () => {
@@ -2152,7 +2181,9 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
             anchor: { page: number; x: number; y: number }
             view: { fitMode: string; zoom: number }
           }>((resolve, reject) => {
-            const open = indexedDB.open('papertrail-reading')
+            const open = indexedDB.open(
+              'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+            )
             open.onerror = () => reject(open.error)
             open.onsuccess = () => {
               const db = open.result
@@ -2244,7 +2275,9 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
     page.evaluate(
       async () =>
         new Promise<Record<string, unknown>[]>((resolve, reject) => {
-          const open = indexedDB.open('papertrail-reading')
+          const open = indexedDB.open(
+            'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           open.onerror = () => reject(open.error)
           open.onsuccess = () => {
             const db = open.result
@@ -2335,7 +2368,9 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
     await page.evaluate(
       async () =>
         new Promise<void>((resolve, reject) => {
-          const request = indexedDB.deleteDatabase('papertrail-reading')
+          const request = indexedDB.deleteDatabase(
+            'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onsuccess = () => resolve()
           request.onerror = () => reject(request.error)
         }),
@@ -2435,7 +2470,10 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
   const readingCount = await page.evaluate(
     async () =>
       new Promise<number>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-reading', 1)
+        const request = indexedDB.open(
+          'papertrail-reading' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          1,
+        )
         request.onerror = () => reject(request.error)
         request.onsuccess = () => {
           const db = request.result
@@ -2678,7 +2716,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     const storedTime = () =>
       page.evaluate(async () => {
         const db = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open('papertrail-statistics')
+          const request = indexedDB.open(
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+          )
           request.onsuccess = () => resolve(request.result)
           request.onerror = () => reject(request.error)
         })
@@ -2808,7 +2848,11 @@ for (const format of ['PDF', 'EPUB'] as const) {
       const original = indexedDB.open.bind(indexedDB)
       let blocked = true
       indexedDB.open = ((name: string, version?: number) => {
-        if (blocked && name === 'papertrail-statistics')
+        if (
+          blocked &&
+          name ===
+            'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : '')
+        )
           throw new DOMException('Test storage rejection', 'SecurityError')
         return version === undefined ? original(name) : original(name, version)
       }) as typeof indexedDB.open
@@ -2891,7 +2935,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.goto('./#/')
     const unsupportedId = await page.evaluate(async () => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-statistics')
+        const request = indexedDB.open(
+          'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })
@@ -2932,7 +2978,9 @@ for (const format of ['PDF', 'EPUB'] as const) {
       ).toBeVisible()
     const preserved = await page.evaluate(async (id) => {
       const db = await new Promise<IDBDatabase>((resolve, reject) => {
-        const request = indexedDB.open('papertrail-statistics')
+        const request = indexedDB.open(
+          'papertrail-statistics' + (location.pathname.includes('/staging/') ? ':staging' : ''),
+        )
         request.onsuccess = () => resolve(request.result)
         request.onerror = () => reject(request.error)
       })

@@ -1,18 +1,20 @@
 # Browser validation (#37)
 
-## Current policy (#52)
+## Current policy — #130
 
-Automatic Frontend CI runs lint, formatting, pipeline/unit tests, strict types and production/preview build. It does not install browser binaries or OS dependencies and does not run Playwright. Browser installation added in PR #50 repeated on every fresh runner and delayed delivery; #52 removes those automatic steps. npm ci installs only the pinned test-runner package, not Chromium/WebKit binaries. Browser execution remains an explicit command, independent of publishing.
+Draft PRs do not run application checks. Ready staging-targeted PRs run frontend candidate validation without installing browsers. Staging merges run the reusable Browser E2E workflow against the exact prebuilt staging artifact before deploying. Ready release/* and hotfix/* PRs targeting main run production-candidate Browser E2E on opening, readiness, new commits and reopened-ready events; both shards are required by Candidate validation. Docs-only candidates omit browser acceptance/deployment. Returning to draft cancels prior PR acceptance.
 
-## Explicit browser checks
+browser-e2e.yml is now reusable workflow_call, not an independently dispatched PR workflow. It downloads candidate-build, verifies the tested tree/channel/run/head/base-path/checksums, and serves those bytes without rebuilding. CI/main manual recovery includes production acceptance; staging manual recovery includes integration acceptance. See [delivery operations](../deployment/publishing.md) for dispatch, bootstrap and owner settings.
 
-Run `npm run build`, install Chromium with `npx playwright install --with-deps chromium`, then run `npm run test:e2e` when browser coverage is needed. The repository also provides `.github/workflows/browser-e2e.yml`: it executes only for non-draft `release` or `release/*` PRs targeting `main` on opening or readiness transition. Feature PRs are excluded; manual dispatch and synchronize events are removed. Retest release fixes by returning the PR to draft and marking it ready again. Automatic Frontend CI still does not install browsers. Set `E2E_BASE_PATH` only when validating a prefixed build. Optional WebKit projects use `E2E_WEBKIT=1` after installing WebKit.
+## Local browser checks
+
+For a local root build, run npm run build, install engines with npx playwright install --with-deps chromium firefox webkit, then npm run test:e2e. CI also installs openbox and uses Xvfb for native window activation. Local browser binaries and OS dependencies are separate from npm ci. For a prefixed candidate, use its compiled base path as E2E_BASE_PATH and copy that channel artifact into dist; do not rebuild another candidate while claiming the same artifact acceptance. Staging database fixture hooks use the staging namespace; production retains legacy names.
 
 The suite keeps the Chromium width matrix at 320/375/768/1024/1440px and expands as interactive product behavior arrives. It covers preserved home, Go to app/direct entry/history, keyboard/theme persistence, both themes, sidebar placement/collapse/selection, disabled actions, readable title width and overflow. It saves home/app screenshots, an HTML report and failure traces locally. Screenshot capture is not a pixel-baseline approval. Config/specs remain strictly type checked; generated reports are ignored.
 
 ## Release evidence identity — #134
 
-The release workflow records the candidate source SHA, tested PR merge checkout, exact Chromium version, Node/platform and run ID in `browser-evidence/environment.json`. A JSON reporter records machine-readable outcomes in `browser-evidence/results.json`. Full `browser-review` and compact `browser-summary` artifacts retain reports/screenshots/failure traces for seven days. Curated accepted screenshots are saved with the evidence document. Capture awaits finite page animations; perpetual loading spinners remain visible.
+The release workflow records the candidate source SHA, tested PR merge checkout, exact Chromium version, Node/platform and run ID in `browser-evidence/environment.json`. A JSON reporter records machine-readable outcomes in `browser-evidence/results.json`. Full `browser-review` and compact `browser-summary` artifacts retain reports/screenshots/failure traces for 30 days with distinct run-attempt names; candidate/promotion artifacts also retain 30 days. Curated accepted screenshots are saved with the evidence document. Capture awaits finite page animations; perpetual loading spinners remain visible.
 
 The two costly PDF regressions (1,001 pages and native persisted handle recovery) run once at 1440px; their four duplicate viewport cases each are intentionally skipped. EPUB fixtures run at every width. Headless Linux Chromium and viewport emulation do not certify browser products or real devices; wider release support remains #28.
 
