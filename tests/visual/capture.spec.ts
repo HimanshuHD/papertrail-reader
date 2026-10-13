@@ -231,12 +231,13 @@ for (const reduced of [false, true]) {
       await capture(page, info, 'library-hidden')
       await page.getByRole('button', { name: 'Show library', exact: true }).click()
       await expect(hide).toBeVisible()
-      await page
-        .getByRole('button', {
-          name: info.project.use.colorScheme === 'dark' ? 'Light mode' : 'Dark mode',
-          exact: true,
-        })
-        .click()
+      const dark = info.project.use.colorScheme === 'dark'
+      // ThemePicker is a stable "Dark mode" toggle; aria-pressed identifies its state.
+      const themeToggle = page.getByRole('button', { name: 'Dark mode', exact: true })
+      await expect(page.locator('html')).toHaveAttribute('data-theme', dark ? 'dark' : 'light')
+      await expect(themeToggle).toHaveAttribute('aria-pressed', String(dark))
+      await themeToggle.click()
+      await expect(themeToggle).toHaveAttribute('aria-pressed', String(!dark))
       await expect(page.locator('html')).toHaveAttribute(
         'data-theme',
         info.project.use.colorScheme === 'dark' ? 'light' : 'dark',

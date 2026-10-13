@@ -21,10 +21,12 @@ const pr = {
 }
 function fixture({
   state,
+  receipt = state,
   run = {},
   artifacts = [{ name: 'candidate-build', expired: false }],
   pull = pr,
   comparison = { status: 'ahead', files: [{ filename: 'src/App.vue' }] },
+  publishedTree = 'd'.repeat(40),
 } = {}) {
   const workflow = {
     id: 42,
@@ -41,14 +43,19 @@ function fixture({
       repos: {
         getBranch: async () => ({ data: { commit: { sha, commit: { tree: { sha: tree } } } } }),
         listPullRequestsAssociatedWithCommit: async () => ({ data: [pull] }),
-        getContent: async () => {
-          if (!state) throw Object.assign(new Error('Missing'), { status: 404 })
-          return { data: { content: Buffer.from(JSON.stringify(state)).toString('base64') } }
+        getContent: async ({ path }) => {
+          const value = path === '.publication-receipt.json' ? receipt : state
+          if (!value) throw Object.assign(new Error('Missing'), { status: 404 })
+          return { data: { content: Buffer.from(JSON.stringify(value)).toString('base64') } }
         },
         compareCommits: async () => ({ data: comparison }),
       },
       pulls: { get: async () => ({ data: pull }) },
-      git: { getCommit: async () => ({ data: { tree: { sha: tree } } }) },
+      git: {
+        getCommit: async ({ commit_sha }) => ({
+          data: { tree: { sha: commit_sha === head ? publishedTree : tree } },
+        }),
+      },
       actions: {
         listWorkflowRuns: async () => ({ data: { workflow_runs: [workflow] } }),
         getWorkflowRun: async () => ({ data: workflow }),
@@ -81,6 +88,53 @@ test('selects current validated content and rejects superseded branch events', a
   assert.equal(plan.tree, tree)
   assert.equal(plan.headSha, head)
   assert.equal((await selectCandidate({ ...fixture(), sourceSha: head })).skip, true)
+})
+
+test('history-only staging sync skips before requiring a PR or candidate', async () => {
+  const input = fixture({ state: { staging: { sourceSha: head } }, publishedTree: tree })
+  input.github.rest.repos.listPullRequestsAssociatedWithCommit = async () => {
+    assert.fail('Unchanged published tree must not require a merged PR')
+  }
+  input.github.rest.actions.listWorkflowRuns = async () => {
+    assert.fail('History-only sync must not build or select an artifact')
+  }
+  const result = await selectCandidate({ ...input, sourceSha: sha })
+  assert.equal(result.skip, true)
+  assert.match(result.reason, /History-only staging/)
+})
+
+test('changed, divergent, unrecorded or unknown published content cannot bypass PR validation', async () => {
+  for (const options of [
+    { state: { staging: { sourceSha: head } } },
+    {
+      state: { staging: { sourceSha: head } },
+      publishedTree: tree,
+      comparison: { status: 'diverged', files: [] },
+    },
+    { publishedTree: tree },
+    { state: { staging: {} }, publishedTree: tree },
+    { state: { staging: { sourceSha: head } }, publishedTree: null },
+    { state: { staging: { sourceSha: head } }, publishedTree: tree, receipt: null },
+    {
+      state: { staging: { sourceSha: head } },
+      publishedTree: tree,
+      receipt: { staging: { sourceSha: sha } },
+    },
+  ]) {
+    const input = fixture(options)
+    input.github.rest.repos.listPullRequestsAssociatedWithCommit = async () => ({ data: [] })
+    await assert.rejects(selectCandidate(input), /No validated merged PR/)
+  }
+})
+
+test('history-only shortcut does not apply to previews, main or manual recovery', async () => {
+  const input = fixture({
+    state: { staging: { sourceSha: head }, production: { sourceSha: head } },
+    publishedTree: tree,
+  })
+  assert.equal((await selectCandidate({ ...input, prNumber: 170 })).channel, 'preview')
+  await assert.rejects(selectCandidate({ ...input, branch: 'main' }), /No validated merged PR/)
+  await assert.rejects(selectCandidate({ ...input, manualRun: 42 }), /Invalid manual/)
 })
 
 test('failed or expired CI artifacts cannot promote', async () => {

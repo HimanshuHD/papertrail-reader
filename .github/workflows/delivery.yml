@@ -6,6 +6,7 @@ on:
     - cron: '23,53 * * * *'
   workflow_run:
     workflows: [Frontend CI]
+    branches: [main, staging]
     types: [completed]
 permissions:
   contents: read
