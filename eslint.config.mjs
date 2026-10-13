@@ -16,6 +16,9 @@ export default defineConfig([
     '_upload/**',
     'playwright-report/**',
     'test-results/**',
+    'visual-evidence/**',
+    'visual-results/**',
+    'visual-report/**',
   ]),
   {
     files: ['**/*.{js,mjs,ts,vue}'],

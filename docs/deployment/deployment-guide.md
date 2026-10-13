@@ -1133,3 +1133,7 @@ Local validation is separate from native browser acceptance. Local Chromium inst
 ## Deployment result URL
 
 The shared GitHub Pages action returns the aggregate production-root URL. The publisher additionally exposes `deployment_url` and sets its environment link/job summary to the actual published channel: root for production, `/staging/` for staging, or `/preview/pr-N/` for a numbered preview. Live aggregate verification continues to use the root so unrelated channels are checked. Reconciliation without a source plan reports the selected target environment.
+
+## Design QA evidence
+
+[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
