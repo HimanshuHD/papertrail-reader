@@ -39,6 +39,7 @@ test('smoke routes the existing registered staging dispatch through the exact sh
   )
   assert.match(smokeJob, /uses: \.\/\.github\/workflows\/visual-qa.yml/)
   assert.match(smokeJob, /pr_number: '176'/)
+  assert.match(smokeJob, /name: ["']Visual QA smoke \(PR #176\)["']/)
   assert.ok(!/secrets:|: write|pages.yml|browser-e2e.yml/.test(smokeJob))
   const qa = await fs.readFile('.github/workflows/visual-qa.yml', 'utf8')
   assert.match(qa, /workflow_call:/)

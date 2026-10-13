@@ -106,7 +106,7 @@ jobs:
   # Temporary bootstrap until standalone Visual QA is activated on main.
   # Selecting staging in the existing manual CI form explicitly requests QA for #176.
   visual-qa-smoke:
-    name: Visual QA smoke (PR #176)
+    name: 'Visual QA smoke (PR #176)'
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging'
     permissions:
       contents: read
