@@ -12,7 +12,7 @@ test('Visual QA is queued behind Candidate validation for any labelled eligible 
   assert.match(job, /pr_number: \$\{\{ format\('\{0\}', github.event.pull_request.number\) \}\}/)
   assert.match(job, /profile: auto/)
   assert.ok(!/smoke|number == 176|workflow_dispatch|: write|secrets:/.test(job))
-  assert.match(ci, /candidate_run: \$\{\{ steps.previous.outputs.run_id \|\| github.run_id \}\}/)
+  assert.match(ci, /candidate_run: \$\{\{ github.run_id \}\}/)
   const channel = await fs.readFile('.github/workflows/channel-delivery.yml', 'utf8')
   assert.ok(!/visualQaOnlyRun|visual-qa-smoke/.test(channel))
 })
