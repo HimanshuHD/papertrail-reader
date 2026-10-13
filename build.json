@@ -1,1 +1,25 @@
-{"sha":"02c13ea6ff3b53812e9b28992d7e668eabaa9855","runId":"38057287169","publish":true}
+{
+  "schema": 2,
+  "sha": "3a05b0f937e7c452ad118d892137410dc01d2be6",
+  "tree": "201a4e21818920beef0081acc3c226bc61b0d039",
+  "headSha": "8f6ef84dea454f8c7587124df08afd5e3dea6245",
+  "baseSha": "02c13ea6ff3b53812e9b28992d7e668eabaa9855",
+  "runId": "38389227804",
+  "pr": "182",
+  "channel": "production",
+  "basePath": "/papertrail-reader/",
+  "version": "2.0.0",
+  "sourceBranch": "hotfix/177-visual-qa-activation",
+  "publish": true,
+  "files": {
+    "assets/index-B2YOT7YC.js": "70f27561770b90b2900170e9349d0e2bc5af50bcf39d52ee026ccb78d45e4eef",
+    "assets/index-CFGCc1QB.css": "6013d37b5997a2e69fbdea98d22614cad55dffdf669eb526df616934eae091db",
+    "assets/pdf-lOx2wNKp.js": "084e3366a3f8af2dab9434c72f099e59e4677a772ddc45a6cf1b993abfba621f",
+    "assets/pdf.worker.min-BW_T5_9M.js": "5f242acc085fce8ec0a1f494985b0c5060ed8d10dbb8d5c953a56a2b95dc2a23",
+    "assets/pdf.worker.min-Dswkl-cV.mjs": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386",
+    "assets/src-GKdq1DKB.js": "4ecb5fcf45794ba4e0219344ab795a04a76a38cee02b16514e602390ea1786ef",
+    "channel.json": "5ac57db00efde8354e5593bc8e37d616e5279ec4f687b25532bda9a029733c7c",
+    "index.html": "9c22fc3b4fb599683111637e2bd7912fb42128409745aeeacf76d1c71082a5a8",
+    "papertrail.svg": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c"
+  }
+}
