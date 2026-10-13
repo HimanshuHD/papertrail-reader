@@ -360,7 +360,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.draft == false && (github.event.action != 'edited' || github.event.changes.base != null))
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -397,7 +397,7 @@ jobs:
           overwrite: true
   browser:
     needs: frontend
-    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && github.event.pull_request.draft == false) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    if: needs.frontend.outputs.website == 'true' && ((github.event.pull_request.base.ref == 'main' && (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false)) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
     uses: ./.github/workflows/browser-e2e.yml
     with:
       build_run: ${{ format('{0}', github.run_id) }}
@@ -407,7 +407,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && (github.event_name == 'workflow_dispatch' || github.event.pull_request.draft == false)
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     runs-on: ubuntu-latest
     steps:
@@ -762,6 +762,10 @@ jobs:
 name: Publish website
 on:
   workflow_call:
+    outputs:
+      deployment_url:
+        description: Published channel URL
+        value: ${{ jobs.publish.outputs.site_url }}
     inputs:
       branch:
         required: true
@@ -803,9 +807,11 @@ jobs:
     if: github.event_name != 'pull_request_target' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      site_url: ${{ steps.urls.outputs.site_url }}
     environment:
       name: github-pages
-      url: ${{ steps.deploy.outputs.page_url }}
+      url: ${{ steps.urls.outputs.site_url }}
     permissions:
       actions: read
       contents: write
@@ -949,6 +955,13 @@ jobs:
       - uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4
         id: deploy
         if: steps.assemble.outputs.publish == 'true'
+      - name: Report published channel URL
+        id: urls
+        if: steps.deploy.outcome == 'success'
+        env:
+          SITE_URL: ${{ steps.deploy.outputs.page_url }}
+          TARGET_BRANCH: ${{ inputs.branch || 'main' }}
+        run: node scripts/deployment-url.mjs
       - name: Verify live channel identity and critical assets
         if: steps.deploy.outcome == 'success'
         env:
@@ -966,10 +979,12 @@ jobs:
       - name: Record publication outcome and synchronization requirements
         if: always()
         env:
+          CHANNEL_URL: ${{ steps.urls.outputs.site_url }}
           STATUS: ${{ job.status }}
           DEPLOYED: ${{ steps.deploy.outcome }}
           SITE_URL: ${{ steps.deploy.outputs.page_url }}
         run: |
+          if [ -n "$CHANNEL_URL" ]; then echo "Published app: [$CHANNEL_URL]($CHANNEL_URL)" >> "$GITHUB_STEP_SUMMARY"; fi
           echo "Publication status: $STATUS. Pages action: ${DEPLOYED:-not run}. URL: $SITE_URL" >> "$GITHUB_STEP_SUMMARY"
           echo "A Pages success without live verification/receipt is not accepted delivery. Fix failures or run saved-state reconciliation." >> "$GITHUB_STEP_SUMMARY"
           echo "After production hotfixes/release fixes, synchronize main/release into staging and any active release branch using reviewed PRs." >> "$GITHUB_STEP_SUMMARY"
@@ -1098,3 +1113,23 @@ This standalone guide preserves the explanation requested in chat without rewrit
 ## Checklist-edit CI timing
 
 A title/body/checklist edit may occur while full CI for the same commit is still running. Its metadata gate waits up to 15 minutes, polling every 15 seconds for a successful current artifact. It checks the original head/base on every poll and still verifies artifact identity/checksums. Changed source, ineligible PRs and API errors fail rather than being treated as acceptance. If no accepted artifact appears within the limit, the gate fails; rerun after fixing/finishing full CI. This wait never runs application tests or publishes a site.
+
+## Editing a merged or closed PR
+
+Candidate jobs require an open ready PR. Updating checklists or descriptions after closure/merge skips candidate validation; it does not attempt to publish or reuse a closed PR artifact. Existing merge/deployment evidence remains associated with its recorded source.
+
+## First staging browser run — corrective follow-up
+
+Integration run 38277443499 on staging merge `08b1cb7` verified the candidate but failed Browser E2E: 42 failed, 265 passed and 12 intentional skips across the two shards. Publication was correctly skipped; this is not accepted staging delivery.
+
+Follow-up PR #172 uses the retained `feat/130-staging-delivery` branch synchronized to staging. It covers:
+
+- Closed/merged PR checklist edits skip candidate validation (failed metadata run 38277731581).
+- All statistics database reads and fault-injection hooks use the staging namespace; forty failed reading-insights cases used the production name.
+- Narrow cross-page native-drag geometry has sufficient height for both pages and validates every endpoint hits the text layer, preventing the wrapping staging footer being selected. Full text/anchor assertions remain intact.
+
+Local validation is separate from native browser acceptance. Local Chromium installation failed due an invalid download, so native corrected cases must be accepted by the next integration Browser E2E after the fix merges. Earlier failed-run evidence is retained, not replaced with a success claim.
+
+## Deployment result URL
+
+The shared GitHub Pages action returns the aggregate production-root URL. The publisher additionally exposes `deployment_url` and sets its environment link/job summary to the actual published channel: root for production, `/staging/` for staging, or `/preview/pr-N/` for a numbered preview. Live aggregate verification continues to use the root so unrelated channels are checked. Reconciliation without a source plan reports the selected target environment.
