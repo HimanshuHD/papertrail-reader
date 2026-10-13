@@ -144,4 +144,4 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 
 [Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
 
-During the temporary Design QA bootstrap, manual **Frontend CI on staging** runs the fixed #176 visual smoke instead of building/publishing a staging recovery candidate. Main manual recovery and PR acceptance remain unchanged. See [the staging smoke procedure](visual-qa.md#test-before-main-activation) before running manual CI. Remove the bridge after verification, before tooling promotion.
+During the temporary Design QA bootstrap, request #176 capture by adding **qa:visual** to that ready PR after current Candidate validation succeeds. Frontend CI on main has no manual trigger yet; the old Run workflow instructions are superseded. See [the label-triggered staging smoke procedure](visual-qa.md#test-before-main-activation). Manual recovery conditions are restored; normal label events do not rebuild or publish.

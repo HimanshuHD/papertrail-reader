@@ -4,19 +4,22 @@ PaperTrail owns this workflow; the Product Design `design-qa` instruction docume
 
 ## Test before main activation
 
-The standalone manual workflow is not yet registered on main. During the temporary #177 bootstrap, the already registered **Frontend CI** workflow provides the entry point. This bridge targets **PR #176** explicitly and only handles manual dispatches on **staging**; PR validation and full Browser E2E triggers remain unchanged.
+The standalone manual workflow is not registered on main. **Frontend CI on main also lacks workflow_dispatch**, so the previous manual Frontend CI UI workaround cannot expose a Run workflow button. This supersedes the #179 manual-only smoke instructions.
 
-1. Owner reviews and merges the smoke-entry tooling PR into staging.
-2. Update #176's branch from the resulting current staging, keep it ready, and wait for fresh successful Candidate validation. Do not merge #176 yet.
-3. In GitHub Actions, open **Frontend CI** (not Visual QA) → **Run workflow** → select **staging** → **Run workflow**. No new form inputs, CLI, local installation or main promotion are needed. Selecting staging manually is the explicit request to run this temporary smoke mode.
-4. Inspect the **Visual QA smoke (PR #176) / capture** job. It calls the same `visual-qa.yml` workflow through `workflow_call` at the dispatched staging SHA; there is no duplicate capture implementation.
-5. Download `visual-qa-pr-176-RUN-ATTEMPT`, open `visual-evidence/comparison.html` with the image folders beside it, and inspect assertions, traces and separate statuses. Record the real run/source and findings in #177/#176. Browser assertions may pass while owner design review remains pending and regression stays not-run.
+During this temporary #177 bootstrap, request a smoke explicitly by adding **qa:visual** to **PR #176**. The existing Frontend CI workflow listens for that PR label event in the current staging/PR workflow definition. No new default-branch workflow or manual Run button is required.
 
-This staging dispatch intentionally skips **Validate and build website**, **Candidate validation**, and full **Browser E2E**. It consumes #176's previously accepted candidate instead of building a different revision. It produces no candidate-build or promotion artifact and does not request deployment. The delivery selector recognizes a successful QA-only run from its latest job/artifact inventory and skips promotion. Existing main manual recovery and normal PR acceptance remain unchanged.
+1. Owner reviews and merges the label-entry tooling PR into staging.
+2. Update #176's branch from resulting staging, keep it open/ready, and wait for fresh successful Candidate validation. Do not merge #176 yet.
+3. Open PR #176 → Labels → add **qa:visual**. If it does not exist yet, create it once under the repository's Issues → Labels → New label. Only that exact label on ready same-repository staging PR #176 requests the temporary smoke. Other labels, drafts, closed/fork/main PRs do not run it.
+4. Open #176's newest **Frontend CI** run, triggered by **labeled**, and inspect **Visual QA smoke (PR #176) / capture**. Normal opened/synchronize runs skip this job; those skipped rows do not mean a capture exists.
+5. After execution, download `visual-qa-pr-176-RUN-ATTEMPT` from that run's Summary → Artifacts. Open `visual-evidence/comparison.html` with image folders beside it and review assertions, traces and separate statuses. Artifacts exist only after the capture/report/upload steps have run.
+6. For a new capture after changes, first wait for fresh successful Candidate validation, then remove and re-add qa:visual. Keeping the label in place does not automatically capture every commit.
 
-**Temporary operational change:** manual Frontend CI on staging is QA smoke for #176 while this bridge is installed, not the usual staging rebuild/recovery operation. Do not use it expecting publication. If #176 is draft/closed/stale or lacks a current accepted artifact, the QA job blocks with the provenance reason.
+The label run skips frontend rebuild, Candidate validation and full Browser E2E. It consumes #176's previously accepted current preview candidate. Browser tooling is checked out from the event's approved staging base SHA, never from the PR merge/head; the reusable capture guard validates the label, PR eligibility and explicit tooling SHA. Evidence records the actual tooling SHA. All execution has read-only permissions, no secrets and localhost-only browser traffic. Label-triggered PR runs do not enter manual recovery/promotion; the existing QA-only delivery guard remains for earlier smoke runs.
 
-After successful rendered verification and any corrections, remove the fixed #176 smoke caller and restore the original manual-staging conditions for frontend/gate in a reviewed staging PR before promoting the final tooling to main. Keep the reusable capture entry and the no-publication guard. Then activate standalone Visual QA through the reviewed tooling promotion and smoke-test its dispatch once. Do not promote the unverified capture workflow simply to register it.
+Manual Frontend CI conditions are restored to normal rebuild/recovery when dispatch becomes available. There is no temporary takeover of manual staging recovery anymore. If #176 is stale or lacks an accepted artifact, capture blocks with the provenance reason.
+
+After successful rendered verification and corrections, remove the fixed #176 label caller in a reviewed staging cleanup before the final tooling promotion to main. Keep the reusable capture entry and no-publication guard. Then activate standalone Visual QA through the reviewed promotion and smoke-test its manual dispatch once. Do not promote unverified capture tooling merely to register it.
 
 ## Run Visual QA
 
