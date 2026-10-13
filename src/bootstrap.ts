@@ -15,9 +15,13 @@ export async function bootstrap() {
   const router = createAppRouter()
   app.use(router)
   await router.isReady()
+  startupScreen.complete('route')
   app.mount('#app')
   await nextTick()
   // ReaderView signals readiness after saved metadata has been checked.
-  if (router.currentRoute.value.name !== 'reader') startupScreen.ready()
+  if (router.currentRoute.value.name !== 'reader') {
+    startupScreen.complete('library')
+    startupScreen.ready()
+  }
   if (import.meta.hot) import.meta.hot.dispose(stopTheme)
 }

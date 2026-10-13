@@ -406,9 +406,11 @@ onMounted(async () => {
     selectedLibraryDocumentId.value =
       saved.documents.find((item) => item.relativePath === saved.selectedPath)?.id ?? null
     // Saved metadata is usable before permission checks or folder rescans finish.
+    startupScreen.complete('library')
     startupScreen.stage('reader', 'Preparing the reader')
     void nextTick().then(() => startupScreen.ready())
   })
+  startupScreen.complete('library')
   startupScreen.stage('reader', 'Preparing the reader')
   await nextTick()
   startupScreen.ready()

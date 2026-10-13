@@ -27,15 +27,22 @@
         <p>Opening your reading space</p>
       </div>
       <div class="startup-progress">
-        <p data-startup-status role="status" aria-live="polite">Loading your reading space</p>
+        <div class="startup-progress-heading">
+          <p data-startup-status role="status" aria-live="polite">Loading your reading space</p>
+          <span data-startup-percent aria-hidden="true">0%</span>
+        </div>
         <div
           class="startup-track"
           role="progressbar"
           aria-label="Opening PaperTrail"
-          aria-valuetext="Initialization in progress"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-valuetext="0 of 4 startup steps complete"
         >
           <span></span>
         </div>
+        <p class="startup-progress-caption" data-progress-caption>Startup steps</p>
         <ol class="startup-steps" aria-label="Startup stages">
           <li data-step="library" data-state="current" aria-current="step"><span></span>Library</li>
           <li data-step="reader" data-state="pending"><span></span>Reader</li>
@@ -73,7 +80,7 @@
         }
         window.addEventListener('error', scriptError, true)
         window.addEventListener(
-          'papertrail-startup-ready',
+          'papertrail-startup-initialized',
           () => {
             clearTimeout(timer)
             window.removeEventListener('error', scriptError, true)

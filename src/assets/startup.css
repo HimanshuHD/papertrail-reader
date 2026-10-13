@@ -68,7 +68,7 @@
   width: min(480px, 100%);
   margin-top: 30px;
 }
-.startup-progress > p {
+.startup-progress-heading p {
   margin: 0 0 12px;
   text-align: left;
   color: #d3dde4;
@@ -83,11 +83,11 @@
 }
 .startup-track span {
   display: block;
-  width: 40%;
+  width: var(--startup-progress, 0%);
   height: 100%;
   border-radius: inherit;
   background: #a1efd2;
-  animation: startup-progress 1.8s ease-in-out infinite alternate;
+  transition: width 120ms linear;
 }
 .startup-steps {
   display: flex;
@@ -289,6 +289,25 @@
     animation: none;
   }
   .startup-track span {
-    transform: translateX(75%);
+    transition: none;
   }
+}
+
+.startup-progress-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+.startup-progress-heading > span {
+  flex-shrink: 0;
+  font-size: 14px;
+  color: #d3dde4;
+  font-variant-numeric: tabular-nums;
+}
+.startup-progress-caption {
+  margin: 9px 0 0;
+  text-align: left;
+  font-size: 11px;
+  color: #93a7b4;
 }

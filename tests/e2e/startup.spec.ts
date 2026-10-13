@@ -16,7 +16,7 @@ test('cold startup shows the supplied book screen and reveals the restored reade
     const screen = page.locator('#startup-loading')
     await expect(screen).toBeVisible()
     await expect(screen.getByRole('heading')).toHaveText('Your next chapter is loading')
-    await expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow')
+    await expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0')
     await expect(page.locator('#app')).toHaveAttribute('inert', '')
     await expect(screen.locator('.startup-book')).toHaveCSS('background-size', '400% 400%')
     await screen.screenshot({ path: info.outputPath('startup-loading.png') })
