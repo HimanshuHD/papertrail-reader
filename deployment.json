@@ -162,12 +162,12 @@
   },
   "rollbackHold": {},
   "staging": {
-    "sha": "ba1b68fca5f0e206b4896b224c38016e90efbc86",
-    "runId": "38384442222",
-    "sourceSha": "bcf80a0cd9a99f54e2f17cb394ac4e58b9663281",
-    "tree": "3303c78d5e3e395c84a0e7fa4674c9f0a636bbe3",
+    "sha": "746053af3ca195945634e4a6aef4174bc4dee3fc",
+    "runId": "38389088888",
+    "sourceSha": "bdc760a371613b3aee8709b40543725d5f4d3fa1",
+    "tree": "201a4e21818920beef0081acc3c226bc61b0d039",
     "version": "2.0.0",
     "branch": "staging",
-    "archiveId": "3303c78d5e3e395c84a0e7fa4674c9f0a636bbe3-38384442222"
+    "archiveId": "201a4e21818920beef0081acc3c226bc61b0d039-38389088888"
   }
 }
