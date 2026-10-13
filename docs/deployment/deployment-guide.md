@@ -358,15 +358,7 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main, staging]
-    types:
-      [
-        opened,
-        ready_for_review,
-        synchronize,
-        reopened,
-        converted_to_draft,
-        edited,
-      ]
+    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited]
   workflow_dispatch:
 permissions:
   contents: read
@@ -390,7 +382,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - run: npm run lint
@@ -500,7 +492,7 @@ on:
   push:
     branches: [main, staging]
   schedule:
-    - cron: "23,53 * * * *"
+    - cron: '23,53 * * * *'
   workflow_run:
     workflows: [Frontend CI]
     types: [completed]
@@ -695,7 +687,7 @@ jobs:
           ref: ${{ inputs.source_ref || github.sha }}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
+          node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -792,27 +784,27 @@ on:
         required: true
         type: string
   schedule:
-    - cron: "17,47 * * * *"
+    - cron: '17,47 * * * *'
   pull_request_target:
     branches: [main, staging]
     types: [closed, converted_to_draft, reopened]
   workflow_dispatch:
     inputs:
       branch:
-        description: "Target environment branch"
+        description: 'Target environment branch'
         type: choice
         options: [staging, main]
         default: staging
       operation:
-        description: "Preview, saved-state recovery, or explicit rollback"
+        description: 'Preview, saved-state recovery, or explicit rollback'
         type: choice
         options: [preview, reconcile, rollback]
         default: preview
       pr_number:
-        description: "Ready PR number for preview"
+        description: 'Ready PR number for preview'
         type: string
       archive_id:
-        description: "Published archive tree-SHA/run-ID for rollback"
+        description: 'Published archive tree-SHA/run-ID for rollback'
         type: string
 permissions:
   contents: read
