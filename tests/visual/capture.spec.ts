@@ -6,6 +6,8 @@ import { createHash } from 'node:crypto'
 const freeze = await fs.readFile('tests/visual/freeze.css', 'utf8')
 
 const startup = (process.env.VISUAL_PROFILE || 'startup') === 'startup'
+const candidate = JSON.parse(await fs.readFile('dist/build.json', 'utf8').catch(() => '{}'))
+const preview = candidate.channel === 'preview'
 
 async function capture(page: Page, info: TestInfo, state: string, regions: string[] = []) {
   await page.evaluate(async () => {
@@ -39,6 +41,18 @@ async function capture(page: Page, info: TestInfo, state: string, regions: strin
           () => matchMedia('(prefers-reduced-motion: reduce)').matches,
         ),
         spriteFrame: regions.length ? 0 : null,
+        progress: await page.evaluate(
+          () =>
+            document
+              .querySelector('#startup-loading [role=progressbar]')
+              ?.getAttribute('aria-valuenow') ?? null,
+        ),
+        progressMode: await page.evaluate(
+          () => document.querySelector('#startup-loading')?.getAttribute('data-mode') ?? null,
+        ),
+        captureClock: startup
+          ? 'paused before navigation; loading and error captures at elapsed 0ms'
+          : 'native',
         browser: page.context().browser()?.version(),
         os: process.platform,
         osRelease: await fs.readFile('/etc/os-release', 'utf8').catch(() => ''),
@@ -57,13 +71,55 @@ async function capture(page: Page, info: TestInfo, state: string, regions: strin
   )
 }
 
-async function ready(page: Page) {
+async function ready(page: Page, elapsed = 0) {
+  if (startup) {
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, 'visualStartupInitialized')))
+      .toBe(true)
+    const screen = page.locator('#startup-loading')
+    if (preview && elapsed < 7000) {
+      await expect(screen).toHaveAttribute('data-state', 'loading')
+      await expect(screen).toHaveAttribute('aria-busy', 'false')
+      await expect(page.locator('#app')).toHaveAttribute('inert', '')
+      await page.clock.runFor(6999 - elapsed)
+      await expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '99')
+      expect(await page.evaluate(() => Reflect.get(window, 'visualStartupReady'))).toBe(false)
+      await page.clock.runFor(1)
+    }
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, 'visualStartupReady')))
+      .toBe(true)
+    if (!(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches))) {
+      await expect(screen).toHaveAttribute('data-state', 'ready')
+      await expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+      await expect(screen.locator('[data-startup-percent]')).toHaveText('100%')
+    }
+    await expect(page.locator('#app')).not.toHaveAttribute('inert')
+    // Dismissal is immediate for non-preview or a preview already held for seven seconds.
+    // Drive the real exit timer without adding wall-clock sleeps to the suite.
+    await page.clock.runFor(180)
+  }
   await expect(page.locator('#startup-loading')).toHaveCount(0)
   await expect(page.getByRole('main', { name: 'PaperTrail application' })).toBeVisible()
   await expect(page.locator('#app')).not.toHaveAttribute('inert')
 }
 
 test.beforeEach(async ({ page }, info) => {
+  if (startup) {
+    const time = new Date('2026-01-01T00:00:00Z')
+    await page.clock.install({ time })
+    await page.clock.pauseAt(new Date(time.getTime() + 1000))
+    await page.addInitScript(() => {
+      Reflect.set(window, 'visualStartupInitialized', false)
+      Reflect.set(window, 'visualStartupReady', false)
+      window.addEventListener('papertrail-startup-initialized', () =>
+        Reflect.set(window, 'visualStartupInitialized', true),
+      )
+      window.addEventListener('papertrail-startup-ready', () =>
+        Reflect.set(window, 'visualStartupReady', true),
+      )
+    })
+  }
   const theme = info.project.use.colorScheme === 'dark' ? 'dark' : 'light'
   await page.addInitScript((theme) => localStorage.setItem('papertrail.theme.v1', theme), theme)
   // Static candidate execution has no access to the runner token or arbitrary network.
@@ -107,7 +163,19 @@ for (const reduced of [false, true]) {
           .toBe(true)
         await expect(screen).toHaveAttribute('data-state', 'loading')
         await expect(screen.getByRole('heading')).toHaveText('Your next chapter is loading')
-        await expect(screen.getByRole('progressbar')).not.toHaveAttribute('aria-valuenow')
+        await expect(screen).toHaveAttribute('data-mode', preview ? 'preview' : 'startup')
+        const progress = screen.getByRole('progressbar')
+        await expect(progress).toHaveAttribute('aria-valuemin', '0')
+        await expect(progress).toHaveAttribute('aria-valuemax', '100')
+        await expect(progress).toHaveAttribute('aria-valuenow', '0')
+        await expect(progress).toHaveAttribute(
+          'aria-valuetext',
+          preview ? '0% of preview review time' : '0 of 4 startup steps complete',
+        )
+        await expect(screen.locator('[data-startup-percent]')).toHaveText('0%')
+        await expect(screen.locator('[data-progress-caption]')).toHaveText(
+          preview ? 'Animation preview · 7-second review' : 'Startup steps',
+        )
         await expect(page.locator('#app')).toHaveAttribute('inert', '')
         const book = screen.locator('.startup-book')
         await expect(book).toHaveCSS('background-size', '400% 400%')
@@ -142,11 +210,17 @@ for (const reduced of [false, true]) {
           '.startup-copy',
           '.startup-progress',
         ])
+        // Screenshots retain the real zero-percent state; behavior checks advance time afterward.
+        await page.clock.runFor(3500)
+        await expect(progress).toHaveAttribute('aria-valuenow', preview ? '50' : '0')
+        await expect(screen.locator('[data-startup-percent]')).toHaveText(preview ? '50%' : '0%')
+        await expect(screen).toHaveAttribute('data-state', 'loading')
+        await expect(page.locator('#app')).toHaveAttribute('inert', '')
       }
     } finally {
       if (release) release()
     }
-    await ready(page)
+    await ready(page, startup ? 3500 : 0)
     if (!reduced) {
       await capture(page, info, 'ready')
       const hide = page.getByRole('button', { name: 'Hide library', exact: true })
@@ -194,7 +268,17 @@ test('bootstrap failure is actionable and retry recovers', async ({ page }, info
   await expect(retry).toBeVisible()
   await retry.focus()
   await expect(retry).toBeFocused()
+  await expect(page.locator('#startup-loading [role=progressbar]')).toHaveAttribute(
+    'aria-valuenow',
+    '0',
+  )
   await capture(page, info, 'error', ['.startup-copy', '.startup-progress'])
+  await page.clock.runFor(7000)
+  await expect(page.locator('#startup-loading')).toHaveAttribute('data-state', 'error')
+  await expect(page.locator('#startup-loading [role=progressbar]')).toHaveAttribute(
+    'aria-valuenow',
+    '0',
+  )
   await page.unroute(request)
   const beforeRetry = consoleErrors.length
   await retry.press('Enter')
@@ -219,4 +303,34 @@ test('bootstrap failure is actionable and retry recovers', async ({ page }, info
       .filter((error) => !/Failed to load resource: net::ERR_FAILED/.test(error)),
   ).toEqual([])
   expect(consoleErrors.slice(beforeRetry)).toEqual([])
+})
+
+test('slow bootstrap never reports completion before readiness or adds a second preview hold', async ({
+  page,
+}) => {
+  test.skip(!startup, 'Shell-only profile has no startup progress contract')
+  let release!: () => void
+  let intercepted = false
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  await page.route('**/assets/bootstrap-*.js', async (route) => {
+    intercepted = true
+    await held
+    await route.continue()
+  })
+  try {
+    await page.goto('./#/app', { waitUntil: 'domcontentloaded' })
+    await expect.poll(() => intercepted).toBe(true)
+    await page.clock.runFor(7000)
+    await expect(page.locator('#startup-loading')).toHaveAttribute('data-state', 'loading')
+    await expect(page.locator('#startup-loading [role=progressbar]')).toHaveAttribute(
+      'aria-valuenow',
+      preview ? '99' : '0',
+    )
+    expect(await page.evaluate(() => Reflect.get(window, 'visualStartupReady'))).toBe(false)
+  } finally {
+    release()
+  }
+  await ready(page, 7000)
 })
