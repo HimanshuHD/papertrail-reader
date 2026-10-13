@@ -91,7 +91,7 @@ async function ready(page: Page, elapsed = 0) {
       .toBe(true)
     if (!(await page.evaluate(() => matchMedia('(prefers-reduced-motion: reduce)').matches))) {
       await expect(screen).toHaveAttribute('data-state', 'ready')
-      await expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100')
+      await expect(screen.locator('[role=progressbar]')).toHaveAttribute('aria-valuenow', '100')
       await expect(screen.locator('[data-startup-percent]')).toHaveText('100%')
     }
     await expect(page.locator('#app')).not.toHaveAttribute('inert')
