@@ -1,0 +1,25 @@
+{
+  "schema": 2,
+  "sha": "120b06d7317a8571775ed639222c703298748c67",
+  "tree": "f844fcccde6f5d3972fd3e19d37c74189d54b8fc",
+  "headSha": "fd89533d0b9b1542becc009699508fef633fd381",
+  "baseSha": "08b1cb7216e73ac2b5f1d117774eae69565db803",
+  "runId": "38278999891",
+  "pr": "172",
+  "channel": "staging",
+  "basePath": "/papertrail-reader/staging/",
+  "version": "2.0.0",
+  "sourceBranch": "feat/130-staging-delivery",
+  "publish": true,
+  "files": {
+    "assets/index-CFGCc1QB.css": "6013d37b5997a2e69fbdea98d22614cad55dffdf669eb526df616934eae091db",
+    "assets/index-S32G4l2K.js": "574e0946d9ece22e842ea0018cd03afe74a7c40529bd55cfaf074a4832bfc295",
+    "assets/pdf-BpAUndHL.js": "73b2627bd4dc287c6cfe853530fdad9231d75e2146e4b1d8680de9c27eb53ea9",
+    "assets/pdf.worker.min-CfFUUJQW.js": "709193014b6a1e6a6d9098e54ca8a617bd8fb13a10db2c9f0efaf5bacd0dccfd",
+    "assets/pdf.worker.min-Dswkl-cV.mjs": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386",
+    "assets/src-D6uEOq2-.js": "6d9a362b1d32a3ce587e994766d863090e0da4962747d348c46ef26084773b1f",
+    "channel.json": "5ac57db00efde8354e5593bc8e37d616e5279ec4f687b25532bda9a029733c7c",
+    "index.html": "ef4e66abd90d4105eb63c25eac218d2678a87bca428d3a53ec32a184af08f720",
+    "papertrail.svg": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c"
+  }
+}

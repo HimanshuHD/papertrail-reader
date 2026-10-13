@@ -148,5 +148,15 @@
   "production": {
     "sha": "02c13ea6ff3b53812e9b28992d7e668eabaa9855",
     "runId": "38057287169"
+  },
+  "rollbackHold": {},
+  "staging": {
+    "sha": "120b06d7317a8571775ed639222c703298748c67",
+    "runId": "38278999891",
+    "sourceSha": "e5f88aaae27eca317a677ecc7f6df7488fb08f31",
+    "tree": "f844fcccde6f5d3972fd3e19d37c74189d54b8fc",
+    "version": "2.0.0",
+    "branch": "staging",
+    "archiveId": "f844fcccde6f5d3972fd3e19d37c74189d54b8fc-38278999891"
   }
 }
