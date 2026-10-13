@@ -4,15 +4,17 @@ import { verifyCandidate } from './candidate-artifact.mjs'
 export async function assertVisualPR({ github, owner, repo, prNumber, plan }) {
   const repository = `${owner}/${repo}`
   const pr = (await github.rest.pulls.get({ owner, repo, pull_number: Number(prNumber) })).data
-  const branch = (await github.rest.repos.getBranch({ owner, repo, branch: 'staging' })).data
-  if (!previewEligible(pr, repository) || pr.base.ref !== 'staging')
-    throw new Error('Visual QA requires an open ready same-repository staging PR')
+  if (!previewEligible(pr, repository))
+    throw new Error(
+      'Visual QA requires an open ready same-repository staging, release or hotfix PR',
+    )
+  const branch = (await github.rest.repos.getBranch({ owner, repo, branch: pr.base.ref })).data
   if (pr.base.sha !== branch.commit.sha) throw new Error('PR base is stale')
   const comparison = (
     await github.rest.repos.compareCommits({ owner, repo, base: pr.base.sha, head: pr.head.sha })
   ).data
   if (comparison.merge_base_commit.sha !== pr.base.sha)
-    throw new Error('Update the PR branch from current staging before Visual QA')
+    throw new Error('Update the PR branch from its current base before Visual QA')
   if (!pr.merge_commit_sha) throw new Error('Current PR merge tree is unavailable')
   const merge = (await github.rest.git.getCommit({ owner, repo, commit_sha: pr.merge_commit_sha }))
     .data
@@ -28,7 +30,8 @@ export async function assertVisualPR({ github, owner, repo, prNumber, plan }) {
       plan.baseSha !== pr.base.sha ||
       plan.tree !== merge.tree.sha ||
       plan.sourceSha !== pr.merge_commit_sha ||
-      plan.pr !== String(pr.number))
+      plan.pr !== String(pr.number) ||
+      plan.branch !== pr.base.ref)
   )
     throw new Error('PR changed during Visual QA; recapture the current candidate')
   return { pr, merge }
@@ -36,19 +39,26 @@ export async function assertVisualPR({ github, owner, repo, prNumber, plan }) {
 
 export async function selectVisualCandidate(options) {
   if (!/^[1-9]\d*$/.test(String(options.prNumber))) throw new Error('Invalid PR number')
+  const profile = options.profile || 'auto'
+  if (!['auto', 'startup', 'shell'].includes(profile)) throw new Error('Invalid Visual QA profile')
   const { pr, merge } = await assertVisualPR(options)
-  const candidate = await selectCandidate({ ...options, branch: 'staging' })
-  const run = (
-    await options.github.rest.actions.getWorkflowRun({
-      owner: options.owner,
-      repo: options.repo,
-      run_id: Number(candidate.runId),
-    })
-  ).data
+  let runId
+  if (options.candidateRun) {
+    if (!/^[1-9]\d*$/.test(String(options.candidateRun))) throw new Error('Invalid candidate run')
+    runId = String(options.candidateRun)
+  } else {
+    const candidate = await selectCandidate({ ...options, branch: pr.base.ref })
+    runId = candidate.runId
+  }
+  const args = { owner: options.owner, repo: options.repo, run_id: Number(runId), per_page: 100 }
+  const run = (await options.github.rest.actions.getWorkflowRun(args)).data
+  // In a post-gate call the same run cannot finish until Visual QA itself finishes.
+  const gatePassedInProgress =
+    Boolean(options.candidateRun) && run.status === 'in_progress' && !run.conclusion
   if (
     run.event !== 'pull_request' ||
     run.path !== '.github/workflows/ci.yml' ||
-    run.conclusion !== 'success' ||
+    (!gatePassedInProgress && !(run.status === 'completed' && run.conclusion === 'success')) ||
     run.head_sha !== pr.head.sha ||
     run.head_branch !== pr.head.ref ||
     run.head_repository?.full_name !== `${options.owner}/${options.repo}` ||
@@ -56,19 +66,32 @@ export async function selectVisualCandidate(options) {
   )
     throw new Error('Candidate workflow/source/PR identity mismatch')
   const jobs = await options.github.paginate(options.github.rest.actions.listJobsForWorkflowRun, {
-    owner: options.owner,
-    repo: options.repo,
-    run_id: run.id,
+    ...args,
     filter: 'latest',
-    per_page: 100,
   })
   if (!jobs.some((job) => job.name === 'Candidate validation' && job.conclusion === 'success'))
     throw new Error('Successful current Candidate validation is required')
+  if (
+    !jobs.some((job) => job.name === 'Validate and build website' && job.conclusion === 'success')
+  )
+    throw new Error('Successful candidate frontend build is required')
+  const artifacts = await options.github.paginate(
+    options.github.rest.actions.listWorkflowRunArtifacts,
+    args,
+  )
+  if (!artifacts.some((a) => a.name === 'candidate-build' && !a.expired))
+    throw new Error('Current candidate artifact is missing or expired')
   const plan = {
-    ...candidate,
+    channel: 'preview',
+    branch: pr.base.ref,
     sourceSha: pr.merge_commit_sha,
     tree: merge.tree.sha,
-    profile: options.profile || 'startup',
+    headSha: pr.head.sha,
+    pr: String(pr.number),
+    runId,
+    baseSha: pr.base.sha,
+    profile,
+    acceptance: gatePassedInProgress ? 'candidate-gate-passed' : 'completed-run',
   }
   await assertVisualPR({ ...options, plan })
   return plan
@@ -84,4 +107,13 @@ export async function verifyVisualArtifact(folder, plan, base = '/papertrail-rea
   if (build.sha !== plan.sourceSha || build.baseSha !== plan.baseSha)
     throw new Error('Artifact source/base identity mismatch')
   return build
+}
+
+export function visualProfile(profile, html) {
+  if (!['auto', 'startup', 'shell'].includes(profile)) throw new Error('Invalid Visual QA profile')
+  return profile === 'auto'
+    ? /\bid\s*=\s*(["']?)startup-loading\1(?=[\s>])/.test(html)
+      ? 'startup'
+      : 'shell'
+    : profile
 }

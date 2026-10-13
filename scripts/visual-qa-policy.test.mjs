@@ -3,14 +3,19 @@ import assert from 'node:assert/strict'
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
-import { selectVisualCandidate, assertVisualPR, verifyVisualArtifact } from './visual-qa-policy.mjs'
+import {
+  selectVisualCandidate,
+  assertVisualPR,
+  verifyVisualArtifact,
+  visualProfile,
+} from './visual-qa-policy.mjs'
 import { writeCandidate } from './candidate-artifact.mjs'
 import { validateBaselines } from './visual-baselines.mjs'
 const base = 'a'.repeat(40),
   head = 'b'.repeat(40),
   source = 'c'.repeat(40),
   tree = 'd'.repeat(40)
-function fixture({ pull = {}, run = {}, jobs, merge = {}, comparison } = {}) {
+function fixture({ pull = {}, run = {}, jobs, artifacts, merge = {}, comparison } = {}) {
   const pr = {
     number: 177,
     state: 'open',
@@ -29,6 +34,7 @@ function fixture({ pull = {}, run = {}, jobs, merge = {}, comparison } = {}) {
     head_repository: { full_name: 'owner/repo' },
     pull_requests: [{ number: 177 }],
     conclusion: 'success',
+    status: 'completed',
     ...run,
   }
   const github = {
@@ -51,10 +57,13 @@ function fixture({ pull = {}, run = {}, jobs, merge = {}, comparison } = {}) {
         listWorkflowRuns: async () => ({ data: { workflow_runs: [workflow] } }),
         getWorkflowRun: async () => ({ data: workflow }),
         listWorkflowRunArtifacts: async () => ({
-          data: [{ name: 'candidate-build', expired: false }],
+          data: artifacts || [{ name: 'candidate-build', expired: false }],
         }),
         listJobsForWorkflowRun: async () => ({
-          data: jobs || [{ name: 'Candidate validation', conclusion: 'success' }],
+          data: jobs || [
+            { name: 'Candidate validation', conclusion: 'success' },
+            { name: 'Validate and build website', conclusion: 'success' },
+          ],
         }),
       },
     },
@@ -157,4 +166,59 @@ test('unapproved baseline cannot activate strict comparisons; incomplete approve
   } finally {
     await fs.rm(root, { recursive: true, force: true })
   }
+})
+
+test('post-gate queue uses its exact in-progress CI artifact without waiting for itself to finish', async () => {
+  const options = fixture({ run: { status: 'in_progress', conclusion: null } })
+  options.github.rest.actions.listWorkflowRuns = async () => {
+    assert.fail('Queued QA must not search for another completed revision')
+  }
+  const plan = await selectVisualCandidate({ ...options, candidateRun: '42' })
+  assert.equal(plan.runId, '42')
+  assert.equal(plan.acceptance, 'candidate-gate-passed')
+  await assert.rejects(selectVisualCandidate(options), /another completed/)
+})
+test('queued acceptance rejects missing/failed/skipped gates, frontend, artifacts and invalid run state', async () => {
+  for (const change of [
+    { jobs: [{ name: 'Candidate validation', conclusion: 'in_progress' }] },
+    { jobs: [{ name: 'Candidate validation', conclusion: 'failure' }] },
+    { jobs: [{ name: 'Candidate validation', conclusion: 'skipped' }] },
+    {
+      jobs: [
+        { name: 'Candidate validation', conclusion: 'success' },
+        { name: 'Validate and build website', conclusion: 'failure' },
+      ],
+    },
+    { artifacts: [] },
+    { artifacts: [{ name: 'candidate-build', expired: true }] },
+    { run: { status: 'queued', conclusion: null } },
+    { run: { status: 'completed', conclusion: 'failure' } },
+    { run: { head_sha: source } },
+    { run: { path: '.github/workflows/untrusted.yml' } },
+  ])
+    await assert.rejects(selectVisualCandidate({ ...fixture(change), candidateRun: '42' }))
+})
+test('manual selection requires completed success and main release/hotfix eligibility is supported', async () => {
+  await assert.rejects(
+    selectVisualCandidate(fixture({ run: { status: 'in_progress', conclusion: null } })),
+  )
+  for (const ref of ['release/2.1.0', 'hotfix/visual-qa']) {
+    const options = fixture({
+      pull: {
+        base: { ref: 'main', sha: base },
+        head: { sha: head, ref, repo: { full_name: 'owner/repo' } },
+      },
+      run: { head_branch: ref },
+    })
+    const plan = await selectVisualCandidate(options)
+    assert.equal(plan.branch, 'main')
+  }
+})
+test('auto profile chooses the artifact startup surface; shell fallback and explicit profiles remain available', () => {
+  assert.equal(visualProfile('auto', '<section id="startup-loading">'), 'startup')
+  assert.equal(visualProfile('auto', '<section id=startup-loading class=x>'), 'startup')
+  assert.equal(visualProfile('auto', '<div id="app">'), 'shell')
+  assert.equal(visualProfile('startup', '<div id="app">'), 'startup')
+  assert.equal(visualProfile('shell', '<section id="startup-loading">'), 'shell')
+  assert.throws(() => visualProfile('invalid', ''), /Invalid/)
 })

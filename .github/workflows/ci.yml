@@ -14,7 +14,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event.action != 'labeled' && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null)))
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -61,8 +61,10 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && github.event.action != 'labeled' && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
+    if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual')))
     needs: [frontend, browser]
+    outputs:
+      candidate_run: ${{ steps.previous.outputs.run_id || github.run_id }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -103,17 +105,17 @@ jobs:
           test "$FRONTEND" = success
           if [ "$TARGET" = main ] && [ "$WEBSITE" = true ]; then test "$BROWSER" = success; fi
 
-  # Temporary bootstrap until standalone Visual QA is activated on main.
-  # An explicit qa:visual label requests QA after current candidate validation succeeds.
-  visual-qa-smoke:
-    name: 'Visual QA smoke (PR #176)'
-    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && github.event.pull_request.number == 176 && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.repo.full_name == github.repository
+  visual-qa:
+    name: Visual QA
+    needs: gate
+    if: always() && needs.gate.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
     permissions:
       contents: read
       actions: read
       pull-requests: read
     uses: ./.github/workflows/visual-qa.yml
     with:
-      pr_number: '176'
-      profile: startup
+      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
+      profile: auto
       tooling_sha: ${{ github.event.pull_request.base.sha }}
+      candidate_run: ${{ needs.gate.outputs.candidate_run }}

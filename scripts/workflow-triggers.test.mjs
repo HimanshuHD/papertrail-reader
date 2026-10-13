@@ -9,85 +9,88 @@ import { execFileSync } from 'node:child_process'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
-test('candidate jobs skip checklist edits on merged and closed PRs but keep ready and manual validation', () => {
+test('ready candidates validate before optional labelled QA; labels do not bypass candidate checks', () => {
   const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
     (match) => match[1],
   )
   assert.equal(conditions.length, 4)
-  const allowed = (
-    state,
-    event,
-    action = 'edited',
-    ref = 'refs/heads/main',
-    base = 'main',
-    label = 'qa:visual',
+  const allowed = ({
+    state = 'open',
+    event = 'pull_request',
+    action = 'synchronize',
+    base = 'staging',
     draft = false,
+    label = 'qa:visual',
     sameRepo = true,
-  ) => {
+    gateResult = 'success',
+    labels = ['qa:visual'],
+  } = {}) => {
     const github = {
       event_name: event,
-      ref,
+      ref: base === 'main' ? 'refs/heads/main' : 'refs/heads/staging',
       repository: 'owner/repo',
       event: {
         action,
-        label: { name: label },
         changes: {},
+        label: { name: label },
         pull_request: {
-          number: 176,
+          number: 300,
           state,
           draft,
+          labels: labels.map((name) => ({ name })),
           base: { ref: base },
-          head: { repo: { full_name: sameRepo ? 'owner/repo' : 'foreign/repo' } },
+          head: { repo: { full_name: sameRepo ? 'owner/repo' : 'fork/repo' } },
         },
       },
     }
-    const needs = { frontend: { outputs: { website: action === 'labeled' ? undefined : 'true' } } }
-    return conditions.map((condition) =>
-      new Function('github', 'needs', 'always', 'return (' + condition + ')')(
+    const needs = { frontend: { outputs: { website: 'true' } }, gate: { result: gateResult } }
+    const evaluate = (expression) =>
+      new Function(
+        'github',
+        'needs',
+        'always',
+        'contains',
+        'return (' +
+          expression.replaceAll(
+            'github.event.pull_request.labels.*.name',
+            'github.event.pull_request.labels.map(label=>label.name)',
+          ) +
+          ')',
+      )(
         github,
         needs,
         () => true,
-      ),
-    )
+        (values, value) => values.includes(value),
+      )
+    const first = evaluate(conditions[0])
+    needs.frontend.outputs.website = first ? 'true' : undefined
+    const browser = evaluate(conditions[1])
+    const gate = evaluate(conditions[2])
+    if (!gate) needs.gate.result = 'skipped'
+    return [first, browser, gate, evaluate(conditions[3])]
   }
-  assert.deepEqual(allowed('closed', 'pull_request'), [false, false, false, false])
-  assert.deepEqual(allowed('open', 'pull_request', 'synchronize'), [true, true, true, false])
-  assert.deepEqual(allowed('open', 'pull_request'), [false, true, true, false])
-  assert.deepEqual(allowed('closed', 'workflow_dispatch'), [true, true, true, false])
-  assert.deepEqual(allowed('open', 'pull_request', 'labeled', 'refs/pull/176/merge', 'staging'), [
+  assert.deepEqual(allowed(), [true, false, true, true])
+  assert.deepEqual(allowed({ labels: [] }), [true, false, true, false])
+  assert.deepEqual(allowed({ action: 'labeled' }), [true, false, true, true])
+  assert.deepEqual(allowed({ action: 'labeled', label: 'type:enhancement' }), [
     false,
     false,
     false,
-    true,
+    false,
   ])
-  for (const [state, base, label, draft, sameRepo] of [
-    ['closed', 'staging', 'qa:visual', false, true],
-    ['open', 'main', 'qa:visual', false, true],
-    ['open', 'staging', 'type:enhancement', false, true],
-    ['open', 'staging', 'qa:visual', true, true],
-    ['open', 'staging', 'qa:visual', false, false],
-  ])
-    assert.deepEqual(
-      allowed(
-        state,
-        'pull_request',
-        'labeled',
-        'refs/pull/176/merge',
-        base,
-        label,
-        draft,
-        sameRepo,
-      ),
-      [false, false, false, false],
-    )
-
-  assert.deepEqual(allowed('closed', 'workflow_dispatch', 'edited', 'refs/heads/staging'), [
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, true])
+  assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
+  assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
+  assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])
+  assert.deepEqual(allowed({ gateResult: 'failure' }), [true, false, true, false])
+  assert.deepEqual(allowed({ gateResult: 'skipped' }), [true, false, true, false])
+  assert.deepEqual(allowed({ event: 'workflow_dispatch', state: 'closed' }), [
     true,
     false,
     true,
     false,
   ])
-  assert.deepEqual(allowed('open', 'pull_request', 'synchronize', 'refs/pull/176/merge'), [
+  assert.deepEqual(allowed({ event: 'workflow_dispatch', base: 'main', state: 'closed' }), [
     true,
     true,
     true,

@@ -7,25 +7,30 @@ on:
         type: string
       profile:
         required: false
-        default: startup
+        default: auto
         type: string
       tooling_sha:
-        description: Approved staging SHA for label-triggered bootstrap captures
+        description: Approved base SHA for post-candidate PR captures
+        required: false
+        default: ''
+        type: string
+      candidate_run:
+        description: Exact run whose Candidate validation passed
         required: false
         default: ''
         type: string
   workflow_dispatch:
     inputs:
       pr_number:
-        description: Ready same-repository staging PR
+        description: Ready same-repository staging, release or hotfix PR
         required: true
         type: string
       profile:
         description: Startup needs the loading feature in the selected artifact
         required: true
-        default: startup
+        default: auto
         type: choice
-        options: [startup, shell]
+        options: [auto, startup, shell]
 permissions:
   contents: read
   actions: read
@@ -35,7 +40,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   capture:
-    if: ((github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main') && !inputs.tooling_sha) || (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && github.event.pull_request.number == 176 && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.repo.full_name == github.repository && inputs.tooling_sha == github.event.pull_request.base.sha)
+    if: ((github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main') && !inputs.tooling_sha && !inputs.candidate_run) || (github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual') && inputs.tooling_sha == github.event.pull_request.base.sha && inputs.pr_number == format('{0}', github.event.pull_request.number) && inputs.candidate_run != '')
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -55,10 +60,11 @@ jobs:
         env:
           PR_NUMBER: ${{ inputs.pr_number }}
           PROFILE: ${{ inputs.profile }}
+          CANDIDATE_RUN: ${{ inputs.candidate_run }}
         with:
           script: |
             const {selectVisualCandidate}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/visual-qa-policy.mjs').href);
-            const plan=await selectVisualCandidate({github,...context.repo,prNumber:process.env.PR_NUMBER,profile:process.env.PROFILE});
+            const plan=await selectVisualCandidate({github,...context.repo,prNumber:process.env.PR_NUMBER,profile:process.env.PROFILE,candidateRun:process.env.CANDIDATE_RUN});
             require('node:fs').writeFileSync('visual-plan.json',JSON.stringify(plan));
             core.setOutput('run_id',plan.runId);
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
@@ -81,7 +87,7 @@ jobs:
       - name: Capture and assert the verified browser implementation
         env:
           E2E_BASE_PATH: ${{ steps.verify.outputs.base_path }}
-          VISUAL_PROFILE: ${{ inputs.profile }}
+          VISUAL_PROFILE: ${{ steps.verify.outputs.profile }}
         run: node scripts/run-visual-qa.mjs
       - name: Recheck current PR identity after capture
         if: always() && steps.verify.outcome == 'success'
@@ -98,6 +104,8 @@ jobs:
             }
       - name: Report separate acceptance statuses
         if: always()
+        env:
+          VISUAL_PROFILE: ${{ steps.verify.outputs.profile }}
         run: node scripts/visual-qa-report.mjs
       - name: Preserve all comparison evidence
         if: always()
