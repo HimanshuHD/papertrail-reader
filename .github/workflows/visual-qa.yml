@@ -1,0 +1,97 @@
+name: Visual QA
+on:
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: Ready same-repository staging PR
+        required: true
+        type: string
+      profile:
+        description: Startup needs the loading feature in the selected artifact
+        required: true
+        default: startup
+        type: choice
+        options: [startup, shell]
+permissions:
+  contents: read
+  actions: read
+  pull-requests: read
+concurrency:
+  group: visual-qa-${{ inputs.pr_number }}
+  cancel-in-progress: true
+jobs:
+  capture:
+    if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Select accepted current candidate
+        id: select
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          PR_NUMBER: ${{ inputs.pr_number }}
+          PROFILE: ${{ inputs.profile }}
+        with:
+          script: |
+            const {selectVisualCandidate}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/visual-qa-policy.mjs').href);
+            const plan=await selectVisualCandidate({github,...context.repo,prNumber:process.env.PR_NUMBER,profile:process.env.PROFILE});
+            require('node:fs').writeFileSync('visual-plan.json',JSON.stringify(plan));
+            core.setOutput('run_id',plan.runId);
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: candidate-build
+          path: incoming
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.select.outputs.run_id }}
+      - name: Verify provenance and every static file
+        id: verify
+        env:
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node scripts/verify-visual-artifact.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: visual-chromium-${{ runner.os }}-24.04-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+      - name: Capture and assert the verified browser implementation
+        env:
+          E2E_BASE_PATH: ${{ steps.verify.outputs.base_path }}
+          VISUAL_PROFILE: ${{ inputs.profile }}
+        run: node scripts/run-visual-qa.mjs
+      - name: Recheck current PR identity after capture
+        if: always() && steps.verify.outcome == 'success'
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const {assertVisualPR}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/visual-qa-policy.mjs').href);
+            try {
+              const plan=JSON.parse(require('node:fs').readFileSync('visual-plan.json'));
+              await assertVisualPR({github,...context.repo,prNumber:plan.pr,plan});
+            } catch(error) {
+              require('node:fs').writeFileSync('visual-evidence/stale-evidence.txt',String(error));
+              core.setFailed(String(error));
+            }
+      - name: Report separate acceptance statuses
+        if: always()
+        run: node scripts/visual-qa-report.mjs
+      - name: Preserve all comparison evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: visual-qa-pr-${{ inputs.pr_number }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            visual-plan.json
+            visual-evidence/
+            visual-results/
+            visual-report/
+          if-no-files-found: error
+          retention-days: 30

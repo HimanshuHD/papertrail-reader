@@ -139,3 +139,7 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 | merge-tracking.yml   | Main-merge issue evidence; no repository roadmap writes                                             |
 
 [Architecture](../architecture/deployment.md) · [Verification](verification.md) · [Documentation home](../README.md)
+
+## Design QA evidence
+
+[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
