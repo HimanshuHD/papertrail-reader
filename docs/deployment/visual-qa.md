@@ -98,3 +98,11 @@ The existing Browser E2E reusable workflow compares enabled approved baselines o
 Main/default-branch activation is delivered through the reviewed tooling promotion; its live acceptance, branch protections and broader release/recovery checks stay in #130/#175/#44/#32. This tooling is tracked in #177 under milestone 10 and the Roadmap 3 Wiki. Owner merges all PRs and changes administrative controls.
 
 [Deployment guide](deployment-guide.md) · [Publishing](publishing.md) · [Deployment architecture](../architecture/deployment.md)
+
+## Reading the comparison report
+
+Open `visual-evidence/comparison.html` with its screenshot folders intact. Every JSON section has **JSON** and **Details** choices; **Details** opens by default. Controls work offline without JavaScript and support keyboard navigation. JSON retains the full recorded payload. Existing artifacts retain their original layout.
+
+Overall evidence Details shows browser assertions, evidence availability, owner design review, visual regression, reason, stale evidence, missing captures and approval. Screenshot Details shows state/project, viewport/density, theme/route, reduced motion, sprite frame, progress/mode/clock, browser/OS/Playwright, run/attempt, tooling SHA, candidate PR/channel/run/head/base/source/tree/base path and screenshot checksum. Missing values say “Not recorded”; zero and false remain visible.
+
+Browser assertion and regression test cases use their Playwright JSON reports. Each case shows title/location/project, actual outcome, expected status and each attempt's status/duration/retry/errors/attachment paths. Run summaries show passed/failed/flaky/skipped counts, timing and setup errors. Attachment paths identify original evidence and are not rewritten as local links. Unavailable reports explicitly say unavailable/not run, never passed. Owner design approval remains separate.

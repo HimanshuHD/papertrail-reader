@@ -2,6 +2,14 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { validateBaselines } from './visual-baselines.mjs'
+import {
+  escapeHTML as escape,
+  evidenceDetails,
+  testCaseDetails,
+  testReportDetails,
+  jsonTabs,
+  detailsCSS,
+} from './visual-qa-details.mjs'
 await fs.mkdir('visual-evidence', { recursive: true })
 const readJSON = async (file) => {
   try {
@@ -84,20 +92,15 @@ if (stale)
   status.reason =
     'PR identity changed; evidence is historical and cannot accept the current candidate.'
 await fs.writeFile('visual-evidence/status.json', JSON.stringify(status, null, 2))
-const escape = (text) =>
-  String(text).replace(
-    /[&<>"']/g,
-    (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c],
-  )
 const regions = [
   { name: 'startup-brand', crop: [710, 65, 166, 90] },
   { name: 'startup-book', crop: [490, 215, 600, 375] },
   { name: 'startup-copy', crop: [510, 620, 570, 100] },
   { name: 'startup-progress', crop: [540, 735, 510, 135] },
 ]
-let html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>PaperTrail Design QA evidence</title><style>body{font:16px system-ui;margin:24px;background:#eee;color:#111}section{margin:32px 0}.pair{display:flex;gap:24px;align-items:flex-start;overflow:auto}figure{margin:0}figcaption{max-width:750px;padding:10px 0}img{max-width:none}pre{white-space:pre-wrap}.crop{background-image:url(${sourceURL});background-repeat:no-repeat;flex:none}</style><h1>Design QA comparison evidence</h1><pre>${escape(JSON.stringify(status, null, 2))}</pre><p>Source: owner mock, ${dimensions.width} × ${dimensions.height} pixels. Density interpreted as 1 for the 1586 × 992 CSS viewport; owner must verify that assumption. Source shows illustrative Reader stage/62% progress. Captured loading holds bootstrap at Library at genuine 0% progress with the browser clock paused before navigation. Preview progress represents review time; staging/production progress counts completed startup steps. These state differences require manual classification. Mobile and light-mode mocks are not supplied; those captures support responsive/state review, not strict source fidelity claims.</p>`
+let html = `<!doctype html><html lang="en"><meta charset="utf-8"><title>PaperTrail Design QA evidence</title><meta name="viewport" content="width=device-width, initial-scale=1"><style>${detailsCSS}body{font:16px system-ui;margin:24px;background:#eee;color:#111}section{margin:32px 0}.pair{display:flex;gap:24px;align-items:flex-start;overflow:auto}figure{margin:0}figcaption{max-width:750px;padding:10px 0}img{max-width:none}pre{white-space:pre-wrap}.crop{background-image:url(${sourceURL});background-repeat:no-repeat;flex:none}</style><h1>Design QA comparison evidence</h1>${jsonTabs('status', status, evidenceDetails(status, 'status'))}<p>Source: owner mock, ${dimensions.width} × ${dimensions.height} pixels. Density interpreted as 1 for the 1586 × 992 CSS viewport; owner must verify that assumption. Source shows illustrative Reader stage/62% progress. Captured loading holds bootstrap at Library at genuine 0% progress with the browser clock paused before navigation. Preview progress represents review time; staging/production progress counts completed startup steps. These state differences require manual classification. Mobile and light-mode mocks are not supplied; those captures support responsive/state review, not strict source fidelity claims.</p>`
 for (const capture of captures) {
-  html += `<section><h2>${escape(capture.project + ' / ' + capture.state)}</h2><pre>${escape(JSON.stringify(capture.identity, null, 2))}</pre>`
+  html += `<section><h2>${escape(capture.project + ' / ' + capture.state)}</h2>${jsonTabs('capture-' + captures.indexOf(capture), capture.identity, evidenceDetails(capture.identity, 'capture'))}`
   if (capture.state === 'loading' && capture.project === 'chromium-1586-dark') {
     html += `<div class="pair"><figure><img src="${sourceURL}" width="1586" height="992"><figcaption>Owner source, original pixels</figcaption></figure><figure><img src="${escape(capture.file)}"><figcaption>Browser implementation, same CSS viewport and density</figcaption></figure></div>`
     for (const region of regions) {
@@ -105,6 +108,32 @@ for (const capture of captures) {
       html += `<h3>${region.name}</h3><div class="pair"><figure><div class="crop" style="width:${width}px;height:${height}px;background-position:-${x}px -${y}px"></div><figcaption>Source region [${region.crop.join(', ')}], original scale</figcaption></figure><figure><img src="${escape(capture.project + '/loading-' + region.name + '.png')}"><figcaption>Actual implementation element; original scale, element dimensions may differ</figcaption></figure></div>`
     }
   } else html += `<img src="${escape(capture.file)}" style="max-width:100%">`
+  html += '</section>'
+}
+for (const reportName of ['assertions', 'regression']) {
+  const report = await readJSON(`visual-evidence/${reportName}.json`)
+  html += `<section><h2>${reportName === 'assertions' ? 'Browser assertion test cases' : 'Visual regression test cases'}</h2>`
+  if (!report) html += '<p>Test report unavailable or not run. This is not a pass.</p>'
+  else {
+    let index = 0
+    const suites = (items) => {
+      for (const suite of items || []) {
+        for (const spec of suite.specs || [])
+          for (const test of spec.tests || []) {
+            html += `<h3>${escape(spec.title)} / ${escape(test.projectName || 'Unknown project')}</h3>`
+            html += jsonTabs(
+              `${reportName}-${index++}`,
+              { ...spec, tests: [test] },
+              testCaseDetails(spec, test),
+            )
+          }
+        suites(suite.suites)
+      }
+    }
+    suites(report.suites)
+    if (!index) html += '<p>No test cases recorded. Inspect the JSON report for setup errors.</p>'
+    html += jsonTabs(`${reportName}-report`, report, testReportDetails(report, index))
+  }
   html += '</section>'
 }
 html += '</html>'

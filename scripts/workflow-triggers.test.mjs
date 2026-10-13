@@ -9,6 +9,18 @@ import { execFileSync } from 'node:child_process'
 const root = fileURLToPath(new URL('../', import.meta.url))
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8')
 
+test('integration completion events are limited to deployment branches, with recovery guard retained', () => {
+  const integration = read('.github/workflows/delivery.yml')
+  assert.match(
+    integration,
+    /workflow_run:\n {4}workflows: \[Frontend CI\]\n {4}branches: \[main, staging\]\n {4}types: \[completed\]/,
+  )
+  assert.match(integration, /workflow_run.event == 'workflow_dispatch'/)
+  assert.match(integration, /workflow_run.conclusion == 'success'/)
+  assert.match(integration, /push:\n {4}branches: \[main, staging\]/)
+  assert.match(integration, /schedule:/)
+})
+
 test('ready candidates validate before optional labelled QA; labels do not bypass candidate checks', () => {
   const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
     (match) => match[1],
@@ -78,7 +90,7 @@ test('ready candidates validate before optional labelled QA; labels do not bypas
     false,
     false,
   ])
-  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, true])
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, false])
   assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
   assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
   assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])

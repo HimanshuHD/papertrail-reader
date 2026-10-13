@@ -21,10 +21,12 @@ const pr = {
 }
 function fixture({
   state,
+  receipt = state,
   run = {},
   artifacts = [{ name: 'candidate-build', expired: false }],
   pull = pr,
   comparison = { status: 'ahead', files: [{ filename: 'src/App.vue' }] },
+  publishedTree = 'd'.repeat(40),
 } = {}) {
   const workflow = {
     id: 42,
@@ -41,14 +43,19 @@ function fixture({
       repos: {
         getBranch: async () => ({ data: { commit: { sha, commit: { tree: { sha: tree } } } } }),
         listPullRequestsAssociatedWithCommit: async () => ({ data: [pull] }),
-        getContent: async () => {
-          if (!state) throw Object.assign(new Error('Missing'), { status: 404 })
-          return { data: { content: Buffer.from(JSON.stringify(state)).toString('base64') } }
+        getContent: async ({ path }) => {
+          const value = path === '.publication-receipt.json' ? receipt : state
+          if (!value) throw Object.assign(new Error('Missing'), { status: 404 })
+          return { data: { content: Buffer.from(JSON.stringify(value)).toString('base64') } }
         },
         compareCommits: async () => ({ data: comparison }),
       },
       pulls: { get: async () => ({ data: pull }) },
-      git: { getCommit: async () => ({ data: { tree: { sha: tree } } }) },
+      git: {
+        getCommit: async ({ commit_sha }) => ({
+          data: { tree: { sha: commit_sha === head ? publishedTree : tree } },
+        }),
+      },
       actions: {
         listWorkflowRuns: async () => ({ data: { workflow_runs: [workflow] } }),
         getWorkflowRun: async () => ({ data: workflow }),
@@ -81,6 +88,53 @@ test('selects current validated content and rejects superseded branch events', a
   assert.equal(plan.tree, tree)
   assert.equal(plan.headSha, head)
   assert.equal((await selectCandidate({ ...fixture(), sourceSha: head })).skip, true)
+})
+
+test('history-only staging sync skips before requiring a PR or candidate', async () => {
+  const input = fixture({ state: { staging: { sourceSha: head } }, publishedTree: tree })
+  input.github.rest.repos.listPullRequestsAssociatedWithCommit = async () => {
+    assert.fail('Unchanged published tree must not require a merged PR')
+  }
+  input.github.rest.actions.listWorkflowRuns = async () => {
+    assert.fail('History-only sync must not build or select an artifact')
+  }
+  const result = await selectCandidate({ ...input, sourceSha: sha })
+  assert.equal(result.skip, true)
+  assert.match(result.reason, /History-only staging/)
+})
+
+test('changed, divergent, unrecorded or unknown published content cannot bypass PR validation', async () => {
+  for (const options of [
+    { state: { staging: { sourceSha: head } } },
+    {
+      state: { staging: { sourceSha: head } },
+      publishedTree: tree,
+      comparison: { status: 'diverged', files: [] },
+    },
+    { publishedTree: tree },
+    { state: { staging: {} }, publishedTree: tree },
+    { state: { staging: { sourceSha: head } }, publishedTree: null },
+    { state: { staging: { sourceSha: head } }, publishedTree: tree, receipt: null },
+    {
+      state: { staging: { sourceSha: head } },
+      publishedTree: tree,
+      receipt: { staging: { sourceSha: sha } },
+    },
+  ]) {
+    const input = fixture(options)
+    input.github.rest.repos.listPullRequestsAssociatedWithCommit = async () => ({ data: [] })
+    await assert.rejects(selectCandidate(input), /No validated merged PR/)
+  }
+})
+
+test('history-only shortcut does not apply to previews, main or manual recovery', async () => {
+  const input = fixture({
+    state: { staging: { sourceSha: head }, production: { sourceSha: head } },
+    publishedTree: tree,
+  })
+  assert.equal((await selectCandidate({ ...input, prNumber: 170 })).channel, 'preview')
+  await assert.rejects(selectCandidate({ ...input, branch: 'main' }), /No validated merged PR/)
+  await assert.rejects(selectCandidate({ ...input, manualRun: 42 }), /Invalid manual/)
 })
 
 test('failed or expired CI artifacts cannot promote', async () => {
@@ -207,4 +261,92 @@ test('metadata validation immediately rejects changed source and ineligible PRs'
       ),
       /changed|ready/,
     )
+})
+
+function metadataFixture({ run = {}, jobs, ...options } = {}) {
+  const input = fixture({
+    ...options,
+    run: {
+      status: 'completed',
+      conclusion: 'failure',
+      event: 'pull_request',
+      path: '.github/workflows/ci.yml',
+      head_sha: head,
+      head_branch: pr.head.ref,
+      pull_requests: [{ number: pr.number }],
+      ...run,
+    },
+  })
+  input.github.rest.actions.listJobsForWorkflowRun = async () => ({
+    data: jobs || [
+      { name: 'Validate and build website', conclusion: 'success', status: 'completed' },
+      { name: 'Candidate validation', conclusion: 'success', status: 'completed' },
+      { name: 'Visual QA / capture', conclusion: 'failure', status: 'completed' },
+    ],
+  })
+  return { ...input, prNumber: pr.number, candidateAcceptance: true, excludeRun: 99 }
+}
+
+test('metadata gate reuses candidate acceptance despite downstream QA failure or pending QA', async () => {
+  for (const run of [{}, { status: 'in_progress', conclusion: null }]) {
+    const plan = await selectCandidate(metadataFixture({ run }))
+    assert.equal(plan.runId, '42')
+  }
+})
+
+test('metadata gate rejects invalid provenance, missing artifacts and failed/skipped checks promptly', async () => {
+  for (const options of [
+    { run: { path: '.github/workflows/other.yml' } },
+    { run: { head_sha: sha } },
+    { run: { pull_requests: [{ number: 999 }] } },
+    { run: { head_repository: { full_name: 'foreign/repo' } } },
+    { artifacts: [{ name: 'candidate-build', expired: true }] },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'success' },
+        { name: 'Candidate validation', conclusion: 'failure' },
+      ],
+    },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'skipped' },
+        { name: 'Candidate validation', conclusion: 'success' },
+      ],
+    },
+  ])
+    await assert.rejects(
+      selectCandidate(metadataFixture(options)),
+      (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+    )
+  await assert.rejects(
+    selectCandidate({ ...metadataFixture(), excludeRun: 42 }),
+    (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+  )
+})
+
+test('metadata wait polls only active candidate producers and never another skipped-build metadata gate', async () => {
+  const active = metadataFixture({
+    run: { status: 'in_progress', conclusion: null },
+    jobs: [
+      { name: 'Validate and build website', status: 'in_progress', conclusion: null },
+      { name: 'Candidate validation', status: 'queued', conclusion: null },
+    ],
+  })
+  await assert.rejects(selectCandidate(active), (error) => error.code === 'CANDIDATE_NOT_READY')
+  const metadata = metadataFixture({
+    run: { status: 'in_progress', conclusion: null },
+    jobs: [
+      { name: 'Validate and build website', status: 'completed', conclusion: 'skipped' },
+      { name: 'Candidate validation', status: 'in_progress', conclusion: null },
+    ],
+  })
+  await assert.rejects(
+    waitForCandidate(
+      { ...metadata, expectedHead: head, expectedBase: sha },
+      {
+        pause: async () => assert.fail('No active candidate producer must fail without polling'),
+      },
+    ),
+    (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+  )
 })
