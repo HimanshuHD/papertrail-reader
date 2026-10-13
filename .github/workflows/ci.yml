@@ -2,7 +2,7 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main, staging]
-    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited]
+    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled]
   workflow_dispatch:
 permissions:
   contents: read
@@ -14,7 +14,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/staging') || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
+    if: github.event.action != 'labeled' && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null)))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && ((github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/staging') || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
+    if: always() && github.event.action != 'labeled' && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     runs-on: ubuntu-latest
     steps:
@@ -104,10 +104,10 @@ jobs:
           if [ "$TARGET" = main ] && [ "$WEBSITE" = true ]; then test "$BROWSER" = success; fi
 
   # Temporary bootstrap until standalone Visual QA is activated on main.
-  # Selecting staging in the existing manual CI form explicitly requests QA for #176.
+  # An explicit qa:visual label requests QA after current candidate validation succeeds.
   visual-qa-smoke:
     name: 'Visual QA smoke (PR #176)'
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging'
+    if: github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && github.event.pull_request.number == 176 && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.repo.full_name == github.repository
     permissions:
       contents: read
       actions: read
@@ -116,3 +116,4 @@ jobs:
     with:
       pr_number: '176'
       profile: startup
+      tooling_sha: ${{ github.event.pull_request.base.sha }}

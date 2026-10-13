@@ -128,7 +128,7 @@ test('manual workflow uses trusted dispatch ref, read-only permissions and stati
   const workflow = await fs.readFile('.github/workflows/visual-qa.yml', 'utf8')
   assert.match(workflow, /workflow_dispatch:/)
   assert.match(workflow, /refs\/heads\/staging/)
-  assert.match(workflow, /ref: \$\{\{ github.sha \}\}/)
+  assert.match(workflow, /ref: \$\{\{ inputs.tooling_sha \|\| github.sha \}\}/)
   assert.match(workflow, /persist-credentials: false/)
   assert.match(workflow, /npm ci --ignore-scripts/)
   assert.ok(

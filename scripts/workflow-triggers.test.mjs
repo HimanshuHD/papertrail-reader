@@ -14,13 +14,34 @@ test('candidate jobs skip checklist edits on merged and closed PRs but keep read
     (match) => match[1],
   )
   assert.equal(conditions.length, 4)
-  const allowed = (state, event, action = 'edited', ref = 'refs/heads/main') => {
+  const allowed = (
+    state,
+    event,
+    action = 'edited',
+    ref = 'refs/heads/main',
+    base = 'main',
+    label = 'qa:visual',
+    draft = false,
+    sameRepo = true,
+  ) => {
     const github = {
       event_name: event,
       ref,
-      event: { action, changes: {}, pull_request: { state, draft: false, base: { ref: 'main' } } },
+      repository: 'owner/repo',
+      event: {
+        action,
+        label: { name: label },
+        changes: {},
+        pull_request: {
+          number: 176,
+          state,
+          draft,
+          base: { ref: base },
+          head: { repo: { full_name: sameRepo ? 'owner/repo' : 'foreign/repo' } },
+        },
+      },
     }
-    const needs = { frontend: { outputs: { website: 'true' } } }
+    const needs = { frontend: { outputs: { website: action === 'labeled' ? undefined : 'true' } } }
     return conditions.map((condition) =>
       new Function('github', 'needs', 'always', 'return (' + condition + ')')(
         github,
@@ -33,11 +54,38 @@ test('candidate jobs skip checklist edits on merged and closed PRs but keep read
   assert.deepEqual(allowed('open', 'pull_request', 'synchronize'), [true, true, true, false])
   assert.deepEqual(allowed('open', 'pull_request'), [false, true, true, false])
   assert.deepEqual(allowed('closed', 'workflow_dispatch'), [true, true, true, false])
-  assert.deepEqual(allowed('closed', 'workflow_dispatch', 'edited', 'refs/heads/staging'), [
+  assert.deepEqual(allowed('open', 'pull_request', 'labeled', 'refs/pull/176/merge', 'staging'), [
     false,
     false,
     false,
     true,
+  ])
+  for (const [state, base, label, draft, sameRepo] of [
+    ['closed', 'staging', 'qa:visual', false, true],
+    ['open', 'main', 'qa:visual', false, true],
+    ['open', 'staging', 'type:enhancement', false, true],
+    ['open', 'staging', 'qa:visual', true, true],
+    ['open', 'staging', 'qa:visual', false, false],
+  ])
+    assert.deepEqual(
+      allowed(
+        state,
+        'pull_request',
+        'labeled',
+        'refs/pull/176/merge',
+        base,
+        label,
+        draft,
+        sameRepo,
+      ),
+      [false, false, false, false],
+    )
+
+  assert.deepEqual(allowed('closed', 'workflow_dispatch', 'edited', 'refs/heads/staging'), [
+    true,
+    false,
+    true,
+    false,
   ])
   assert.deepEqual(allowed('open', 'pull_request', 'synchronize', 'refs/pull/176/merge'), [
     true,
@@ -52,7 +100,7 @@ test('ready-only CI validates both targets and gates production browser acceptan
   assert.match(ci, /branches: \[main, staging\]/)
   assert.match(
     ci,
-    /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited\]/,
+    /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled\]/,
   )
   assert.match(ci, /github.event.pull_request.draft == false/)
   assert.match(ci, /name: Candidate validation/)

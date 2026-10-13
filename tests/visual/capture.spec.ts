@@ -61,7 +61,7 @@ async function capture(page: Page, info: TestInfo, state: string, regions: strin
         runner: process.env.RUNNER_OS,
         run: process.env.GITHUB_RUN_ID,
         attempt: process.env.GITHUB_RUN_ATTEMPT,
-        toolingSha: process.env.GITHUB_SHA,
+        toolingSha: process.env.VISUAL_TOOLING_SHA || process.env.GITHUB_SHA,
         candidate: JSON.parse(await fs.readFile('dist/build.json', 'utf8')),
         screenshotSha256: createHash('sha256').update(bytes).digest('hex'),
       },
