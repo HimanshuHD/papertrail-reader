@@ -9,7 +9,7 @@ permissions:
   actions: read
   pull-requests: read
 concurrency:
-  group: frontend-ci-${{ github.event.action == 'edited' && github.event.changes.base == null && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
+  group: frontend-ci-${{ github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && format('visual-{0}', github.event.pull_request.number) || (github.event.action == 'labeled' || (github.event.action == 'edited' && github.event.changes.base == null)) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   frontend:

@@ -190,3 +190,29 @@ test('main identity reports docs-only false, application true, and renamed sourc
     fs.rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('visual and unrelated label runs cannot cancel current frontend candidate validation', () => {
+  const expression = read('.github/workflows/ci.yml').match(
+    /group: frontend-ci-\$\{\{ (.+) \}\}/,
+  )[1]
+  const group = new Function('github', 'format', 'return (' + expression + ')')
+  const github = {
+    run_id: 42,
+    ref: 'refs/pull/176/merge',
+    event: {
+      action: 'synchronize',
+      changes: {},
+      label: { name: '' },
+      pull_request: { number: 176 },
+    },
+  }
+  const format = (template, value) => template.replace('{0}', value)
+  assert.equal(group(github, format), 176)
+  github.event.action = 'labeled'
+  github.event.label.name = 'qa:visual'
+  assert.equal(group(github, format), 'visual-176')
+  github.event.label.name = 'type:enhancement'
+  assert.equal(group(github, format), 'metadata-42')
+  github.run_id = 43
+  assert.equal(group(github, format), 'metadata-43')
+})
