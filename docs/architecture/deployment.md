@@ -60,3 +60,7 @@ Production keeps its existing PDF/EPUB/annotations/workspace IndexedDB names. St
 The first implementation merges to staging and is then released to main. Scheduled/default-branch manual/recovery/cleanup behavior changes only when installed on main; avoid the legacy main manual publisher during bootstrap because it cannot preserve staging. Local/PR checks cannot establish production live acceptance. #130 and #44 remain open until owner settings, actual staging/release/hotfix routing, cleanup, failed-publication recovery and rollback are verified. Historical run records remain evidence for their original revisions, not acceptance for this pipeline.
 
 [Operator guide](../deployment/publishing.md) · [Documentation home](../README.md)
+
+## Design QA evidence
+
+[Design QA and reviewed visual baselines](../deployment/visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.

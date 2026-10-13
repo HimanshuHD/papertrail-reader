@@ -1,0 +1,14 @@
+/* Capture only: pin frame zero; motion is asserted before capture. */
+.startup-book {
+  animation: none !important;
+  background-position: 0% 0% !important;
+}
+.startup-track span {
+  animation: none !important;
+  transform: translateX(0) !important;
+}
+
+/* Deployment metadata varies by source and channel; review it via candidate identity. */
+.build-footer {
+  display: none !important;
+}

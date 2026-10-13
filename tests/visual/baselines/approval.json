@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "enabled": false,
+  "reason": "Initial source-versus-rendered review and owner baseline approval are pending.",
+  "profile": "startup",
+  "environment": {
+    "os": "ubuntu-24.04",
+    "playwright": "1.63.0",
+    "browser": "chromium",
+    "density": 1
+  },
+  "approval": null,
+  "files": {}
+}
