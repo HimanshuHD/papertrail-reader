@@ -1,5 +1,15 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
+## Workflow enhancements — 13 October 2026
+
+#182 activated delivery and Visual QA on main; #185 promoted the report and capture fixes. #186 is merged into staging, but its removal of periodic integration and metadata-edit jobs still needs main promotion. This checkpoint supersedes older bootstrap/metadata/schedule descriptions below; embedded workflow snapshots remain historical revision evidence. Use the [publishing guide](publishing.md) and [Visual QA guide](visual-qa.md) for current operation.
+
+- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft and qa:visual policies remain intact.
+- Integration keeps branch pushes and successful manual main/staging recovery, with completion events filtered to those branches. #186 handles only the event's branch and removes the integration cron; the publisher's recovery schedule remains separate.
+- History-only staging sync skips deployment only with matching published receipt, descendant ancestry and exact Git tree. Changed/conflict-resolved content still needs validation. Updating a feature PR still creates a fresh candidate.
+- QA executes approved base tooling against the exact candidate; stale head/base/tree identities block evidence. Update the feature branch and validate again rather than rerun an old event.
+- Comparison reports offer JSON and Details views, defaulting to Details, for evidence identity/status and test-case outcomes/retries/errors. Captures have passed; owner design and reviewed baseline acceptance remain separate.
+
 > Implementation reference: PR #170 / issue #130, workflow source commit `80349c1a7310413f263a96a152c443ee18812705`.
 > Prepared 12 October 2026. CI and merge-tracking snapshots include the subsequent fixes in PR #170; merge-tracking below reflects the staging-reconciliation revision in PR #170. These workflows are proposed on `feat/130-staging-delivery`; this guide does not claim main activation, live staging acceptance or owner settings are complete.
 > This is a standalone reading guide. Existing deployment documents remain unchanged. Planning remains in GitHub Wiki and milestones.
