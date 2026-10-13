@@ -41,7 +41,11 @@ export async function selectCandidate({
   excludeRun,
 }) {
   const repository = owner + '/' + repo
-  const { data: target } = await github.rest.repos.getBranch({ owner, repo, branch })
+  const { data: target } = await github.rest.repos.getBranch({
+    owner,
+    repo,
+    branch,
+  })
   if (sourceSha && sourceSha !== target.commit.sha)
     return { skip: true, reason: 'Superseded branch event' }
   const channel = prNumber ? 'preview' : branchChannel(branch)
@@ -50,7 +54,10 @@ export async function selectCandidate({
   // remains an exact descendant of its own successfully published source tree.
   if (branch === 'staging' && !prNumber && !manualRun && state?.staging) {
     if (state.rollbackHold?.staging === target.commit.sha)
-      return { skip: true, reason: 'Rollback hold: reconcile source before automatic promotion' }
+      return {
+        skip: true,
+        reason: 'Rollback hold: reconcile source before automatic promotion',
+      }
     const publishedSha = state.staging.sourceSha || state.staging.sha
     const receipt = await readPublished(github, owner, repo, '.publication-receipt.json')
     if (
@@ -79,31 +86,79 @@ export async function selectCandidate({
     }
   }
   let pr
+  let candidateSha = target.commit.sha
+  let candidateTree = prNumber ? null : target.commit.commit.tree.sha
   if (prNumber) {
-    pr = (await github.rest.pulls.get({ owner, repo, pull_number: Number(prNumber) })).data
+    pr = (
+      await github.rest.pulls.get({
+        owner,
+        repo,
+        pull_number: Number(prNumber),
+      })
+    ).data
     if (!previewEligible(pr, repository) || pr.base.ref !== branch)
       throw new Error('Choose a ready same-repository staging, release or hotfix PR')
   } else if (!manualRun) {
-    const associated = await github.paginate(
-      github.rest.repos.listPullRequestsAssociatedWithCommit,
-      { owner, repo, commit_sha: target.commit.sha, per_page: 100 },
-    )
-    pr = associated.find(
-      (p) =>
-        p.merged_at &&
-        p.base.ref === branch &&
-        p.merge_commit_sha === target.commit.sha &&
-        p.head.repo?.full_name === repository,
-    )
-    if (!pr)
-      throw new Error('No validated merged PR for branch head; run manual Frontend CI recovery')
+    // A documentation PR may have been built against an older base. Its artifact
+    // cannot stand in for intervening application/test changes. Walk only verified
+    // docs-only first-parent merges to the most recent website-changing candidate.
+    for (let depth = 0; ; depth++) {
+      if (depth === 20)
+        throw new Error('Documentation ancestry limit; run manual Frontend CI recovery')
+      const associated = await github.paginate(
+        github.rest.repos.listPullRequestsAssociatedWithCommit,
+        { owner, repo, commit_sha: candidateSha, per_page: 100 },
+      )
+      pr = associated.find(
+        (p) =>
+          p.merged_at &&
+          p.base.ref === branch &&
+          p.merge_commit_sha === candidateSha &&
+          p.head.repo?.full_name === repository,
+      )
+      if (!pr)
+        throw new Error('No validated merged PR for branch head; run manual Frontend CI recovery')
+      if (branch !== 'staging') break
+      const { data: commit } = await github.rest.git.getCommit({
+        owner,
+        repo,
+        commit_sha: candidateSha,
+      })
+      const parent = commit.parents?.[0]?.sha
+      if (!parent) break
+      const { data: comparison } = await github.rest.repos.compareCommits({
+        owner,
+        repo,
+        base: parent,
+        head: target.commit.sha,
+      })
+      if (
+        !eligibleMainBuild({
+          buildSha: parent,
+          mainSha: target.commit.sha,
+          status: comparison.status,
+          files: comparison.files,
+        })
+      )
+        break
+      const { data: predecessor } = await github.rest.git.getCommit({
+        owner,
+        repo,
+        commit_sha: parent,
+      })
+      candidateSha = parent
+      candidateTree = predecessor.tree.sha
+    }
     if (branch === 'main' && !/^(release|hotfix)\//.test(pr.head.ref))
       throw new Error('Production requires a release or hotfix PR')
   }
   if (!prNumber && !manualRun && state?.[channel]) {
     const previous = state[channel]
     if (state.rollbackHold?.[channel] === target.commit.sha)
-      return { skip: true, reason: 'Rollback hold: reconcile source before automatic promotion' }
+      return {
+        skip: true,
+        reason: 'Rollback hold: reconcile source before automatic promotion',
+      }
     if (previous.sourceSha === target.commit.sha)
       return {
         skip: true,
@@ -125,12 +180,19 @@ export async function selectCandidate({
         files: comparison.files,
       })
     )
-      return { skip: true, reason: 'Documentation-only descendant; website unchanged' }
+      return {
+        skip: true,
+        reason: 'Documentation-only descendant; website unchanged',
+      }
   }
   let runs
   if (manualRun) {
     const run = (
-      await github.rest.actions.getWorkflowRun({ owner, repo, run_id: Number(manualRun) })
+      await github.rest.actions.getWorkflowRun({
+        owner,
+        repo,
+        run_id: Number(manualRun),
+      })
     ).data
     if (
       run.event !== 'workflow_dispatch' ||
@@ -198,13 +260,19 @@ export async function selectCandidate({
     })
     if (!artifacts.some((a) => a.name === 'candidate-build' && !a.expired)) continue
     const tree = prNumber
-      ? (await github.rest.git.getCommit({ owner, repo, commit_sha: pr.merge_commit_sha })).data
-          .tree.sha
-      : target.commit.commit.tree.sha
+      ? (
+          await github.rest.git.getCommit({
+            owner,
+            repo,
+            commit_sha: pr.merge_commit_sha,
+          })
+        ).data.tree.sha
+      : candidateTree
     return {
       channel,
       branch,
       sourceSha: prNumber ? pr.head.sha : target.commit.sha,
+      candidateSourceSha: prNumber ? pr.merge_commit_sha : candidateSha,
       tree,
       headSha: pr?.head.sha || target.commit.sha,
       pr: String(pr?.number || ''),
@@ -217,7 +285,9 @@ export async function selectCandidate({
     new Error(
       'No successful current candidate artifact; run fresh CI, including required browser acceptance',
     ),
-    { code: candidateAcceptance && !pending ? 'CANDIDATE_UNAVAILABLE' : 'CANDIDATE_NOT_READY' },
+    {
+      code: candidateAcceptance && !pending ? 'CANDIDATE_UNAVAILABLE' : 'CANDIDATE_NOT_READY',
+    },
   )
 }
 
@@ -254,7 +324,11 @@ export async function closedPreviews(github, owner, repo, state) {
   const retired = []
   for (const [number, preview] of Object.entries(state?.previews || {})) {
     if (preview.status !== 'active') continue
-    const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: Number(number) })
+    const { data: pr } = await github.rest.pulls.get({
+      owner,
+      repo,
+      pull_number: Number(number),
+    })
     if (pr.state === 'closed') retired.push(Number(number))
   }
   return retired
