@@ -1,0 +1,14 @@
+{
+  "staging": {
+    "f844fcccde6f5d3972fd3e19d37c74189d54b8fc-38278999891": {
+      "sha": "120b06d7317a8571775ed639222c703298748c67",
+      "runId": "38278999891",
+      "sourceSha": "e5f88aaae27eca317a677ecc7f6df7488fb08f31",
+      "tree": "f844fcccde6f5d3972fd3e19d37c74189d54b8fc",
+      "version": "2.0.0",
+      "branch": "staging",
+      "archiveId": "f844fcccde6f5d3972fd3e19d37c74189d54b8fc-38278999891",
+      "publishedAt": "2026-10-13T04:15:28.132Z"
+    }
+  }
+}
