@@ -1137,3 +1137,5 @@ The shared GitHub Pages action returns the aggregate production-root URL. The pu
 ## Design QA evidence
 
 [Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
+
+During the temporary Design QA bootstrap, manual **Frontend CI on staging** runs the fixed #176 visual smoke instead of building/publishing a staging recovery candidate. Main manual recovery and PR acceptance remain unchanged. See [the staging smoke procedure](visual-qa.md#test-before-main-activation) before running manual CI. Remove the bridge after verification, before tooling promotion.

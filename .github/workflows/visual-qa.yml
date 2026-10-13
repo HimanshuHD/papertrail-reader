@@ -1,5 +1,14 @@
 name: Visual QA
 on:
+  workflow_call:
+    inputs:
+      pr_number:
+        required: true
+        type: string
+      profile:
+        required: false
+        default: startup
+        type: string
   workflow_dispatch:
     inputs:
       pr_number:
