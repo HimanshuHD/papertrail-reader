@@ -33,6 +33,14 @@ jobs:
             if(!['main','staging'].includes(branch)) throw Error('Unsupported channel');
             if(context.eventName==='push' && context.ref!=='refs/heads/'+branch) { core.setOutput('skip','true'); return; }
             if(context.eventName==='workflow_run' && context.payload.workflow_run.head_branch!==branch) { core.setOutput('skip','true'); return; }
+            if(context.eventName==='workflow_run') {
+              const {visualQaOnlyRun}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/visual-qa-smoke.mjs').href);
+              if(await visualQaOnlyRun({github,...context.repo,runId:context.payload.workflow_run.id})) {
+                core.setOutput('skip','true');
+                await core.summary.addRaw('Visual QA-only smoke run; no candidate build or publication requested.').write();
+                return;
+              }
+            }
             const {selectCandidate}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
             const plan=await selectCandidate({github,...context.repo,branch,sourceSha:context.eventName==='push'?context.sha:undefined,manualRun:context.eventName==='workflow_run'?context.payload.workflow_run.id:undefined});
             if(plan.skip) { core.setOutput('skip','true'); core.summary.addRaw(plan.reason).write(); return; }

@@ -14,7 +14,7 @@ concurrency:
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
+    if: (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/staging') || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
+    if: always() && ((github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/staging') || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     runs-on: ubuntu-latest
     steps:
@@ -102,3 +102,17 @@ jobs:
         run: |
           test "$FRONTEND" = success
           if [ "$TARGET" = main ] && [ "$WEBSITE" = true ]; then test "$BROWSER" = success; fi
+
+  # Temporary bootstrap until standalone Visual QA is activated on main.
+  # Selecting staging in the existing manual CI form explicitly requests QA for #176.
+  visual-qa-smoke:
+    name: Visual QA smoke (PR #176)
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/staging'
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+    uses: ./.github/workflows/visual-qa.yml
+    with:
+      pr_number: '176'
+      profile: startup
