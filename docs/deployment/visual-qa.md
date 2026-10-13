@@ -2,6 +2,22 @@
 
 PaperTrail owns this workflow; the Product Design `design-qa` instruction document is a reference for manual review, not executable CI. Browser assertions and screenshot regression do not replace the first comparison with the owner's design.
 
+## Test before main activation
+
+The standalone manual workflow is not yet registered on main. During the temporary #177 bootstrap, the already registered **Frontend CI** workflow provides the entry point. This bridge targets **PR #176** explicitly and only handles manual dispatches on **staging**; PR validation and full Browser E2E triggers remain unchanged.
+
+1. Owner reviews and merges the smoke-entry tooling PR into staging.
+2. Update #176's branch from the resulting current staging, keep it ready, and wait for fresh successful Candidate validation. Do not merge #176 yet.
+3. In GitHub Actions, open **Frontend CI** (not Visual QA) → **Run workflow** → select **staging** → **Run workflow**. No new form inputs, CLI, local installation or main promotion are needed. Selecting staging manually is the explicit request to run this temporary smoke mode.
+4. Inspect the **Visual QA smoke (PR #176) / capture** job. It calls the same `visual-qa.yml` workflow through `workflow_call` at the dispatched staging SHA; there is no duplicate capture implementation.
+5. Download `visual-qa-pr-176-RUN-ATTEMPT`, open `visual-evidence/comparison.html` with the image folders beside it, and inspect assertions, traces and separate statuses. Record the real run/source and findings in #177/#176. Browser assertions may pass while owner design review remains pending and regression stays not-run.
+
+This staging dispatch intentionally skips **Validate and build website**, **Candidate validation**, and full **Browser E2E**. It consumes #176's previously accepted candidate instead of building a different revision. It produces no candidate-build or promotion artifact and does not request deployment. The delivery selector recognizes a successful QA-only run from its latest job/artifact inventory and skips promotion. Existing main manual recovery and normal PR acceptance remain unchanged.
+
+**Temporary operational change:** manual Frontend CI on staging is QA smoke for #176 while this bridge is installed, not the usual staging rebuild/recovery operation. Do not use it expecting publication. If #176 is draft/closed/stale or lacks a current accepted artifact, the QA job blocks with the provenance reason.
+
+After successful rendered verification and any corrections, remove the fixed #176 smoke caller and restore the original manual-staging conditions for frontend/gate in a reviewed staging PR before promoting the final tooling to main. Keep the reusable capture entry and the no-publication guard. Then activate standalone Visual QA through the reviewed tooling promotion and smoke-test its dispatch once. Do not promote the unverified capture workflow simply to register it.
+
 ## Run Visual QA
 
 1. Update the feature branch from current staging. Open a ready same-repository PR targeting staging and wait for successful current **Candidate validation** with a retained `candidate-build` artifact. Draft, fork, closed, stale-base and failed candidates are rejected.

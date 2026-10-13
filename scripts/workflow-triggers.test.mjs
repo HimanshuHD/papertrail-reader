@@ -13,11 +13,11 @@ test('candidate jobs skip checklist edits on merged and closed PRs but keep read
   const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
     (match) => match[1],
   )
-  assert.equal(conditions.length, 3)
-  const allowed = (state, event, action = 'edited') => {
+  assert.equal(conditions.length, 4)
+  const allowed = (state, event, action = 'edited', ref = 'refs/heads/main') => {
     const github = {
       event_name: event,
-      ref: 'refs/heads/main',
+      ref,
       event: { action, changes: {}, pull_request: { state, draft: false, base: { ref: 'main' } } },
     }
     const needs = { frontend: { outputs: { website: 'true' } } }
@@ -29,10 +29,22 @@ test('candidate jobs skip checklist edits on merged and closed PRs but keep read
       ),
     )
   }
-  assert.deepEqual(allowed('closed', 'pull_request'), [false, false, false])
-  assert.deepEqual(allowed('open', 'pull_request', 'synchronize'), [true, true, true])
-  assert.deepEqual(allowed('open', 'pull_request'), [false, true, true])
-  assert.deepEqual(allowed('closed', 'workflow_dispatch'), [true, true, true])
+  assert.deepEqual(allowed('closed', 'pull_request'), [false, false, false, false])
+  assert.deepEqual(allowed('open', 'pull_request', 'synchronize'), [true, true, true, false])
+  assert.deepEqual(allowed('open', 'pull_request'), [false, true, true, false])
+  assert.deepEqual(allowed('closed', 'workflow_dispatch'), [true, true, true, false])
+  assert.deepEqual(allowed('closed', 'workflow_dispatch', 'edited', 'refs/heads/staging'), [
+    false,
+    false,
+    false,
+    true,
+  ])
+  assert.deepEqual(allowed('open', 'pull_request', 'synchronize', 'refs/pull/176/merge'), [
+    true,
+    true,
+    true,
+    false,
+  ])
 })
 
 test('ready-only CI validates both targets and gates production browser acceptance', () => {
