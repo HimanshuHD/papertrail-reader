@@ -9,6 +9,11 @@ on:
         required: false
         default: startup
         type: string
+      tooling_sha:
+        description: Approved staging SHA for label-triggered bootstrap captures
+        required: false
+        default: ''
+        type: string
   workflow_dispatch:
     inputs:
       pr_number:
@@ -30,13 +35,15 @@ concurrency:
   cancel-in-progress: true
 jobs:
   capture:
-    if: github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main'
+    if: ((github.ref == 'refs/heads/staging' || github.ref == 'refs/heads/main') && !inputs.tooling_sha) || (github.event_name == 'pull_request' && github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && github.event.pull_request.number == 176 && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.base.ref == 'staging' && github.event.pull_request.head.repo.full_name == github.repository && inputs.tooling_sha == github.event.pull_request.base.sha)
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    env:
+      VISUAL_TOOLING_SHA: ${{ inputs.tooling_sha || github.sha }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.tooling_sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
