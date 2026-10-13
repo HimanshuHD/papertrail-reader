@@ -37,6 +37,8 @@ export async function selectCandidate({
   prNumber,
   sourceSha,
   manualRun,
+  candidateAcceptance = false,
+  excludeRun,
 }) {
   const repository = owner + '/' + repo
   const { data: target } = await github.rest.repos.getBranch({ owner, repo, branch })
@@ -146,13 +148,48 @@ export async function selectCandidate({
         workflow_id: 'ci.yml',
         event: 'pull_request',
         head_sha: pr.head.sha,
-        status: 'success',
+        ...(candidateAcceptance ? {} : { status: 'success' }),
         per_page: 100,
       })
     ).data.workflow_runs
   }
+  let pending = false
   for (const run of runs) {
-    if (run.conclusion !== 'success' || run.head_repository?.full_name !== repository) continue
+    if (candidateAcceptance) {
+      if (
+        String(run.id) === String(excludeRun) ||
+        run.event !== 'pull_request' ||
+        run.path !== '.github/workflows/ci.yml' ||
+        run.head_sha !== pr.head.sha ||
+        run.head_branch !== pr.head.ref ||
+        run.head_repository?.full_name !== repository ||
+        !run.pull_requests?.some((item) => item.number === pr.number)
+      )
+        continue
+      const jobs = await github.paginate(github.rest.actions.listJobsForWorkflowRun, {
+        owner,
+        repo,
+        run_id: run.id,
+        per_page: 100,
+        filter: 'latest',
+      })
+      const frontend = jobs.find((job) => job.name === 'Validate and build website')
+      const gate = jobs.find((job) => job.name === 'Candidate validation')
+      if (frontend?.conclusion !== 'success' || gate?.conclusion !== 'success') {
+        // Other metadata-only runs have a skipped frontend and cannot create a candidate.
+        if (
+          ['queued', 'in_progress', 'waiting', 'pending'].includes(run.status) &&
+          (!frontend ||
+            ['queued', 'in_progress'].includes(frontend.status) ||
+            frontend.conclusion === 'success') &&
+          (!gate || ['queued', 'in_progress'].includes(gate.status))
+        )
+          pending = true
+        continue
+      }
+      if (!['in_progress', 'completed'].includes(run.status)) continue
+    } else if (run.conclusion !== 'success' || run.head_repository?.full_name !== repository)
+      continue
     const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
       owner,
       repo,
@@ -180,7 +217,7 @@ export async function selectCandidate({
     new Error(
       'No successful current candidate artifact; run fresh CI, including required browser acceptance',
     ),
-    { code: 'CANDIDATE_NOT_READY' },
+    { code: candidateAcceptance && !pending ? 'CANDIDATE_UNAVAILABLE' : 'CANDIDATE_NOT_READY' },
   )
 }
 

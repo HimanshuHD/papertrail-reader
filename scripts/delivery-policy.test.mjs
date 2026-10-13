@@ -262,3 +262,91 @@ test('metadata validation immediately rejects changed source and ineligible PRs'
       /changed|ready/,
     )
 })
+
+function metadataFixture({ run = {}, jobs, ...options } = {}) {
+  const input = fixture({
+    ...options,
+    run: {
+      status: 'completed',
+      conclusion: 'failure',
+      event: 'pull_request',
+      path: '.github/workflows/ci.yml',
+      head_sha: head,
+      head_branch: pr.head.ref,
+      pull_requests: [{ number: pr.number }],
+      ...run,
+    },
+  })
+  input.github.rest.actions.listJobsForWorkflowRun = async () => ({
+    data: jobs || [
+      { name: 'Validate and build website', conclusion: 'success', status: 'completed' },
+      { name: 'Candidate validation', conclusion: 'success', status: 'completed' },
+      { name: 'Visual QA / capture', conclusion: 'failure', status: 'completed' },
+    ],
+  })
+  return { ...input, prNumber: pr.number, candidateAcceptance: true, excludeRun: 99 }
+}
+
+test('metadata gate reuses candidate acceptance despite downstream QA failure or pending QA', async () => {
+  for (const run of [{}, { status: 'in_progress', conclusion: null }]) {
+    const plan = await selectCandidate(metadataFixture({ run }))
+    assert.equal(plan.runId, '42')
+  }
+})
+
+test('metadata gate rejects invalid provenance, missing artifacts and failed/skipped checks promptly', async () => {
+  for (const options of [
+    { run: { path: '.github/workflows/other.yml' } },
+    { run: { head_sha: sha } },
+    { run: { pull_requests: [{ number: 999 }] } },
+    { run: { head_repository: { full_name: 'foreign/repo' } } },
+    { artifacts: [{ name: 'candidate-build', expired: true }] },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'success' },
+        { name: 'Candidate validation', conclusion: 'failure' },
+      ],
+    },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'skipped' },
+        { name: 'Candidate validation', conclusion: 'success' },
+      ],
+    },
+  ])
+    await assert.rejects(
+      selectCandidate(metadataFixture(options)),
+      (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+    )
+  await assert.rejects(
+    selectCandidate({ ...metadataFixture(), excludeRun: 42 }),
+    (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+  )
+})
+
+test('metadata wait polls only active candidate producers and never another skipped-build metadata gate', async () => {
+  const active = metadataFixture({
+    run: { status: 'in_progress', conclusion: null },
+    jobs: [
+      { name: 'Validate and build website', status: 'in_progress', conclusion: null },
+      { name: 'Candidate validation', status: 'queued', conclusion: null },
+    ],
+  })
+  await assert.rejects(selectCandidate(active), (error) => error.code === 'CANDIDATE_NOT_READY')
+  const metadata = metadataFixture({
+    run: { status: 'in_progress', conclusion: null },
+    jobs: [
+      { name: 'Validate and build website', status: 'completed', conclusion: 'skipped' },
+      { name: 'Candidate validation', status: 'in_progress', conclusion: null },
+    ],
+  })
+  await assert.rejects(
+    waitForCandidate(
+      { ...metadata, expectedHead: head, expectedBase: sha },
+      {
+        pause: async () => assert.fail('No active candidate producer must fail without polling'),
+      },
+    ),
+    (error) => error.code === 'CANDIDATE_UNAVAILABLE',
+  )
+})

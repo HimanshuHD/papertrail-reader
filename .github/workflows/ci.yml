@@ -79,7 +79,7 @@ jobs:
           script: |
             const {waitForCandidate,branchChannel}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/delivery-policy.mjs').href);
             const pr=context.payload.pull_request;
-            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha},{onWait:attempt=>core.info('Waiting for current full CI acceptance; poll '+attempt)});
+            const p=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,expectedHead:pr.head.sha,expectedBase:pr.base.sha,candidateAcceptance:true,excludeRun:context.runId},{onWait:attempt=>core.info('Waiting for current candidate gate acceptance; poll '+attempt)});
             p.channel=branchChannel(pr.base.ref);
             require('node:fs').writeFileSync('promotion-plan.json',JSON.stringify(p));
             core.setOutput('run_id',p.runId);
@@ -108,7 +108,7 @@ jobs:
   visual-qa:
     name: Visual QA
     needs: gate
-    if: always() && needs.gate.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
+    if: always() && needs.gate.result == 'success' && (github.event.action != 'edited' || github.event.changes.base != null) && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
     permissions:
       contents: read
       actions: read
