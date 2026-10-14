@@ -1164,7 +1164,6 @@ The shared GitHub Pages action returns the aggregate production-root URL. The pu
 
 Visual QA is manually dispatched through its own Actions workflow after reviewed main activation. PRs carrying **qa:visual** queue Visual QA **after successful Candidate validation**, using that gate's exact artifact run. Fixed-#176 smoke callers and Frontend CI manual-QA workarounds are removed; existing manual build/recovery retains its delivery purpose. See [Visual QA operation](visual-qa.md).
 
-
 ## Candidate gate lifecycle correction — 14 October 2026
 
 Candidate validation runs for manual recovery and open, ready PRs. The job retains `always()` so failed or cancelled frontend/browser dependencies cannot bypass the required check. Ready PR metadata edits still verify a real retained candidate for the exact current head/base; they never accept another skipped-build metadata run.
