@@ -77,3 +77,9 @@ The regression fails against the old constant name; 20 focused tests and scoped 
 19158e0 full CI 38540346859 passed frontend, both browser shards and Candidate validation. GitHub still showed the required check Expected; retrying gate job 115776775738 did not clear association. Dynamic naming prevented a skipped pass but proved unreliable for required-check matching.
 
 The replacement retains static Candidate validation and always runs the gate. Ignored metadata waits for another actual current candidate via existing tested waitForCandidate policy: exclude own run; exact expected head/base; successful frontend/gate and retained artifact. Skipped-build metadata runs cannot be producers. Failed/missing candidates, invalid provenance, changed source and bounded timeout have regression coverage. The normal gate rejects failed/cancelled/skipped/missing build/browser results. 27 focused tests and lint passed before commit. New GitHub validation and merge-panel acceptance remain pending.
+
+## PR-only Visual QA condition regression
+
+Frontend 38542444749/job 115780263991 failed the existing Visual QA PR-only test because the shared eligibility clause included workflow_dispatch inside the Visual QA job. No candidate artifact was produced; metadata run 38542456064/job 115780305081 correctly failed CANDIDATE_UNAVAILABLE after waiting rather than passing invalid acceptance.
+
+Correction restores Visual QA's PR-only condition while separately excluding ordinary labels and body/title edits, even on a PR already labelled qa:visual. New regression evaluates the actual Visual QA expression for ordinary labels, QA labels, base edits, manual dispatch, failed/cancelled/skipped gates, draft/closed/fork/unlabelled PRs. Existing PR-only/no-write/no-secret assertion remains unchanged. Full local pipeline suite: 74 passed, zero failures; lint passed. Fresh remote CI and final merge-panel acceptance remain pending.

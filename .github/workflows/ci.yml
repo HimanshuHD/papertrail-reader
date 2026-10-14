@@ -95,7 +95,7 @@ jobs:
   visual-qa:
     name: Visual QA
     needs: gate
-    if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))) && needs.gate.result == 'success' && (github.event.action != 'edited' || github.event.changes.base != null) && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
+    if: always() && needs.gate.result == 'success' && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual') && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
     permissions:
       contents: read
       actions: read
