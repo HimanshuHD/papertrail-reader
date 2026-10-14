@@ -1,5 +1,13 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
+## Required merge check and metadata events
+
+The ruleset requires the static `Candidate validation` name from GitHub Actions. This gate always executes: a skipped required job can satisfy GitHub protection, and a conditional job name can remain unmatched in the merge panel.
+
+Eligible events require successful build validation and, for website-affecting main candidates, Browser E2E. Ordinary labels and body/title edits skip builds, but the gate waits for a separate actual candidate with successful frontend and Candidate validation, retained artifact and exact current PR head/base. It excludes itself and skipped-build metadata runs. Missing/failed candidates, changed head/base, drafts, closed PRs and exhausted waits fail acceptance. The metadata check uses the trusted base revision's delivery policy and read-only credentials.
+
+Base-branch edits and the `qa:visual` label still run full validation. Separate metadata concurrency cannot cancel candidate validation. Ignored events do not trigger additional Visual QA. Metadata success verifies an existing current candidate; it does not create a build or authorize publication.
+
 ## Workflow enhancements — 13 October 2026
 
 #182 activated delivery and Visual QA on main; #185 promoted the report and capture fixes. #186 is merged into staging, but its removal of periodic integration and metadata-edit jobs still needs main promotion. This checkpoint supersedes older bootstrap/metadata/schedule descriptions below; embedded workflow snapshots remain historical revision evidence. Use the [publishing guide](publishing.md) and [Visual QA guide](visual-qa.md) for current operation.

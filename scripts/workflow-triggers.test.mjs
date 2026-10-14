@@ -87,12 +87,12 @@ test('ready candidates validate before optional labelled QA; labels do not bypas
   assert.deepEqual(allowed({ action: 'labeled', label: 'type:enhancement' }), [
     false,
     false,
-    false,
+    true,
     false,
   ])
-  assert.deepEqual(allowed({ action: 'edited' }), [false, false, false, false])
-  assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
-  assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, false])
+  assert.deepEqual(allowed({ state: 'closed' }), [false, false, true, false])
+  assert.deepEqual(allowed({ draft: true }), [false, false, true, false])
   assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])
   assert.deepEqual(allowed({ gateResult: 'failure' }), [true, false, true, false])
   assert.deepEqual(allowed({ gateResult: 'skipped' }), [true, false, true, false])
