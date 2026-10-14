@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0 — A new welcome to your reading space — deployed 14 October 2026
+
+Adds an early book-themed startup screen with readiness progress, retry feedback and reduced-motion support. Staging/production have no deliberate hold; numbered previews retain the seven-second review hold. Saved-library startup remains independent of permission renewal and document reopening.
+
+Refines staging/release candidate validation, visual evidence and docs-only pending promotion while preserving strict artifact identity/checksum checks. PDF/EPUB reload fixtures now await startup readiness. Owner verified staging; integration 38438927986 passed both Browser E2E shards and publication. Owner accepted the release preview and merged #190 at `db6029d70de1166d3535a7a53d24711ddb49c9b0`. Production promotion 38497595134 passed live identity/assets/receipt checks; GitHub Release/tag and staging synchronization remain pending. See [release record](docs/releases/v2.1.0.md).
+
 ## 2.0.0 — PDF and EPUB reading library — deployed 8 October 2026
 
 Owner approved release; #164 merged and production deployment succeeded on 8 October 2026. Stable [v2.0.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.0.0) published 8 October 2026 at 12:23:17 Asia/Kolkata, targeting exact #164 merge `d995c806d93725f990636ce0899388c613cb2bbb`. Packaging Browser E2E 37738585747 passed 307 cases with zero failures/flakes and 12 intentional skips.
