@@ -40,3 +40,46 @@ Preview #194 published through 38526906910 from accepted candidate 38526511767, 
 Native folder selection did not emit an accessible filechooser within ten seconds; the application reported selection cancelled or permission denied and no files accessed. Retained native folder-handle acceptance remains blocked in this cloud browser. Full two-way PDF/EPUB annotation and native-handle isolation remains unchecked in #175/#130.
 
 The equivalent production manual path still needs reviewed main propagation. No production change, release/tag publication or production rollback was made in this rehearsal.
+
+## Post-sync acceptance and publisher retry defect
+
+Owner merged #199 (main 23061bd03fa4b2af2926cf0be924a77a8214210e) and #200 (staging 5a79fd8ca7261f16fb512313a4bf21ea1ea95699).
+Candidate-source binding fix passed full CI/production Browser E2E 38532689529.
+Fixed staging integration 38535006467 passed both browser shards, publication, live verification and receipt.
+Current-main manual CI 38534890069 and integration 38535981941 attempt 1 passed.
+Production source 23061bd / candidate 38534890069; staging source 5a79fd8 / candidate 38534395756; rollback hold empty.
+
+Owner native folder-access confirmation is accepted as owner evidence. Synthetic two-way staging/production PDF highlights and notes and EPUB notes were checked in live Chrome: each channel retained only its own named annotation after reopening the document. Historical preview/library/bookmark and two-way EPUB annotation checks remain accepted separately.
+
+Temporary #201 was reopened solely for another queue rehearsal and closed without merge.
+Retrying preview publisher 38535569522 attempt 2/job 115765411390 and main publisher 38535981941 attempt 2/job 115765709102 exposed a genuine failure:
+deploy-pages found two artifacts named github-pages in the same workflow run and refused publication.
+No receipt or live acceptance is attributed to those failed retries.
+Closure cleanup 38538074670 succeeded, restoring acknowledged retired preview state.
+The main retry had already started and was not cancelled; this does not prove queued-publication cancellation.
+
+Fix: name upload/deployment artifacts with both workflow run ID and run attempt, using identical names in upload-pages-artifact and deploy-pages.
+Retain earlier artifacts; do not delete evidence or bypass source, freshness, checksum, live verification or acknowledgement checks.
+Regression models three uploads in one run and requires exactly one matching, current-attempt artifact for each deployment.
+Reviewed merge and corrected live retry/queue rehearsal remain necessary before #44/#175 closure.
+
+## Required-check collision found during #202 review
+
+Label runs 38538805147 and 38538805535 emitted skipped Candidate validation checks while actual candidate run 38538517387 was still validating. GitHub accepts skipped required checks; the ruleset was active, but the duplicate required name created a merge-gate loophole.
+Actual 38538517387 subsequently passed frontend, both browser shards and Candidate validation on 5125b9f8a3003a36669b2cbd069f7f77061b2206; that later success does not waive the loophole.
+
+#202 also fixes the check name: only eligible validation events emit Candidate validation. Ignored events emit Metadata event (no candidate validation).
+Regression evaluates the actual workflow name/condition, preserves a pending required check across ignored events, and runs the real gate shell script against failed/cancelled/skipped/missing frontend and browser results.
+The regression fails against the old constant name; 20 focused tests and scoped lint pass with the fix. The new revision needs fresh GitHub validation before merge.
+
+## Dynamic-name correction superseded
+
+19158e0 full CI 38540346859 passed frontend, both browser shards and Candidate validation. GitHub still showed the required check Expected; retrying gate job 115776775738 did not clear association. Dynamic naming prevented a skipped pass but proved unreliable for required-check matching.
+
+The replacement retains static Candidate validation and always runs the gate. Ignored metadata waits for another actual current candidate via existing tested waitForCandidate policy: exclude own run; exact expected head/base; successful frontend/gate and retained artifact. Skipped-build metadata runs cannot be producers. Failed/missing candidates, invalid provenance, changed source and bounded timeout have regression coverage. The normal gate rejects failed/cancelled/skipped/missing build/browser results. 27 focused tests and lint passed before commit. New GitHub validation and merge-panel acceptance remain pending.
+
+## PR-only Visual QA condition regression
+
+Frontend 38542444749/job 115780263991 failed the existing Visual QA PR-only test because the shared eligibility clause included workflow_dispatch inside the Visual QA job. No candidate artifact was produced; metadata run 38542456064/job 115780305081 correctly failed CANDIDATE_UNAVAILABLE after waiting rather than passing invalid acceptance.
+
+Correction restores Visual QA's PR-only condition while separately excluding ordinary labels and body/title edits, even on a PR already labelled qa:visual. New regression evaluates the actual Visual QA expression for ordinary labels, QA labels, base edits, manual dispatch, failed/cancelled/skipped gates, draft/closed/fork/unlabelled PRs. Existing PR-only/no-write/no-secret assertion remains unchanged. Full local pipeline suite: 74 passed, zero failures; lint passed. Fresh remote CI and final merge-panel acceptance remain pending.
