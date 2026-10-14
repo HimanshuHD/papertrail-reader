@@ -1,5 +1,11 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
+## Cancellation and recovery
+
+The integration publisher retains `always()` so a skipped main browser dependency does not suppress deployment, but also requires `!cancelled()`. The shared publisher job independently requires `!cancelled()`. A cancelled caller must not start a queued publication. Normal main/staging success, trusted cleanup and reconciliation remain eligible; failed selection or required browser acceptance still block publication.
+
+Queued-cancellation acceptance requires an actual publisher job with conclusion `cancelled` and no executed publication steps. A cancellation request alone is insufficient. If cancellation follows desired-state assembly, live verification and acknowledgement must not be fabricated; recover through accepted current-source retry or saved-state reconciliation as appropriate. Retain run attempts and artifact evidence. A successful retry must verify live identity/assets and record the receipt.
+
 ## Required merge check and metadata events
 
 The ruleset requires the static `Candidate validation` name from GitHub Actions. This gate always executes: a skipped required job can satisfy GitHub protection, and a conditional job name can remain unmatched in the merge panel.
