@@ -74,7 +74,7 @@ jobs:
       source_ref: ${{ needs.select.outputs.source_ref }}
   publish:
     needs: [select, browser]
-    if: always() && needs.select.result == 'success' && needs.select.outputs.skip != 'true' && (inputs.branch == 'main' || needs.browser.result == 'success')
+    if: always() && !cancelled() && needs.select.result == 'success' && needs.select.outputs.skip != 'true' && (inputs.branch == 'main' || needs.browser.result == 'success')
     permissions:
       actions: read
       contents: write
