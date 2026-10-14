@@ -18,3 +18,13 @@ Convert the manual-run presence to Boolean before writing the output. The regres
 ## Outstanding acceptance
 
 Restoration using the corrected normal manual-recovery path requires reviewed merge into the deployed trusted workflow code and a fresh run. An explicit rollback to the already published v2.1.0 staging archive is the operational fallback; its outcome is recorded in #175 after verification. Original main/preview/retirement overlap, cancelled-publication recovery, and complete PDF/EPUB/handle isolation remain separate live acceptance until their evidence is recorded. No production rollback or release publication was performed.
+
+## Restored staging and retired preview
+
+Fallback rollback 38524616594 passed live verification and successful receipt, restoring accepted v2.1.0 staging archive 7587a2a6c35650c468eee501a604b664b814a13b-38498206179. Production stayed source db6029d/candidate 38440711991. Staging hold remains intentionally; normal corrected recovery is not yet accepted.
+
+Temporary PR #195 passed candidate 38524058601 and preview publication 38524924371. It was closed without merge; automatic cleanup 38525467351 passed, receipt marks it retired, and live browser inspection showed the closed page with a staging link. The publisher completed before a cancellation control could be reached; no cancellation result is claimed.
+
+Live Chrome synthetic-file checks showed independent initial libraries, PDF positions/bookmarks across production/staging/preview #195, and EPUB chapter/bookmark isolation between production and preview. Production bookmark survived staging Forget library; restored staging required file reselection instead of treating cached listings as accessible files. Highlights/notes, retained native folder handles and second-preview isolation remain outstanding.
+
+Fix revision 2f60475ecac039949d39fe4eea5bf3617d6171ef passed Frontend CI 38525086050 after the initial formatting-only failure 38524842431. The following documentation revision retains this tested script; owner merge and corrected live recovery remain pending.
