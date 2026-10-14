@@ -62,3 +62,12 @@ Fix: name upload/deployment artifacts with both workflow run ID and run attempt,
 Retain earlier artifacts; do not delete evidence or bypass source, freshness, checksum, live verification or acknowledgement checks.
 Regression models three uploads in one run and requires exactly one matching, current-attempt artifact for each deployment.
 Reviewed merge and corrected live retry/queue rehearsal remain necessary before #44/#175 closure.
+
+## Required-check collision found during #202 review
+
+Label runs 38538805147 and 38538805535 emitted skipped Candidate validation checks while actual candidate run 38538517387 was still validating. GitHub accepts skipped required checks; the ruleset was active, but the duplicate required name created a merge-gate loophole.
+Actual 38538517387 subsequently passed frontend, both browser shards and Candidate validation on 5125b9f8a3003a36669b2cbd069f7f77061b2206; that later success does not waive the loophole.
+
+#202 also fixes the check name: only eligible validation events emit Candidate validation. Ignored events emit Metadata event (no candidate validation).
+Regression evaluates the actual workflow name/condition, preserves a pending required check across ignored events, and runs the real gate shell script against failed/cancelled/skipped/missing frontend and browser results.
+The regression fails against the old constant name; 20 focused tests and scoped lint pass with the fix. The new revision needs fresh GitHub validation before merge.

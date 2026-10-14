@@ -59,7 +59,7 @@ jobs:
       source_ref: ${{ github.sha }}
       source_sha: ${{ github.event.pull_request.head.sha || github.sha }}
   gate:
-    name: Candidate validation
+    name: ${{ (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))) && 'Candidate validation' || 'Metadata event (no candidate validation)' }}
     timeout-minutes: 20
     if: always() && (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual')))
     needs: [frontend, browser]
