@@ -174,16 +174,14 @@
     "branch": "main",
     "archiveId": "f392415176386975d36af835a4d62513bc44e3a3-38440711991"
   },
-  "rollbackHold": {
-    "staging": "495b14e45e65bb7d5470662e4ef294471512b4d4"
-  },
+  "rollbackHold": {},
   "staging": {
-    "sha": "601543eba8b6d28f9da03abf83cbb46799efd1a6",
-    "runId": "38498206179",
-    "sourceSha": "9e67898869b5523de361e3d42fd2831720755b80",
-    "tree": "7587a2a6c35650c468eee501a604b664b814a13b",
+    "sha": "baac0f8661e2acb453569710ad7eb60eb3989a8a",
+    "runId": "38526691063",
+    "sourceSha": "baac0f8661e2acb453569710ad7eb60eb3989a8a",
+    "tree": "42e44d1c576a4ce1c00498fb5516fb4d01a15f59",
     "version": "2.1.0",
     "branch": "staging",
-    "archiveId": "7587a2a6c35650c468eee501a604b664b814a13b-38498206179"
+    "archiveId": "42e44d1c576a4ce1c00498fb5516fb4d01a15f59-38526691063"
   }
 }
