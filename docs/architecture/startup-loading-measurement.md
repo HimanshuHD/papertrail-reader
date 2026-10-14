@@ -31,7 +31,6 @@ Use browser DevTools Performance and Network recording, or an instrumented Playw
 
 Attach results to #171 before checking initialization impact. If the owner explicitly defers measurement to #16/#167, retain the exact requirement there and record that decision in #171; an absent measurement is not a passing result.
 
-
 ## Recorded release comparison — 14 October 2026
 
 Read-only Startup measurement run [38521501369](https://github.com/HimanshuHD/papertrail-reader/actions/runs/38521501369) succeeded; artifact startup-measurement-38521501369 (11873294234) contains raw samples/resource data and 20 traces. Chromium 153.0.8010.12 on Linux; five cold contexts per revision/condition, density/default viewport 1440×900, reduced motion, production builds, no preview hold. Exact baseline d995c806d93725f990636ce0899388c613cb2bbb / v2.0.0; exact release db6029d70de1166d3535a7a53d24711ddb49c9b0 / v2.1.0. Frontend CI 38521501381 passed after YAML formatting correction; earlier CI formatting failure 38521293800 remains historical.
