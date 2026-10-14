@@ -171,7 +171,8 @@
       "sourceSha": "130956d5567635c3e40b981b2145074e2a152bd1",
       "tree": "59f26f94c94e565bc15aad718b05f257b7e1a936",
       "branch": "staging",
-      "status": "active"
+      "status": "active",
+      "draft": true
     }
   },
   "production": {

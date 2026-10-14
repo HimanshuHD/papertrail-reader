@@ -138,7 +138,7 @@
       "version": "2.1.0",
       "branch": "staging",
       "archiveId": "a87f5605a8d8a36d87b735e327652336fa8640d1-38573122270",
-      "publishedAt": "2026-10-14T13:55:36.203Z"
+      "publishedAt": "2026-10-14T13:57:08.434Z"
     }
   },
   "production": {
@@ -230,7 +230,7 @@
       "version": "2.1.0",
       "branch": "main",
       "archiveId": "d88bd2e86d5d3cbe5ac6f575b7be02fd6db50e9e-38566093355",
-      "publishedAt": "2026-10-14T13:55:36.201Z"
+      "publishedAt": "2026-10-14T13:57:08.192Z"
     }
   }
 }
