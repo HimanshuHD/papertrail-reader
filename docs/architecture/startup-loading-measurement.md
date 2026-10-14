@@ -1,6 +1,6 @@
 # Startup loading measurement and closure
 
-Feature acceptance: #171. Broader diagnostics/budgets: #167/#16. These instructions describe the remaining measurement; they are not measured results.
+Feature acceptance: #171. Broader diagnostics/budgets: #167/#16. The protocol below is reusable; measured v2.0.0/v2.1.0 results are recorded at the end.
 
 ## Already recorded
 
@@ -30,3 +30,16 @@ Use browser DevTools Performance and Network recording, or an instrumented Playw
 | Transferred startup bytes      | pending | pending | pending    |
 
 Attach results to #171 before checking initialization impact. If the owner explicitly defers measurement to #16/#167, retain the exact requirement there and record that decision in #171; an absent measurement is not a passing result.
+
+
+## Recorded release comparison — 14 October 2026
+
+Read-only Startup measurement run [38521501369](https://github.com/HimanshuHD/papertrail-reader/actions/runs/38521501369) succeeded; artifact startup-measurement-38521501369 (11873294234) contains raw samples/resource data and 20 traces. Chromium 153.0.8010.12 on Linux; five cold contexts per revision/condition, density/default viewport 1440×900, reduced motion, production builds, no preview hold. Exact baseline d995c806d93725f990636ce0899388c613cb2bbb / v2.0.0; exact release db6029d70de1166d3535a7a53d24711ddb49c9b0 / v2.1.0. Frontend CI 38521501381 passed after YAML formatting correction; earlier CI formatting failure 38521293800 remains historical.
+
+Fast condition: median DOM readiness 96.9 ms (87.0–123.0) for v2.0.0 versus 157.9 ms (151.2–164.5) for v2.1.0, an increase of 61.0 ms. Throttled condition: 3542.8 ms (3520.4–3545.7) versus 4582.6 ms (4562.7–4631.0), an increase of 1039.8 ms, about 29.4%. Throttling is 100 ms latency, 200,000 B/s download, 100,000 B/s upload and 4× CPU slowdown.
+
+Median startup transfer: 613,239 versus 715,084 bytes, a difference of 101,845 bytes (about 16.6%) using the uncompressed local static server. Startup art independently totals 88,778 bytes. Median long tasks starting before readiness: 0 versus 52 ms under fast conditions, 219 versus 206 ms under throttling. Resource/navigation records also contain first-contentful-paint data.
+
+The boundary is a renderable empty-library Add local documents control with no inert ancestor. This measures DOM/control readiness, not the exact presented frame. The comparison covers the entire released increment, not an isolated attribution of every millisecond to the animation. It excludes restored populated libraries/document reopening, visitor devices, CDN compression/cache and sustained memory. It establishes measured impact, not compliance with an invented performance budget. The extra transfer/startup latency informs broader optimization/budgets in #16/#167.
+
+Independent earlier run 38521293907 also succeeded: fast median 63.3 versus 111.6 ms; throttled 3453.0 versus 4463.8 ms; same transfer counts. Runner variation reinforces using the pinned-condition median/range rather than a universal latency claim.
