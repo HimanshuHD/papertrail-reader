@@ -71,3 +71,9 @@ Actual 38538517387 subsequently passed frontend, both browser shards and Candida
 #202 also fixes the check name: only eligible validation events emit Candidate validation. Ignored events emit Metadata event (no candidate validation).
 Regression evaluates the actual workflow name/condition, preserves a pending required check across ignored events, and runs the real gate shell script against failed/cancelled/skipped/missing frontend and browser results.
 The regression fails against the old constant name; 20 focused tests and scoped lint pass with the fix. The new revision needs fresh GitHub validation before merge.
+
+## Dynamic-name correction superseded
+
+19158e0 full CI 38540346859 passed frontend, both browser shards and Candidate validation. GitHub still showed the required check Expected; retrying gate job 115776775738 did not clear association. Dynamic naming prevented a skipped pass but proved unreliable for required-check matching.
+
+The replacement retains static Candidate validation and always runs the gate. Ignored metadata waits for another actual current candidate via existing tested waitForCandidate policy: exclude own run; exact expected head/base; successful frontend/gate and retained artifact. Skipped-build metadata runs cannot be producers. Failed/missing candidates, invalid provenance, changed source and bounded timeout have regression coverage. The normal gate rejects failed/cancelled/skipped/missing build/browser results. 27 focused tests and lint passed before commit. New GitHub validation and merge-panel acceptance remain pending.

@@ -87,12 +87,12 @@ test('ready candidates validate before optional labelled QA; labels do not bypas
   assert.deepEqual(allowed({ action: 'labeled', label: 'type:enhancement' }), [
     false,
     false,
-    false,
+    true,
     false,
   ])
-  assert.deepEqual(allowed({ action: 'edited' }), [false, false, false, false])
-  assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
-  assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, false])
+  assert.deepEqual(allowed({ state: 'closed' }), [false, false, true, false])
+  assert.deepEqual(allowed({ draft: true }), [false, false, true, false])
   assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])
   assert.deepEqual(allowed({ gateResult: 'failure' }), [true, false, true, false])
   assert.deepEqual(allowed({ gateResult: 'skipped' }), [true, false, true, false])
@@ -118,7 +118,7 @@ test('ready-only CI validates both targets and gates production browser acceptan
     /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled\]/,
   )
   assert.match(ci, /github.event.pull_request.draft == false/)
-  assert.match(ci, /&& 'Candidate validation' \|\| 'Metadata event \(no candidate validation\)'/)
+  assert.match(ci, /name: Candidate validation/)
   assert.match(ci, /name: candidate-build/)
   assert.ok(!ci.includes('  push:'))
   assert.ok(!ci.includes('uses: ./.github/workflows/pages.yml'))

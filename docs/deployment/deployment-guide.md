@@ -1,12 +1,12 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
-## Required merge check and ignored metadata events
+## Required merge check and metadata events
 
-The ruleset requires `Candidate validation` from GitHub Actions. GitHub accepts a skipped required check, so ignored events must not emit that name.
+The ruleset requires the static `Candidate validation` name from GitHub Actions. This gate always executes: a skipped required job can satisfy GitHub protection, and a conditional job name can remain unmatched in the merge panel.
 
-Eligible candidate events use the required name and the gate runs with `always()`: build validation must succeed, and website-affecting main candidates must also pass Browser E2E. Ordinary labels, body/title edits, drafts and closed PR events use `Metadata event (no candidate validation)` and skip validation. They cannot replace or satisfy the required candidate check. Base-branch edits and the `qa:visual` label retain real validation. Metadata concurrency stays separate so it cannot cancel a candidate run.
+Eligible events require successful build validation and, for website-affecting main candidates, Browser E2E. Ordinary labels and body/title edits skip builds, but the gate waits for a separate actual candidate with successful frontend and Candidate validation, retained artifact and exact current PR head/base. It excludes itself and skipped-build metadata runs. Missing/failed candidates, changed head/base, drafts, closed PRs and exhausted waits fail acceptance. The metadata check uses the trusted base revision's delivery policy and read-only credentials.
 
-When reviewing a PR, follow the required Candidate validation result for the current source SHA; ignored metadata checks are separate. A previous revision's passing checks do not validate new commits.
+Base-branch edits and the `qa:visual` label still run full validation. Separate metadata concurrency cannot cancel candidate validation. Ignored events do not trigger additional Visual QA. Metadata success verifies an existing current candidate; it does not create a build or authorize publication.
 
 ## Workflow enhancements — 13 October 2026
 

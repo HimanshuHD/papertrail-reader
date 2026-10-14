@@ -9,54 +9,18 @@ const workflow = fs.readFileSync(
   'utf8',
 )
 const gate = workflow.split('\n  gate:\n')[1].split('\n  visual-qa:')[0]
-const nameExpression = gate.match(/^ {4}name: (.+)$/m)[1]
-const condition = gate.match(/^ {4}if: (.+)$/m)[1]
-const evaluate = (expression, github) =>
-  new Function(
-    'github',
-    'always',
-    'return (' + expression.replace(/^\$\{\{\s*/, '').replace(/\s*\}\}$/, '') + ')',
-  )(github, () => true)
-const event = (action, overrides = {}) => ({
-  event_name: 'pull_request',
-  event: {
-    action,
-    label: { name: 'type:bug' },
-    changes: {},
-    pull_request: { state: 'open', draft: false },
-    ...overrides,
-  },
-})
-
-test('ignored metadata checks cannot satisfy or replace the pending required candidate check', () => {
-  const checks = [{ name: 'Candidate validation', conclusion: null }]
-  for (const github of [
-    event('labeled'),
-    event('labeled', { label: { name: 'status:in-progress' } }),
-    event('edited'),
-    event('converted_to_draft', { pull_request: { state: 'open', draft: true } }),
-    event('closed', { pull_request: { state: 'closed', draft: false } }),
-  ]) {
-    assert.equal(evaluate(condition, github), false)
-    const name = evaluate(nameExpression, github)
-    assert.notEqual(name, 'Candidate validation')
-    checks.push({ name, conclusion: 'skipped' })
-  }
-  const required = checks.filter((check) => check.name === 'Candidate validation')
-  assert.deepEqual(required, [{ name: 'Candidate validation', conclusion: null }])
-  for (const github of [
-    ...['opened', 'ready_for_review', 'synchronize', 'reopened'].map((action) => event(action)),
-    event('edited', { changes: { base: { ref: { from: 'staging' } } } }),
-    event('labeled', { label: { name: 'qa:visual' } }),
-    { event_name: 'workflow_dispatch', event: {} },
-  ]) {
-    assert.equal(evaluate(condition, github), true)
-    assert.equal(evaluate(nameExpression, github), 'Candidate validation')
-  }
+test('metadata checks keep a static required name and verify another current candidate', () => {
+  assert.match(gate, /^ {4}name: Candidate validation$/m)
+  assert.match(gate, /^ {4}if: always\(\)$/m)
+  assert.match(gate, /waitForCandidate/)
+  assert.match(gate, /candidateAcceptance:true,excludeRun:context.runId/)
+  assert.match(gate, /expectedHead:pr.head.sha,expectedBase:pr.base.sha/)
+  assert.match(gate, /pr.state!=='open' \|\| pr.draft/)
+  assert.match(gate, /persist-credentials: false/)
 })
 
 test('the required gate runs after dependency failure and rejects missing or failed validation', () => {
-  assert.match(condition, /^always\(\) && /)
+  assert.match(gate, /^ {4}if: always\(\)$/m)
   const script = gate.split('        run: |\n')[1].trim()
   const run = (frontend, browser, target = 'main', website = 'true') =>
     execFileSync('bash', ['-e', '-c', script], {
