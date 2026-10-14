@@ -40,3 +40,25 @@ Preview #194 published through 38526906910 from accepted candidate 38526511767, 
 Native folder selection did not emit an accessible filechooser within ten seconds; the application reported selection cancelled or permission denied and no files accessed. Retained native folder-handle acceptance remains blocked in this cloud browser. Full two-way PDF/EPUB annotation and native-handle isolation remains unchecked in #175/#130.
 
 The equivalent production manual path still needs reviewed main propagation. No production change, release/tag publication or production rollback was made in this rehearsal.
+
+## Post-sync acceptance and publisher retry defect
+
+Owner merged #199 (main 23061bd03fa4b2af2926cf0be924a77a8214210e) and #200 (staging 5a79fd8ca7261f16fb512313a4bf21ea1ea95699).
+Candidate-source binding fix passed full CI/production Browser E2E 38532689529.
+Fixed staging integration 38535006467 passed both browser shards, publication, live verification and receipt.
+Current-main manual CI 38534890069 and integration 38535981941 attempt 1 passed.
+Production source 23061bd / candidate 38534890069; staging source 5a79fd8 / candidate 38534395756; rollback hold empty.
+
+Owner native folder-access confirmation is accepted as owner evidence. Synthetic two-way staging/production PDF highlights and notes and EPUB notes were checked in live Chrome: each channel retained only its own named annotation after reopening the document. Historical preview/library/bookmark and two-way EPUB annotation checks remain accepted separately.
+
+Temporary #201 was reopened solely for another queue rehearsal and closed without merge.
+Retrying preview publisher 38535569522 attempt 2/job 115765411390 and main publisher 38535981941 attempt 2/job 115765709102 exposed a genuine failure:
+deploy-pages found two artifacts named github-pages in the same workflow run and refused publication.
+No receipt or live acceptance is attributed to those failed retries.
+Closure cleanup 38538074670 succeeded, restoring acknowledged retired preview state.
+The main retry had already started and was not cancelled; this does not prove queued-publication cancellation.
+
+Fix: name upload/deployment artifacts with both workflow run ID and run attempt, using identical names in upload-pages-artifact and deploy-pages.
+Retain earlier artifacts; do not delete evidence or bypass source, freshness, checksum, live verification or acknowledgement checks.
+Regression models three uploads in one run and requires exactly one matching, current-attempt artifact for each deployment.
+Reviewed merge and corrected live retry/queue rehearsal remain necessary before #44/#175 closure.
