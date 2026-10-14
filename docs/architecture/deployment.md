@@ -1,5 +1,15 @@
 # Deployment architecture
 
+## Workflow enhancements — 13 October 2026
+
+#182 activated delivery and Visual QA on main; #185 promoted the report and capture fixes. #186 is merged into staging, but its removal of periodic integration and metadata-edit jobs still needs main promotion. This checkpoint supersedes older bootstrap/metadata/schedule descriptions below; embedded workflow snapshots remain historical revision evidence. Use the [publishing guide](../deployment/publishing.md) and [Visual QA guide](../deployment/visual-qa.md) for current operation.
+
+- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft and qa:visual policies remain intact.
+- Integration keeps branch pushes and successful manual main/staging recovery, with completion events filtered to those branches. #186 handles only the event's branch and removes the integration cron; the publisher's recovery schedule remains separate.
+- History-only staging sync skips deployment only with matching published receipt, descendant ancestry and exact Git tree. Changed/conflict-resolved content still needs validation. Updating a feature PR still creates a fresh candidate.
+- QA executes approved base tooling against the exact candidate; stale head/base/tree identities block evidence. Update the feature branch and validate again rather than rerun an old event.
+- Comparison reports offer JSON and Details views, defaulting to Details, for evidence identity/status and test-case outcomes/retries/errors. Captures have passed; owner design and reviewed baseline acceptance remain separate.
+
 ## Candidate-to-channel flow
 
 The #130 pipeline separates source validation, browser acceptance and privileged static publication. The operator procedure is [deployment and recovery](../deployment/publishing.md); live evidence belongs in [verification](../deployment/verification.md), issues and milestones.

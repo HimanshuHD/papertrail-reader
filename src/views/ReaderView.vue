@@ -26,6 +26,7 @@ import { waitForMinimumLoading } from '../features/library/loading-duration'
 import { enrichPdfTitles } from '../features/library/pdf-titles'
 
 import { useWorkspaceContinuity } from '../composables/useWorkspaceContinuity'
+import { startupScreen } from '../services/startup-screen'
 import { cacheLibraryDocuments, type WorkspaceSnapshot } from '../services/workspace-storage'
 import { revalidateWorkspace } from '../services/workspace-revalidation'
 
@@ -396,6 +397,7 @@ function toggleFolder(path: string, expanded: boolean) {
 }
 
 onMounted(async () => {
+  startupScreen.stage('library', 'Checking your saved library')
   const owner = workspaceOperation
   const access = await workspace.restore((saved) => {
     if (owner !== workspaceOperation) return
@@ -403,7 +405,15 @@ onMounted(async () => {
     sidebarWidth.value = saved.sidebarWidth
     selectedLibraryDocumentId.value =
       saved.documents.find((item) => item.relativePath === saved.selectedPath)?.id ?? null
+    // Saved metadata is usable before permission checks or folder rescans finish.
+    startupScreen.complete('library')
+    startupScreen.stage('reader', 'Preparing the reader')
+    void nextTick().then(() => startupScreen.ready())
   })
+  startupScreen.complete('library')
+  startupScreen.stage('reader', 'Preparing the reader')
+  await nextTick()
+  startupScreen.ready()
   const saved = workspace.snapshot.value
   if (!saved || owner !== workspaceOperation) return
   if (access?.status === 'granted') await reconnect(access.selection, saved, owner)

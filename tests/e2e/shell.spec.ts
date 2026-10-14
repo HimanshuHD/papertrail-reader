@@ -1,4 +1,4 @@
-import { openAnnotationActions } from '../fixtures/browser'
+import { openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -438,6 +438,7 @@ test('EPUB progress, settings and bookmarks survive reload/reselection and isola
   const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Continuity</title></head><body><h1>Continuity</h1><p>${'A saved reading point within a long chapter. '.repeat(500)}</p></body></html>`
   const bytes = Buffer.from(createEpubFixture({ chapter }))
   const pick = async (name: string, buffer = bytes) => {
+    await waitForWorkspaceReady(page)
     const show = page.getByRole('button', { name: 'Show library' })
     if (await show.isVisible()) await show.click()
     await page
@@ -654,6 +655,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
 }, info) => {
   await page.goto('./#/app')
   const select = async (name: string, buffer: Buffer) => {
+    await waitForWorkspaceReady(page)
     const show = page.getByRole('button', { name: 'Show library' })
     if (await show.isVisible()) await show.click()
     await page
@@ -1875,6 +1877,7 @@ test('PDF reading positions survive reload and rename without matching changed c
   await page.goto('./#/app')
   const bytes = createPdfFixture(4)
   const select = async (name: string, buffer: Buffer) => {
+    await waitForWorkspaceReady(page)
     const opener = page.getByRole('button', { name: 'Show library' })
     if (await opener.isVisible()) await opener.click()
     await page
@@ -2249,6 +2252,7 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
   await page.goto('./#/app')
   const bytes = createPdfFixture(6)
   const select = async (name: string, buffer: Buffer) => {
+    await waitForWorkspaceReady(page)
     const opener = page.getByRole('button', { name: 'Show library' })
     if (await opener.isVisible()) await opener.click()
     await page
@@ -2502,6 +2506,7 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     ),
   }
   const open = async () => {
+    await waitForWorkspaceReady(page)
     const show = page.getByRole('button', { name: 'Show library', exact: true })
     if (await show.isVisible()) await show.click()
     await page.locator('input[accept*=".pdf"]').setInputFiles(book)

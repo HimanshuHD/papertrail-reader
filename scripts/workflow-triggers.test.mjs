@@ -18,7 +18,7 @@ test('integration completion events are limited to deployment branches, with rec
   assert.match(integration, /workflow_run.event == 'workflow_dispatch'/)
   assert.match(integration, /workflow_run.conclusion == 'success'/)
   assert.match(integration, /push:\n {4}branches: \[main, staging\]/)
-  assert.match(integration, /schedule:/)
+  assert.ok(!integration.includes('  schedule:'))
 })
 
 test('ready candidates validate before optional labelled QA; labels do not bypass candidate checks', () => {
@@ -90,7 +90,7 @@ test('ready candidates validate before optional labelled QA; labels do not bypas
     false,
     false,
   ])
-  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, false])
+  assert.deepEqual(allowed({ action: 'edited' }), [false, false, false, false])
   assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
   assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
   assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])

@@ -1,5 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import os from 'node:os'
+import path from 'node:path'
+import { writeCandidate, verifyCandidate } from './candidate-artifact.mjs'
 import {
   previewEligible,
   selectCandidate,
@@ -41,12 +45,18 @@ function fixture({
     paginate: async (method, args) => (await method(args)).data,
     rest: {
       repos: {
-        getBranch: async () => ({ data: { commit: { sha, commit: { tree: { sha: tree } } } } }),
+        getBranch: async () => ({
+          data: { commit: { sha, commit: { tree: { sha: tree } } } },
+        }),
         listPullRequestsAssociatedWithCommit: async () => ({ data: [pull] }),
         getContent: async ({ path }) => {
           const value = path === '.publication-receipt.json' ? receipt : state
           if (!value) throw Object.assign(new Error('Missing'), { status: 404 })
-          return { data: { content: Buffer.from(JSON.stringify(value)).toString('base64') } }
+          return {
+            data: {
+              content: Buffer.from(JSON.stringify(value)).toString('base64'),
+            },
+          }
         },
         compareCommits: async () => ({ data: comparison }),
       },
@@ -90,8 +100,123 @@ test('selects current validated content and rejects superseded branch events', a
   assert.equal((await selectCandidate({ ...fixture(), sourceSha: head })).skip, true)
 })
 
+function documentationMergeFixture({
+  changedFiles = [{ filename: 'docs/deployment/publishing.md' }],
+  run = {},
+} = {}) {
+  const predecessor = 'e'.repeat(40)
+  const predecessorTree = 'f'.repeat(40)
+  const earlier = '1'.repeat(40)
+  const docs = {
+    ...pr,
+    number: 187,
+    head: { ...pr.head, sha: '2'.repeat(40) },
+  }
+  const feature = { ...pr, number: 188, merge_commit_sha: predecessor }
+  const input = fixture({ pull: docs, run })
+  input.github.rest.repos.listPullRequestsAssociatedWithCommit = async ({ commit_sha }) => ({
+    data: [commit_sha === sha ? docs : feature],
+  })
+  input.github.rest.git.getCommit = async ({ commit_sha }) => ({
+    data: {
+      tree: { sha: commit_sha === sha ? tree : predecessorTree },
+      parents: [{ sha: commit_sha === sha ? predecessor : earlier }],
+    },
+  })
+  input.github.rest.repos.compareCommits = async ({ base }) => ({
+    data: {
+      status: 'ahead',
+      files: base === predecessor ? changedFiles : [{ filename: 'src/App.vue' }],
+    },
+  })
+  input.github.rest.actions.listWorkflowRuns = async ({ head_sha }) => {
+    assert.equal(
+      head_sha,
+      changedFiles.every((file) => file.filename.startsWith('docs/') && !file.previous_filename)
+        ? head
+        : docs.head.sha,
+    )
+    return {
+      data: {
+        workflow_runs: [
+          {
+            id: 42,
+            conclusion: 'success',
+            head_repository: { full_name: 'owner/repo' },
+            ...run,
+          },
+        ],
+      },
+    }
+  }
+  return { input, predecessor, predecessorTree }
+}
+
+test('docs-only staging merge retains exact preceding candidate identity while tracking current source', async () => {
+  const { input, predecessor, predecessorTree } = documentationMergeFixture()
+  const plan = await selectCandidate(input)
+  assert.equal(plan.sourceSha, sha)
+  assert.equal(plan.candidateSourceSha, predecessor)
+  assert.equal(plan.tree, predecessorTree)
+  assert.equal(plan.headSha, head)
+  assert.equal(plan.pr, '188')
+  const folder = await mkdtemp(path.join(os.tmpdir(), 'docs-candidate-'))
+  try {
+    await writeFile(path.join(folder, 'index.html'), 'validated application')
+    const identity = {
+      tree: predecessorTree,
+      sha: predecessor,
+      headSha: head,
+      pr: '188',
+      runId: '42',
+      channel: 'staging',
+      basePath: '/papertrail-reader/staging/',
+    }
+    await writeCandidate(folder, identity)
+    await verifyCandidate(folder, { ...plan, basePath: identity.basePath })
+    await assert.rejects(
+      verifyCandidate(folder, { ...plan, tree, basePath: identity.basePath }),
+      /identity mismatch: tree/,
+    )
+  } finally {
+    await rm(folder, { recursive: true, force: true })
+  }
+})
+
+test('runtime changes and renames out of runtime paths cannot reuse a preceding docs candidate', async () => {
+  for (const changedFiles of [
+    [{ filename: 'src/App.vue' }],
+    [{ filename: 'docs/moved.md', previous_filename: 'src/App.vue' }],
+  ]) {
+    const { input } = documentationMergeFixture({ changedFiles })
+    const plan = await selectCandidate(input)
+    assert.equal(plan.tree, tree)
+    assert.equal(plan.pr, '187')
+  }
+})
+
+test('docs ancestry cannot promote failed, expired or unassociated predecessors', async () => {
+  const failed = documentationMergeFixture({ run: { conclusion: 'failure' } })
+  await assert.rejects(selectCandidate(failed.input), /No successful/)
+  const expired = documentationMergeFixture()
+  expired.input.github.rest.actions.listWorkflowRunArtifacts = async () => ({
+    data: [{ name: 'candidate-build', expired: true }],
+  })
+  await assert.rejects(selectCandidate(expired.input), /No successful/)
+  const missing = documentationMergeFixture()
+  missing.input.github.rest.repos.listPullRequestsAssociatedWithCommit = async ({
+    commit_sha,
+  }) => ({
+    data: commit_sha === sha ? [{ ...pr, number: 187 }] : [],
+  })
+  await assert.rejects(selectCandidate(missing.input), /No validated merged PR/)
+})
+
 test('history-only staging sync skips before requiring a PR or candidate', async () => {
-  const input = fixture({ state: { staging: { sourceSha: head } }, publishedTree: tree })
+  const input = fixture({
+    state: { staging: { sourceSha: head } },
+    publishedTree: tree,
+  })
   input.github.rest.repos.listPullRequestsAssociatedWithCommit = async () => {
     assert.fail('Unchanged published tree must not require a merged PR')
   }
@@ -114,7 +239,11 @@ test('changed, divergent, unrecorded or unknown published content cannot bypass 
     { publishedTree: tree },
     { state: { staging: {} }, publishedTree: tree },
     { state: { staging: { sourceSha: head } }, publishedTree: null },
-    { state: { staging: { sourceSha: head } }, publishedTree: tree, receipt: null },
+    {
+      state: { staging: { sourceSha: head } },
+      publishedTree: tree,
+      receipt: null,
+    },
     {
       state: { staging: { sourceSha: head } },
       publishedTree: tree,
@@ -147,7 +276,10 @@ test('failed or expired CI artifacts cannot promote', async () => {
 })
 
 test('rollback hold blocks automatic repromotion; manual recovery still requires validated current source', async () => {
-  const state = { staging: { sourceSha: head }, rollbackHold: { staging: sha } }
+  const state = {
+    staging: { sourceSha: head },
+    rollbackHold: { staging: sha },
+  }
   assert.match((await selectCandidate(fixture({ state }))).reason, /Rollback hold/)
   await assert.rejects(
     selectCandidate({
@@ -175,7 +307,10 @@ test('already-saved and documentation-only branch heads do not redeploy', async 
       await selectCandidate(
         fixture({
           state: { staging: { sourceSha: head } },
-          comparison: { status: 'ahead', files: [{ filename: 'docs/deployment/publishing.md' }] },
+          comparison: {
+            status: 'ahead',
+            files: [{ filename: 'docs/deployment/publishing.md' }],
+          },
         }),
       )
     ).skip,
@@ -193,7 +328,9 @@ test('closed published previews retire while an open draft stays published', asy
   )
   const open = fixture({ pull: { ...pr, draft: true } })
   assert.deepEqual(
-    await closedPreviews(open.github, 'owner', 'repo', { previews: { 170: { status: 'active' } } }),
+    await closedPreviews(open.github, 'owner', 'repo', {
+      previews: { 170: { status: 'active' } },
+    }),
     [],
   )
 })
@@ -206,7 +343,13 @@ test('metadata validation waits for full CI then reuses its accepted artifact', 
       workflow_runs:
         ++polls < 3
           ? []
-          : [{ id: 42, conclusion: 'success', head_repository: { full_name: 'owner/repo' } }],
+          : [
+              {
+                id: 42,
+                conclusion: 'success',
+                head_repository: { full_name: 'owner/repo' },
+              },
+            ],
     },
   })
   let waits = 0
@@ -279,12 +422,29 @@ function metadataFixture({ run = {}, jobs, ...options } = {}) {
   })
   input.github.rest.actions.listJobsForWorkflowRun = async () => ({
     data: jobs || [
-      { name: 'Validate and build website', conclusion: 'success', status: 'completed' },
-      { name: 'Candidate validation', conclusion: 'success', status: 'completed' },
-      { name: 'Visual QA / capture', conclusion: 'failure', status: 'completed' },
+      {
+        name: 'Validate and build website',
+        conclusion: 'success',
+        status: 'completed',
+      },
+      {
+        name: 'Candidate validation',
+        conclusion: 'success',
+        status: 'completed',
+      },
+      {
+        name: 'Visual QA / capture',
+        conclusion: 'failure',
+        status: 'completed',
+      },
     ],
   })
-  return { ...input, prNumber: pr.number, candidateAcceptance: true, excludeRun: 99 }
+  return {
+    ...input,
+    prNumber: pr.number,
+    candidateAcceptance: true,
+    excludeRun: 99,
+  }
 }
 
 test('metadata gate reuses candidate acceptance despite downstream QA failure or pending QA', async () => {
@@ -328,7 +488,11 @@ test('metadata wait polls only active candidate producers and never another skip
   const active = metadataFixture({
     run: { status: 'in_progress', conclusion: null },
     jobs: [
-      { name: 'Validate and build website', status: 'in_progress', conclusion: null },
+      {
+        name: 'Validate and build website',
+        status: 'in_progress',
+        conclusion: null,
+      },
       { name: 'Candidate validation', status: 'queued', conclusion: null },
     ],
   })
@@ -336,7 +500,11 @@ test('metadata wait polls only active candidate producers and never another skip
   const metadata = metadataFixture({
     run: { status: 'in_progress', conclusion: null },
     jobs: [
-      { name: 'Validate and build website', status: 'completed', conclusion: 'skipped' },
+      {
+        name: 'Validate and build website',
+        status: 'completed',
+        conclusion: 'skipped',
+      },
       { name: 'Candidate validation', status: 'in_progress', conclusion: null },
     ],
   })

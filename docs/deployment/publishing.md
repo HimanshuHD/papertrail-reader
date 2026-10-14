@@ -6,7 +6,7 @@ This is the #130 staging/release/hotfix delivery model. Code merged into staging
 
 Planning lives in the [Roadmap 3 Wiki](https://github.com/HimanshuHD/papertrail-reader/wiki/Roadmap-3) and [Preparation milestone](https://github.com/HimanshuHD/papertrail-reader/milestone/7). This guide documents operation, not a parallel roadmap.
 
-**Initial activation:** merge the implementation PR into staging after candidate CI passes. Its push runs staging integration and E2E. Reusable staging publication uses reviewed staging orchestration. Then create a release branch from staging, bump package.json/package-lock.json consistently, and open a reviewed release PR to main. Main's scheduled recovery, manual workflow form, workflow-run recovery and trusted PR-cleanup handlers become the new policy only after that release merges. During this short bootstrap period do not manually run the legacy main publisher: it does not preserve the new staging channel. Before activation, preview publishing can use the workflow on staging with target branch staging. Complete the configuration below before routine delivery.
+**Activation checkpoint (13 October 2026):** #182 activated the delivery/Visual QA workflows on main; #185 promoted the capture/report and provenance fixes. #186 is merged into staging, while its simplified integration triggers and title/body-edit handling still await main promotion. Feature/fix work continues from staging; reviewed release/hotfix PRs target main. No release version or broader owner acceptance is completed merely by installing tooling.
 
 ## Branches and URLs
 
@@ -33,7 +33,7 @@ The connector cannot configure repository administration, environment reviewers 
 
 ## Feature and fix PRs
 
-Create one implementation branch at a time from updated staging. Open a draft PR targeting staging. Application CI does not run while draft. Frontend CI runs for ready-at-opening, ready_for_review, synchronize and reopened-ready events; changing the target branch also validates again. Title/body edits do not repeat application tests or cancel active candidate checks. Their required gate verifies an actually successful target-channel artifact; skipped or failed earlier validation cannot pass. If no accepted artifact exists yet, fresh acceptance is required. Returning to draft cancels the old PR validation through concurrency and disables new preview requests.
+Create one implementation branch at a time from updated staging. Open a draft PR targeting staging. Application CI does not run while draft. Frontend CI runs for ready-at-opening, ready_for_review, synchronize and reopened-ready events; changing the target branch also validates again. On staging after #186, title/body edits skip every job, including Candidate validation and Visual QA; they neither poll nor cancel active source validation. Source updates use synchronize; target changes use edited with changes.base. GitHub can still list an all-skipped run because edited cannot be filtered by field at registration. Main uses the earlier metadata-reuse behavior until #186 is promoted. Returning to draft cancels the old PR validation through concurrency and disables new preview requests.
 
 Frontend CI checks lint, format, unit/pipeline tests, types and candidate builds. It checks out the combined PR merge tree, records head/base/merge identities, and requires the current target base to be an ancestor of the PR head. Update the branch from its target before accepting new checks. It builds separate preview and target-channel artifacts; each has its own base path and environment metadata. No site is published by PR CI.
 
@@ -105,7 +105,7 @@ Publication is serialized with pages-publisher, queue:max and cancel-in-progress
 
 The publisher commits the desired site to pages-state, uploads an aggregate excluding rollback archive payloads, deploys Pages and verifies live channels/assets. Only then it writes .publication-receipt.json and .deployment-history.json. A desired-state commit or successful Pages action alone is not accepted delivery. If Pages deployment or live verification fails, the receipt remains unmatched and recovery retries. A failed live check after Pages switched content cannot guarantee that the old site is still serving: inspect it and use rollback if necessary.
 
-Publish website recovery runs at minutes 17 and 47 each hour; integration recovery scans current channel candidates at 23 and 53. GitHub schedules are best effort, with no bounded-time SLA. Current acknowledged state plus no cleanup is a no-op. API errors fail visibly, not as false acknowledgments. Check summaries and source identities rather than appearance alone.
+Publish website recovery retains its own schedule at minutes 17 and 47. #186 removes the separate integration schedule on staging; main retains the 23/53 integration schedule until promotion. GitHub schedules are best effort, with no bounded-time SLA. Current acknowledged state plus no cleanup is a no-op. API errors fail visibly, not as false acknowledgments. Check summaries and source identities rather than appearance alone.
 
 ## Explicit rollback
 
@@ -117,7 +117,7 @@ Published production/staging artifacts are retained in pages-state/.deployment-a
 4. Verify the resulting live identity and receipt. Record the reason and selected version/run in the issue/release evidence.
 5. Reconcile source with a revert/corrective PR and synchronize any production correction into staging/releases.
 
-Rollback sets a hold on the current target-branch revision so scheduled integration does not immediately undo it. A new accepted source revision or explicit manual recovery can replace the rollback. Historical source identity remains the restored artifact's identity; the hold is recorded separately. Rollback is unavailable for pre-migration publications without a retained verified archive. Do not delete/modify archives manually while publication is running.
+Rollback sets a hold on the current target-branch revision so automatic integration does not immediately undo it. A new accepted source revision or explicit manual recovery can replace the rollback. Historical source identity remains the restored artifact's identity; the hold is recorded separately. Rollback is unavailable for pre-migration publications without a retained verified archive. Do not delete/modify archives manually while publication is running.
 
 ## Storage and environment identity
 
@@ -135,7 +135,7 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 | -------------------- | --------------------------------------------------------------------------------------------------- |
 | ci.yml               | Ready PR/manual recovery frontend validation, channel builds and required Candidate validation gate |
 | browser-e2e.yml      | Reusable sharded tests of downloaded candidate artifacts                                            |
-| delivery.yml         | Branch pushes, successful manual CI and scheduled integration recovery                              |
+| delivery.yml         | Branch pushes and successful manual branch CI; integration schedule removed by #186                 |
 | channel-delivery.yml | Independent channel selection, tree/hash checks, staging E2E and promotion dependency               |
 | pages.yml            | Trusted manual preview, serialized publication, cleanup, receipts and rollback                      |
 | merge-tracking.yml   | Main-merge issue evidence; no repository roadmap writes                                             |
@@ -148,4 +148,12 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 
 Visual QA is manually dispatched through its own Actions workflow after reviewed main activation. PRs carrying **qa:visual** queue Visual QA **after successful Candidate validation**, using that gate's exact artifact run. Fixed-#176 smoke callers and Frontend CI manual-QA workarounds are removed; existing manual build/recovery retains its delivery purpose. See [Visual QA operation](visual-qa.md).
 
-Metadata-only PR edits reuse successful current Candidate validation and frontend artifact acceptance independently of downstream Visual QA outcome. The selector checks workflow/source/PR identity, latest successful frontend and candidate jobs, and retained artifact; existing target/base/tree/checksum verification still applies. It excludes the metadata run itself and skipped-build metadata runs, waits only while a matching candidate producer remains active, and fails promptly when none can supply acceptance. Visual QA failures remain failures. Normal promotion and manual-preview acceptance retain their current policy.
+Title/body-only PR edits skip all Frontend CI jobs and do not poll for candidates. Source commit updates validate through synchronize; target changes validate through edited with changes.base. GitHub cannot filter edited by field at the event level, so title/body edits can still leave an all-skipped workflow entry. Candidate acceptance remains attached to source-changing validation, not descriptive edits.
+
+Integrate and promote runs on main/staging pushes and completed Frontend CI runs on those branches. Only successful manual branch recovery completions enter integration. It processes only the event's target branch; periodic scheduling is removed. No unconditional periodic publication attempt is made.
+
+## Documentation merges while staging delivery is pending
+
+A newer staging merge supersedes an older integration run at the publication freshness check, even when the newer merge contains only documentation. If the latest merge is documentation-only and the application has not yet been published, candidate selection follows verified first-parent, same-repository staging PR merges to the preceding website-changing candidate. Every intervening difference must pass the documentation-only policy, including rename source paths; traversal is capped at 20 merges. Application, test, workflow and other build-affecting changes cannot use this shortcut.
+
+The promotion plan retains the preceding candidate's exact tree, PR, head SHA and successful CI artifact identity, while `sourceSha` tracks the latest staging commit for freshness and deployment-state reconciliation. `candidateSourceSha` records the candidate's merge commit. Artifact tree/checksum checks remain strict, and staging Browser E2E runs before publication. Missing/expired/failed candidates, unverifiable ancestry or the traversal limit require manual Frontend CI recovery on current staging. A documentation-only descendant of already-published content still avoids a redundant deployment.
