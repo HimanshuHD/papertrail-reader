@@ -61,7 +61,7 @@ jobs:
   gate:
     name: Candidate validation
     timeout-minutes: 20
-    if: always()
+    if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
     outputs:
       candidate_run: ${{ github.run_id }}
