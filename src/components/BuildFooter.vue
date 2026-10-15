@@ -3,7 +3,8 @@ import { ref, onMounted } from 'vue'
 import { version } from '../../package.json'
 
 const channel: string = import.meta.env.VITE_DEPLOY_CHANNEL || 'production'
-const channelLabel = channel === 'staging' ? 'Staging' : 'Production'
+const channelLabel =
+  channel === 'staging' ? 'Staging' : channel === 'release' ? 'Release archive' : 'Production'
 const notice = ref('')
 onMounted(async () => {
   if (!['staging', 'preview'].includes(channel)) return

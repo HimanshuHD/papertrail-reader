@@ -37,6 +37,14 @@ for (const channel of ['production', 'staging']) {
   ))
     await check(prefix + file, undefined, build.files[file])
 }
+for (const tag of Object.keys(state.releases || {})) {
+  const prefix = `releases/${tag}/`
+  const build = JSON.parse(fs.readFileSync('_site/' + prefix + 'build.json', 'utf8'))
+  await check(prefix + 'build.json', build)
+  for (const [file, digest] of Object.entries(build.files || {}))
+    if (file === 'index.html' || /\.(m?js|css)$/.test(file))
+      await check(prefix + file, undefined, digest)
+}
 for (const [number, preview] of Object.entries(state.previews || {})) {
   if (preview.status === 'active') await check(`preview/pr-${number}/build.json`, preview)
   else if (preview.status === 'retired')

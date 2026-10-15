@@ -10,6 +10,7 @@ export async function validateArtifact(folder) {
         '.git',
         '.deployment-state.json',
         '.publication-receipt.json',
+        'releases',
         'preview',
         'staging',
         '.deployment-archives',
@@ -38,6 +39,8 @@ export async function assemble({
   holdSha,
   rollback = false,
   archiveId,
+  releaseTag,
+  packageSha256,
 }) {
   await mkdir(site, { recursive: true })
   const statePath = path.join(site, '.deployment-state.json')
@@ -74,6 +77,7 @@ export async function assemble({
       if (
         ![
           '.git',
+          'releases',
           'preview',
           'staging',
           '.deployment-archives',
@@ -93,6 +97,8 @@ export async function assemble({
       tree,
       version,
       branch,
+      releaseTag,
+      packageSha256,
       archiveId: tree ? archiveId || tree + '-' + runId : undefined,
     }
   } else if (kind === 'staging') {
