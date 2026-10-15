@@ -9,9 +9,29 @@ const workflow = fs.readFileSync(
   'utf8',
 )
 const gate = workflow.split('\n  gate:\n')[1].split('\n  visual-qa:')[0]
+test('actual gate condition excludes closed and draft lifecycle events but retains ready PR acceptance', () => {
+  const expression = gate.match(/^ {4}if: (.+)$/m)[1]
+  const evaluate = new Function('github', 'always', 'return (' + expression + ')')
+  const run = (state, draft, action, event_name = 'pull_request') =>
+    evaluate({ event_name, event: { action, pull_request: { state, draft } } }, () => true)
+  for (const action of [
+    'opened',
+    'ready_for_review',
+    'synchronize',
+    'reopened',
+    'edited',
+    'labeled',
+  ]) {
+    assert.equal(run('open', false, action), true)
+    assert.equal(run('closed', false, action), false)
+    assert.equal(run('open', true, action), false)
+  }
+  assert.equal(run('open', true, 'converted_to_draft'), false)
+  assert.equal(run(undefined, undefined, undefined, 'workflow_dispatch'), true)
+})
 test('metadata checks keep a static required name and verify another current candidate', () => {
   assert.match(gate, /^ {4}name: Candidate validation$/m)
-  assert.match(gate, /^ {4}if: always\(\)$/m)
+  assert.match(gate, /^ {4}if: always\(\) && /m)
   assert.match(gate, /waitForCandidate/)
   assert.match(gate, /candidateAcceptance:true,excludeRun:context.runId/)
   assert.match(gate, /expectedHead:pr.head.sha,expectedBase:pr.base.sha/)
@@ -20,7 +40,7 @@ test('metadata checks keep a static required name and verify another current can
 })
 
 test('the required gate runs after dependency failure and rejects missing or failed validation', () => {
-  assert.match(gate, /^ {4}if: always\(\)$/m)
+  assert.match(gate, /^ {4}if: always\(\) && /m)
   const script = gate.split('        run: |\n')[1].trim()
   const run = (frontend, browser, target = 'main', website = 'true') =>
     execFileSync('bash', ['-e', '-c', script], {
