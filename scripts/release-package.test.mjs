@@ -230,3 +230,44 @@ test('tag packages have separate permissions from publication and no automatic p
   assert.match(publisher, /group: pages-publisher/)
   assert.match(publisher, /Release\/main changed while publishing/)
 })
+
+test('advanced main resumes after release promotion even when its validated candidate ran earlier', async () => {
+  const root = await mkdtemp(path.join(tmpdir(), 'release-main-order-'))
+  try {
+    const release = await fixture(root, 'v2.2.0', '100')
+    const site = path.join(root, '_site')
+    await deliverRelease({ site, ...release, holdSha, operation: 'promote-release' })
+    const artifact = path.join(release.folder, 'production')
+    // A candidate from the held main boundary must not displace the release.
+    await assemble({
+      site,
+      artifact,
+      kind: 'production',
+      sha: holdSha,
+      sourceSha: holdSha,
+      tree,
+      runId: '95',
+    })
+    let state = JSON.parse(await readFile(path.join(site, '.deployment-state.json')))
+    assert.equal(state.production.releaseTag, 'v2.2.0')
+    assert.equal(state.rollbackHold.production, holdSha)
+    // This reviewed main merge advances the boundary, but its PR CI predates tag packaging.
+    const advancedMain = 'd'.repeat(40)
+    await assemble({
+      site,
+      artifact,
+      kind: 'production',
+      sha: advancedMain,
+      sourceSha: advancedMain,
+      tree,
+      runId: '95',
+    })
+    state = JSON.parse(await readFile(path.join(site, '.deployment-state.json')))
+    assert.equal(state.production.sourceSha, advancedMain)
+    assert.equal(state.production.releaseTag, undefined)
+    assert.equal(state.rollbackHold.production, undefined)
+    assert.ok(await readFile(path.join(site, 'releases/v2.2.0/index.html')))
+  } finally {
+    await rm(root, { recursive: true, force: true })
+  }
+})

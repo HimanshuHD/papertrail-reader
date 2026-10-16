@@ -46,7 +46,7 @@ After archive publication, open the reported version URL and verify reader start
 
 `promote-release` installs the already built production payload without rebuilding. `rollback-release` additionally requires evidence that this exact release package was previously acknowledged in production history. Neither operation moves Git tags or changes main's source history.
 
-Explicit promotion/rollback records a production hold against the current main SHA. Saved-state reconciliation and retries preserve it. A later reviewed main merge advances that SHA and resumes normal automatic production deployment; it clears the hold. A reconcile operation by itself is not a request to restore current main.
+Explicit promotion/rollback records a production hold against the current main SHA. Saved-state reconciliation and retries preserve it. A later reviewed main merge advances that SHA and resumes normal automatic production deployment; it clears the hold. The publisher validates the current main source boundary rather than ordering a release-package run against an unrelated PR candidate run, so a candidate validated before tag packaging can still publish after its reviewed main merge. A reconcile operation by itself is not a request to restore current main.
 
 ## Live verification and failures
 

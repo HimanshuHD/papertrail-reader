@@ -55,9 +55,20 @@ export async function assemble({
   if (['preview', 'retire'].includes(kind) && !/^[1-9]\d*$/.test(String(pr)))
     throw new Error('Invalid PR number')
   if (['production', 'staging', 'preview'].includes(kind)) await validateArtifact(artifact)
+  // Release package runs and main candidate runs are separate timelines. A validated
+  // main publication beyond the saved release hold can have the lower run ID.
+  // The trusted publisher rechecks this source against current main before assembly.
+  const resumesAfterRelease =
+    kind === 'production' &&
+    !rollback &&
+    state.production?.releaseTag &&
+    state.rollbackHold?.production &&
+    /^[0-9a-f]{40}$/.test(sourceSha || '') &&
+    sourceSha !== state.rollbackHold.production
   if (
     ['production', 'staging'].includes(kind) &&
     !rollback &&
+    !resumesAfterRelease &&
     state[kind] &&
     Number(runId) < Number(state[kind].runId)
   )
