@@ -67,3 +67,12 @@ visual-evidence/
 visual-results/
 visual-report/
 visual-plan.json
+
+# Immutable release packaging and publisher preflight workspaces
+release-build/
+release-output/
+release-verified/
+release-preflight/
+incoming-release/
+release-plan.json
+selected-release.json

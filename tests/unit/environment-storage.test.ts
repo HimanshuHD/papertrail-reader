@@ -23,4 +23,12 @@ describe('deployment storage isolation', () => {
       expect(environmentDatabaseName(name, '/preview/pr-171/')).toBe(name + ':preview-171')
     }
   })
+  it('isolates each immutable release from production, staging and other versions', () => {
+    expect(environmentDatabaseName('reading', '/papertrail-reader/releases/v2.2.0/')).toBe(
+      'reading:release-v2.2.0',
+    )
+    expect(environmentDatabaseName('reading', '/papertrail-reader/releases/v2.3.0/')).toBe(
+      'reading:release-v2.3.0',
+    )
+  })
 })

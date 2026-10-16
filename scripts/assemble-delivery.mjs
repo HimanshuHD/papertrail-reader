@@ -4,7 +4,20 @@ import { verifyCandidate } from './candidate-artifact.mjs'
 const kind = process.env.KIND
 const retirePRs = JSON.parse(fs.readFileSync('retired-prs.json', 'utf8'))
 const previewNotices = JSON.parse(fs.readFileSync('preview-notices.json', 'utf8'))
-if (kind === 'reconcile') await assemble({ site: '_site', kind, retirePRs, previewNotices })
+if (kind === 'release') {
+  const { deliverRelease, unpackSelectedRelease } = await import('./release-pages.mjs')
+  const plan = JSON.parse(fs.readFileSync('release-plan.json', 'utf8'))
+  const { folder, meta } = await unpackSelectedRelease(plan)
+  await deliverRelease({
+    site: '_site',
+    folder,
+    meta,
+    operation: plan.operation,
+    holdSha: plan.holdSha,
+    retirePRs,
+    previewNotices,
+  })
+} else if (kind === 'reconcile') await assemble({ site: '_site', kind, retirePRs, previewNotices })
 else {
   const plan = JSON.parse(fs.readFileSync('promotion-plan.json', 'utf8'))
   let build, artifact
