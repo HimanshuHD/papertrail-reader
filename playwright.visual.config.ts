@@ -1,4 +1,5 @@
 import { defineConfig } from '@playwright/test'
+import path from 'node:path'
 const base = process.env.E2E_BASE_PATH || '/'
 export default defineConfig({
   testDir: './tests/visual',
@@ -9,7 +10,11 @@ export default defineConfig({
   retries: 0,
   forbidOnly: true,
   updateSnapshots: 'none',
-  snapshotPathTemplate: '{testDir}/baselines/{projectName}/{arg}{ext}',
+  snapshotPathTemplate: process.env.VISUAL_STABILITY_REFERENCE
+    ? `${process.env.VISUAL_STABILITY_REFERENCE}/{projectName}/{arg}{ext}`
+    : process.env.VISUAL_BASELINE_ROOT
+      ? `${path.resolve(process.env.VISUAL_BASELINE_ROOT)}/{projectName}/{arg}{ext}`
+      : '{testDir}/baselines/{projectName}/{arg}{ext}',
   expect: {
     timeout: 10000,
     toHaveScreenshot: {
@@ -52,9 +57,11 @@ export default defineConfig({
       })),
     ),
   ],
-  webServer: {
-    command: 'node scripts/visual-qa-server.mjs',
-    url: `http://127.0.0.1:4175${base}`,
-    reuseExistingServer: false,
-  },
+  webServer: process.env.VISUAL_STABILITY_REFERENCE
+    ? undefined
+    : {
+        command: 'node scripts/visual-qa-server.mjs',
+        url: `http://127.0.0.1:4175${base}`,
+        reuseExistingServer: false,
+      },
 })

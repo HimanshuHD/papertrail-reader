@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { createHash } from 'node:crypto'
-import { validateBaselines } from './visual-baselines.mjs'
+import { selectBaselines } from './visual-baselines.mjs'
 import {
   escapeHTML as escape,
   evidenceDetails,
@@ -82,7 +82,9 @@ status.stale = stale
 // Only an explicit reviewed baseline record reports owner approval; browser success cannot.
 let approval
 try {
-  approval = await validateBaselines()
+  const channel = captures[0]?.identity?.candidate?.channel
+  if (channel && captures.every((capture) => capture.identity.candidate?.channel === channel))
+    approval = (await selectBaselines(channel)).manifest
 } catch {
   /* Unavailable or invalid approval stays pending. */
 }

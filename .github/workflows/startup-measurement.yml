@@ -1,0 +1,44 @@
+name: Startup measurement
+on:
+  pull_request:
+    branches: [staging]
+    types: [opened, ready_for_review, synchronize, reopened]
+    paths:
+      - scripts/measure-startup.mjs
+      - .github/workflows/startup-measurement.yml
+permissions:
+  contents: read
+jobs:
+  measure:
+    if: github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - name: Build immutable published revisions without preview hold
+        run: |
+          git worktree add --detach benchmark-baseline d995c806d93725f990636ce0899388c613cb2bbb
+          git worktree add --detach benchmark-release db6029d70de1166d3535a7a53d24711ddb49c9b0
+          for folder in benchmark-baseline benchmark-release; do
+            (cd "$folder" && npm ci --no-audit --no-fund && VITE_DEPLOY_CHANNEL=production VITE_BRANCH_NAME=main npm exec -- vite build --base /)
+          done
+      - run: node scripts/measure-startup.mjs benchmark-baseline benchmark-release
+      - name: Publish measurement summary
+        if: success()
+        run: cat startup-measurement/summary.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: startup-measurement-${{ github.run_id }}
+          path: startup-measurement/
+          retention-days: 30
+          if-no-files-found: warn

@@ -1,0 +1,90 @@
+name: Package versioned release
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: 'Existing stable vX.Y.Z tag reachable from reviewed main'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: release-package-${{ inputs.release_tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  package:
+    if: github.event_name == 'push' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate tag and preserve trusted release tooling
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        run: |
+          node --input-type=module -e "import {releaseVersion} from './scripts/release-package.mjs'; releaseVersion(process.env.RELEASE_TAG)"
+          git merge-base --is-ancestor "$RELEASE_TAG^{commit}" origin/main
+          mkdir -p "$RUNNER_TEMP/release-tools"
+          cp scripts/{build-release,release-package,candidate-artifact}.mjs "$RUNNER_TEMP/release-tools/"
+          git checkout --detach "$RELEASE_TAG^{commit}"
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Build and verify exact tagged packages
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node "$RUNNER_TEMP/release-tools/build-release.mjs"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: versioned-release-package
+          path: release-output/
+          retention-days: 90
+          if-no-files-found: error
+  draft-assets:
+    needs: package
+    runs-on: ubuntu-24.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: versioned-release-package
+          path: release-output
+      - name: Attach immutable assets to a draft release only
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+        with:
+          script: |
+            const fs=require('node:fs'), crypto=require('node:crypto');
+            const tag=process.env.RELEASE_TAG;
+            if(!/^v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(tag)) throw Error('Invalid stable tag');
+            const file=`papertrail-${tag}.json`, bytes=fs.readFileSync('release-output/'+file);
+            const digest=crypto.createHash('sha256').update(bytes).digest('hex');
+            if(fs.readFileSync('release-output/'+file+'.sha256','utf8')!==digest+'  '+file+'\n') throw Error('Package checksum mismatch');
+            const {owner,repo}=context.repo;
+            let release;
+            try { release=(await github.rest.repos.getReleaseByTag({owner,repo,tag})).data; }
+            catch(e) { if(e.status!==404) throw e; }
+            if(release && !release.draft) throw Error('Published releases are immutable; do not replace their assets');
+            if(!release) release=(await github.rest.repos.createRelease({owner,repo,tag_name:tag,name:`PaperTrail ${tag}`,draft:true,body:fs.readFileSync('release-output/RELEASE-NOTES.md','utf8')})).data;
+            // Never clobber an existing asset. A rerun may reuse byte-identical assets only.
+            const assets=(await github.rest.repos.listReleaseAssets({owner,repo,release_id:release.id,per_page:100})).data;
+            for(const name of [file,file+'.sha256']) {
+              const data=fs.readFileSync('release-output/'+name), existing=assets.find(a=>a.name===name);
+              if(existing) {
+                const response=await github.rest.repos.getReleaseAsset({owner,repo,asset_id:existing.id,headers:{accept:'application/octet-stream'}});
+                if(!Buffer.from(response.data).equals(data)) throw Error('Immutable asset collision: '+name);
+              } else await github.rest.repos.uploadReleaseAsset({owner,repo,release_id:release.id,name,data,headers:{'content-type':'application/octet-stream'}});
+            }
+            await core.summary.addHeading('Draft release package prepared').addRaw(`Review ${release.html_url}. Publishing the GitHub Release does not promote production. Use the serialized publisher with archive-release/promote-release after review.`).write();

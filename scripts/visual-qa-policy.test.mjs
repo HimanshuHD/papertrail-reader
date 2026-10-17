@@ -131,9 +131,15 @@ test('verifies real candidate bytes and rejects identity tampering', async () =>
   }
 })
 test('unapproved baseline cannot activate strict comparisons; incomplete approved sets fail', async () => {
-  assert.equal((await validateBaselines()).enabled, false)
+  const committed = await validateBaselines()
+  assert.equal(committed.enabled, false)
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'visual-baseline-'))
   try {
+    await fs.writeFile(
+      path.join(root, 'approval.json'),
+      JSON.stringify({ schema: 1, enabled: false, files: {} }),
+    )
+    assert.equal((await validateBaselines(root)).enabled, false)
     await fs.writeFile(
       path.join(root, 'approval.json'),
       JSON.stringify({ schema: 1, enabled: true, files: {} }),

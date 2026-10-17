@@ -27,8 +27,11 @@ on:
       operation:
         description: 'Preview, saved-state recovery, or explicit rollback'
         type: choice
-        options: [preview, reconcile, rollback]
+        options: [preview, reconcile, rollback, archive-release, promote-release, rollback-release]
         default: preview
+      release_tag:
+        description: 'Published stable vX.Y.Z release for explicit release operations'
+        type: string
       pr_number:
         description: 'Ready PR number for preview'
         type: string
@@ -69,6 +72,8 @@ jobs:
           OPERATION: ${{ inputs.operation }}
           PR_NUMBER: ${{ inputs.pr_number }}
           ARCHIVE_ID: ${{ inputs.archive_id }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
           PROMOTION_RUN: ${{ inputs.promotion_run }}
         with:
           script: |
@@ -95,7 +100,12 @@ jobs:
               core.setOutput('kind','publish');
               return;
             }
-            if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='preview') {
+            if(context.eventName==='workflow_dispatch' && ['archive-release','promote-release','rollback-release'].includes(process.env.OPERATION)) {
+              if(branch!=='main') throw Error('Release operations require branch main');
+              const {selectRelease}=await import(require('node:url').pathToFileURL(process.cwd()+'/scripts/select-release.mjs').href);
+              await selectRelease({github,owner,repo,tag:process.env.RELEASE_TAG,operation:process.env.OPERATION,basePath:process.env.BASE_PATH});
+              core.setOutput('kind','release');
+            } else if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='preview') {
               if(!/^[1-9]\d*$/.test(process.env.PR_NUMBER)) throw Error('Enter a positive ready PR number');
               plan=await selectCandidate({github,owner,repo,branch,prNumber:process.env.PR_NUMBER});
               fs.writeFileSync('promotion-plan.json',JSON.stringify(plan));
@@ -148,10 +158,18 @@ jobs:
           BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
         run: node scripts/verify-delivery.mjs
       - name: Recheck publication boundary
-        if: steps.select.outputs.kind == 'rollback' || (steps.select.outputs.kind == 'publish' && steps.verify.outputs.publish == 'true')
+        if: steps.select.outputs.kind == 'release' || steps.select.outputs.kind == 'rollback' || (steps.select.outputs.kind == 'publish' && steps.verify.outputs.publish == 'true')
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
+            if(require('node:fs').existsSync('release-plan.json')) {
+              const p=JSON.parse(require('node:fs').readFileSync('release-plan.json'));
+              const branch=(await github.rest.repos.getBranch({...context.repo,branch:'main'})).data;
+              const release=(await github.rest.repos.getRelease({...context.repo,release_id:p.releaseId})).data;
+              const commit=(await github.rest.repos.getCommit({...context.repo,ref:p.expected.tag})).data;
+              if(branch.commit.sha!==p.holdSha || commit.sha!==p.expected.sha || release.draft || release.prerelease) throw Error('Release/main changed while publishing; retry');
+              return;
+            }
             const p=JSON.parse(require('node:fs').readFileSync('promotion-plan.json'));
             const {owner,repo}=context.repo;
             if(p.channel==='preview') {
