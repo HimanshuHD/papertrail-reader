@@ -1,7 +1,8 @@
 import { test, expect } from '@playwright/test'
 import fs from 'node:fs/promises'
 import path from 'node:path'
-const approval = JSON.parse(await fs.readFile('tests/visual/baselines/approval.json', 'utf8'))
+const root = process.env.VISUAL_BASELINE_ROOT || 'tests/visual/baselines'
+const approval = JSON.parse(await fs.readFile(path.join(root, 'approval.json'), 'utf8'))
 for (const state of [
   'loading',
   'loading-reduced',
@@ -19,6 +20,7 @@ for (const state of [
       await fs.readFile(path.join('visual-evidence', file.replace('.png', '.json')), 'utf8'),
     )
     expect(identity.browser).toBe(approval.environment.browserVersion)
+    if (approval.channel) expect(identity.candidate.channel).toBe(approval.channel)
     const bytes = await fs.readFile(path.join('visual-evidence', file))
     expect(bytes).toMatchSnapshot(`${state}.png`, { threshold: 0.15, maxDiffPixels: 20 })
   })

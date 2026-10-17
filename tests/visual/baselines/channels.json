@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "enabled": true,
+  "channels": {
+    "preview": "channels/preview",
+    "production": "channels/production",
+    "staging": "channels/staging"
+  }
+}

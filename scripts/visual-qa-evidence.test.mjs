@@ -70,6 +70,28 @@ test('complete synthetic evidence reports captured/pending; missing or stale cap
     const html = await fs.readFile(path.join(evidence, 'comparison.html'), 'utf8')
     assert.match(html, /Owner source, original pixels/)
     assert.match(html, /Actual implementation element/)
+    // Approval comes from the selected channel's explicit record, never capture success.
+    await fs.mkdir(path.join(folder, 'tests/visual/baselines'), { recursive: true })
+    await fs.copyFile(
+      path.join(root, 'tests/visual/baselines/channels.json'),
+      path.join(folder, 'tests/visual/baselines/channels.json'),
+    )
+    await fs.cp(
+      path.join(root, 'tests/visual/baselines/channels/staging'),
+      path.join(folder, 'tests/visual/baselines/channels/staging'),
+      { recursive: true },
+    )
+    for (const project of projects)
+      for (const state of states)
+        await fs.writeFile(
+          path.join(evidence, project, state + '.json'),
+          JSON.stringify({ screenshotSha256: hash, candidate: { channel: 'staging' } }),
+        )
+    result = await run()
+    assert.equal(result.failed, false)
+    assert.equal(result.status.initialDesignReview, 'approved')
+    assert.equal(result.status.approval.channel, 'staging')
+    assert.equal(result.status.visualRegression, 'not-run')
     await fs.writeFile(path.join(evidence, 'stale-evidence.txt'), 'changed head')
     result = await run()
     assert.equal(result.failed, true)

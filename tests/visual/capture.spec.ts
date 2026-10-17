@@ -63,12 +63,49 @@ async function capture(page: Page, info: TestInfo, state: string, regions: strin
         attempt: process.env.GITHUB_RUN_ATTEMPT,
         toolingSha: process.env.VISUAL_TOOLING_SHA || process.env.GITHUB_SHA,
         candidate: JSON.parse(await fs.readFile('dist/build.json', 'utf8')),
+        librarySurface: await page.evaluate(() => ({
+          attached: Boolean(document.querySelector('#document-sidebar')),
+          sidebarOpen:
+            document.querySelector('.reader-layout')?.classList.contains('sidebar-visible') ??
+            false,
+        })),
         screenshotSha256: createHash('sha256').update(bytes).digest('hex'),
       },
       null,
       2,
     ),
   )
+}
+
+async function settleLibrary(page: Page, visible: boolean) {
+  // Vue schedules transition frames/removal through rAF and timers. The startup
+  // suite deliberately pauses that clock, so drive the real transition lifecycle.
+  if (startup) await page.clock.runFor(400)
+  const sidebar = page.locator('#document-sidebar')
+  await expect(sidebar).toHaveCount(visible ? 1 : 0)
+  const layout = page.locator('.reader-layout')
+  if (visible) {
+    await expect(sidebar).toBeVisible()
+    await expect(sidebar).not.toHaveClass(/library-slide-(enter|leave)-(active|from|to)/)
+    await expect(layout).toHaveClass(/sidebar-visible/)
+  } else {
+    await expect(layout).not.toHaveClass(/sidebar-visible/)
+    await expect
+      .poll(
+        async () => {
+          const host = await layout.boundingBox()
+          const reader = await page.locator('.reader-column').boundingBox()
+          return Boolean(
+            host &&
+            reader &&
+            Math.abs(reader.x - host.x) <= 1 &&
+            Math.abs(reader.width - host.width) <= 1,
+          )
+        },
+        { message: 'Hidden library must leave the full reader width available' },
+      )
+      .toBe(true)
+  }
 }
 
 async function ready(page: Page, elapsed = 0) {
@@ -224,12 +261,16 @@ for (const reduced of [false, true]) {
     if (!reduced) {
       await capture(page, info, 'ready')
       const hide = page.getByRole('button', { name: 'Hide library', exact: true })
-      if (!(await hide.isVisible()))
+      if (!(await hide.isVisible())) {
         await page.getByRole('button', { name: 'Show library', exact: true }).click()
+        await settleLibrary(page, true)
+      }
       await hide.click()
       await expect(page.getByRole('button', { name: 'Show library', exact: true })).toBeVisible()
+      await settleLibrary(page, false)
       await capture(page, info, 'library-hidden')
       await page.getByRole('button', { name: 'Show library', exact: true }).click()
+      await settleLibrary(page, true)
       await expect(hide).toBeVisible()
       const dark = info.project.use.colorScheme === 'dark'
       // ThemePicker is a stable "Dark mode" toggle; aria-pressed identifies its state.
