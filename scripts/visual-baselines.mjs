@@ -48,3 +48,29 @@ export async function validateBaselines(root = 'tests/visual/baselines') {
   }
   return manifest
 }
+
+/** Select only explicitly approved channel data; never borrow another channel's images. */
+export async function selectBaselines(channel, root = 'tests/visual/baselines') {
+  let registry
+  try {
+    registry = JSON.parse(await fs.readFile(path.join(root, 'channels.json'), 'utf8'))
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    return { root, manifest: await validateBaselines(root) }
+  }
+  const channels = ['preview', 'production', 'staging']
+  if (
+    registry.schema !== 1 ||
+    typeof registry.enabled !== 'boolean' ||
+    JSON.stringify(Object.keys(registry.channels || {}).sort()) !== JSON.stringify(channels) ||
+    channels.some((name) => registry.channels[name] !== `channels/${name}`)
+  )
+    throw Error('Invalid channel baseline registry')
+  if (!registry.enabled) return { root, manifest: await validateBaselines(root) }
+  if (!channels.includes(channel)) throw Error('No approved baseline for channel: ' + channel)
+  const selected = path.join(root, registry.channels[channel])
+  const manifest = await validateBaselines(selected)
+  if (!manifest.enabled || manifest.channel !== channel || manifest.approval?.channel !== channel)
+    throw Error('Baseline approval/channel mismatch')
+  return { root: selected, manifest }
+}

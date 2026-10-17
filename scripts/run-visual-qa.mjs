@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import { spawnSync } from 'node:child_process'
-import { validateBaselines } from './visual-baselines.mjs'
+import { selectBaselines } from './visual-baselines.mjs'
 await fs.mkdir('visual-evidence', { recursive: true })
 const result = {
   automated: 'fail',
@@ -10,7 +10,9 @@ const result = {
   reason: '',
 }
 try {
-  const manifest = await validateBaselines()
+  const build = JSON.parse(await fs.readFile('dist/build.json', 'utf8'))
+  const baseline = await selectBaselines(build.channel)
+  const manifest = baseline.manifest
   const acceptance = process.env.VISUAL_ACCEPTANCE === 'true'
   if (acceptance && !manifest.enabled) {
     result.automated = 'not-run'
@@ -44,6 +46,7 @@ try {
           stdio: 'inherit',
           env: {
             ...process.env,
+            VISUAL_BASELINE_ROOT: baseline.root,
             VISUAL_RESULT_NAME: args[0] === 'regression.spec.ts' ? 'regression' : 'assertions',
           },
         },

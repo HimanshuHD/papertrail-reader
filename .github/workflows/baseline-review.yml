@@ -1,0 +1,54 @@
+name: Approved baseline adoption review
+on:
+  pull_request:
+    branches: [staging, main]
+    paths:
+      - tests/visual/baselines/**
+      - scripts/review-approved-baselines.mjs
+      - scripts/visual-baselines.mjs
+      - scripts/run-visual-qa.mjs
+      - scripts/visual-qa-report.mjs
+      - tests/visual/regression.spec.ts
+      - tests/visual/stability.spec.ts
+      - tests/visual/capture.spec.ts
+      - playwright.visual.config.ts
+      - .github/workflows/baseline-review.yml
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: baseline-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    name: Baseline stability and ${{ matrix.channel }} comparison
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: [preview, staging, production]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      # Read-only evidence review, including drafts; this grants no candidate acceptance or publication.
+      - name: Verify approved images and repeat actual channel comparisons
+        env:
+          REVIEW_CHANNEL: ${{ matrix.channel }}
+          REVIEW_PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          BASE_PATH: ${{ vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
+        run: node scripts/review-approved-baselines.mjs
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        if: always()
+        with:
+          name: baseline-review-${{ matrix.channel }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: baseline-review-evidence/
+          retention-days: 30
