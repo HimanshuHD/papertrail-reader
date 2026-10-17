@@ -170,19 +170,15 @@
     }
   },
   "production": {
-    "sha": "4f33209f365947e799f58d102a5abc3423b8765d",
-    "runId": "39021338753",
-    "sourceSha": "4f33209f365947e799f58d102a5abc3423b8765d",
-    "tree": "45d4b6638b98083cf2841ad232e2582f578c2e5e",
+    "sha": "23eeeb0f5303aeb799e71c0d8a20b4eb56728e9c",
+    "runId": "39022713012",
+    "sourceSha": "3667569efe2796d2a0bc05fb8767673528e23ccc",
+    "tree": "5edd02149fab42dbe85fc873b84a20feb1bd2f3a",
     "version": "2.1.1",
     "branch": "main",
-    "releaseTag": "v2.1.1",
-    "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33",
-    "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39021338753"
+    "archiveId": "5edd02149fab42dbe85fc873b84a20feb1bd2f3a-39022713012"
   },
-  "rollbackHold": {
-    "production": "4f33209f365947e799f58d102a5abc3423b8765d"
-  },
+  "rollbackHold": {},
   "staging": {
     "sha": "0d4eed15a76ffbfa20f571f5c2366cef299d1adb",
     "runId": "39022240873",
