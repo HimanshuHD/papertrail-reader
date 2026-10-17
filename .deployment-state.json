@@ -187,5 +187,17 @@
     "version": "2.1.0",
     "branch": "staging",
     "archiveId": "b3cfa01c7b25973f1222be9725a372ae2fbb0b9a-39004582263"
+  },
+  "releases": {
+    "v2.1.1": {
+      "schema": 1,
+      "tag": "v2.1.1",
+      "version": "2.1.1",
+      "sha": "4f33209f365947e799f58d102a5abc3423b8765d",
+      "tree": "45d4b6638b98083cf2841ad232e2582f578c2e5e",
+      "runId": "39021338753",
+      "basePath": "/papertrail-reader/",
+      "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33"
+    }
   }
 }
