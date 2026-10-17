@@ -179,6 +179,16 @@
       "branch": "staging",
       "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39020385959",
       "publishedAt": "2026-10-17T09:40:30.457Z"
+    },
+    "5edd02149fab42dbe85fc873b84a20feb1bd2f3a-39022240873": {
+      "sha": "0d4eed15a76ffbfa20f571f5c2366cef299d1adb",
+      "runId": "39022240873",
+      "sourceSha": "e0aea1a1684aacceaa3bcd566416c90ce2d494d4",
+      "tree": "5edd02149fab42dbe85fc873b84a20feb1bd2f3a",
+      "version": "2.1.1",
+      "branch": "staging",
+      "archiveId": "5edd02149fab42dbe85fc873b84a20feb1bd2f3a-39022240873",
+      "publishedAt": "2026-10-17T09:56:56.187Z"
     }
   },
   "production": {
@@ -312,7 +322,7 @@
       "releaseTag": "v2.1.1",
       "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33",
       "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39021338753",
-      "publishedAt": "2026-10-17T09:40:30.424Z"
+      "publishedAt": "2026-10-17T09:56:56.166Z"
     }
   }
 }
