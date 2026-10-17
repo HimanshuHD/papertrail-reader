@@ -170,15 +170,19 @@
     }
   },
   "production": {
-    "sha": "80390069f71af3dcc498efdbbe84591228219c57",
-    "runId": "39017163531",
+    "sha": "4f33209f365947e799f58d102a5abc3423b8765d",
+    "runId": "39021338753",
     "sourceSha": "4f33209f365947e799f58d102a5abc3423b8765d",
     "tree": "45d4b6638b98083cf2841ad232e2582f578c2e5e",
     "version": "2.1.1",
     "branch": "main",
-    "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39017163531"
+    "releaseTag": "v2.1.1",
+    "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33",
+    "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39021338753"
   },
-  "rollbackHold": {},
+  "rollbackHold": {
+    "production": "4f33209f365947e799f58d102a5abc3423b8765d"
+  },
   "staging": {
     "sha": "8bdfb073eda9a90370733f58a9ca55fdd38126bd",
     "runId": "39020385959",
