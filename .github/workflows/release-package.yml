@@ -76,6 +76,12 @@ jobs:
             let release;
             try { release=(await github.rest.repos.getReleaseByTag({owner,repo,tag})).data; }
             catch(e) { if(e.status!==404) throw e; }
+            // Tag lookup finds published releases; unpublished drafts require the list endpoint.
+            if(!release) {
+              const drafts=(await github.paginate(github.rest.repos.listReleases,{owner,repo,per_page:100})).filter(r=>r.draft && r.tag_name===tag);
+              if(drafts.length>1) throw Error('Multiple draft releases for '+tag+'; resolve ambiguity before packaging');
+              release=drafts[0];
+            }
             if(release && !release.draft) throw Error('Published releases are immutable; do not replace their assets');
             if(!release) release=(await github.rest.repos.createRelease({owner,repo,tag_name:tag,name:`PaperTrail ${tag}`,draft:true,body:fs.readFileSync('release-output/RELEASE-NOTES.md','utf8')})).data;
             // Never clobber an existing asset. A rerun may reuse byte-identical assets only.
