@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1 — Versioned delivery and visual regression reliability — prepared 17 October 2026
+
+Adds exact-tag/package validation, checksummed dual release packages, draft release assets, immutable version URLs and explicit acknowledged promotion/rollback through the serialized Pages publisher. Activates channel-specific approved visual references and corrects hidden-library capture timing, while retaining strict comparison tolerances and historical evidence. Adds read-only startup measurement tooling; broader #16 measurements remain separate.
+
+Main activation #213 is accepted. This release is prepared for the first real versioned packaging/archive/promotion rehearsal; tag packaging, immutable live delivery, promotion and rollback acceptance remain pending until their actual results are recorded in #32/#26. Existing v2.1.0 is preserved. See [release notes](docs/releases/v2.1.1-notes.md).
+
 ## 2.1.0 — A new welcome to your reading space — deployed 14 October 2026
 
 Adds an early book-themed startup screen with readiness progress, retry feedback and reduced-motion support. Staging/production have no deliberate hold; numbered previews retain the seven-second review hold. Saved-library startup remains independent of permission renewal and document reopening.
