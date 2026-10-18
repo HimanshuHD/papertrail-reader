@@ -3,7 +3,12 @@ import { useOverlayTarget } from '../composables/useOverlayTarget'
 const overlayTarget = useOverlayTarget()
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 const props = withDefaults(
-  defineProps<{ anchor: HTMLElement | null; expanded?: boolean; reserveAsideHeader?: boolean }>(),
+  defineProps<{
+    anchor: HTMLElement | null
+    expanded?: boolean
+    compact?: boolean
+    reserveAsideHeader?: boolean
+  }>(),
   { reserveAsideHeader: true },
 )
 const emit = defineEmits<{ close: [] }>()
@@ -106,7 +111,7 @@ watch(
     <div
       ref="root"
       class="floating-popover"
-      :class="{ expanded }"
+      :class="{ expanded, compact }"
       :style="position"
       @pointerdown.stop
     >
@@ -131,6 +136,12 @@ watch(
     0 20px 56px #0007,
     0 6px 18px #0004,
     0 0 0 1px var(--pt-line);
+}
+.compact {
+  width: min(224px, calc(100vw - 16px));
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px #0003;
 }
 .expanded {
   width: min(380px, calc(100vw - 16px));

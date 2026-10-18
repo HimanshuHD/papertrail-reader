@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, useId } from 'vue'
+import { ref, onMounted, nextTick, useId } from 'vue'
 import { version } from '../../package.json'
 import FloatingPopover from './FloatingPopover.vue'
 import UiIcon from './UiIcon.vue'
@@ -45,65 +45,21 @@ const open = ref(false)
 const anchor = ref<HTMLButtonElement | null>(null)
 const panel = ref<HTMLElement | null>(null)
 const panelId = useId()
-let pinned = false
-let suppressOpen = false
-let closeTimer: ReturnType<typeof setTimeout> | undefined
-function clearClose() {
-  clearTimeout(closeTimer)
-}
-function reveal() {
-  clearClose()
-  if (!suppressOpen) open.value = true
-}
-function revealOnHover() {
-  suppressOpen = false
-  reveal()
-}
 function dismiss() {
-  clearClose()
   open.value = false
-  pinned = false
-  suppressOpen = true
-}
-function scheduleClose() {
-  clearClose()
-  closeTimer = setTimeout(() => {
-    if (
-      !pinned &&
-      document.activeElement !== anchor.value &&
-      !panel.value?.contains(document.activeElement)
-    )
-      dismiss()
-  }, 180)
-}
-function leaveTrigger() {
-  suppressOpen = false
-  scheduleClose()
 }
 function toggle() {
-  if (open.value && pinned) dismiss()
-  else {
-    suppressOpen = false
-    open.value = true
-    pinned = true
-    clearClose()
-  }
+  open.value = !open.value
 }
 function focusOut(event: FocusEvent) {
   const next = event.relatedTarget as Node | null
   if (next === anchor.value || (next && panel.value?.contains(next))) return
-  suppressOpen = false
-  pinned = false
-  // Keyboard dismissal is immediate; hover transfers use the short pointer bridge.
   dismiss()
-  suppressOpen = false
 }
 async function focusDetails(event: KeyboardEvent) {
   if (event.key !== 'ArrowDown' && !(event.key === 'Tab' && !event.shiftKey && open.value)) return
   event.preventDefault()
-  suppressOpen = false
   open.value = true
-  pinned = true
   await nextTick()
   ;(panel.value?.querySelector<HTMLElement>('a') || panel.value)?.focus()
 }
@@ -139,7 +95,6 @@ onMounted(async () => {
     /* A static/local preview may have no channel status file. */
   }
 })
-onBeforeUnmount(clearClose)
 </script>
 
 <template>
@@ -154,13 +109,10 @@ onBeforeUnmount(clearClose)
       <button
         ref="anchor"
         type="button"
-        class="build-info"
+        class="build-info pt-plain-control"
         aria-label="Build details"
         :aria-expanded="open"
         :aria-controls="open ? panelId : undefined"
-        @mouseenter="revealOnHover"
-        @mouseleave="leaveTrigger"
-        @focus="reveal"
         @blur="focusOut"
         @click="toggle"
         @keydown="focusDetails"
@@ -169,7 +121,13 @@ onBeforeUnmount(clearClose)
       </button>
     </div>
     <span v-if="notice" class="build-notice" role="status">{{ notice }}</span>
-    <FloatingPopover v-if="open" :anchor="anchor" :reserve-aside-header="false" @close="dismiss">
+    <FloatingPopover
+      v-if="open"
+      :anchor="anchor"
+      :reserve-aside-header="false"
+      compact
+      @close="dismiss"
+    >
       <section
         :id="panelId"
         ref="panel"
@@ -177,8 +135,6 @@ onBeforeUnmount(clearClose)
         role="region"
         aria-label="Build details"
         tabindex="-1"
-        @mouseenter="clearClose"
-        @mouseleave="scheduleClose"
         @focusout="focusOut"
         @keydown="key"
       >
@@ -230,16 +186,18 @@ onBeforeUnmount(clearClose)
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   flex-shrink: 0;
-  border-radius: 8px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
   color: var(--pt-brand);
   cursor: pointer;
 }
-.build-info:hover,
-.build-info[aria-expanded='true'] {
-  background: var(--pt-canvas);
+.build-info :deep(svg) {
+  width: 16px;
+  height: 16px;
 }
 .build-info:focus-visible,
 .build-details a:focus-visible {
@@ -252,17 +210,19 @@ onBeforeUnmount(clearClose)
 }
 .build-details {
   min-width: 0;
+  font-size: 0.75rem;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .build-details h2 {
   color: var(--pt-ink);
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 .build-details dl {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
-  gap: 0.375rem 0.75rem;
+  gap: 0.125rem 0.375rem;
   align-items: baseline;
 }
 .build-details dt {

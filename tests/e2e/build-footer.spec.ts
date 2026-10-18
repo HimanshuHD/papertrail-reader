@@ -31,10 +31,18 @@ for (const theme of ['Light mode', 'Dark mode']) {
         true,
       )
       await expect(button).toBeInViewport()
+      await button.hover()
+      await expect(details).toHaveCount(0)
+      await expect(button).toHaveCSS('box-shadow', 'none')
+      await expect(button).toHaveCSS('border-bottom-width', '0px')
       await button.focus()
-      await button.press('ArrowDown')
+      await expect(details).toHaveCount(0)
+      await button.click()
+      await button.press('Tab')
       await expect(details).toBeVisible()
       const popup = (await details.locator('..').boundingBox())!
+      expect(popup.width).toBeLessThanOrEqual(224)
+      await expect(details.locator('..')).toHaveCSS('padding', '8px')
       expect(popup.x).toBeGreaterThanOrEqual(0)
       expect(popup.y).toBeGreaterThanOrEqual(0)
       expect(popup.x + popup.width).toBeLessThanOrEqual(page.viewportSize()!.width)
@@ -45,7 +53,7 @@ for (const theme of ['Light mode', 'Dark mode']) {
       await expect(button).toBeFocused()
       await expect(details).toHaveCount(0)
       await expect(library).toBeVisible()
-      // Click/tap pins focus-open details; outside click dismisses without hiding the library.
+      // Click/tap opens details; outside click dismisses without hiding the library.
       await button.click()
       await expect(details).toBeVisible()
       await library.getByRole('heading', { name: 'Local Documents' }).click()
