@@ -1,4 +1,4 @@
-import { openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
+import { libraryAction, openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -43,7 +43,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await expect(reader.getByRole('heading', { name: 'Local test book' })).toBeVisible()
   const openerBounds = await page.getByRole('button', { name: 'Show library' }).boundingBox()
   const titleBounds = await reader.getByRole('heading', { name: 'Local test book' }).boundingBox()
-  expect(titleBounds!.x).toBeGreaterThanOrEqual(openerBounds!.x + openerBounds!.width + 12)
+  expect(titleBounds!.y).toBeGreaterThanOrEqual(openerBounds!.y + openerBounds!.height)
   const frame = reader.frameLocator('iframe')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
@@ -842,7 +842,7 @@ test('empty reader survives sidebar collapse and source actions remain available
   await expect(page.getByText('Demonstration workspace')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Contents' })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder' })).toBeEnabled()
   await expect(page.getByRole('menuitem', { name: 'Choose PDF / EPUB files' })).toBeEnabled()
   await page.keyboard.press('Escape')
@@ -865,7 +865,7 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/#\/app$/)
 
-  const addDocuments = page.getByRole('button', { name: 'Add local documents' })
+  const addDocuments = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await addDocuments.focus()
   await page.keyboard.press('Escape')
   const libraryToggle = page.getByRole('button', { name: 'Show library' })
@@ -945,7 +945,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   const discoveryStatus = page.locator('#discovery-status')
   const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
 
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
   await expect(discoveryStatus).toContainText('2 supported documents found.')
@@ -960,7 +960,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(page.locator('#reader-title')).toHaveText('book.epub')
   await expect(page.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
 
-  await page.getByRole('button', { name: 'Refresh folder' }).click()
+  await (await libraryAction(page, 'Refresh folder')).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')
   book = localLibrary.getByRole('button', { name: /book.epub/ })
   await expect(book).toHaveAttribute('aria-pressed', 'true')
@@ -973,7 +973,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
       },
     })
   })
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('cancelled or permission was not granted')
 
@@ -996,7 +996,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(localLibrary.locator('button[aria-expanded]')).toHaveCount(0)
   await expect(localLibrary.getByRole('button', { name: /guide.pdf/ })).toBeVisible()
   await expect(localLibrary.getByRole('button', { name: /book.epub/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Reselect files' })).toBeVisible()
+  await expect(await libraryAction(page, 'Reselect files')).toBeVisible()
   await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
 })
 
@@ -1190,9 +1190,10 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
 
 test('compact library menu dismisses independently and restores panel focus', async ({ page }) => {
   await page.goto('./#/app')
-  const plus = page.getByRole('button', { name: 'Add local documents' })
+  const plus = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await expect(page.getByRole('button', { name: 'Show library' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Refresh library' })).toBeDisabled()
+  const refresh = page.getByRole('button', { name: 'Refresh library', exact: true })
+  if (await refresh.count()) await expect(refresh).toBeDisabled()
   await plus.focus()
   await page.keyboard.press('Enter')
   const folder = page.getByRole('menuitem', { name: 'Choose folder' })
@@ -1258,7 +1259,7 @@ test('library width resizes within bounds and top opener preserves title space',
   const openerBounds = (await opener.boundingBox())!
   const title = (await page.locator('#reader-title').boundingBox())!
   expect(openerBounds.y).toBeLessThanOrEqual(title.y)
-  expect(openerBounds.x + openerBounds.width + 12).toBeLessThanOrEqual(title.x)
+  expect(openerBounds.y + openerBounds.height).toBeLessThanOrEqual(title.y)
   await opener.click()
   await expect(rail).toHaveAttribute('aria-valuenow', remembered!)
   await noOverflow(page)
@@ -1534,13 +1535,15 @@ test('library and document loaders are centered, responsive and respect reduced 
   try {
     await page.goto('./#/app')
     const library = page.getByRole('region', { name: 'Library documents', exact: true })
-    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
     await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     await expect(library).toHaveAttribute('aria-busy', 'true')
     const libraryCard = library.locator('.loading-card')
     await expect(libraryCard).toBeVisible()
     await expect(library.getByRole('button', { name: 'Cancel scan' })).toBeEnabled()
-    await expect(page.getByRole('button', { name: 'Add local documents' })).toBeEnabled()
+    await expect(
+      page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }),
+    ).toBeEnabled()
     await expect
       .poll(() =>
         libraryCard.evaluate((element) => {
@@ -1698,7 +1701,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
   await expect(search).toBeFocused()
   await page.getByRole('button', { name: 'Show library' }).click()
   await expect(page.getByRole('button', { name: 'Hide library' })).toBeFocused()
-  const add = page.getByRole('button', { name: 'Add local documents' })
+  const add = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await add.click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder', exact: true })).toBeFocused()
   await expect(page.getByRole('menu')).toHaveCSS('transition-duration', '0s')
@@ -2122,7 +2125,7 @@ test('cached workspace preserves tree, selection and panel context without retai
     true,
   )
   await capture(page, info, 'workspace-reselection')
-  await page.getByRole('button', { name: 'Forget library', exact: true }).click()
+  await (await libraryAction(page, 'Forget library')).click()
   await expect.poll(() => readSavedWorkspace(page)).toBeNull()
   await page.reload()
   await expect(page.getByText('No documents selected yet', { exact: true })).toBeVisible()
@@ -2161,7 +2164,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
       },
       [...createPdfFixture(8)],
     )
-    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
     await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
     const pane = page.getByRole('region', { name: 'PDF pages', exact: true })

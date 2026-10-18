@@ -18,3 +18,13 @@ export async function openAnnotationActions(trigger: Locator) {
   )
   await trigger.click()
 }
+
+/** Library actions move into the vertical menu when the current sidebar is narrow. */
+export async function libraryAction(page: Page, name: string): Promise<Locator> {
+  const direct = page.getByRole('button', { name, exact: true })
+  if (await direct.isVisible()) return direct
+  const menu = page.getByRole('menu', { name: 'Library actions', exact: true })
+  if (!(await menu.isVisible()))
+    await page.getByRole('button', { name: 'Library actions', exact: true }).click()
+  return menu.getByRole('menuitem', { name, exact: true })
+}

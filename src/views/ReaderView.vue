@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, shallowRef } from 'vue'
-import { RouterLink } from 'vue-router'
-import BrandMark from '../components/BrandMark.vue'
 import IconButton from '../components/IconButton.vue'
-import ThemePicker from '../components/ThemePicker.vue'
+import WorkspaceBrand from '../components/layout/WorkspaceBrand.vue'
+import BuildFooter from '../components/BuildFooter.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
 import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
@@ -463,28 +462,6 @@ async function closeSidebarAndRestoreFocus() {
 
 <template>
   <main class="reader-app w-full" aria-label="PaperTrail application">
-    <header
-      class="app-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-3 sm:px-8"
-    >
-      <div class="flex flex-wrap items-center gap-4">
-        <RouterLink
-          to="/"
-          class="inline-flex items-center gap-2 text-xl font-bold tracking-tight"
-          aria-label="PaperTrail home"
-          ><BrandMark class="h-8 w-8" />PaperTrail<span class="ml-2 text-xs font-normal text-muted"
-            >Home ↗</span
-          ></RouterLink
-        >
-        <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">{{
-          activePdfDocument
-            ? 'PDF reader'
-            : selectedLibraryDocument?.format === 'EPUB'
-              ? 'EPUB reader'
-              : 'Reader workspace'
-        }}</span>
-      </div>
-      <ThemePicker />
-    </header>
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
     <ReaderShell
@@ -494,6 +471,7 @@ async function closeSidebarAndRestoreFocus() {
       @close="closeSidebarAndRestoreFocus"
     >
       <template v-if="!sidebarOpen" #opener>
+        <WorkspaceBrand />
         <IconButton
           ref="sidebarToggle"
           label="Show library"
@@ -501,44 +479,48 @@ async function closeSidebarAndRestoreFocus() {
           tooltip-align="start"
           aria-controls="document-sidebar"
           aria-expanded="false"
-          class="floating-library border border-line bg-panel text-brand shadow-lg"
+          class="text-brand"
           @click="openSidebar"
         />
       </template>
       <template #sidebar>
-        <LibrarySidebar
-          :library-documents="displayDocuments"
-          :recent-documents="recents.entries.value"
-          :recent-message="recentMessage || recents.notice.value"
-          :recent-busy="recentOpening || recents.busy.value"
-          :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
-          :scroll-position="workspace.snapshot.value?.libraryScroll"
-          :cached="cached"
-          :has-workspace="Boolean(workspace.snapshot.value) || Boolean(workspace.notice.value)"
-          :workspace-message="workspaceMessage"
-          :can-resume="Boolean(workspace.snapshot.value?.handle) && cached && !reconnecting"
-          :selected-library-document-id="selectedLibraryDocumentId"
-          :library-label="libraryLabel"
-          :show-library-results="showLibraryResults"
-          :refresh-action="refreshAction"
-          :selection-summary="librarySelectionSummary"
-          :discovery-summary="discoverySummary"
-          :discovery-busy="discoveryPhase === 'indexing' && !cached"
-          :discovery-problem-count="discoveryProblems.length"
-          @open-recent="openRecent"
-          @remove-recent="recents.remove($event)"
-          @clear-recents="recents.remove()"
-          @retry-recents="recents.reload()"
-          @toggle-folder="toggleFolder"
-          @library-scroll="workspace.patch({ libraryScroll: $event })"
-          @resume-workspace="resumeWorkspace"
-          @forget-workspace="forgetWorkspace"
-          @select-library-document="selectLibraryDocument"
-          @library-selection="acceptLibrarySelection"
-          @refresh-library="refreshLibrary"
-          @cancel-discovery="cancelDiscovery"
-          @close="closeSidebarAndRestoreFocus"
-        />
+        <div class="sidebar-workspace">
+          <WorkspaceBrand class="border-b border-line" />
+          <LibrarySidebar
+            :library-documents="displayDocuments"
+            :recent-documents="recents.entries.value"
+            :recent-message="recentMessage || recents.notice.value"
+            :recent-busy="recentOpening || recents.busy.value"
+            :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
+            :scroll-position="workspace.snapshot.value?.libraryScroll"
+            :cached="cached"
+            :has-workspace="Boolean(workspace.snapshot.value) || Boolean(workspace.notice.value)"
+            :workspace-message="workspaceMessage"
+            :can-resume="Boolean(workspace.snapshot.value?.handle) && cached && !reconnecting"
+            :selected-library-document-id="selectedLibraryDocumentId"
+            :library-label="libraryLabel"
+            :show-library-results="showLibraryResults"
+            :refresh-action="refreshAction"
+            :selection-summary="librarySelectionSummary"
+            :discovery-summary="discoverySummary"
+            :discovery-busy="discoveryPhase === 'indexing' && !cached"
+            :discovery-problem-count="discoveryProblems.length"
+            @open-recent="openRecent"
+            @remove-recent="recents.remove($event)"
+            @clear-recents="recents.remove()"
+            @retry-recents="recents.reload()"
+            @toggle-folder="toggleFolder"
+            @library-scroll="workspace.patch({ libraryScroll: $event })"
+            @resume-workspace="resumeWorkspace"
+            @forget-workspace="forgetWorkspace"
+            @select-library-document="selectLibraryDocument"
+            @library-selection="acceptLibrarySelection"
+            @refresh-library="refreshLibrary"
+            @cancel-discovery="cancelDiscovery"
+            @close="closeSidebarAndRestoreFocus"
+          />
+          <BuildFooter />
+        </div>
       </template>
       <PdfReaderWorkspace
         v-if="activePdfDocument"
@@ -576,9 +558,20 @@ async function closeSidebarAndRestoreFocus() {
   min-height: 0;
   overflow: hidden;
 }
-.app-header {
+.sidebar-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.sidebar-workspace > .library-panel {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.sidebar-workspace > .build-footer {
   flex-shrink: 0;
-  max-height: min(25%, 100px);
+  max-height: 20dvh;
   overflow: auto;
 }
 </style>

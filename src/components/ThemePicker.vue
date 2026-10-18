@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useThemeStore } from '../stores/theme'
+defineProps<{ compact?: boolean }>()
 const theme = useThemeStore()
 function toggleTheme() {
   theme.setPreference(theme.preference === 'dark' ? 'light' : 'dark')
@@ -7,7 +8,7 @@ function toggleTheme() {
 </script>
 
 <template>
-  <div class="space-y-2">
+  <div :class="['space-y-2', { 'theme-compact': compact }]">
     <div class="flex items-center gap-3 text-sm text-muted">
       <button
         type="button"
@@ -64,3 +65,19 @@ function toggleTheme() {
     </p>
   </div>
 </template>
+
+<style scoped>
+.theme-compact button {
+  border: 0;
+  background: transparent;
+  gap: 0;
+  padding: 0;
+}
+.theme-compact button > span:not(.sr-only) {
+  padding: 7px;
+}
+.theme-compact p {
+  max-width: 10rem;
+  font-size: 0.75rem;
+}
+</style>

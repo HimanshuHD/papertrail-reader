@@ -5,6 +5,7 @@ defineProps<{
   icon:
     | 'refresh'
     | 'plus'
+    | 'more'
     | 'close'
     | 'library'
     | 'previous'

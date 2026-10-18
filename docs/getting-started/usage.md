@@ -1,6 +1,8 @@
 # Read with PaperTrail
 
-Open [PaperTrail](https://himanshuhd.github.io/papertrail-reader/#/app), then use the library **+** button to select a folder or PDF/EPUB files. Folder access depends on browser capabilities; file selection remains the fallback. Documents stay on your device.
+Open [PaperTrail](https://himanshuhd.github.io/papertrail-reader/#/app), then use the library **+** button to select a folder or PDF/EPUB files. In a narrow library panel, open the vertical **⋮** menu for those selection options and Refresh. Folder access depends on browser capabilities; file selection remains the fallback. Documents stay on your device.
+
+The library header contains the logo and theme controls. Drag the existing divider to resize it, or close it with **×** to reclaim reading width. When closed, the compact logo/theme controls remain above the reader, followed by the book-stack **Show library** button. Reopening restores the saved width. The sidebar deployment footer hides with the library.
 
 Choose a PDF in the library. The library, document and utility panel scroll independently. Use the toolbar for page navigation, zoom, fit, search, contents and fullscreen. Icon labels appear on hover/focus; keyboard help describes shortcuts. The original v1.0.0 release did not include reading continuity. Current main retains PDF reading positions, zoom/fit mode and the single library workspace. Browser file-input sources require reselection; retained folder handles resume automatically only with granted access. The current EPUB increment supports local reflowable books.
 
