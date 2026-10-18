@@ -3,11 +3,6 @@ on:
   pull_request:
     branches: [staging, main]
     paths:
-      # Layout changes need exact channel captures before proposing replacement baselines.
-      - src/components/layout/**
-      - src/components/library/**
-      - src/components/viewer/**
-      - src/views/ReaderView.vue
       - tests/visual/baselines/**
       - scripts/review-approved-baselines.mjs
       - scripts/visual-baselines.mjs
