@@ -21,99 +21,44 @@ test('integration completion events are limited to deployment branches, with rec
   assert.ok(!integration.includes('  schedule:'))
 })
 
-test('ready candidates validate before optional labelled QA; labels do not bypass candidate checks', () => {
-  const conditions = [...read('.github/workflows/ci.yml').matchAll(/^ {4}if: (.+)$/gm)].map(
-    (match) => match[1],
-  )
-  assert.equal(conditions.length, 4)
-  const allowed = ({
-    state = 'open',
+test('ready source and target changes retain functional validation; metadata never requests visual QA', () => {
+  const ci = read('.github/workflows/ci.yml')
+  const conditions = [...ci.matchAll(/^ {4}if: (.+)$/gm)].map((match) => match[1])
+  assert.equal(conditions.length, 3)
+  const evaluate = ({
     event = 'pull_request',
     action = 'synchronize',
-    base = 'staging',
     draft = false,
-    label = 'qa:visual',
-    sameRepo = true,
-    gateResult = 'success',
-    labels = ['qa:visual'],
+    state = 'open',
+    base = 'staging',
+    changes = {},
   } = {}) => {
     const github = {
       event_name: event,
-      ref: base === 'main' ? 'refs/heads/main' : 'refs/heads/staging',
-      repository: 'owner/repo',
-      event: {
-        action,
-        changes: {},
-        label: { name: label },
-        pull_request: {
-          number: 300,
-          state,
-          draft,
-          labels: labels.map((name) => ({ name })),
-          base: { ref: base },
-          head: { repo: { full_name: sameRepo ? 'owner/repo' : 'fork/repo' } },
-        },
-      },
+      ref: 'refs/heads/' + base,
+      event: { action, changes, pull_request: { state, draft, base: { ref: base } } },
     }
-    const needs = { frontend: { outputs: { website: 'true' } }, gate: { result: gateResult } }
-    const evaluate = (expression) =>
-      new Function(
-        'github',
-        'needs',
-        'always',
-        'contains',
-        'return (' +
-          expression.replaceAll(
-            'github.event.pull_request.labels.*.name',
-            'github.event.pull_request.labels.map(label=>label.name)',
-          ) +
-          ')',
-      )(
+    const needs = { frontend: { outputs: { website: 'true' } } }
+    return conditions.map((expression) =>
+      new Function('github', 'needs', 'always', 'return (' + expression + ')')(
         github,
         needs,
         () => true,
-        (values, value) => values.includes(value),
-      )
-    const first = evaluate(conditions[0])
-    needs.frontend.outputs.website = first ? 'true' : undefined
-    const browser = evaluate(conditions[1])
-    const gate = evaluate(conditions[2])
-    if (!gate) needs.gate.result = 'skipped'
-    return [first, browser, gate, evaluate(conditions[3])]
+      ),
+    )
   }
-  assert.deepEqual(allowed(), [true, false, true, true])
-  assert.deepEqual(allowed({ labels: [] }), [true, false, true, false])
-  assert.deepEqual(allowed({ action: 'labeled' }), [true, false, true, true])
-  assert.deepEqual(allowed({ action: 'labeled', label: 'type:enhancement' }), [
-    false,
-    false,
+  assert.deepEqual(evaluate(), [true, false, true])
+  assert.deepEqual(evaluate({ base: 'main' }), [true, true, true])
+  assert.deepEqual(evaluate({ action: 'edited' }), [false, false, true])
+  assert.deepEqual(evaluate({ action: 'edited', changes: { base: {} } }), [true, false, true])
+  assert.deepEqual(evaluate({ draft: true }), [false, false, false])
+  assert.deepEqual(evaluate({ state: 'closed' }), [false, false, false])
+  assert.deepEqual(evaluate({ event: 'workflow_dispatch', state: 'closed', base: 'main' }), [
     true,
-    false,
+    true,
+    true,
   ])
-  assert.deepEqual(allowed({ action: 'edited' }), [false, false, true, false])
-  assert.deepEqual(allowed({ state: 'closed' }), [false, false, false, false])
-  assert.deepEqual(allowed({ draft: true }), [false, false, false, false])
-  assert.deepEqual(allowed({ action: 'converted_to_draft', draft: true }), [
-    false,
-    false,
-    false,
-    false,
-  ])
-  assert.deepEqual(allowed({ sameRepo: false }), [true, false, true, false])
-  assert.deepEqual(allowed({ gateResult: 'failure' }), [true, false, true, false])
-  assert.deepEqual(allowed({ gateResult: 'skipped' }), [true, false, true, false])
-  assert.deepEqual(allowed({ event: 'workflow_dispatch', state: 'closed' }), [
-    true,
-    false,
-    true,
-    false,
-  ])
-  assert.deepEqual(allowed({ event: 'workflow_dispatch', base: 'main', state: 'closed' }), [
-    true,
-    true,
-    true,
-    false,
-  ])
+  assert.doesNotMatch(ci, /qa:visual|visual-qa|labeled/)
 })
 
 test('ready-only CI validates both targets and gates production browser acceptance', () => {
@@ -121,7 +66,7 @@ test('ready-only CI validates both targets and gates production browser acceptan
   assert.match(ci, /branches: \[main, staging\]/)
   assert.match(
     ci,
-    /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled\]/,
+    /types: \[opened, ready_for_review, synchronize, reopened, converted_to_draft, edited\]/,
   )
   assert.match(ci, /github.event.pull_request.draft == false/)
   assert.match(ci, /name: Candidate validation/)
@@ -212,7 +157,7 @@ test('main identity reports docs-only false, application true, and renamed sourc
   }
 })
 
-test('visual and unrelated label runs cannot cancel current frontend candidate validation', () => {
+test('title/body metadata runs cannot cancel current source validation', () => {
   const expression = read('.github/workflows/ci.yml').match(
     /group: frontend-ci-\$\{\{ (.+) \}\}/,
   )[1]
@@ -220,20 +165,12 @@ test('visual and unrelated label runs cannot cancel current frontend candidate v
   const github = {
     run_id: 42,
     ref: 'refs/pull/176/merge',
-    event: {
-      action: 'synchronize',
-      changes: {},
-      label: { name: '' },
-      pull_request: { number: 176 },
-    },
+    event: { action: 'synchronize', changes: {}, pull_request: { number: 176 } },
   }
   const format = (template, value) => template.replace('{0}', value)
   assert.equal(group(github, format), 176)
-  github.event.action = 'labeled'
-  github.event.label.name = 'qa:visual'
-  assert.equal(group(github, format), 'visual-176')
-  github.event.label.name = 'type:enhancement'
+  github.event.action = 'edited'
   assert.equal(group(github, format), 'metadata-42')
-  github.run_id = 43
-  assert.equal(group(github, format), 'metadata-43')
+  github.event.changes.base = {}
+  assert.equal(group(github, format), 176)
 })

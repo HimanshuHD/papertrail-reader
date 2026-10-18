@@ -8,20 +8,13 @@ const workflow = fs.readFileSync(
   fileURLToPath(new URL('../.github/workflows/ci.yml', import.meta.url)),
   'utf8',
 )
-const gate = workflow.split('\n  gate:\n')[1].split('\n  visual-qa:')[0]
+const gate = workflow.split('\n  gate:\n')[1]
 test('actual gate condition excludes closed and draft lifecycle events but retains ready PR acceptance', () => {
   const expression = gate.match(/^ {4}if: (.+)$/m)[1]
   const evaluate = new Function('github', 'always', 'return (' + expression + ')')
   const run = (state, draft, action, event_name = 'pull_request') =>
     evaluate({ event_name, event: { action, pull_request: { state, draft } } }, () => true)
-  for (const action of [
-    'opened',
-    'ready_for_review',
-    'synchronize',
-    'reopened',
-    'edited',
-    'labeled',
-  ]) {
+  for (const action of ['opened', 'ready_for_review', 'synchronize', 'reopened', 'edited']) {
     assert.equal(run('open', false, action), true)
     assert.equal(run('closed', false, action), false)
     assert.equal(run('open', true, action), false)

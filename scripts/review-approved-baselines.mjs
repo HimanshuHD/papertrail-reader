@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
-import { execFileSync, spawnSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { validateBaselines, selectBaselines } from './visual-baselines.mjs'
 import { verifyCandidate } from './candidate-artifact.mjs'
@@ -13,22 +13,18 @@ const outcomes = []
 {
   const { manifest: approval } = await selectBaselines(channel)
   if (!approval.enabled) throw Error('An explicitly approved baseline set is required')
-  const target = channel === 'production' ? 'main' : 'staging'
-  execFileSync(process.execPath, ['scripts/build-candidates.mjs'], {
-    stdio: 'inherit',
-    env: {
-      ...process.env,
-      TARGET_BRANCH: target,
-      PR_NUMBER: channel === 'preview' ? process.env.REVIEW_PR : '',
-      SOURCE_BRANCH: 'baseline-review',
-      BASE_SHA: '',
-    },
-  })
-  const folder = `candidate/${channel}`
+  // Manual Visual QA supplies a checksum-verified candidate; never rebuild another source.
+  if (!process.env.REVIEW_BUILD_FOLDER) throw Error('A verified candidate folder is required')
+  if (process.env.VISUAL_PROFILE !== 'startup')
+    throw Error('Repeat stability requires the startup profile')
+  const folder = path.resolve(process.env.REVIEW_BUILD_FOLDER)
   const build = JSON.parse(await fs.readFile(folder + '/build.json', 'utf8'))
+  if (build.channel !== channel) throw Error('Candidate channel mismatch')
   await verifyCandidate(folder, build)
-  await fs.rm('dist', { recursive: true, force: true })
-  await fs.cp(folder, 'dist', { recursive: true })
+  if (folder !== path.resolve('dist')) {
+    await fs.rm('dist', { recursive: true, force: true })
+    await fs.cp(folder, 'dist', { recursive: true })
+  }
   const captures = []
   for (let repeat = 1; repeat <= 2; repeat++) {
     for (const dir of ['visual-evidence', 'visual-results', 'visual-report'])

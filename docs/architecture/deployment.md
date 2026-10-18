@@ -1,10 +1,14 @@
 # Deployment architecture
 
+## Manual-only visual review — 18 October 2026
+
+Issue #230 supersedes the automatic visual behavior described in historical workflow snapshots below. Visual QA is user-dispatched only; CI, Browser E2E, integration and publishing do not capture or compare visual baselines or depend on visual outcomes. The qa:visual label has no execution behavior. Functional checks and their ordinary failure evidence remain unchanged. See the [Visual QA guide](../deployment/visual-qa.md) for PR/channel/profile and optional repeat-stability inputs. Staging installation precedes reviewed main activation; old run records retain their original meaning.
+
 ## Workflow enhancements — 13 October 2026
 
 #182 activated delivery and Visual QA on main; #185 promoted the report and capture fixes. #186 is merged into staging, but its removal of periodic integration and metadata-edit jobs still needs main promotion. This checkpoint supersedes older bootstrap/metadata/schedule descriptions below; embedded workflow snapshots remain historical revision evidence. Use the [publishing guide](../deployment/publishing.md) and [Visual QA guide](../deployment/visual-qa.md) for current operation.
 
-- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft and qa:visual policies remain intact.
+- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft functional-validation policy remains intact; visual review is now manual-only.
 - Integration keeps branch pushes and successful manual main/staging recovery, with completion events filtered to those branches. #186 handles only the event's branch and removes the integration cron; the publisher's recovery schedule remains separate.
 - History-only staging sync skips deployment only with matching published receipt, descendant ancestry and exact Git tree. Changed/conflict-resolved content still needs validation. Updating a feature PR still creates a fresh candidate.
 - QA executes approved base tooling against the exact candidate; stale head/base/tree identities block evidence. Update the feature branch and validate again rather than rerun an old event.
@@ -73,4 +77,4 @@ The first implementation merges to staging and is then released to main. Schedul
 
 ## Design QA evidence
 
-[Design QA and reviewed visual baselines](../deployment/visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
+[Design QA and reviewed visual baselines](../deployment/visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and user-requested comparison. Full Browser E2E triggers and publication policy remain unchanged.

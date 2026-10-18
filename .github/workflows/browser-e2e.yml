@@ -71,28 +71,6 @@ jobs:
           xvfb-run --auto-servernum sh -c
           'openbox >/tmp/papertrail-window-manager.log 2>&1 &
           npm run test:e2e -- --shard=${{ matrix.shard }}/2'
-      - name: Compare approved visual baselines (once per acceptance)
-        if: matrix.shard == 1
-        env:
-          VISUAL_ACCEPTANCE: 'true'
-          VISUAL_PROFILE: startup
-        run: node scripts/run-visual-qa.mjs
-      - name: Report visual acceptance separately
-        if: always() && matrix.shard == 1
-        env:
-          VISUAL_PROFILE: startup
-        run: node scripts/visual-qa-report.mjs
-      - name: Upload visual acceptance evidence
-        if: always() && matrix.shard == 1
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: visual-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
-          path: |
-            visual-evidence/
-            visual-results/
-            visual-report/
-          if-no-files-found: error
-          retention-days: 30
       - name: Upload browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

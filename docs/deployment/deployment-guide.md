@@ -1,5 +1,9 @@
 # PaperTrail deployment — practical guide and workflow walkthrough
 
+## Manual-only visual review — 18 October 2026
+
+Issue #230 supersedes the automatic visual behavior described in historical workflow snapshots below. Visual QA is user-dispatched only; CI, Browser E2E, integration and publishing do not capture or compare visual baselines or depend on visual outcomes. The qa:visual label has no execution behavior. Functional checks and their ordinary failure evidence remain unchanged. See the [Visual QA guide](visual-qa.md) for PR/channel/profile and optional repeat-stability inputs. Staging installation precedes reviewed main activation; old run records retain their original meaning.
+
 ## Cancellation and recovery
 
 The integration publisher retains `always()` so a skipped main browser dependency does not suppress deployment, but also requires `!cancelled()`. The shared publisher job independently requires `!cancelled()`. A cancelled caller must not start a queued publication. Normal main/staging success, trusted cleanup and reconciliation remain eligible; failed selection or required browser acceptance still block publication.
@@ -12,13 +16,13 @@ The ruleset requires the static `Candidate validation` name from GitHub Actions.
 
 Eligible events require successful build validation and, for website-affecting main candidates, Browser E2E. Ordinary labels and body/title edits skip builds, but the gate waits for a separate actual candidate with successful frontend and Candidate validation, retained artifact and exact current PR head/base. It excludes itself and skipped-build metadata runs. Missing/failed candidates, changed head/base, drafts, closed PRs and exhausted waits fail acceptance. The metadata check uses the trusted base revision's delivery policy and read-only credentials.
 
-Base-branch edits and the `qa:visual` label still run full validation. Separate metadata concurrency cannot cancel candidate validation. Ignored events do not trigger additional Visual QA. Metadata success verifies an existing current candidate; it does not create a build or authorize publication.
+Base-branch edits still run full validation. Labels do not trigger validation or visual review. Separate metadata concurrency cannot cancel candidate validation. Ignored events do not trigger additional Visual QA. Metadata success verifies an existing current candidate; it does not create a build or authorize publication.
 
 ## Workflow enhancements — 13 October 2026
 
 #182 activated delivery and Visual QA on main; #185 promoted the report and capture fixes. #186 is merged into staging, but its removal of periodic integration and metadata-edit jobs still needs main promotion. This checkpoint supersedes older bootstrap/metadata/schedule descriptions below; embedded workflow snapshots remain historical revision evidence. Use the [publishing guide](publishing.md) and [Visual QA guide](visual-qa.md) for current operation.
 
-- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft and qa:visual policies remain intact.
+- Frontend CI on staging validates source commits and target changes; title/body edits skip all jobs and polling. Ready/draft functional-validation policy remains intact; visual review is now manual-only.
 - Integration keeps branch pushes and successful manual main/staging recovery, with completion events filtered to those branches. #186 handles only the event's branch and removes the integration cron; the publisher's recovery schedule remains separate.
 - History-only staging sync skips deployment only with matching published receipt, descendant ancestry and exact Git tree. Changed/conflict-resolved content still needs validation. Updating a feature PR still creates a fresh candidate.
 - QA executes approved base tooling against the exact candidate; stale head/base/tree identities block evidence. Update the feature branch and validate again rather than rerun an old event.
@@ -1160,9 +1164,9 @@ The shared GitHub Pages action returns the aggregate production-root URL. The pu
 
 ## Design QA evidence
 
-[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
+[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and user-requested comparison. Full Browser E2E triggers and publication policy remain unchanged.
 
-Visual QA is manually dispatched through its own Actions workflow after reviewed main activation. PRs carrying **qa:visual** queue Visual QA **after successful Candidate validation**, using that gate's exact artifact run. Fixed-#176 smoke callers and Frontend CI manual-QA workarounds are removed; existing manual build/recovery retains its delivery purpose. See [Visual QA operation](visual-qa.md).
+Visual QA is user-dispatched only and never called by CI or delivery workflows. Select a verified candidate/channel/profile and optional repeat stability; visual outcomes are independent of functional acceptance. See [Visual QA operation](visual-qa.md).
 
 ## Candidate gate lifecycle correction — 14 October 2026
 
