@@ -142,6 +142,28 @@ describe('home and product shell', () => {
     wrapper.unmount()
   })
 
+  it('moves branding with the library and hides only the sidebar footer on collapse', async () => {
+    const { wrapper } = await mountApp('/app')
+    expect(wrapper.find('.reader-app > .app-header').exists()).toBe(false)
+    expect(wrapper.find('#document-sidebar .workspace-brand').exists()).toBe(true)
+    expect(wrapper.find('#document-sidebar .build-footer').exists()).toBe(true)
+    const theme = wrapper.get('button[aria-label="Dark mode"]')
+    await theme.trigger('click')
+    const appearance = theme.attributes('aria-pressed')
+    await wrapper.get('button[aria-label="Hide library"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.build-footer').exists()).toBe(false)
+    expect(wrapper.find('.workspace-topbar .workspace-brand').exists()).toBe(true)
+    expect(wrapper.get('button[aria-label="Dark mode"]').attributes('aria-pressed')).toBe(
+      appearance,
+    )
+    await wrapper.get('button[aria-label="Show library"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.workspace-brand')).toHaveLength(1)
+    expect(wrapper.findAll('.build-footer')).toHaveLength(1)
+    wrapper.unmount()
+  })
+
   it('closes the library with Escape and restores focus to its toggle', async () => {
     const { wrapper } = await mountApp('/app')
     const addButton = wrapper.get('button[aria-label="Add local documents"]')

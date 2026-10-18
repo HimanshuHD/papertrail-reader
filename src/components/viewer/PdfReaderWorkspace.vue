@@ -1045,7 +1045,7 @@ onBeforeUnmount(() => {
       {{ persistenceNotice }}
     </p>
     <header
-      class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-3 border-b border-line bg-panel px-4 py-3 sm:px-6"
+      class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
       <div class="min-w-0 flex-1 basis-40">
         <h2

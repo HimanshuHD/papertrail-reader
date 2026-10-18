@@ -53,6 +53,8 @@ function resizeKey(event: KeyboardEvent) {
   else if (event.key === 'End') setWidth(maxWidth.value)
   else return
   event.preventDefault()
+  // The active PDF/EPUB also listens for arrow keys at window level.
+  event.stopPropagation()
 }
 onMounted(() => {
   measure()
@@ -74,7 +76,6 @@ onBeforeUnmount(() => {
     :class="['reader-layout', { 'sidebar-visible': sidebarOpen, resizing: dragging }]"
     :style="{ '--library-width': `${width}px` }"
   >
-    <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
     <Transition
       name="library-slide"
       @before-enter="restoreTransitionSurface"
@@ -109,6 +110,13 @@ onBeforeUnmount(() => {
       @keydown="resizeKey"
     ></div>
     <div :class="['reader-column', { 'opener-visible': !sidebarOpen }]">
+      <div
+        v-if="!sidebarOpen || $slots.tabs"
+        class="workspace-topbar border-b border-line bg-panel"
+      >
+        <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
+        <slot name="tabs" />
+      </div>
       <slot name="toolbar" />
       <div class="reader-content"><slot /></div>
     </div>
@@ -125,24 +133,24 @@ onBeforeUnmount(() => {
   grid-template-columns: 0 minmax(0, 1fr);
   transition: grid-template-columns 320ms cubic-bezier(0.22, 1, 0.36, 1);
 }
+.workspace-topbar {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  min-width: 0;
+  min-height: 52px;
+  position: relative;
+  z-index: 31;
+}
 .library-opener {
-  position: absolute;
-  left: 12px;
-  top: 16px;
-  z-index: 30;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: 8px;
 }
-.library-opener :deep(button) {
-  cursor: pointer;
-  color: var(--pt-brand);
-  border-color: var(--pt-brand);
-  transition:
-    background-color 150ms,
-    transform 150ms,
-    box-shadow 150ms;
-}
-.library-opener :deep(button:hover) {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 10px rgb(0 0 0 / 16%);
+.library-opener :deep(.icon-button) {
+  border-left: 1px solid var(--pt-line);
+  border-radius: 0;
 }
 .library-scroll {
   position: absolute;
@@ -181,16 +189,6 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   overflow: hidden;
-}
-.opener-visible :deep(.pdf-header),
-.opener-visible :deep(.epub-header),
-.opener-visible :deep(.sample-toolbar) {
-  padding-left: 76px;
-}
-@media (max-width: 1023px) {
-  .opener-visible :deep(.reader-welcome) {
-    padding-left: 76px;
-  }
 }
 .reader-content {
   flex: 1;

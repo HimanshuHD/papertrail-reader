@@ -32,7 +32,7 @@ const pr = /^[1-9]\d*$/.test(prNumber) ? prNumber : ''
 </script>
 
 <template>
-  <footer class="build-footer" aria-label="Deployment information">
+  <footer class="build-footer" role="contentinfo" aria-label="Deployment information">
     <template v-if="sha">
       <span v-if="pr"
         >Preview · <a :href="`${repository}/pull/${pr}`">PR #{{ pr }}</a></span

@@ -1,5 +1,19 @@
 # Reader shell and home entry (#42/#49)
 
+## Compact workspace (#225)
+
+The current reader keeps branding and theme controls inside the open library header. Closing the library moves the compact branding/theme group and the distinct book-stack reopen button into a normal-flow row above the reader. It does not remount the PDF/EPUB workspace or clear its reading state. The existing separator, width limits, saved width and responsive overlay/grid behavior are unchanged. No functional tab strip is added by this shell increment; #221 owns that integration.
+
+The library header measures whether its title and three existing 44px action targets fit. When they do not, Add and Refresh move into a vertical library-action menu, alongside Forget when a workspace exists. The existing file/directory picker paths are reused; menu navigation skips disabled actions and preserves focus on responsive changes. Close remains separate at the right edge.
+
+ReaderView owns the reader-route deployment footer inside the sidebar; App retains it for other routes. The footer hides with the sidebar. The explicit deployment-information landmark remains available while visible; centered release details and its interactive popover belong to #226. Existing Contents toggles/close behavior and document-level resources are unchanged.
+
+Source references and acceptance are recorded in [#224](https://github.com/HimanshuHD/papertrail-reader/issues/224) and [#225](https://github.com/HimanshuHD/papertrail-reader/issues/225). Owner corrections take precedence over illustrative pixel widths in the images.
+
+## Historical foundation design (#42/#49)
+
+The following describes the initial layout demonstration, not the current local PDF/EPUB implementation.
+
 Home remains at / with its existing foundation content and appearance control; Go to app is the final action inside its main card. /app opens the layout demonstration. Both use hash routing and Vite BASE_URL, so production and /preview/pr-N/ need no server rewrites. App header links back home. Deployment footer remains shared in App.vue.
 
 ## Component ownership
