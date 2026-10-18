@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test'
 
-test('build details stay reachable at narrow and short sizes, and close with the library', async ({
-  page,
-}, info) => {
-  await page.goto('./#/app')
-  await expect(page.locator('#app')).not.toHaveAttribute('inert', '', { timeout: 15000 })
-  const library = page.getByRole('complementary', { name: 'Document library' })
-  const footer = library.getByRole('contentinfo', { name: 'Deployment information' })
-  const button = footer.getByRole('button', { name: 'Build details', exact: true })
-  const details = page.getByRole('region', { name: 'Build details', exact: true })
-  for (const theme of ['Light mode', 'Dark mode']) {
+for (const theme of ['Light mode', 'Dark mode']) {
+  test(`build details stay reachable at narrow and short sizes in ${theme}`, async ({
+    page,
+  }, info) => {
+    await page.goto('./#/app')
+    await expect(page.locator('#app')).not.toHaveAttribute('inert', '', { timeout: 15000 })
+    const library = page.getByRole('complementary', { name: 'Document library' })
+    const footer = library.getByRole('contentinfo', { name: 'Deployment information' })
+    const button = footer.getByRole('button', { name: 'Build details', exact: true })
+    const details = page.getByRole('region', { name: 'Build details', exact: true })
     const themeToggle = page.getByRole('button', { name: 'Dark mode', exact: true })
     if ((await themeToggle.getAttribute('aria-pressed')) !== String(theme === 'Dark mode'))
       await themeToggle.click()
@@ -59,5 +59,5 @@ test('build details stay reachable at narrow and short sizes, and close with the
       await expect(footer).toBeVisible()
       await expect(details).toHaveCount(0)
     }
-  }
-})
+  })
+}
