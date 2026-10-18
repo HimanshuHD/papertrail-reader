@@ -42,23 +42,22 @@ export async function selectVisualCandidate(options) {
   const profile = options.profile || 'auto'
   if (!['auto', 'startup', 'shell'].includes(profile)) throw new Error('Invalid Visual QA profile')
   const { pr, merge } = await assertVisualPR(options)
-  let runId
-  if (options.candidateRun) {
-    if (!/^[1-9]\d*$/.test(String(options.candidateRun))) throw new Error('Invalid candidate run')
-    runId = String(options.candidateRun)
-  } else {
-    const candidate = await selectCandidate({ ...options, branch: pr.base.ref })
-    runId = candidate.runId
-  }
+  const channel = options.channel || 'preview'
+  const destination = pr.base.ref === 'main' ? 'production' : 'staging'
+  if (!['preview', destination].includes(channel))
+    throw new Error('Selected channel is not available in this PR candidate')
+  const candidate = await selectCandidate({
+    ...options,
+    branch: pr.base.ref,
+    candidateAcceptance: true,
+  })
+  const runId = candidate.runId
   const args = { owner: options.owner, repo: options.repo, run_id: Number(runId), per_page: 100 }
   const run = (await options.github.rest.actions.getWorkflowRun(args)).data
-  // In a post-gate call the same run cannot finish until Visual QA itself finishes.
-  const gatePassedInProgress =
-    Boolean(options.candidateRun) && run.status === 'in_progress' && !run.conclusion
   if (
     run.event !== 'pull_request' ||
     run.path !== '.github/workflows/ci.yml' ||
-    (!gatePassedInProgress && !(run.status === 'completed' && run.conclusion === 'success')) ||
+    run.status !== 'completed' ||
     run.head_sha !== pr.head.sha ||
     run.head_branch !== pr.head.ref ||
     run.head_repository?.full_name !== `${options.owner}/${options.repo}` ||
@@ -82,7 +81,7 @@ export async function selectVisualCandidate(options) {
   if (!artifacts.some((a) => a.name === 'candidate-build' && !a.expired))
     throw new Error('Current candidate artifact is missing or expired')
   const plan = {
-    channel: 'preview',
+    channel,
     branch: pr.base.ref,
     sourceSha: pr.merge_commit_sha,
     tree: merge.tree.sha,
@@ -91,7 +90,7 @@ export async function selectVisualCandidate(options) {
     runId,
     baseSha: pr.base.sha,
     profile,
-    acceptance: gatePassedInProgress ? 'candidate-gate-passed' : 'completed-run',
+    acceptance: 'completed-candidate-gate-passed',
   }
   await assertVisualPR({ ...options, plan })
   return plan
@@ -99,11 +98,15 @@ export async function selectVisualCandidate(options) {
 
 export async function verifyVisualArtifact(folder, plan, base = '/papertrail-reader/') {
   if (!/^\/(?:[A-Za-z0-9_-]+\/)*$/.test(base)) throw new Error('Invalid site base path')
-  const build = await verifyCandidate(folder, {
-    ...plan,
-    channel: 'preview',
-    basePath: `${base}preview/pr-${plan.pr}/`,
-  })
+  const destination = plan.branch === 'main' ? 'production' : 'staging'
+  if (!['preview', destination].includes(plan.channel)) throw new Error('Invalid artifact channel')
+  const basePath =
+    plan.channel === 'preview'
+      ? `${base}preview/pr-${plan.pr}/`
+      : plan.channel === 'staging'
+        ? `${base}staging/`
+        : base
+  const build = await verifyCandidate(folder, { ...plan, basePath })
   if (build.sha !== plan.sourceSha || build.baseSha !== plan.baseSha)
     throw new Error('Artifact source/base identity mismatch')
   return build

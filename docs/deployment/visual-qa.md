@@ -4,36 +4,35 @@ PaperTrail owns this workflow; the Product Design `design-qa` instruction docume
 
 ## Run Visual QA manually
 
-Once the reviewed activation PR is merged to **main**, GitHub lists **Visual QA** in Actions with **Run workflow**. Select **main** for the activated tooling, enter an open ready same-repository PR number, and choose a profile:
+Visual QA runs only through **Actions → Visual QA → Run workflow**. It is independent of Frontend CI, Candidate validation, Browser E2E, integration and publication. PR events, labels (including `qa:visual`), source/baseline changes, merges and schedules never request visual capture or comparison. A skipped, missing or failed visual run is not a delivery gate. Functional acceptance remains required by its existing workflows.
 
-| Profile | Capture behavior                                                                                         |
-| ------- | -------------------------------------------------------------------------------------------------------- |
-| auto    | Detects the actual startup surface in the verified artifact; otherwise captures ready shell/interactions |
-| startup | Explicit startup/loading/error/retry/reduced-motion review; missing startup surface blocks evidence      |
-| shell   | Ready reader shell, library controls and theme interaction review                                        |
+Select the reviewed tooling branch **staging** or **main**, enter an open ready same-repository PR number, and choose a profile and channel:
 
-Staging PRs and release/hotfix PRs targeting main are eligible. Update the PR from its current base and wait for successful complete **Frontend CI / Candidate validation** with a retained current `candidate-build`. Drafts, forks, closed/stale PRs, failed runs and expired/missing artifacts reject. Manual runs select only completed successful candidate runs; they do not bypass Candidate validation.
+| Profile | Capture behavior                                                                        |
+| ------- | --------------------------------------------------------------------------------------- |
+| auto    | Detect startup in the verified artifact; otherwise capture the ready shell/interactions |
+| startup | Capture startup/loading/error/retry/reduced-motion states                               |
+| shell   | Capture the ready reader shell, library controls and theme interactions                 |
 
-Example after activation: `gh workflow run visual-qa.yml --ref main -f pr_number=176 -f profile=startup`. The GitHub UI provides the same inputs without local setup. Selecting staging also works when that approved branch contains the workflow. Main registration alone is not evidence that browser capture or design acceptance passed.
+| Channel    | Available candidate                                                     |
+| ---------- | ----------------------------------------------------------------------- |
+| preview    | Any eligible staging or release/hotfix PR                               |
+| staging    | Staging-target PR's separately compiled staging artifact                |
+| production | Main-target release/hotfix PR's separately compiled production artifact |
 
-Download the unique `visual-qa-pr-N-RUN-ATTEMPT` artifact from the run's **Summary → Artifacts** after capture/report/upload steps execute. Open `visual-evidence/comparison.html` with all image directories beside it; inspect `design-qa.md`, `status.json`, `candidate.json`, per-state JSON, `visual-report/assertions/index.html`, console attachments and traces. A skipped job produces no successful capture.
+Wait for completed frontend and **Candidate validation** jobs with a retained current `candidate-build`. A previous visual failure in the same historical CI run does not invalidate successful functional acceptance. Drafts, forks, closed/stale PRs, pending or failed required checks and expired/missing artifacts reject. Update the PR from its current base before capturing. This is artifact review, not a test of the currently deployed website; selecting a channel does not publish it. A production-path review requires a release/hotfix candidate; preview screenshots are never borrowed for another channel.
 
-## Automatic QA after Candidate validation
+Set **repeat_stability** to true for two captures and repeat comparison using the existing full startup baseline matrix. Use profile startup (or auto when the artifact contains startup). Leave it false for a single capture/report. Repeat review consumes the same verified artifact, never rebuilds another source, and requires an existing approved channel matrix. The former automatic Approved baseline adoption review workflow is removed.
 
-Add **qa:visual** to any eligible ready same-repository PR. Frontend CI orders jobs as follows:
+Example after activation: `gh workflow run visual-qa.yml --ref staging -f pr_number=227 -f profile=startup -f channel=preview -F repeat_stability=false`. The GitHub UI exposes the same inputs. Main registration/tooling changes require reviewed main promotion; after staging merge select staging to use the new implementation. Nothing in this command changes merge protection, baselines or deployment state.
 
-1. Frontend validation and channel candidate build.
-2. Required production Browser E2E for release/hotfix PRs, according to the existing trigger policy.
-3. **Candidate validation**.
-4. Optional **Visual QA** when the PR carries qa:visual, using profile auto and the gate's exact candidate run ID.
+Download `visual-qa-pr-N-CHANNEL-RUN-ATTEMPT` from **Summary → Artifacts**. Open `visual-evidence/comparison.html` with adjacent screenshot directories; inspect `status.json`, candidate identity, per-state JSON and `visual-report/regression/index.html` for actual/expected/diff. Reports and artifacts are retained even on assertion or pixel failures. Repeat runs also retain `baseline-review-evidence/CHANNEL-{1,2}/`, `CHANNEL-summary.json` and repeat-stability reports. Visual failures remain visible in this manual run only.
 
-The QA job depends on the successful gate; failed/skipped/pending Candidate validation cannot start it. It is no longer limited to #176 or to the labeled event. Keeping qa:visual on the PR runs QA after validation on subsequent commits/eligible CI events. Adding the label requests a fresh current validation followed by QA; unrelated label edits do not build or capture and cannot cancel candidate CI. Remove the label to opt out of future runs. No temporary smoke job or Frontend CI manual-QA route remains. The pre-existing manual Frontend CI build/recovery trigger keeps its delivery purpose; manual visual review uses Visual QA itself.
+## Isolation and source identity
 
-For the same-run queue, the enclosing Frontend CI cannot finish until QA finishes. Therefore QA accepts an explicitly supplied **in-progress** run only after verifying that its current **Candidate validation** and frontend build jobs succeeded and that the candidate artifact exists. It never searches for or rebuilds another revision. Evidence records `candidate-gate-passed`; this is not a completed-workflow or deployment acceptance claim. Manual dispatch still requires a completed successful workflow. On staging after #186, title/body-only edits skip all jobs and do not recapture. Source commits, target changes and qa:visual requests still validate before capture; main retains earlier metadata handling until promotion.
+The workflow has only `workflow_dispatch`; no workflow-call entry point, automatic caller or label-driven build request remains. Removing visual steps does not remove functional Browser E2E, native-focus checks, ordinary test-failure screenshots or traces. No other workflow invokes the visual capture/comparison/report scripts. If repository rules explicitly require a removed visual check, the owner must remove that obsolete requirement; do not replace it with a fabricated pass or change unrelated required checks.
 
-All PR captures check out tooling from the approved current PR base SHA (staging or main), not the PR head/merge. PR/run/head/base/merge-tree/source/channel/base-path/checksum checks stay mandatory before serving static bytes. Checkout credentials are disabled, browser jobs have only read permissions and no secrets, and browser traffic is restricted to the local artifact server. Candidate PR code executes in the disposable browser, never as privileged Node/build scripts. There is no deployment, automatic merge or baseline adoption in Visual QA.
-
-**Activation order:** owner merges the general-queue cleanup into staging, then reviews/merges the hotfix tooling promotion to main. Main activation carries the already reviewed staging delivery contract needed for schema-2 candidates, not the unmerged #176 startup feature or a new app release/version. Synchronize main back into staging through the normal delivery process after activation. Existing default-branch delivery/recovery handlers activate as part of that promotion and still require their own #130/#175 acceptance; no administrative settings or completed acceptance are implied. All previous fixed-#176/manual/label-only bootstrap workarounds are superseded and removed. No #176 capture is required merely to register the actual workflow.
+Tooling is checked out from the selected reviewed staging/main dispatch SHA, never candidate PR code. PR/run/head/base/merge-tree/channel/base-path/checksum verification is mandatory before serving static bytes. Credentials are disabled, capture has read-only permissions and no secrets, and browser traffic is restricted to the local artifact server. Candidate code executes only in the disposable browser. Capture neither deploys, merges nor adopts baselines. A post-capture source change marks evidence stale.
 
 ## Captured states and identity
 
@@ -54,7 +53,7 @@ The source mock is `tests/visual/references/startup-owner.webp`, supplied by the
 | Initial design review: pending/approved/changes requested | Owner decision in the feature PR/design record; capture alone leaves pending. Automation reports approved only from the reviewed baseline manifest |
 | Visual regression: pass/fail/not-run                      | Comparison with approved browser snapshots; disabled until explicit approval                                                                       |
 
-A browser installation/capture or provenance failure blocks evidence. It does not establish that the design is wrong. Assertion or pixel-diff failures fail their respective automated check. A pending owner judgment is not a permanently required CI check. With no approved baselines, existing Browser E2E proceeds and reports visual comparison **not-run**, evidence **blocked**, initial review **pending**. Manual Visual QA still captures initial evidence when baselines are disabled.
+A browser installation/capture or provenance failure blocks evidence. It does not establish that the design is wrong. Assertion or pixel-diff failures fail their respective automated check. A pending owner judgment is not a permanently required CI check. With no approved channel baselines, manual Visual QA still captures initial evidence and reports visual comparison **not-run** and owner review **pending**. Browser E2E does not run visual comparisons.
 
 ## Initial design acceptance
 
@@ -93,7 +92,7 @@ Tolerance is deliberately tight: per-pixel color threshold 0.15 and at most 20 d
 
 ## Staging and release acceptance
 
-The existing Browser E2E reusable workflow compares enabled approved baselines once (shard 1) against its already verified destination artifact. Staging integration and ready release/hotfix production acceptance keep their existing triggers and publication dependencies. Regression failures fail browser acceptance; there is no extra deployment path. Main promotion still reuses its accepted candidate. Before enabling baselines, validate preview-versus-staging/production stability; channel-dependent footer metadata is excluded intentionally. If no baselines exist, initial manual review remains a feature-owner acceptance item, not a fabricated regression pass.
+Browser E2E performs functional acceptance only. Visual comparisons and repeat stability run only when the user dispatches Visual QA, and their outcomes are not inputs to staging integration, release acceptance or publication. Functional frontend/browser checks, exact artifact promotion, freshness and live receipt checks remain unchanged. Main promotion still reuses its functionally accepted candidate. Owner review and explicit baseline adoption remain separate from automated delivery eligibility.
 
 Main/default-branch activation is delivered through the reviewed tooling promotion; its live acceptance, branch protections and broader release/recovery checks stay in #130/#175/#44/#32. This tooling is tracked in #177 under milestone 10 and the Roadmap 3 Wiki. Owner merges all PRs and changes administrative controls.
 
