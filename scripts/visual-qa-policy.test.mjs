@@ -102,7 +102,6 @@ test('rejects draft closed fork main stale branch merge workflow gate and PR pro
     { run: { head_branch: 'other' } },
     { run: { pull_requests: [] } },
     { jobs: [{ name: 'Candidate validation', conclusion: 'skipped' }] },
-    { run: { conclusion: 'failure' } },
     { run: { head_repository: { full_name: 'fork/repo' } } },
   ])
     await assert.rejects(selectVisualCandidate(fixture(options)))
@@ -174,19 +173,17 @@ test('unapproved baseline cannot activate strict comparisons; incomplete approve
   }
 })
 
-test('post-gate queue uses its exact in-progress CI artifact without waiting for itself to finish', async () => {
-  const options = fixture({ run: { status: 'in_progress', conclusion: null } })
-  options.github.rest.actions.listWorkflowRuns = async () => {
-    assert.fail('Queued QA must not search for another completed revision')
+test('manual comparison accepts a completed functional candidate despite previous visual failure', async () => {
+  for (const conclusion of ['success', 'failure', 'cancelled']) {
+    const plan = await selectVisualCandidate(fixture({ run: { conclusion } }))
+    assert.equal(plan.runId, '42')
+    assert.equal(plan.acceptance, 'completed-candidate-gate-passed')
   }
-  const plan = await selectVisualCandidate({ ...options, candidateRun: '42' })
-  assert.equal(plan.runId, '42')
-  assert.equal(plan.acceptance, 'candidate-gate-passed')
-  await assert.rejects(selectVisualCandidate(options), /another completed/)
 })
-test('queued acceptance rejects missing/failed/skipped gates, frontend, artifacts and invalid run state', async () => {
+test('manual selection rejects pending candidates and failed or skipped required checks', async () => {
   for (const change of [
-    { jobs: [{ name: 'Candidate validation', conclusion: 'in_progress' }] },
+    { run: { status: 'in_progress', conclusion: null } },
+    { run: { status: 'queued', conclusion: null } },
     { jobs: [{ name: 'Candidate validation', conclusion: 'failure' }] },
     { jobs: [{ name: 'Candidate validation', conclusion: 'skipped' }] },
     {
@@ -197,17 +194,16 @@ test('queued acceptance rejects missing/failed/skipped gates, frontend, artifact
     },
     { artifacts: [] },
     { artifacts: [{ name: 'candidate-build', expired: true }] },
-    { run: { status: 'queued', conclusion: null } },
-    { run: { status: 'completed', conclusion: 'failure' } },
-    { run: { head_sha: source } },
-    { run: { path: '.github/workflows/untrusted.yml' } },
   ])
-    await assert.rejects(selectVisualCandidate({ ...fixture(change), candidateRun: '42' }))
+    await assert.rejects(selectVisualCandidate(fixture(change)))
 })
-test('manual selection requires completed success and main release/hotfix eligibility is supported', async () => {
-  await assert.rejects(
-    selectVisualCandidate(fixture({ run: { status: 'in_progress', conclusion: null } })),
+test('manual channel selection is bound to the actual PR destination artifact', async () => {
+  assert.equal(
+    (await selectVisualCandidate({ ...fixture(), channel: 'staging' })).channel,
+    'staging',
   )
+  await assert.rejects(selectVisualCandidate({ ...fixture(), channel: 'production' }), /channel/)
+  await assert.rejects(selectVisualCandidate({ ...fixture(), channel: 'unknown' }), /channel/)
   for (const ref of ['release/2.1.0', 'hotfix/visual-qa']) {
     const options = fixture({
       pull: {
@@ -216,8 +212,37 @@ test('manual selection requires completed success and main release/hotfix eligib
       },
       run: { head_branch: ref },
     })
-    const plan = await selectVisualCandidate(options)
+    const plan = await selectVisualCandidate({ ...options, channel: 'production' })
     assert.equal(plan.branch, 'main')
+    assert.equal(plan.channel, 'production')
+    await assert.rejects(selectVisualCandidate({ ...options, channel: 'staging' }), /channel/)
+  }
+})
+test('channel artifacts enforce their own base paths and cannot borrow preview bytes', async () => {
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'visual-channels-'))
+  try {
+    for (const channel of ['staging', 'production']) {
+      const options =
+        channel === 'staging'
+          ? fixture()
+          : fixture({
+              pull: {
+                base: { ref: 'main', sha: base },
+                head: { sha: head, ref: 'hotfix/test', repo: { full_name: 'owner/repo' } },
+              },
+              run: { head_branch: 'hotfix/test' },
+            })
+      const plan = await selectVisualCandidate({ ...options, channel })
+      const basePath = channel === 'staging' ? '/papertrail-reader/staging/' : '/papertrail-reader/'
+      await fs.writeFile(path.join(folder, 'index.html'), 'channel candidate')
+      await writeCandidate(folder, { ...plan, sha: source, basePath })
+      assert.equal((await verifyVisualArtifact(folder, plan)).channel, channel)
+      await assert.rejects(verifyVisualArtifact(folder, { ...plan, channel: 'preview' }))
+      await writeCandidate(folder, { ...plan, sha: source, basePath: '/wrong/' })
+      await assert.rejects(verifyVisualArtifact(folder, plan))
+    }
+  } finally {
+    await fs.rm(folder, { recursive: true, force: true })
   }
 })
 test('auto profile chooses the artifact startup surface; shell fallback and explicit profiles remain available', () => {

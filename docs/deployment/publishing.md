@@ -144,9 +144,9 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 
 ## Design QA evidence
 
-[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
+[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and user-requested comparison. Full Browser E2E triggers and publication policy remain unchanged.
 
-Visual QA is manually dispatched through its own Actions workflow after reviewed main activation. PRs carrying **qa:visual** queue Visual QA **after successful Candidate validation**, using that gate's exact artifact run. Fixed-#176 smoke callers and Frontend CI manual-QA workarounds are removed; existing manual build/recovery retains its delivery purpose. See [Visual QA operation](visual-qa.md).
+Visual QA is **manual-only** through Actions → Visual QA → Run workflow. It has no automatic CI caller, label trigger, baseline-change trigger, embedded Browser E2E comparison or delivery dependency. Select a PR, available channel and profile; optionally request repeat stability. Failed or missing visual comparison does not block functional CI, preview publication, integration or release delivery. Existing required functional checks and artifact/source verification remain intact. Baseline review/adoption is explicit and separate. See [Visual QA operation](visual-qa.md).
 
 Title/body-only PR edits skip all Frontend CI jobs and do not poll for candidates. Source commit updates validate through synchronize; target changes validate through edited with changes.base. GitHub cannot filter edited by field at the event level, so title/body edits can still leave an all-skipped workflow entry. Candidate acceptance remains attached to source-changing validation, not descriptive edits.
 
