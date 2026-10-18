@@ -17,6 +17,19 @@ test('build details stay reachable at narrow and short sizes, and close with the
     await page.keyboard.press('Home')
     for (const height of [900, 400]) {
       await page.setViewportSize({ width: info.project.use.viewport!.width, height })
+      await page.evaluate(async () => {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+        await Promise.all(
+          document
+            .getAnimations()
+            .filter((animation) => Number.isFinite(animation.effect?.getComputedTiming().endTime))
+            .map((animation) => animation.finished.catch(() => {})),
+        )
+      })
+      expect((await library.boundingBox())!.x).toBeGreaterThanOrEqual(0)
+      expect(await page.locator('html').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(
+        true,
+      )
       await expect(button).toBeInViewport()
       await button.focus()
       await button.press('ArrowDown')
