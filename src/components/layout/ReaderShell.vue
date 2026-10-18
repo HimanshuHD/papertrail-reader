@@ -53,6 +53,8 @@ function resizeKey(event: KeyboardEvent) {
   else if (event.key === 'End') setWidth(maxWidth.value)
   else return
   event.preventDefault()
+  // The active PDF/EPUB also listens for arrow keys at window level.
+  event.stopPropagation()
 }
 onMounted(() => {
   measure()
