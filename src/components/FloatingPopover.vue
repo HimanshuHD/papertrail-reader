@@ -2,7 +2,10 @@
 import { useOverlayTarget } from '../composables/useOverlayTarget'
 const overlayTarget = useOverlayTarget()
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-const props = defineProps<{ anchor: HTMLElement | null; expanded?: boolean }>()
+const props = withDefaults(
+  defineProps<{ anchor: HTMLElement | null; expanded?: boolean; reserveAsideHeader?: boolean }>(),
+  { reserveAsideHeader: true },
+)
 const emit = defineEmits<{ close: [] }>()
 const root = ref<HTMLElement | null>(null)
 const position = ref({
@@ -18,7 +21,9 @@ function place() {
     popup = root.value
   if (!anchor || !popup) return
   // Keep the owning utility panel’s header and close control reachable.
-  const header = props.anchor?.closest('aside')?.firstElementChild?.getBoundingClientRect()
+  const header = props.reserveAsideHeader
+    ? props.anchor?.closest('aside')?.firstElementChild?.getBoundingClientRect()
+    : undefined
   const minTop = Math.max(8, Math.min(header ? header.bottom + 8 : 8, innerHeight - 56))
   const maxHeight = Math.max(40, innerHeight - minTop - 8)
   const width = popup.offsetWidth,

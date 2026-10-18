@@ -1715,43 +1715,25 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     'background-color',
     await page.locator('.app-header').evaluate((el) => getComputedStyle(el).backgroundColor),
   )
-  // The CI build has no deployment metadata. Stress its real footer CSS with representative
-  // preview links and a long branch token; component tests verify the actual metadata template.
-  await footer.evaluate((element) => {
-    const nodes = [
-      'Preview · PR #98',
-      'Branch fix/reader-polish-with-a-very-long-branch-name-that-wraps-on-a-small-screen',
-      'SHA f44d675',
-    ].map((text, index) => {
-      const span = document.createElement('span')
-      const link = document.createElement('a')
-      // Match Vue's compiled scoped markup so the real component's link rules apply.
-      for (const attribute of element
-        .getAttributeNames()
-        .filter((name) => name.startsWith('data-v-'))) {
-        span.setAttribute(attribute, '')
-        link.setAttribute(attribute, '')
-      }
-      link.textContent = text
-      link.href =
-        index === 0
-          ? 'https://github.com/HimanshuHD/papertrail-reader/pull/98'
-          : index === 1
-            ? 'https://github.com/HimanshuHD/papertrail-reader/tree/fix/reader-polish'
-            : 'https://github.com/HimanshuHD/papertrail-reader/commit/f44d67517ba17053d15e4b420372526a5002a10c'
-      span.append(link)
-      return span
-    })
-    element.replaceChildren(...nodes)
-  })
-  for (const link of await footer.getByRole('link').all()) {
-    const box = (await link.boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width)
-    expect(box.height).toBeGreaterThanOrEqual(24)
+  const detailsButton = footer.getByRole('button', { name: 'Build details', exact: true })
+  await detailsButton.focus()
+  await detailsButton.press('ArrowDown')
+  const details = page.getByRole('region', { name: 'Build details', exact: true })
+  await expect(details).toBeVisible()
+  const popup = (await details.locator('..').boundingBox())!
+  expect(popup.x).toBeGreaterThanOrEqual(0)
+  expect(popup.x + popup.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+  expect(popup.y).toBeGreaterThanOrEqual(0)
+  expect(popup.y + popup.height).toBeLessThanOrEqual(500)
+  for (const link of await details.getByRole('link').all()) {
+    expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(24)
     await link.focus()
     await expect(link).toBeFocused()
   }
+  await page.keyboard.press('Escape')
+  await expect(details).toHaveCount(0)
+  await expect(detailsButton).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Hide library' })).toBeVisible()
   await noOverflow(page)
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),

@@ -26,6 +26,7 @@ defineProps<{
     | 'fullscreen'
     | 'fullscreen-exit'
     | 'help'
+    | 'info'
 }>()
 const paths = {
   edit: 'm16 3 5 5-13 13H3v-5L16 3ZM14 5l5 5',
@@ -56,6 +57,7 @@ const paths = {
   fullscreen:
     'M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M3 16v3a2 2 0 0 0 2 2h3',
   'fullscreen-exit': 'M8 3v5H3M21 8h-5V3M3 16h5v5M16 21v-5h5',
+  info: 'M12 11v6M12 7h.01',
   help: 'M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3M12 17h.01M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0Z',
 }
 </script>
@@ -72,7 +74,7 @@ const paths = {
     class="h-5 w-5"
   >
     <circle v-if="name === 'zoom-in' || name === 'zoom-out'" cx="11" cy="11" r="8" />
-    <circle v-if="name === 'clock'" cx="12" cy="12" r="10" />
+    <circle v-if="name === 'clock' || name === 'info'" cx="12" cy="12" r="10" />
     <path :d="paths[name]" />
   </svg>
 </template>

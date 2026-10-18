@@ -4,89 +4,173 @@ import { version } from '../../package.json'
 import BuildFooter from '../../src/components/BuildFooter.vue'
 
 const sha = '1234567890abcdef1234567890abcdef12345678'
+const wrappers: ReturnType<typeof mount>[] = []
+function footer(env: Record<string, string> = {}) {
+  for (const [name, value] of Object.entries({
+    VITE_BUILD_SHA: sha,
+    VITE_BRANCH_NAME: 'main',
+    VITE_PR_NUMBER: '',
+    VITE_DEPLOY_CHANNEL: 'production',
+    ...env,
+  }))
+    vi.stubEnv(name, value)
+  const wrapper = mount(BuildFooter, { attachTo: document.body })
+  wrappers.push(wrapper)
+  return wrapper
+}
+async function details(wrapper: ReturnType<typeof mount>) {
+  await wrapper.get('button[aria-label="Build details"]').trigger('click')
+  await flushPromises()
+  return document.querySelector<HTMLElement>('[role="region"][aria-label="Build details"]')!
+}
 afterEach(() => {
+  for (const wrapper of wrappers.splice(0)) wrapper.unmount()
+  document.body.innerHTML = ''
   vi.unstubAllEnvs()
   vi.unstubAllGlobals()
+  vi.useRealTimers()
 })
 
-describe('deployment footer', () => {
-  it('identifies a preview PR and links the displayed SHA to the full commit', () => {
-    vi.stubEnv('VITE_BUILD_SHA', sha)
-    vi.stubEnv('VITE_PR_NUMBER', '38')
-    vi.stubEnv('VITE_BRANCH_NAME', 'feat/39-preview-status')
-    const wrapper = mount(BuildFooter)
-    expect(wrapper.text()).toContain('Preview')
-    expect(wrapper.text()).toContain('PR #38')
-    expect(wrapper.text()).toContain('1234567')
-    expect(wrapper.get('a[href$="/tree/feat/39-preview-status"]').text()).toBe(
-      'feat/39-preview-status',
+describe('deployment footer identity', () => {
+  it.each([
+    ['production', 'Production', 'main', 'Branch'],
+    ['staging', 'Staging', 'staging', 'Branch'],
+    ['preview', 'Preview', 'feature/reader&polish', 'Branch'],
+    ['release', 'Release archive', 'v2.1.1', 'Tag'],
+  ])(
+    'uses actual %s metadata and moves build links into details',
+    async (channel, label, branch, refLabel) => {
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false }))
+      const wrapper = footer({
+        VITE_DEPLOY_CHANNEL: channel,
+        VITE_BRANCH_NAME: branch,
+        VITE_PR_NUMBER: channel === 'preview' ? '38' : '',
+      })
+      expect(wrapper.text()).toContain(`${label} · v${version}`)
+      expect(wrapper.find('a').exists()).toBe(false)
+      const panel = await details(wrapper)
+      expect(panel.textContent).toContain(refLabel)
+      expect(panel.querySelector(`a[href$="/commit/${sha}"]`)?.getAttribute('title')).toBe(sha)
+      const refUrl = branch.split('/').map(encodeURIComponent).join('/')
+      expect(panel.querySelector(`a[href$="/tree/${refUrl}"]`)?.textContent).toBe(branch)
+      expect(Boolean(panel.querySelector('a[href$="/pull/38"]'))).toBe(channel === 'preview')
+    },
+  )
+  it.each(['', 'HEAD', sha, 'bad..ref', 'refs/heads/.hidden', 'bad ref', 'bad/ref.lock'])(
+    'does not invent a branch link for %s',
+    async (branch) => {
+      const panel = await details(footer({ VITE_BRANCH_NAME: branch }))
+      expect(panel.querySelector('a[href*="/tree/"]')).toBeNull()
+      expect(panel.textContent).toMatch(/Unavailable|Detached revision/)
+    },
+  )
+  it('labels absent metadata honestly without a fabricated commit link', async () => {
+    const wrapper = footer({ VITE_BUILD_SHA: '', VITE_BRANCH_NAME: '', VITE_PR_NUMBER: 'invalid' })
+    expect(wrapper.text()).toContain('Development · v')
+    const panel = await details(wrapper)
+    expect(panel.querySelector('a')).toBeNull()
+    expect(panel.textContent).toContain('Unavailable')
+  })
+  it('normalizes tagged and branch refs without presenting a tag as a branch', async () => {
+    const panel = await details(
+      footer({ VITE_DEPLOY_CHANNEL: 'release', VITE_BRANCH_NAME: 'refs/tags/v2.1.1' }),
     )
-    expect(wrapper.get('a[href$="/pull/38"]').text()).toBe('PR #38')
-    expect(wrapper.get(`a[href$="/commit/${sha}"]`).attributes('title')).toBe(sha)
-    wrapper.unmount()
-  })
-
-  it('labels main builds as production without claiming a PR', () => {
-    vi.stubEnv('VITE_BUILD_SHA', sha)
-    vi.stubEnv('VITE_PR_NUMBER', '')
-    vi.stubEnv('VITE_BRANCH_NAME', 'main')
-    const wrapper = mount(BuildFooter)
-    expect(wrapper.text()).toContain(`Production · v${version}`)
-    expect(wrapper.get('a[href$="/tree/main"]').text()).toBe('main')
-    expect(wrapper.text()).not.toContain('PR #')
-    wrapper.unmount()
-  })
-
-  it('encodes special characters in branch URL segments', () => {
-    vi.stubEnv('VITE_BUILD_SHA', sha)
-    vi.stubEnv('VITE_BRANCH_NAME', 'feat/reader&polish')
-    vi.stubEnv('VITE_PR_NUMBER', '40')
-    const wrapper = mount(BuildFooter)
-    expect(wrapper.get('a[href$="/tree/feat/reader%26polish"]').text()).toBe('feat/reader&polish')
-    wrapper.unmount()
-  })
-
-  it('shows an honest development fallback when metadata is absent', () => {
-    vi.stubEnv('VITE_BUILD_SHA', '')
-    vi.stubEnv('VITE_PR_NUMBER', '')
-    const wrapper = mount(BuildFooter)
-    expect(wrapper.text()).toBe('Development · SHA unavailable')
-    expect(wrapper.find('a').exists()).toBe(false)
-    wrapper.unmount()
+    expect(panel.querySelector('dt')?.textContent).toBe('Tag')
+    expect(panel.querySelector('a[href$="/tree/v2.1.1"]')).not.toBeNull()
   })
 })
 
-it('labels staging and shows only server-confirmed alignment', async () => {
-  vi.stubEnv('VITE_BUILD_SHA', sha)
-  vi.stubEnv('VITE_DEPLOY_CHANNEL', 'staging')
-  vi.stubEnv('VITE_PR_NUMBER', '')
+it('opens on focus, reaches links, consumes Escape and restores focus without reopening', async () => {
+  const wrapper = footer()
+  const button = wrapper.get<HTMLButtonElement>('button')
+  button.element.focus()
+  await flushPromises()
+  expect(button.attributes('aria-expanded')).toBe('true')
+  await button.trigger('keydown', { key: 'ArrowDown' })
+  await flushPromises()
+  const panel = document.querySelector<HTMLElement>('[role="region"][aria-label="Build details"]')!
+  expect(panel.contains(document.activeElement)).toBe(true)
+  const event = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+  document.activeElement!.dispatchEvent(event)
+  await flushPromises()
+  expect(event.defaultPrevented).toBe(true)
+  expect(button.attributes('aria-expanded')).toBe('false')
+  expect(document.activeElement).toBe(button.element)
+  expect(document.querySelector('[role="region"][aria-label="Build details"]')).toBeNull()
+})
+it('supports Tab into links, Shift+Tab back, and a second click to close', async () => {
+  const wrapper = footer()
+  const button = wrapper.get<HTMLButtonElement>('button')
+  button.element.focus()
+  await flushPromises()
+  await button.trigger('keydown', { key: 'Tab' })
+  await flushPromises()
+  const panel = document.querySelector<HTMLElement>('[role="region"][aria-label="Build details"]')!
+  expect(document.activeElement).toBe(panel.querySelector('a'))
+  document.activeElement!.dispatchEvent(
+    new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
+  )
+  await flushPromises()
+  expect(document.activeElement).toBe(button.element)
+  expect(button.attributes('aria-expanded')).toBe('false')
+  await button.trigger('click')
+  expect(button.attributes('aria-expanded')).toBe('true')
+  await button.trigger('click')
+  expect(button.attributes('aria-expanded')).toBe('false')
+})
+it('keeps hover details reachable, pins on click, and dismisses outside', async () => {
+  vi.useFakeTimers()
+  const wrapper = footer()
+  const button = wrapper.get('button')
+  await button.trigger('mouseenter')
+  await flushPromises()
+  await button.trigger('mouseleave')
+  const panel = document.querySelector<HTMLElement>('[role="region"][aria-label="Build details"]')!
+  panel.dispatchEvent(new MouseEvent('mouseenter'))
+  await vi.advanceTimersByTimeAsync(200)
+  expect(button.attributes('aria-expanded')).toBe('true')
+  await button.trigger('click')
+  panel.dispatchEvent(new MouseEvent('mouseleave'))
+  await vi.advanceTimersByTimeAsync(200)
+  expect(button.attributes('aria-expanded')).toBe('true')
+  document.body.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+  await flushPromises()
+  expect(button.attributes('aria-expanded')).toBe('false')
+  await button.trigger('click')
+  await flushPromises()
+  expect(button.attributes('aria-expanded')).toBe('true')
+  wrapper.unmount()
+  expect(document.querySelector('[role="region"][aria-label="Build details"]')).toBeNull()
+})
+it('closes transient hover after leaving both surfaces', async () => {
+  vi.useFakeTimers()
+  const wrapper = footer()
+  const button = wrapper.get('button')
+  await button.trigger('mouseenter')
+  await button.trigger('mouseleave')
+  await vi.advanceTimersByTimeAsync(200)
+  expect(button.attributes('aria-expanded')).toBe('false')
+  await button.trigger('mouseenter')
+  expect(button.attributes('aria-expanded')).toBe('true')
+})
+it('preserves server-confirmed alignment and published-preview notices', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({
       ok: true,
-      json: async () => ({ aligned: true, productionVersion: '2.1.0' }),
+      json: async () => ({ aligned: true, productionVersion: '2.1.1' }),
     }),
   )
-  const wrapper = mount(BuildFooter)
+  const staging = footer({ VITE_DEPLOY_CHANNEL: 'staging' })
   await flushPromises()
-  expect(wrapper.text()).toContain('Staging · v')
-  expect(wrapper.get('[role="status"]').text()).toBe(
-    'Staging matches production v2.1.0. No unreleased changes.',
+  expect(staging.get('[role="status"]').text()).toBe(
+    'Staging matches production v2.1.1. No unreleased changes.',
   )
-  wrapper.unmount()
-})
-
-it('keeps a published preview visible while identifying its draft state', async () => {
-  vi.stubEnv('VITE_BUILD_SHA', sha)
-  vi.stubEnv('VITE_DEPLOY_CHANNEL', 'preview')
-  vi.stubEnv('VITE_PR_NUMBER', '170')
   vi.stubGlobal(
     'fetch',
     vi.fn().mockResolvedValue({ ok: true, json: async () => ({ draft: true }) }),
   )
-  const wrapper = mount(BuildFooter)
+  const preview = footer({ VITE_DEPLOY_CHANNEL: 'preview', VITE_PR_NUMBER: '170' })
   await flushPromises()
-  expect(wrapper.text()).toContain('PR #170')
-  expect(wrapper.get('[role="status"]').text()).toContain('PR currently draft')
-  wrapper.unmount()
+  expect(preview.get('[role="status"]').text()).toContain('PR currently draft')
 })
