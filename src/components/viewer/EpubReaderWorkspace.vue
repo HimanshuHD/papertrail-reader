@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SessionState, UtilityPanel } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
@@ -34,8 +35,10 @@ import {
   type EpubTypography,
 } from '../../features/epub/typography'
 
-const props = defineProps<{ document: DiscoveredDocument }>()
+const props = defineProps<{ document: DiscoveredDocument; initialState?: SessionState }>()
 const emit = defineEmits<{
+  phaseChange: [phase: 'ready' | 'error']
+  utilityChange: [panel: UtilityPanel, query: string]
   status: [message: string]
   identity: [fingerprint: string]
   recentReady: [identity: { id: string; fingerprint: string }]
@@ -332,13 +335,15 @@ function onFrameKey(event: KeyboardEvent) {
   }
 }
 let readingContainer: HTMLElement | null = null
+let lastReading: EpubReadingSettings | undefined
 function captureReading(): EpubReadingSettings | undefined {
-  if (!reader.session.value || reader.busy.value) return
-  return {
+  if (!reader.session.value || reader.busy.value) return lastReading
+  lastReading = {
     textOnly: textOnly.value,
     typography: { ...typography.value },
     location: reader.session.value.location?.(),
   }
+  return lastReading
 }
 function saveReading() {
   scheduleNoteIndicators()
@@ -441,6 +446,9 @@ watch(
 )
 const loading = computed(() => reader.busy.value || continuity.preparing.value)
 const statisticsReady = computed(() => !loading.value && !!reader.session.value)
+watch([rightPanel, statisticsReady], ([panel, ready]) => {
+  if (ready) emit('utilityChange', panel, '')
+})
 const statisticsPosition = computed(() =>
   metadata.value?.chapters.length ? (reader.chapter.value + 1) / metadata.value.chapters.length : 0,
 )
@@ -508,6 +516,28 @@ function onPointer(event: PointerEvent) {
   )
     closeTypography(false)
 }
+let disposed: Promise<void> | undefined
+function capture(): SessionState {
+  return {
+    epub: captureReading() ?? props.initialState?.epub,
+    panel: rightPanel.value,
+    query: '',
+  }
+}
+function dispose(): Promise<void> {
+  if (disposed) return disposed
+  // Capture persistence before destroying the rendition/iframe.
+  const writes = continuity.reset()
+  ++openGeneration
+  pendingHighlight.value = null
+  selectionPosition.value = null
+  clearFrameListeners()
+  reader.close()
+  disposed = Promise.all([writes, reader.settled()]).then(() => {})
+  return disposed
+}
+defineExpose({ capture, dispose })
+
 onMounted(() => {
   if (host.value && typeof ResizeObserver !== 'undefined') {
     noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
@@ -518,6 +548,7 @@ onMounted(() => {
   globalThis.addEventListener('resize', updateWindowWidth)
 })
 onBeforeUnmount(() => {
+  void dispose()
   noteResizeObserver?.disconnect()
   cancelAnimationFrame(noteFrame)
   ++openGeneration
@@ -585,7 +616,8 @@ async function open(preserve = false) {
   restoringContentsEntry.value = preserve ? contentsEntry : null
   let saved: EpubReadingSettings | null = null
   if (!preserve) {
-    saved = await continuity.prepare(file)
+    const persisted = await continuity.prepare(file)
+    saved = props.initialState?.epub ?? persisted
     if (owner !== openGeneration || file !== props.document.file) return
     if (saved) {
       textOnly.value = saved.textOnly
@@ -628,10 +660,12 @@ watch(
   () => {
     continuity.reset()
     reader.close()
+    lastReading = undefined
     restoringContentsEntry.value = null
     metadata.value = null
     bookFontSize.value = 18
-    rightPanel.value = null
+    rightPanel.value =
+      props.initialState?.panel === 'search' ? null : (props.initialState?.panel ?? null)
     typographyOpen.value = false
     textOnly.value = false
     typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
@@ -655,13 +689,17 @@ watch(
 watch(
   () => reader.error.value,
   (error) => {
-    if (error) emit('status', error)
+    if (error) {
+      emit('phaseChange', 'error')
+      emit('status', error)
+    }
   },
 )
 watch(
   () => reader.session.value,
   (session) => {
     if (session) {
+      emit('phaseChange', 'ready')
       metadata.value = {
         title: session.title,
         chapters: session.chapters,

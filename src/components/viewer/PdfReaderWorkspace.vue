@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import type { SessionState } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
@@ -32,10 +33,12 @@ import type { DiscoveredDocument } from '../../features/library/discovery'
 const props = defineProps<{
   initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
   initialSearchQuery?: string
+  initialState?: SessionState
   document: DiscoveredDocument
 }>()
 
 const emit = defineEmits<{
+  phaseChange: [phase: 'ready' | 'error']
   status: [message: string]
   identity: [fingerprint: string]
   recentReady: [identity: { id: string; fingerprint: string }]
@@ -455,7 +458,12 @@ async function closeCurrentSession() {
   if (current) await current.close()
 }
 
-async function openDocument() {
+let opening: Promise<void> = Promise.resolve()
+function openDocument() {
+  opening = loadDocument()
+  return opening
+}
+async function loadDocument() {
   pendingBookmark = null
   continuity.reset()
   documentController?.abort()
@@ -487,7 +495,8 @@ async function openDocument() {
       return
     }
 
-    const restored = await continuity.restore(props.document.file, next.totalPages)
+    const persisted = await continuity.restore(props.document.file, next.totalPages)
+    const restored = props.initialState?.pdf ?? persisted
     if (sequence !== openSequence) {
       await next.close()
       return
@@ -500,15 +509,16 @@ async function openDocument() {
     phase.value = 'restoring'
     session.value = next
     totalPages.value = next.totalPages
-    rightPanel.value = props.initialPanel ?? null
+    rightPanel.value = props.initialState ? props.initialState.panel : (props.initialPanel ?? null)
     await nextTick()
     measureViewport()
-    if (props.initialPanel === 'contents') void loadOutline()
+    if (rightPanel.value === 'contents') void loadOutline()
     const target = restoredAnchor?.page ?? currentPage.value
     if (target !== 1) await goToPage(target)
   } catch (error) {
     if (sequence !== openSequence) return
     phase.value = 'error'
+    emit('phaseChange', 'error')
     errorMessage.value =
       error instanceof PdfOpenError
         ? error.message
@@ -611,6 +621,7 @@ async function handleRendered(pageNumber: number, scale: number) {
     await nextTick()
     if (sequence !== openSequence || phase.value !== 'restoring') return
     phase.value = 'ready'
+    emit('phaseChange', 'ready')
     if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
     if (continuity.documentId.value && continuity.fingerprint.value)
       emit('recentReady', {
@@ -618,8 +629,8 @@ async function handleRendered(pageNumber: number, scale: number) {
         fingerprint: continuity.fingerprint.value,
       })
     saveReadingPoint()
-    if (props.initialPanel === 'search' && props.initialSearchQuery) {
-      searchQuery.value = props.initialSearchQuery
+    searchQuery.value = props.initialState?.query ?? props.initialSearchQuery ?? ''
+    if (rightPanel.value === 'search' && searchQuery.value) {
       await nextTick()
       if (sequence === openSequence && phase.value === 'ready') void performSearch()
     }
@@ -987,6 +998,44 @@ function handleShortcut(event: KeyboardEvent) {
   }
 }
 
+let disposed: Promise<void> | undefined
+function capture(): SessionState {
+  const point = captureReadingPoint()
+  const page = Number(point?.page.closest('article')?.id.replace('pdf-page-', ''))
+  const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
+  return {
+    ...(phase.value === 'ready'
+      ? {
+          pdf: {
+            page: currentPage.value,
+            view: { fitMode: fitMode.value, zoom: zoom.value },
+            ...(anchor ? { anchor } : {}),
+          },
+        }
+      : props.initialState?.pdf
+        ? { pdf: props.initialState.pdf }
+        : {}),
+    panel: phase.value === 'ready' ? rightPanel.value : (props.initialState?.panel ?? null),
+    query: phase.value === 'ready' ? searchQuery.value : (props.initialState?.query ?? ''),
+  }
+}
+function dispose(): Promise<void> {
+  if (disposed) return disposed
+  saveReadingPoint()
+  const writes = continuity.reset()
+  phase.value = 'loading'
+  ++openSequence
+  ++layoutOperation
+  documentController?.abort()
+  searchController?.abort()
+  searchController = null
+  pendingHighlight.value = null
+  selectionPosition.value = null
+  disposed = Promise.all([writes, opening, closeCurrentSession()]).then(() => {})
+  return disposed
+}
+defineExpose({ capture, dispose })
+
 onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && viewport.value) {
     resizeObserver = new ResizeObserver(scheduleViewportMeasure)
@@ -1010,9 +1059,7 @@ watch(
 )
 
 onBeforeUnmount(() => {
-  openSequence += 1
-  documentController?.abort()
-  searchController?.abort()
+  void dispose()
   cancelAnimationFrame(resizeFrame)
   cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
@@ -1026,7 +1073,6 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('pointercancel', cancelHighlightSelection)
   globalThis.removeEventListener('blur', cancelHighlightSelection)
   if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
-  void closeCurrentSession()
 })
 </script>
 
