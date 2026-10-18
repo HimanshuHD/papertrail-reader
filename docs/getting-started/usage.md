@@ -14,6 +14,8 @@ Password entry is not supported in v1.0.0. Consult the [release support and limi
 
 [Documentation home](../README.md) · [Next](local-setup.md)
 
+The centered footer shows the environment and version. Click/tap **Build details** (the info icon) to toggle the compact details popover; hovering or focusing alone does not open it. Enter/Space also activates the button. The popover links to the actual branch or release tag and build commit; unavailable metadata is labelled explicitly. Press Escape to dismiss and return focus to the info button. Tab or Arrow Down from the button reaches the detail links. Closing the library also closes its footer details.
+
 ## Search your library and return to recent PDFs
 
 Use **Search documents...** to filter filenames, titles, paths and formats in the current listing. This does not search PDF page text; use the reader’s Search button for that. Clear the library query to restore the full tree.

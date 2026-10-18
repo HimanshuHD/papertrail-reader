@@ -116,9 +116,9 @@ button:disabled,
 /* Scoped component/utility rules must not give individual controls competing colors. */
 :is(button, [role='button'], summary, .pt-button):not(.pt-framed-control):not(.pt-note-marker):not(
     .pt-stable-border
-  ):not(.pt-list-entry):not(.pt-text-action):not(.pt-color-swatch):not(:disabled):not(
-    [aria-disabled='true']
-  ):is(
+  ):not(.pt-list-entry):not(.pt-plain-control):not(.pt-text-action):not(.pt-color-swatch):not(
+    :disabled
+  ):not([aria-disabled='true']):is(
     :hover,
     :active,
     :focus-visible,
