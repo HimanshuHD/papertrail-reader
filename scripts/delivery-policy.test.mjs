@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile, readFile } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { writeCandidate, verifyCandidate } from './candidate-artifact.mjs'
@@ -517,4 +517,65 @@ test('metadata wait polls only active candidate producers and never another skip
     ),
     (error) => error.code === 'CANDIDATE_UNAVAILABLE',
   )
+})
+
+// Execute the actual manual-preview selection call so wiring cannot silently
+// fall back to overall workflow success while policy tests remain green.
+async function publishPreview(input) {
+  const workflow = await readFile(
+    new URL('../.github/workflows/pages.yml', import.meta.url),
+    'utf8',
+  )
+  const call = workflow.match(
+    /plan=await (selectCandidate\(\{github,owner,repo,branch,prNumber:process.env.PR_NUMBER[^;]+);/,
+  )[1]
+  return new Function(
+    'selectCandidate',
+    'github',
+    'owner',
+    'repo',
+    'branch',
+    'process',
+    `return ${call}`,
+  )(selectCandidate, input.github, input.owner, input.repo, input.branch, {
+    env: { PR_NUMBER: String(pr.number) },
+  })
+}
+
+test('manual publisher selects accepted build despite failed or pending Visual QA', async () => {
+  for (const run of [{}, { status: 'in_progress', conclusion: null }]) {
+    const input = metadataFixture({ run })
+    const plan = await publishPreview(input)
+    assert.equal(plan.channel, 'preview')
+    assert.equal(plan.runId, '42')
+    assert.equal(plan.headSha, head)
+    // Promotion retains the overall-success requirement.
+    await assert.rejects(
+      selectCandidate({ ...input, prNumber: undefined, candidateAcceptance: false }),
+      /No successful current candidate/,
+    )
+  }
+})
+
+test('manual publisher rejects unaccepted, stale, foreign or unavailable candidates', async () => {
+  for (const options of [
+    { run: { head_sha: sha } },
+    { run: { head_repository: { full_name: 'foreign/repo' } } },
+    { artifacts: [] },
+    { artifacts: [{ name: 'candidate-build', expired: true }] },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'success' },
+        { name: 'Candidate validation', conclusion: 'failure' },
+      ],
+    },
+    {
+      jobs: [
+        { name: 'Validate and build website', conclusion: 'skipped' },
+        { name: 'Candidate validation', conclusion: 'success' },
+      ],
+    },
+    { pull: { ...pr, draft: true } },
+  ])
+    await assert.rejects(publishPreview(metadataFixture(options)))
 })
