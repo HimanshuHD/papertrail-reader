@@ -59,6 +59,11 @@ test('compact workspace preserves reading state while resizing and closing the l
   const narrow = await rail.getAttribute('aria-valuenow')
   const actions = library.getByRole('button', { name: 'Library actions', exact: true })
   await expect(actions).toBeVisible()
+  const closeBounds = (await library.getByRole('button', { name: 'Hide library' }).boundingBox())!
+  const libraryBounds = (await library.boundingBox())!
+  expect(closeBounds.x + closeBounds.width).toBeLessThanOrEqual(
+    libraryBounds.x + libraryBounds.width,
+  )
   await expect(
     library.getByRole('button', { name: 'Add local documents', exact: true }),
   ).toHaveCount(0)

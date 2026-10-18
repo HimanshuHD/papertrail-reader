@@ -56,7 +56,7 @@ let headerObserver: ResizeObserver | null = null
 function measureActions() {
   if (!header.value || !heading.value || !header.value.clientWidth) return
   // Three 44px targets, two 4px action gaps, header padding and heading gap.
-  const needed = heading.value.getBoundingClientRect().width + 3 * 44 + 8 + 24 + 4
+  const needed = heading.value.scrollWidth + 3 * 44 + 8 + 24 + 4
   compactActions.value = header.value.clientWidth < Math.ceil(needed)
 }
 onMounted(() => {
@@ -92,9 +92,7 @@ watch(
       ref="header"
       class="relative z-40 flex shrink-0 items-center justify-between gap-1 border-b border-line bg-panel px-3 py-2"
     >
-      <h2 ref="heading" class="shrink-0 whitespace-nowrap text-sm font-semibold">
-        Local Documents
-      </h2>
+      <h2 ref="heading" class="min-w-0 truncate text-sm font-semibold">Local Documents</h2>
       <LibrarySourcePicker
         :compact="compactActions"
         :can-forget="hasWorkspace"

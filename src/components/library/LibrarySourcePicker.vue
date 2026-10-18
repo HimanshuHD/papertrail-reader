@@ -183,7 +183,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
 </script>
 
 <template>
-  <div ref="controls" class="relative" @focusout="focusLeaves">
+  <div ref="controls" class="relative shrink-0" @focusout="focusLeaves">
     <div class="flex items-center gap-1">
       <IconButton
         v-if="!compact"
