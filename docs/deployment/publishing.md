@@ -41,7 +41,7 @@ Frontend CI checks lint, format, unit/pipeline tests, types and candidate builds
 
 ## Manually publish a preview
 
-1. Wait for the latest ready PR's **Candidate validation** to pass.
+1. Wait for the latest ready PR's **Candidate validation** to pass. Manual previews require successful frontend and Candidate validation jobs plus the current unexpired build artifact. Separate Visual QA differences or pending visual review do not block preview publication; review and baseline adoption remain separate. Release/hotfix Candidate validation still requires its production-candidate Browser E2E acceptance.
 2. Actions → **Publish website** → Run workflow; normally select main as the trusted workflow branch after activation.
 3. Choose target environment branch `staging` for a staging PR or `main` for a release/hotfix PR.
 4. Choose operation `preview`, enter the PR number, and run.
