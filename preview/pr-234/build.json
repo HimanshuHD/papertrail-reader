@@ -1,0 +1,30 @@
+{
+  "schema": 2,
+  "sha": "24c7f31c0d532abf7fb63f9b9e4525e132163884",
+  "tree": "9d501e065fbc766fd021ec65e10d533ddd1742b7",
+  "headSha": "b94e3c986e9b2462af57024c03db4d902fed81cb",
+  "baseSha": "b3a9b69982231046d9de5ca0ec9d47e392dd3020",
+  "runId": "39188725916",
+  "pr": "234",
+  "channel": "preview",
+  "basePath": "/papertrail-reader/preview/pr-234/",
+  "version": "2.1.1",
+  "sourceBranch": "fix/233-browser-recovery",
+  "publish": true,
+  "files": {
+    "assets/bootstrap-DXbYDloq.css": "0cd520dd8f956068399810147662c00a575876b649415278c14306fcc28d46eb",
+    "assets/bootstrap-DZPZqjBF.js": "d23bf049e52babc862fc9d045dd681de17b8ec69250b0d3e2d5f51c162bee80e",
+    "assets/index-DCUU8gso.css": "230a4cc7c7a0ce30138019666f2033b7e2d8d8adc51f200b3fd0b0eb60c09e99",
+    "assets/index-tX3lhPYN.js": "9f73731f7f368b5aed775bdbbc616127b26861a844c5ea19f596e51bb71114a8",
+    "assets/pdf-GSHjVJxd.js": "b014fa2256e966619fd5aaf0ebfef6825c1a6c13031537c2e1ae89ff97a5c8f4",
+    "assets/pdf.worker.min-Dswkl-cV.mjs": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386",
+    "assets/pdf.worker.min-DTpdZ--Z.js": "57b02ea3952db3bb8336c6636e959c50306e8b6f45d07c5eb1df62b342c37c2a",
+    "assets/src-Dr2JahJd.js": "2dbc5f10a40a93fc6f0cba9eb1e6ca881f54a1d3fe612d460df82523d3f3b848",
+    "channel.json": "5ac57db00efde8354e5593bc8e37d616e5279ec4f687b25532bda9a029733c7c",
+    "index.html": "47611300273c85a55573bdd0a7efbe7073dc6884c3532f5ddaa7ef6d423cd285",
+    "papertrail.svg": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c",
+    "startup/book-sprite.webp": "c9a5fb6ae8fe7ac2bb4130dea4b8c61cbbccfedb13221772f02e11a4d0ee4f05",
+    "startup/brand.webp": "3188afc4cc8cf6f0a5882b0e8b43432cc604e4bd19c12f7ae82c95ac32197ff2",
+    "startup/README.md": "1aa46901b68eb0c61336a4d7d6db2a3c7d159f2860cb5dfe54d8835e06c67317"
+  }
+}
