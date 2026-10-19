@@ -1,4 +1,4 @@
-import { openAnnotationActions } from '../fixtures/browser'
+import { openAnnotationActions, settleReaderLayout } from '../fixtures/browser'
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
@@ -71,6 +71,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .getByRole('button', { name: /anchor\./ })
         .click()
       await page.getByRole('button', { name: 'Hide library' }).click()
+      await settleReaderLayout(page.locator(format === 'PDF' ? '.pdf-reader' : '.epub-reader'))
     }
     await page.goto('./#/app')
     await open()
@@ -124,8 +125,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
     await open()
     const pane = page.locator(format === 'PDF' ? '.pdf-scroll' : '.epub-container')
-    const before = await pane.evaluate((element) => element.scrollTop)
     await page.getByRole('button', { name: 'Annotations', exact: true }).click()
+    // Opening the panel resizes/reflows the reader. Only annotation activation must not navigate.
+    await settleReaderLayout(page.locator(format === 'PDF' ? '.pdf-reader' : '.epub-reader'))
+    const before = await pane.evaluate((element) => element.scrollTop)
     await page.locator('[data-annotation-id]').first().click()
     await expect(page.locator('[data-annotation-id]')).toContainText('Unresolved')
     await expect.poll(() => pane.evaluate((element) => element.scrollTop)).toBe(before)

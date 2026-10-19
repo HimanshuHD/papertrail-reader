@@ -117,3 +117,19 @@ it('rapid replacement and clearing the source never mount a queued reader', asyn
   expect(observations.disposed).toEqual(['a'])
   wrapper.unmount()
 })
+
+it.each(['PDF', 'EPUB'] as const)(
+  'restores %s context from the same prop update that activates its document',
+  async (format) => {
+    const wrapper = mount(Workspace, { props: { document: null } })
+    await flushPromises()
+    await wrapper.setProps({
+      document: doc('restored', format),
+      initialPanel: 'contents',
+      initialSearchQuery: 'saved query',
+    })
+    await flushPromises()
+    expect(observations.states[0]).toMatchObject({ panel: 'contents', query: 'saved query' })
+    wrapper.unmount()
+  },
+)

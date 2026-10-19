@@ -28,3 +28,20 @@ export async function libraryAction(page: Page, name: string): Promise<Locator> 
     await page.getByRole('button', { name: 'Library actions', exact: true }).click()
   return menu.getByRole('menuitem', { name, exact: true })
 }
+
+/** Wait for finite layout transitions and their ResizeObserver/animation-frame work. */
+export async function settleReaderLayout(reader: Locator) {
+  await reader.evaluate(async (element) => {
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await frame()
+    await frame()
+    await Promise.all(
+      (element.closest('.reader-layout') ?? element)
+        .getAnimations({ subtree: true })
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => {})),
+    )
+    await frame()
+    await frame()
+  })
+}
