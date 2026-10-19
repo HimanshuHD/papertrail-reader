@@ -112,15 +112,28 @@ function updateNoteIndicators() {
         (rect) =>
           rect.width > 0 &&
           rect.height > 0 &&
+          outer.left + rect.right > bounds.left + 40 &&
+          outer.left + rect.left < bounds.right - 40 &&
           outer.top + rect.bottom > bounds.top &&
           outer.top + rect.top < bounds.bottom,
       )
     if (!rect) continue
+    const body = frame.contentDocument?.body
+    const style = body && frame.contentWindow?.getComputedStyle(body)
+    const column = style ? parseFloat(style.columnWidth) : NaN
+    const gap = style ? parseFloat(style.columnGap) : NaN
+    const columnEnd =
+      twoPage.value && Number.isFinite(column) && Number.isFinite(gap)
+        ? (Math.floor(Math.max(0, rect.left - gap / 2) / (column + gap)) + 1) * (column + gap) -
+          gap / 2 +
+          outer.left +
+          8
+        : outer.right - 40
     // EPUB body reserves 24px of padding; use that margin, inside the document edge.
     noteIndicators.value.push({
       id: item.id,
       note: item.note,
-      left: Math.max(0, Math.min(outer.right - bounds.left - 40, bounds.width - 40)),
+      left: Math.max(0, Math.min(columnEnd - bounds.left, bounds.width - 40)),
       top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 40)),
     })
   }
@@ -284,6 +297,7 @@ let openGeneration = 0
 const host = ref<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
+const twoPage = ref(false)
 const root = ref<HTMLElement | null>(null)
 const rightPanel = ref<'contents' | 'bookmarks' | 'annotations' | 'insights' | null>(null)
 const typographyOpen = ref(false)
@@ -336,8 +350,34 @@ function onFramePointer(event: PointerEvent) {
   pendingHighlight.value = null
   closeTypography(false)
 }
+async function turnPages(direction: -1 | 1) {
+  if (reader.session.value?.canTurn?.(direction) === false) return
+  await reader.turn(direction)
+  saveReading()
+}
+function spreadKey(event: KeyboardEvent) {
+  if (
+    !twoPage.value ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.shiftKey ||
+    (event.target as Element | null)?.closest?.('input, textarea, select, [contenteditable="true"]')
+  )
+    return false
+  const direction = ['ArrowRight', 'PageDown'].includes(event.key)
+    ? 1
+    : ['ArrowLeft', 'PageUp'].includes(event.key)
+      ? -1
+      : 0
+  if (!direction) return false
+  event.preventDefault()
+  void turnPages(direction)
+  return true
+}
 function onFrameKey(event: KeyboardEvent) {
   if (props.active === false) return
+  if (spreadKey(event)) return
   if (event.key !== 'Escape') return
   if (typographyOpen.value) {
     event.preventDefault()
@@ -352,6 +392,7 @@ let lastReading: EpubReadingSettings | undefined
 function captureReading(): EpubReadingSettings | undefined {
   if (!reader.session.value || reader.busy.value) return lastReading
   lastReading = {
+    ...(twoPage.value ? { twoPage: true } : {}),
     textOnly: textOnly.value,
     typography: { ...typography.value },
     location: reader.session.value.location?.(),
@@ -517,7 +558,9 @@ async function toggleTypography() {
 }
 function onKey(event: KeyboardEvent) {
   if (props.active === false) return
-  if (event.key !== 'Escape' || !root.value?.contains(event.target as Node)) return
+  if (!root.value?.contains(event.target as Node)) return
+  if (spreadKey(event)) return
+  if (event.key !== 'Escape') return
   if (typographyOpen.value) closeTypography()
   else if (rightPanel.value) closePanel()
   else return
@@ -638,6 +681,10 @@ async function addBookmark(name: string) {
   }
   return bookmarks.add(name, location)
 }
+async function toggleTwoPage() {
+  twoPage.value = !twoPage.value
+  await open(true)
+}
 async function open(preserve = false) {
   const file = props.document.file
   const owner = ++openGeneration
@@ -649,6 +696,7 @@ async function open(preserve = false) {
     saved = props.initialState?.epub ?? persisted
     if (owner !== openGeneration || file !== props.document.file) return
     if (saved) {
+      twoPage.value = saved.twoPage === true
       textOnly.value = saved.textOnly
       typography.value = { ...saved.typography }
       if (windowWidth.value < 640) typography.value.readingWidth = null
@@ -656,7 +704,7 @@ async function open(preserve = false) {
         typography.value.readingWidth = 640
     }
   }
-  await nextTick()
+  if (!preserve) await nextTick()
   if (owner === openGeneration && file === props.document.file && host.value) {
     await (preserve ? reader.reopen : reader.open)(
       file,
@@ -666,6 +714,7 @@ async function open(preserve = false) {
         ...(!preserve
           ? { chapter: 0, ...(saved?.location ? { location: saved.location } : {}) }
           : {}),
+        ...(twoPage.value ? { twoPage: true } : {}),
         textOnly: textOnly.value,
         typography: typography.value,
       },
@@ -698,6 +747,7 @@ watch(
       props.initialState?.panel === 'search' ? null : (props.initialState?.panel ?? null)
     typographyOpen.value = false
     textOnly.value = false
+    twoPage.value = false
     typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
     void open()
   },
@@ -782,6 +832,16 @@ watch(
           <span aria-hidden="true" class="epub-switch-track"><span /></span>
           <span>Text-only view</span>
         </button>
+        <div class="epub-layout-controls" role="group" aria-label="Page layout">
+          <IconButton
+            label="Two-page view"
+            icon="two-page"
+            :aria-pressed="twoPage"
+            :active="twoPage"
+            :disabled="loading"
+            @click="toggleTwoPage"
+          />
+        </div>
         <IconButton
           label="Typography"
           icon="typography"
@@ -885,7 +945,7 @@ watch(
                 </button>
               </div>
             </div>
-            <div v-if="widthOptions.length" role="group" aria-label="Reading width">
+            <div v-if="widthOptions.length && !twoPage" role="group" aria-label="Reading width">
               <p class="mb-2 text-xs font-medium text-muted">Reading width</p>
               <div class="epub-segments">
                 <button
@@ -961,7 +1021,7 @@ watch(
         <div
           ref="host"
           class="epub-host"
-          :class="{ 'epub-host-loading': loading }"
+          :class="{ 'epub-host-loading': loading, 'epub-host-spread': twoPage }"
           :aria-busy="loading"
           :inert="loading || undefined"
           @load.capture="bindFrameListeners"
@@ -982,10 +1042,14 @@ watch(
         </div>
         <button
           class="epub-step epub-previous disabled:opacity-40"
-          aria-label="Previous chapter"
-          title="Previous chapter"
-          :disabled="reader.busy.value || !reader.session.value || reader.chapter.value === 0"
-          @click="reader.go(reader.chapter.value - 1)"
+          :aria-label="twoPage ? 'Previous pages' : 'Previous chapter'"
+          :title="twoPage ? 'Previous pages' : 'Previous chapter'"
+          :disabled="
+            reader.busy.value ||
+            !reader.session.value ||
+            (twoPage ? reader.session.value.canTurn?.(-1) === false : reader.chapter.value === 0)
+          "
+          @click="twoPage ? turnPages(-1) : reader.go(reader.chapter.value - 1)"
         >
           <svg
             viewBox="0 0 24 24"
@@ -1001,14 +1065,16 @@ watch(
         </button>
         <button
           class="epub-step epub-next disabled:opacity-40"
-          aria-label="Next chapter"
-          title="Next chapter"
+          :aria-label="twoPage ? 'Next pages' : 'Next chapter'"
+          :title="twoPage ? 'Next pages' : 'Next chapter'"
           :disabled="
             reader.busy.value ||
             !reader.session.value ||
-            reader.chapter.value >= reader.session.value.chapters.length - 1
+            (twoPage
+              ? reader.session.value.canTurn?.(1) === false
+              : reader.chapter.value >= reader.session.value.chapters.length - 1)
           "
-          @click="reader.go(reader.chapter.value + 1)"
+          @click="twoPage ? turnPages(1) : reader.go(reader.chapter.value + 1)"
         >
           <svg
             viewBox="0 0 24 24"
@@ -1127,6 +1193,12 @@ watch(
 </template>
 
 <style scoped>
+.epub-layout-controls {
+  display: flex;
+  align-items: center;
+  border-inline: 1px solid var(--pt-line);
+  padding-inline: 4px;
+}
 .epub-mode-switch {
   display: inline-flex;
   align-items: center;
@@ -1365,5 +1437,8 @@ watch(
   max-width: 100%;
   overflow-x: hidden !important;
   overflow-y: auto !important;
+}
+.epub-host-spread :deep(.epub-container) {
+  overflow-y: hidden !important;
 }
 </style>

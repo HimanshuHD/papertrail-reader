@@ -6,6 +6,7 @@ import { normalizeTypography, type EpubTypography } from '../features/epub/typog
 import { bookmarkName } from './pdf-bookmarks'
 
 export interface EpubReadingSettings {
+  twoPage?: boolean
   textOnly: boolean
   typography: EpubTypography
   location?: EpubLocation
@@ -45,6 +46,7 @@ export function normalizeEpubSettings(value: unknown): EpubReadingSettings {
   const v = value && typeof value === 'object' ? (value as Partial<EpubReadingSettings>) : {}
   const location = normalizeLocation(v.location, EPUB_ARCHIVE_LIMITS.entries)
   return {
+    ...(v.twoPage === true ? { twoPage: true } : {}),
     textOnly: v.textOnly === true,
     typography: normalizeTypography(
       v.typography && typeof v.typography === 'object' ? v.typography : {},

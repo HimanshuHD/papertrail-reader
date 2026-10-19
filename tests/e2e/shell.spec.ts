@@ -2519,8 +2519,15 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     selection.addRange(range)
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
-  await reader.getByRole('button', { name: 'Highlight pink', exact: true }).click()
-  await expect(reader.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()
+  await page
+    .getByRole('group', { name: 'EPUB highlights', exact: true })
+    .getByRole('button', { name: 'Highlight pink', exact: true })
+    .click()
+  await expect(
+    page
+      .getByRole('group', { name: 'EPUB highlights', exact: true })
+      .getByRole('button', { name: 'Add highlight', exact: true }),
+  ).toBeVisible()
   expect(
     await reader
       .frameLocator('iframe')
@@ -2534,8 +2541,12 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
           ).CSS.highlights.get('papertrail-pink')?.size ?? 0,
       ),
   ).toBe(0)
-  await reader.getByRole('button', { name: 'Add highlight', exact: true }).click()
+  await page
+    .getByRole('group', { name: 'EPUB highlights', exact: true })
+    .getByRole('button', { name: 'Add highlight', exact: true })
+    .click()
   const painted = async () => {
+    await expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await expect
       .poll(() =>
         reader

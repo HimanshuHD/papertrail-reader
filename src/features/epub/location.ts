@@ -134,6 +134,7 @@ export function captureLocation(
   chapter: number,
   mode: EpubLocation['mode'],
   bridge?: CfiBridge,
+  visible?: Range,
 ): EpubLocation | undefined {
   const container = root.querySelector<HTMLElement>('.epub-container')
   const iframe = root.querySelector('iframe')
@@ -141,7 +142,7 @@ export function captureLocation(
   if (!container || !iframe || !doc?.body) return
   const viewport = container.getBoundingClientRect()
   const frameTop = iframe.getBoundingClientRect().top
-  const range = visibleRange(doc, iframe, container)
+  const range = visible ?? visibleRange(doc, iframe, container)
   const parent = range?.startContainer.parentElement?.closest('[data-reader-node]')
   const element =
     parent ??
@@ -189,18 +190,16 @@ export function captureLocation(
     atEnd: maximum > 0 && container.scrollTop >= maximum - 2,
   }
 }
-export function restoreLocation(
+export function resolveLocationRange(
   root: HTMLElement,
   location: EpubLocation,
   mode: EpubLocation['mode'],
   bridge?: CfiBridge,
-): boolean {
-  const container = root.querySelector<HTMLElement>('.epub-container')
-  const iframe = root.querySelector('iframe')
-  const doc = iframe?.contentDocument
-  if (!container || !iframe || !doc?.body) return false
+): { element: Element; range?: Range } | undefined {
+  const doc = root.querySelector('iframe')?.contentDocument
+  if (!doc?.body) return
   const element = doc.querySelector(`[data-reader-node="${location.node}"]`)
-  if (!element) return false
+  if (!element) return undefined
   let range: Range | undefined
   if (
     location.kind === 'text' &&
@@ -232,9 +231,24 @@ export function restoreLocation(
     location.quote &&
     text.slice(location.character, location.character + location.quote.length) !== location.quote
   )
-    return false
-  if (text && location.character >= text.length) return false
+    return undefined
+  if (text && location.character >= text.length) return undefined
   if (location.kind === 'text') range ??= textRange(element, location.character)
+  return { element, range }
+}
+export function restoreLocation(
+  root: HTMLElement,
+  location: EpubLocation,
+  mode: EpubLocation['mode'],
+  bridge?: CfiBridge,
+): boolean {
+  const container = root.querySelector<HTMLElement>('.epub-container')
+  const iframe = root.querySelector('iframe')
+  const doc = iframe?.contentDocument
+  if (!container || !iframe || !doc?.body) return false
+  const resolved = resolveLocationRange(root, location, mode, bridge)
+  if (!resolved) return false
+  const { element, range } = resolved
   const rect = range && rangeRect(range)
   const maximum = Math.max(0, container.scrollHeight - container.clientHeight)
   const top = location.atEnd
