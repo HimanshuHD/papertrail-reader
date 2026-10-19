@@ -238,7 +238,7 @@
       "version": "2.1.1",
       "branch": "staging",
       "archiveId": "9d501e065fbc766fd021ec65e10d533ddd1742b7-39188725916",
-      "publishedAt": "2026-10-19T02:59:55.614Z"
+      "publishedAt": "2026-10-19T04:56:06.949Z"
     }
   },
   "production": {
@@ -372,7 +372,7 @@
       "releaseTag": "v2.1.1",
       "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33",
       "archiveId": "45d4b6638b98083cf2841ad232e2582f578c2e5e-39021338753",
-      "publishedAt": "2026-10-19T02:59:55.570Z"
+      "publishedAt": "2026-10-19T04:56:06.946Z"
     },
     "5edd02149fab42dbe85fc873b84a20feb1bd2f3a-39022713012": {
       "sha": "23eeeb0f5303aeb799e71c0d8a20b4eb56728e9c",
