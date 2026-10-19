@@ -20,7 +20,7 @@ const pdf = (name: string, pages: number) => ({
   buffer: createPdfFixture(pages),
 })
 
-test('tabs preserve one viewer, manual keyboard activation, neighbor close and final empty library', async ({
+test('tabs preserve retained readers, manual keyboard activation, neighbor close and final empty library', async ({
   page,
 }) => {
   await page.addInitScript(() => {
@@ -82,11 +82,17 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
   await open(page, 'EPUB: book.epub')
   await expect(
-    page.frameLocator('iframe').getByRole('heading', { name: 'First chapter' }),
+    page
+      .locator('.session-panel:not(.session-inactive)')
+      .frameLocator('iframe')
+      .getByRole('heading', { name: 'First chapter' }),
   ).toBeVisible()
   await page.getByRole('button', { name: 'Next chapter' }).click()
   await expect(
-    page.frameLocator('iframe').getByRole('heading', { name: 'Second chapter' }),
+    page
+      .locator('.session-panel:not(.session-inactive)')
+      .frameLocator('iframe')
+      .getByRole('heading', { name: 'Second chapter' }),
   ).toBeVisible()
   const tabs = page.getByRole('tab')
   await expect(tabs).toHaveCount(3)
@@ -107,7 +113,7 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
     'First',
   )
   await expect(page.getByRole('button', { name: 'Close utility panel' })).toBeVisible()
-  await expect(page.locator('.epub-reader')).toHaveCount(0)
+  await expect(page.locator('.epub-reader:visible')).toHaveCount(0)
   await first.press('ArrowRight')
   await expect(second).toBeFocused()
   await expect(first).toHaveAttribute('aria-selected', 'true')
@@ -118,7 +124,10 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await second.locator('.tab-close').click()
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(/EPUB: book.epub/)
   await expect(
-    page.frameLocator('iframe').getByRole('heading', { name: 'Second chapter' }),
+    page
+      .locator('.session-panel:not(.session-inactive)')
+      .frameLocator('iframe')
+      .getByRole('heading', { name: 'Second chapter' }),
   ).toBeVisible()
   await expect(page.getByRole('tab', { selected: true })).toBeFocused()
   await page.getByRole('tab', { selected: true }).press('Delete')
@@ -200,7 +209,7 @@ test('annotations and notes remain owned by their document when tabs switch', as
     .locator('input[accept*=".pdf"]')
     .setInputFiles([pdf('annotated.pdf', 1), pdf('clean.pdf', 2)])
   await open(page, 'PDF: annotated.pdf')
-  const text = page.locator('#pdf-page-1 .textLayer span').first()
+  const text = page.locator('[data-pdf-page="1"] .textLayer span').first()
   await expect(text).toBeVisible()
   await text.evaluate((element) => {
     const doc = element.ownerDocument,
@@ -212,24 +221,34 @@ test('annotations and notes remain owned by their document when tabs switch', as
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
   await page.getByRole('button', { name: 'Add note', exact: true }).click()
-  await page.locator('#pdf-selection-note').fill('Note only for the first document')
+  await page.locator('[id$=pdf-selection-note]').fill('Note only for the first document')
   await page.getByRole('button', { name: 'Save highlight with note', exact: true }).click()
   await expect(page.locator('.toast-host')).toContainText('saved')
   await page.getByRole('button', { name: 'Annotations', exact: true }).click()
-  await expect(page.locator('[data-annotation-id]')).toContainText(
-    'Note only for the first document',
-  )
+  await expect(
+    page.locator('.session-panel:not(.session-inactive) [data-annotation-id]'),
+  ).toContainText('Note only for the first document')
   await open(page, 'PDF: clean.pdf')
   await page.getByRole('button', { name: 'Annotations', exact: true }).click()
-  await expect(page.locator('[data-annotation-id]')).toHaveCount(0)
+  await expect(
+    page.locator('.session-panel:not(.session-inactive) [data-annotation-id]'),
+  ).toHaveCount(0)
   await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
-  await expect(page.getByTestId('highlight-count')).toHaveText('0')
-  await expect(page.getByTestId('note-count')).toHaveText('0')
+  await expect(
+    page.locator('.session-panel:not(.session-inactive)').getByTestId('highlight-count'),
+  ).toHaveText('0')
+  await expect(
+    page.locator('.session-panel:not(.session-inactive)').getByTestId('note-count'),
+  ).toHaveText('0')
   await page.getByRole('tab', { name: /PDF: annotated.pdf/ }).click()
-  await expect(page.locator('[data-annotation-id]')).toContainText(
-    'Note only for the first document',
-  )
+  await expect(
+    page.locator('.session-panel:not(.session-inactive) [data-annotation-id]'),
+  ).toContainText('Note only for the first document')
   await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
-  await expect(page.getByTestId('highlight-count')).toHaveText('1')
-  await expect(page.getByTestId('note-count')).toHaveText('1')
+  await expect(
+    page.locator('.session-panel:not(.session-inactive)').getByTestId('highlight-count'),
+  ).toHaveText('1')
+  await expect(
+    page.locator('.session-panel:not(.session-inactive)').getByTestId('note-count'),
+  ).toHaveText('1')
 })

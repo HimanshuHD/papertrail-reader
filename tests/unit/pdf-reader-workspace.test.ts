@@ -32,6 +32,7 @@ const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-need
 
 function mountReader(
   initial: {
+    active?: boolean
     initialPanel?: 'contents' | 'search'
     initialSearchQuery?: string
     initialState?: import('../../src/features/reader/document-sessions').SessionState
@@ -91,6 +92,22 @@ describe('PDF reader utility workspace', () => {
   afterEach(() => {
     wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
     vi.clearAllMocks()
+  })
+
+  it('only the active retained reader handles global shortcuts', async () => {
+    const first = mountReader({ active: false }),
+      second = mountReader({ active: true })
+    wrappers.push(first, second)
+    await flushPromises()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }))
+    await flushPromises()
+    expect(first.find('input[aria-label="Search PDF text"]').exists()).toBe(false)
+    expect(second.find('input[aria-label="Search PDF text"]').exists()).toBe(true)
+    await first.setProps({ active: true })
+    await second.setProps({ active: false })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }))
+    await flushPromises()
+    expect(first.find('input[aria-label="Search PDF text"]').exists()).toBe(true)
   })
 
   it('restores session state ahead of persisted state and captures before idempotent disposal', async () => {

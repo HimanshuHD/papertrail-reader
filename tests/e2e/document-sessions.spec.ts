@@ -3,7 +3,7 @@ import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
-test('switching PDF→PDF→EPUB restores independent reading and utility state with one viewer', async ({
+test('switching PDF→PDF→EPUB restores independent reading and utility state with retained readers', async ({
   page,
 }) => {
   const errors: string[] = []
@@ -34,7 +34,7 @@ test('switching PDF→PDF→EPUB restores independent reading and utility state 
     if (page.viewportSize()!.width < 1024)
       await page.getByRole('button', { name: 'Hide library', exact: true }).click()
   }
-  const pdf = page.locator('.pdf-reader')
+  const pdf = page.locator('.pdf-reader:visible')
   const epub = page.getByRole('region', { name: 'EPUB reader' })
   await open('PDF: one.pdf')
   await expect(pdf.getByRole('spinbutton', { name: 'Current page' })).toHaveValue('1')
@@ -58,11 +58,11 @@ test('switching PDF→PDF→EPUB restores independent reading and utility state 
   await expect(pdf.locator('[aria-label="PDF pages"]')).toHaveAttribute('aria-busy', 'false')
   await expect(pdf.getByRole('spinbutton', { name: 'Current page' })).toHaveValue('2')
   await expect(pdf.getByRole('button', { name: 'Close utility panel' })).toBeVisible()
-  await expect(page.locator('.epub-reader')).toHaveCount(0)
+  await expect(page.locator('.epub-reader:visible')).toHaveCount(0)
   await open('EPUB: book.epub')
   await expect(
     epub.frameLocator('iframe').getByRole('heading', { name: 'Second chapter' }),
   ).toBeVisible()
-  await expect(page.locator('.pdf-reader')).toHaveCount(0)
+  await expect(page.locator('.pdf-reader:visible')).toHaveCount(0)
   expect(errors).toEqual([])
 })

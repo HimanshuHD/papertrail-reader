@@ -30,16 +30,17 @@ export interface ActiveSession {
   generation: number
 }
 
-/** Serializable records are separate from local access and the single live runtime. */
+/** Local readers survive activation changes until five minutes of inactivity. */
 export class DocumentSessions {
   readonly sessions = new Map<string, DocumentSession>()
   active: ActiveSession | null = null
   selectedId: string | null = null
   private sources = new Map<string, DiscoveredDocument>()
-  private runtime: SessionRuntime | null = null
+  readonly retained = new Map<string, ActiveSession>()
+  private runtimes = new Map<string, SessionRuntime>()
+  private timers = new Map<string, ReturnType<typeof setTimeout>>()
   private generation = 0
   private serial = 0
-  private cleanup = Promise.resolve()
 
   constructor(private changed: () => void = () => {}) {}
 
@@ -47,26 +48,66 @@ export class DocumentSessions {
     return this.active?.session.id === id && this.active.generation === generation
   }
 
-  attach(id: string, generation: number, runtime: SessionRuntime) {
-    if (this.owns(id, generation)) this.runtime = runtime
-    else void runtime.dispose()
+  retainedOwns(id: string, generation: number) {
+    return this.retained.get(id)?.generation === generation
   }
 
-  private release() {
+  attach(id: string, generation: number, runtime: SessionRuntime) {
+    if (this.retainedOwns(id, generation)) this.runtimes.set(id, runtime)
+    else this.disposeRuntime(runtime)
+  }
+
+  private capture(id: string) {
+    const session = this.sessions.get(id),
+      runtime = this.runtimes.get(id)
+    if (session && runtime) {
+      try {
+        session.state = structuredClone(runtime.capture())
+      } catch {
+        /* Keep the last usable snapshot. */
+      }
+    }
+  }
+
+  private disposeRuntime(runtime: SessionRuntime) {
+    // A failed or unfinished reader must never block unrelated activation/reset.
+    void Promise.resolve()
+      .then(() => runtime.dispose())
+      .catch(() => {})
+  }
+
+  private release(id: string) {
+    clearTimeout(this.timers.get(id))
+    this.timers.delete(id)
+    this.capture(id)
+    const runtime = this.runtimes.get(id)
+    this.runtimes.delete(id)
+    this.retained.delete(id)
+    if (this.active?.session.id === id) this.active = null
+    const session = this.sessions.get(id)
+    if (session && session.phase !== 'closed' && session.phase !== 'error')
+      session.phase = 'suspended'
+    if (runtime) this.disposeRuntime(runtime)
+  }
+
+  private suspend() {
     const previous = this.active
-    const runtime = this.runtime
-    this.runtime = null
+    if (!previous) return
+    const id = previous.session.id
+    this.capture(id)
+    clearTimeout(this.timers.get(id))
+    this.timers.set(
+      id,
+      setTimeout(
+        () => {
+          if (this.selectedId === id || this.retained.get(id) !== previous) return
+          this.release(id)
+          this.changed()
+        },
+        5 * 60 * 1000,
+      ),
+    )
     this.active = null
-    if (previous) {
-      if (runtime) previous.session.state = structuredClone(runtime.capture())
-      if (previous.session.phase !== 'error') previous.session.phase = 'suspended'
-    }
-    // Start cancellation synchronously; wait for disposal before mounting another viewer.
-    if (runtime) {
-      const disposal = runtime.dispose()
-      this.cleanup = Promise.all([this.cleanup, disposal]).then(() => {})
-    }
-    this.changed()
   }
 
   async open(document: DiscoveredDocument, initial?: Partial<SessionState>, fingerprint?: string) {
@@ -98,11 +139,16 @@ export class DocumentSessions {
     const session = this.sessions.get(id)
     if (!session || session.phase === 'closed') return
     if (this.active?.session === session) return
+    this.suspend()
     this.selectedId = id
-    const owner = ++this.generation
-    this.release()
-    await this.cleanup
-    if (owner !== this.generation || this.sessions.get(id)?.phase === 'closed') return
+    clearTimeout(this.timers.get(id))
+    this.timers.delete(id)
+    const retained = this.retained.get(id)
+    if (retained) {
+      this.active = retained
+      this.changed()
+      return
+    }
     const document = this.sources.get(id)
     if (!document) {
       session.phase = 'reconnect'
@@ -110,13 +156,14 @@ export class DocumentSessions {
       return
     }
     session.phase = 'loading'
-    this.active = { session, document, generation: owner }
+    this.active = { session, document, generation: ++this.generation }
+    this.retained.set(id, this.active)
     this.changed()
   }
 
   update(id: string, generation: number, phase: 'ready' | 'error', fingerprint?: string) {
-    if (!this.owns(id, generation)) return false
-    const session = this.active!.session
+    if (!this.retainedOwns(id, generation)) return false
+    const session = this.retained.get(id)!.session
     session.phase = phase
     if (fingerprint) session.fingerprint = fingerprint
     this.changed()
@@ -130,10 +177,7 @@ export class DocumentSessions {
     const index = open.indexOf(session)
     const next = this.selectedId === id ? (open[index + 1] ?? open[index - 1]) : null
     const selected = this.selectedId === id
-    if (this.active?.session === session) {
-      ++this.generation
-      this.release()
-    }
+    this.release(id)
     session.phase = 'closed'
     this.sources.delete(id)
     this.changed()
@@ -142,30 +186,24 @@ export class DocumentSessions {
       if (next) await this.activate(next.id)
       else this.changed()
     }
-    await this.cleanup
   }
 
   async disconnect(id: string) {
     const session = this.sessions.get(id)
     if (!session || session.phase === 'closed') return
-    if (this.active?.session === session) {
-      ++this.generation
-      this.release()
-    }
+    this.release(id)
     this.sources.delete(id)
     session.phase = 'reconnect'
     this.changed()
-    await this.cleanup
   }
 
   async reset() {
     ++this.generation
-    this.release()
+    for (const id of [...this.retained.keys()]) this.release(id)
     for (const session of this.sessions.values()) session.phase = 'closed'
     this.selectedId = null
     this.sources.clear()
     this.sessions.clear()
     this.changed()
-    await this.cleanup
   }
 }

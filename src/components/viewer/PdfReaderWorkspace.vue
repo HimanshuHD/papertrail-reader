@@ -30,12 +30,25 @@ import {
 } from '../../features/pdf/pdf-session'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
-const props = defineProps<{
-  initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
-  initialSearchQuery?: string
-  initialState?: SessionState
-  document: DiscoveredDocument
-}>()
+const props = withDefaults(
+  defineProps<{
+    initialPanel?: 'contents' | 'search' | 'bookmarks' | 'annotations' | 'insights' | null
+    initialSearchQuery?: string
+    active?: boolean
+    idPrefix?: string
+    initialState?: SessionState
+    document: DiscoveredDocument
+  }>(),
+  {
+    active: true,
+    idPrefix: '',
+    initialPanel: undefined,
+    initialSearchQuery: undefined,
+    initialState: undefined,
+  },
+)
+
+const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
   phaseChange: [phase: 'ready' | 'error']
@@ -55,7 +68,7 @@ let restoredPage: number | undefined
 function saveReadingPoint() {
   if (phase.value !== 'ready') return
   const point = captureReadingPoint()
-  const page = Number(point?.page.closest('article')?.id.replace('pdf-page-', ''))
+  const page = Number(point?.page.closest('article')?.dataset.pdfPage)
   const view = { fitMode: fitMode.value, zoom: zoom.value }
   const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
   if (anchor) continuity.save(currentPage.value, view, anchor)
@@ -141,6 +154,7 @@ function cancelHighlightSelection() {
   pendingHighlight.value = null
 }
 function captureSelection(event?: Event) {
+  if (props.active === false) return
   if (event?.defaultPrevented) return
   // Native selection paints continuously; measuring every drag update stalls it.
   if (selectingHighlight) return
@@ -280,7 +294,7 @@ function highlightResolution(id: string, resolved: boolean, page: number) {
 }
 let pendingBookmark: PdfBookmark | null = null
 const totalPages = ref(0)
-const statisticsReady = computed(() => phase.value === 'ready')
+const statisticsReady = computed(() => props.active !== false && phase.value === 'ready')
 const statisticsPosition = computed(() =>
   totalPages.value ? currentPage.value / totalPages.value : 0,
 )
@@ -537,7 +551,7 @@ async function goToPage(page: number, bookmarkNavigation = false) {
   const next = clampPage(page)
   currentPage.value = next
   await nextTick()
-  const pageElement = viewport.value?.querySelector<HTMLElement>(`#pdf-page-${next}`)
+  const pageElement = viewport.value?.querySelector<HTMLElement>(`[data-pdf-page="${next}"]`)
   const scrollElement = viewport.value
   if (pageElement && scrollElement) {
     const top =
@@ -562,7 +576,7 @@ function chooseMostVisiblePage() {
       0,
       Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
     )
-    const page = Number(element.id.replace('pdf-page-', ''))
+    const page = Number(element.dataset.pdfPage)
     // Two fully visible pages can differ by a fractional CSS pixel after resizing.
     // Preserve the selected page in a visibility tie instead of advancing spuriously.
     if (
@@ -616,7 +630,7 @@ async function handleRendered(pageNumber: number, scale: number) {
     if (pageNumber !== 1) await goToPage(pageNumber)
     if (restoredAnchor && viewport.value) {
       const page = viewport.value.querySelector<HTMLElement>(
-        `#pdf-page-${restoredAnchor.page} .pdf-page`,
+        `[data-pdf-page="${restoredAnchor.page}"] .pdf-page`,
       )
       if (page)
         await restoreReadingPoint({
@@ -710,8 +724,7 @@ async function changeZoom(delta: number) {
   const current = session.value
   if (!current) return
   const point = captureReadingPoint()
-  const page =
-    Number(point?.page.closest('article')?.id.replace('pdf-page-', '')) || currentPage.value
+  const page = Number(point?.page.closest('article')?.dataset.pdfPage) || currentPage.value
   const dimensions = await current.getPageDimensions(page)
   if (session.value !== current) return
   const baseline = resolvePdfScale(
@@ -799,8 +812,7 @@ async function loadOutline() {
 async function addBookmark(name: string) {
   if (phase.value !== 'ready') return false
   const point = captureReadingPoint()
-  const page =
-    Number(point?.page.closest('article')?.id.replace('pdf-page-', '')) || currentPage.value
+  const page = Number(point?.page.closest('article')?.dataset.pdfPage) || currentPage.value
   const anchor = normalizePdfAnchor({ page, x: point?.x ?? 0.5, y: point?.y ?? 0 })
   return anchor ? bookmarks.add(name, anchor) : false
 }
@@ -811,7 +823,7 @@ async function finishBookmarkNavigation(pageNumber: number) {
   const bookmark = pendingBookmark
   const pane = viewport.value
   if (!bookmark || bookmark.anchor.page !== pageNumber || !pane) return
-  const page = pane.querySelector<HTMLElement>(`#pdf-page-${pageNumber} .pdf-page`)
+  const page = pane.querySelector<HTMLElement>(`[data-pdf-page="${pageNumber}"] .pdf-page`)
   if (!page) return
   pendingBookmark = null
   await restoreReadingPoint({ pane, page, x: bookmark.anchor.x, y: bookmark.anchor.y })
@@ -833,7 +845,11 @@ async function navigateBookmark(bookmark: PdfBookmark) {
   if (sequence !== openSequence || pendingBookmark !== bookmark) return
   await goToPage(bookmark.anchor.page, true)
   await nextTick()
-  if (viewport.value?.querySelector(`#pdf-page-${bookmark.anchor.page}[data-render-state="ready"]`))
+  if (
+    viewport.value?.querySelector(
+      `[data-pdf-page="${bookmark.anchor.page}"][data-render-state="ready"]`,
+    )
+  )
     await finishBookmarkNavigation(bookmark.anchor.page)
 }
 
@@ -871,18 +887,22 @@ function closePopover(restoreFocus = false) {
   popover.value = null
   if (restoreFocus && closing) {
     void nextTick(() => {
-      document.querySelector<HTMLButtonElement>(`[data-reader-action="${closing}"]`)?.focus()
+      readerRoot.value
+        ?.querySelector<HTMLButtonElement>(`[data-reader-action="${closing}"]`)
+        ?.focus()
     })
   }
 }
 
 function handlePopoverPointer(event: PointerEvent) {
+  if (props.active === false) return
   if (popover.value && !popoverRoot.value?.contains(event.target as Node)) {
     closePopover()
   }
 }
 
 function handlePopoverKeydown(event: KeyboardEvent) {
+  if (props.active === false) return
   if (event.key === 'Escape' && rightPanel.value === 'search') {
     event.preventDefault()
     closeRightPanel()
@@ -967,6 +987,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 function handleShortcut(event: KeyboardEvent) {
+  if (props.active === false) return
   if (phase.value !== 'ready') return
   if (
     event.target instanceof Element &&
@@ -1029,7 +1050,7 @@ function handleShortcut(event: KeyboardEvent) {
 let disposed: Promise<void> | undefined
 function capture(): SessionState {
   const point = captureReadingPoint()
-  const page = Number(point?.page.closest('article')?.id.replace('pdf-page-', ''))
+  const page = Number(point?.page.closest('article')?.dataset.pdfPage)
   const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
   return {
     ...(phase.value === 'ready'
@@ -1062,6 +1083,18 @@ function dispose(): Promise<void> {
   disposed = Promise.all([writes, opening, closeCurrentSession()]).then(() => {})
   return disposed
 }
+watch(
+  () => props.active,
+  (active) => {
+    if (active === false) {
+      if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
+      saveReadingPoint()
+      popover.value = null
+      pendingHighlight.value = null
+      selectionPosition.value = null
+    }
+  },
+)
 defineExpose({ capture, dispose })
 
 onMounted(() => {
@@ -1123,7 +1156,8 @@ onBeforeUnmount(() => {
     >
       <div class="min-w-24 flex-1 basis-40">
         <h2
-          id="reader-title"
+          :id="readerId('reader-title')"
+          data-reader-title
           class="truncate text-sm leading-5 font-semibold sm:text-base"
           :title="document.name"
           :aria-label="document.name"
@@ -1149,117 +1183,119 @@ onBeforeUnmount(() => {
         class="flex h-10 min-w-0 max-w-[calc(100%-6.5rem)] flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
         aria-label="PDF reader controls"
       >
-        <IconButton
-          label="Previous page"
-          icon="previous"
-          :disabled="currentPage <= 1"
-          @click="stepPage(-1)"
-        />
-        <input
-          :value="pageEditing ? pageDraft : currentPage"
-          type="number"
-          min="1"
-          :max="totalPages"
-          class="pdf-page-input h-8 w-14 shrink-0 rounded-lg border border-line bg-canvas px-2 text-center text-[13px]"
-          aria-label="Current page"
-          @focus="beginPageEdit"
-          @input="limitPageDraft"
-          @blur="pageEditing = false"
-          @change="handlePageInput"
-        />
-        <IconButton
-          label="Next page"
-          icon="next"
-          :disabled="currentPage >= totalPages"
-          @click="stepPage(1)"
-        />
-        <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
-        <label class="relative shrink-0">
-          <span class="sr-only">PDF zoom percent</span>
-          <input
-            :value="zoomPercent"
-            aria-label="PDF zoom percent"
-            type="number"
-            min="25"
-            max="400"
-            step="25"
-            class="pdf-page-input h-8 w-16 rounded-lg border border-line bg-canvas pr-5 pl-1 text-center text-[13px]"
-            @change="handleZoomInput"
-            @keydown.enter.prevent="handleZoomInput"
+        <div class="reader-control-section" role="group" aria-label="Page navigation">
+          <IconButton
+            label="Previous page"
+            icon="previous"
+            :disabled="currentPage <= 1"
+            @click="stepPage(-1)"
           />
-          <span
-            class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[13px]"
-            aria-hidden="true"
-            >%</span
-          >
-        </label>
-        <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
-        <IconButton
-          label="Fit width"
-          icon="fit-width"
-          :active="fitMode === 'width'"
-          :aria-pressed="fitMode === 'width'"
-          @click="setFit('width')"
-        />
-        <IconButton
-          label="Fit page"
-          icon="fit-page"
-          :active="fitMode === 'page'"
-          :aria-pressed="fitMode === 'page'"
-          @click="setFit('page')"
-        />
-        <IconButton
-          data-reader-action="search"
-          label="Search PDF"
-          icon="search"
-          :active="rightPanel === 'search'"
-          :aria-pressed="rightPanel === 'search'"
-          @click="openPopover('search')"
-        />
-        <IconButton
-          :label="fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
-          :icon="fullscreen ? 'fullscreen-exit' : 'fullscreen'"
-          :aria-pressed="fullscreen"
-          @click="toggleFullscreen"
-        />
-        <IconButton
-          data-reader-action="help"
-          label="Keyboard help"
-          icon="help"
-          :active="popover === 'help'"
-          :aria-pressed="popover === 'help'"
-          @click="openPopover('help')"
-        />
-        <IconButton
-          label="Reading insights"
-          icon="clock"
-          :disabled="phase !== 'ready'"
-          :active="rightPanel === 'insights'"
-          :aria-expanded="rightPanel === 'insights'"
-          @click="toggleRightPanel('insights')"
-        />
-        <IconButton
-          label="Annotations"
-          icon="annotations"
-          :active="rightPanel === 'annotations'"
-          :aria-expanded="rightPanel === 'annotations'"
-          aria-controls="pdf-utility-panel"
-          @click="toggleRightPanel('annotations')"
-        />
-        <IconButton
-          label="Bookmarks"
-          icon="bookmark"
-          :active="rightPanel === 'bookmarks'"
-          :aria-pressed="rightPanel === 'bookmarks'"
-          @click="toggleRightPanel('bookmarks')"
-        />
-        <IconButton
-          label="Contents"
-          icon="contents"
-          :active="rightPanel === 'contents'"
-          :aria-pressed="rightPanel === 'contents'"
-          @click="toggleRightPanel('contents')"
-        />
+          <input
+            :value="pageEditing ? pageDraft : currentPage"
+            type="number"
+            min="1"
+            :max="totalPages"
+            class="pdf-page-input h-7 w-14 shrink-0 rounded-lg border border-line bg-canvas px-2 text-center text-[13px]"
+            aria-label="Current page"
+            @focus="beginPageEdit"
+            @input="limitPageDraft"
+            @blur="pageEditing = false"
+            @change="handlePageInput"
+          />
+          <IconButton
+            label="Next page"
+            icon="next"
+            :disabled="currentPage >= totalPages"
+            @click="stepPage(1)"
+          />
+        </div>
+        <div class="reader-control-section" role="group" aria-label="Zoom controls">
+          <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
+          <label class="pdf-zoom-field">
+            <span class="sr-only">PDF zoom percent</span>
+            <input
+              :value="zoomPercent"
+              aria-label="PDF zoom percent"
+              type="number"
+              min="25"
+              max="400"
+              step="25"
+              class="pdf-zoom-input"
+              @change="handleZoomInput"
+              @keydown.enter.prevent="handleZoomInput"
+            />
+            <span class="pdf-zoom-adornment" aria-hidden="true">%</span>
+          </label>
+          <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
+          <IconButton
+            label="Fit width"
+            icon="fit-width"
+            :active="fitMode === 'width'"
+            :aria-pressed="fitMode === 'width'"
+            @click="setFit('width')"
+          />
+          <IconButton
+            label="Fit page"
+            icon="fit-page"
+            :active="fitMode === 'page'"
+            :aria-pressed="fitMode === 'page'"
+            @click="setFit('page')"
+          />
+        </div>
+        <div class="reader-control-section" role="group" aria-label="Reader utilities">
+          <IconButton
+            data-reader-action="search"
+            label="Search PDF"
+            icon="search"
+            :active="rightPanel === 'search'"
+            :aria-pressed="rightPanel === 'search'"
+            @click="openPopover('search')"
+          />
+          <IconButton
+            :label="fullscreen ? 'Exit fullscreen' : 'Enter fullscreen'"
+            :icon="fullscreen ? 'fullscreen-exit' : 'fullscreen'"
+            :aria-pressed="fullscreen"
+            @click="toggleFullscreen"
+          />
+          <IconButton
+            data-reader-action="help"
+            label="Keyboard help"
+            icon="help"
+            :active="popover === 'help'"
+            :aria-pressed="popover === 'help'"
+            @click="openPopover('help')"
+          />
+          <IconButton
+            label="Reading insights"
+            icon="clock"
+            :disabled="phase !== 'ready'"
+            :active="rightPanel === 'insights'"
+            :aria-expanded="rightPanel === 'insights'"
+            @click="toggleRightPanel('insights')"
+          />
+          <IconButton
+            label="Annotations"
+            icon="annotations"
+            :active="rightPanel === 'annotations'"
+            :aria-expanded="rightPanel === 'annotations'"
+            :aria-controls="readerId('pdf-utility-panel')"
+            @click="toggleRightPanel('annotations')"
+          />
+          <IconButton
+            label="Bookmarks"
+            icon="bookmark"
+            :active="rightPanel === 'bookmarks'"
+            :aria-pressed="rightPanel === 'bookmarks'"
+            @click="toggleRightPanel('bookmarks')"
+          />
+          <IconButton
+            label="Contents"
+            icon="contents"
+            :active="rightPanel === 'contents'"
+            :aria-pressed="rightPanel === 'contents'"
+            @click="toggleRightPanel('contents')"
+          />
+        </div>
       </div>
 
       <Transition
@@ -1273,9 +1309,9 @@ onBeforeUnmount(() => {
           class="absolute top-full right-3 z-50 mt-2 w-[min(24rem,calc(100vw-2rem))] rounded-2xl border border-line bg-panel p-4 shadow-2xl ring-1 ring-line/30"
           :aria-label="popover === 'search' ? 'PDF search' : 'Keyboard help'"
         >
-          <section aria-labelledby="pdf-help-title">
+          <section :aria-labelledby="readerId('pdf-help-title')">
             <div class="flex items-center justify-between gap-3">
-              <h3 id="pdf-help-title" class="font-semibold">Keyboard help</h3>
+              <h3 :id="readerId('pdf-help-title')" class="font-semibold">Keyboard help</h3>
               <IconButton label="Close keyboard help" icon="close" @click="closePopover(true)" />
             </div>
             <dl class="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-[auto_1fr]">
@@ -1300,6 +1336,7 @@ onBeforeUnmount(() => {
     </header>
     <HighlightSelectionToolbar
       v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && phase === 'ready'"
+      :id-prefix="idPrefix"
       format="PDF"
       :anchor="selectionPosition"
       :disabled="!highlights.handle.value || highlights.busy.value"
@@ -1326,7 +1363,7 @@ onBeforeUnmount(() => {
         class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
         aria-label="PDF pages"
         tabindex="0"
-        aria-describedby="reader-title"
+        :aria-describedby="readerId('reader-title')"
         :aria-busy="phase === 'loading' || phase === 'restoring'"
         @scroll.passive="handleViewerScroll"
       >
@@ -1334,10 +1371,10 @@ onBeforeUnmount(() => {
           v-if="phase === 'loading' || phase === 'restoring'"
           class="absolute inset-0 z-10 bg-canvas"
         >
-          <p v-if="initialState?.pdf" role="status" class="px-4 py-3 text-xs text-muted">
-            Restoring your reading position…
-          </p>
-          <LoadingState v-else label="Opening document" :detail="document.name" />
+          <LoadingState
+            :label="initialState?.pdf ? 'Restoring your reading position…' : 'Opening document'"
+            :detail="document.name"
+          />
         </div>
 
         <div
@@ -1361,6 +1398,7 @@ onBeforeUnmount(() => {
         >
           <PdfPageView
             v-for="pageNumber in pages"
+            :id="readerId(`pdf-page-${pageNumber}`)"
             :key="`${openSequence}:${pageNumber}`"
             :session="session"
             :page-number="pageNumber"
@@ -1397,7 +1435,7 @@ onBeforeUnmount(() => {
       >
         <aside
           v-if="(phase === 'restoring' || phase === 'ready') && rightPanel"
-          id="pdf-utility-panel"
+          :id="readerId('pdf-utility-panel')"
           data-reader-activity
           :inert="phase !== 'ready'"
           :aria-hidden="phase !== 'ready'"
@@ -1453,9 +1491,9 @@ onBeforeUnmount(() => {
           <section
             v-else-if="rightPanel === 'contents'"
             class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
-            aria-labelledby="pdf-contents-title"
+            :aria-labelledby="readerId('pdf-contents-title')"
           >
-            <h3 id="pdf-contents-title" class="sr-only">PDF contents</h3>
+            <h3 :id="readerId('pdf-contents-title')" class="sr-only">PDF contents</h3>
             <p v-if="outlineBusy" class="p-2 text-sm text-muted" role="status">
               Loading PDF outline…
             </p>
@@ -1489,6 +1527,7 @@ onBeforeUnmount(() => {
             v-else-if="rightPanel === 'annotations'"
             ref="annotationsPanel"
             :key="continuity.fingerprint.value ?? document.id"
+            :id-prefix="idPrefix"
             format="PDF"
             :annotations="highlightList"
             :selected-id="selectedHighlight"
@@ -1507,6 +1546,7 @@ onBeforeUnmount(() => {
           <PdfBookmarksPanel
             v-else-if="rightPanel === 'bookmarks'"
             :key="continuity.documentId.value ?? document.id"
+            :id-prefix="idPrefix"
             :bookmarks="bookmarks.bookmarks.value"
             :available="bookmarks.available.value"
             :busy="bookmarks.busy.value"
@@ -1523,9 +1563,9 @@ onBeforeUnmount(() => {
           <section
             v-else
             class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
-            aria-labelledby="pdf-search-results-title"
+            :aria-labelledby="readerId('pdf-search-results-title')"
           >
-            <h3 id="pdf-search-results-title" class="sr-only">Search results</h3>
+            <h3 :id="readerId('pdf-search-results-title')" class="sr-only">Search results</h3>
             <form class="mt-3 flex gap-2" role="search" @submit.prevent="performSearch">
               <input
                 ref="searchInput"
@@ -1604,6 +1644,53 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.reader-control-section {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+.reader-control-section + .reader-control-section {
+  border-left: 1px solid var(--pt-line);
+  padding-left: 8px;
+  margin-left: 4px;
+}
+.pdf-zoom-field {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 28px;
+  border: 1px solid var(--pt-line);
+  border-radius: 8px;
+  background: var(--pt-canvas);
+  padding: 0 6px;
+  gap: 2px;
+}
+.pdf-zoom-field:focus-within {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: 1px;
+}
+.pdf-zoom-input {
+  width: 3ch;
+  min-width: 3ch;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: right;
+  font-size: 13px;
+  outline: none;
+  appearance: textfield;
+}
+.pdf-zoom-input::-webkit-inner-spin-button,
+.pdf-zoom-input::-webkit-outer-spin-button {
+  appearance: none;
+  margin: 0;
+}
+.pdf-zoom-adornment {
+  font-size: 13px;
+  pointer-events: none;
+}
+
 .highlight-action,
 .highlight-input {
   min-height: 2.25rem;
@@ -1674,6 +1761,9 @@ onBeforeUnmount(() => {
 [aria-label='PDF reader controls'] :deep(.icon-button:nth-child(-n + 3) .icon-tooltip) {
   left: 0;
   right: auto;
+}
+.pdf-page-input:focus-visible {
+  outline-offset: 1px;
 }
 .pdf-page-input {
   appearance: textfield;

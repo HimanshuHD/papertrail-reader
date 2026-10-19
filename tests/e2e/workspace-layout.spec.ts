@@ -40,7 +40,7 @@ test('compact workspace preserves reading state while resizing and closing the l
   })
   await library.getByRole('button', { name: /PDF: workspace-layout.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await page.getByRole('button', { name: 'Next page', exact: true }).click()
   await expect(page.getByRole('spinbutton', { name: 'Current page' })).toHaveValue('2')
   const opener = page.getByRole('button', { name: 'Show library', exact: true })

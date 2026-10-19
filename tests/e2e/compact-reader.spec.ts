@@ -50,9 +50,26 @@ test('compact headers, editable zoom and conditional tab actions retain reader s
       el.getBoundingClientRect().height,
       getComputedStyle(el).fontSize,
     ]),
-  ).toEqual([32, '13px'])
+  ).toEqual([28, '13px'])
+  await expect(page.getByRole('group', { name: 'Page navigation', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('group', { name: 'Zoom controls', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('group', { name: 'Reader utilities', exact: true })).toHaveCount(1)
+  expect(await page.locator('.tab-strip').evaluate((el) => getComputedStyle(el).gap)).toBe('3px')
+  await page.getByRole('tab', { selected: true }).hover()
+  expect(
+    await page
+      .getByRole('tab', { selected: true })
+      .locator('.tab-close svg')
+      .evaluate((el) => getComputedStyle(el).strokeWidth),
+  ).toBe('3px')
+  expect(await theme.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+    'rgba(0, 0, 0, 0)',
+  )
+  expect(await theme.evaluate((el) => getComputedStyle(el).borderTopWidth)).toBe('1px')
   const zoom = page.getByRole('spinbutton', { name: 'PDF zoom percent', exact: true })
   await expect(zoom).toHaveAttribute('max', '400')
+  expect(await zoom.evaluate((el) => getComputedStyle(el).textAlign)).toBe('right')
+  expect(await zoom.locator('..').evaluate((el) => el.getBoundingClientRect().height)).toBe(28)
   await zoom.fill('900')
   await zoom.press('Enter')
   await expect(zoom).toHaveValue('400')

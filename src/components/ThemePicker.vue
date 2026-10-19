@@ -72,16 +72,18 @@ function toggleTheme() {
   height: 36px;
   padding: 3px;
   gap: 0;
-  border: 1px solid var(--pt-line);
-  background: var(--pt-panel);
+  border: 1px solid color-mix(in srgb, var(--pt-brand) 45%, var(--pt-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pt-brand) 12%, var(--pt-canvas));
 }
 .theme-toggle::before {
   content: '';
   position: absolute;
   width: 28px;
   height: 28px;
-  left: 3px;
-  top: 3px;
+  left: 2px;
+  top: 50%;
+  margin-top: -14px;
   border-radius: 50%;
   background: var(--pt-brand);
   transform: translateX(0);
@@ -103,7 +105,7 @@ function toggleTheme() {
 }
 .theme-compact button {
   height: 34px;
-  border: 0;
+  padding: 2px;
 }
 .theme-compact p {
   max-width: 10rem;

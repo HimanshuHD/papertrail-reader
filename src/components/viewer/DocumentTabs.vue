@@ -281,7 +281,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
 .tab-strip {
   display: flex;
   flex: 1;
-  gap: 6px;
+  gap: 3px;
   min-width: 0;
   padding: 3px 12px 3px;
   overflow-x: auto;
@@ -422,5 +422,8 @@ button:disabled {
   .document-tab {
     max-width: 180px;
   }
+}
+.document-tab:hover .tab-close :deep(svg) {
+  stroke-width: 3px;
 }
 </style>

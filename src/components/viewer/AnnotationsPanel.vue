@@ -6,6 +6,7 @@ import UiIcon from '../UiIcon.vue'
 import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 
 const props = defineProps<{
+  idPrefix?: string
   format: 'PDF' | 'EPUB'
   annotations: readonly Annotation[]
   selectedId: string
@@ -47,7 +48,7 @@ async function changeColor(id: string, color: AnnotationColor) {
 async function deleteHighlight(id: string) {
   if ((await props.remove(id)) && menuId.value === id) closeMenu()
 }
-const prefix = computed(() => props.format.toLowerCase() + '-annotations')
+const prefix = computed(() => (props.idPrefix ?? '') + props.format.toLowerCase() + '-annotations')
 const selected = computed(() => props.annotations.find((item) => item.id === props.selectedId))
 const colors: Record<AnnotationColor, string> = {
   yellow: 'Yellow',

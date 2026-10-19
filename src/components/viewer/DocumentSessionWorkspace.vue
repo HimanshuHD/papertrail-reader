@@ -28,6 +28,7 @@ const emit = defineEmits<{
   utilityChange: [panel: UtilityPanel, query: string]
 }>()
 const active = shallowRef<ActiveSession | null>(null)
+const readers = shallowRef<ActiveSession[]>([])
 const selected = shallowRef<string | null>(null)
 const reconnect = shallowRef(false)
 const panels = shallowRef<DocumentSession[]>([])
@@ -38,6 +39,7 @@ const sessions = new DocumentSessions(() => {
   reconnect.value = sessions.sessions.get(sessions.selectedId ?? '')?.phase === 'reconnect'
   const previous = active.value
   active.value = sessions.active
+  readers.value = [...sessions.retained.values()]
   panels.value = [...sessions.sessions.values()].filter((item) => item.phase !== 'closed')
   emit(
     'change',
@@ -68,14 +70,11 @@ function current(owner: ActiveSession) {
   return sessions.owns(owner.session.id, owner.generation)
 }
 function identity(owner: ActiveSession, fingerprint: string) {
-  if (sessions.update(owner.session.id, owner.generation, 'ready', fingerprint))
+  if (sessions.update(owner.session.id, owner.generation, 'ready', fingerprint) && current(owner))
     emit('identity', fingerprint)
 }
-function releaseFailed() {
-  emit(
-    'status',
-    'The previous reader could not be released. Reload the workspace before opening another document.',
-  )
+function reportOpenFailure() {
+  emit('status', 'This document could not be opened. Select it again or choose another local file.')
 }
 let opening: AbortController | null = null
 async function open(document: DiscoveredDocument) {
@@ -104,21 +103,21 @@ async function open(document: DiscoveredDocument) {
 async function activate(id: string) {
   opening?.abort()
   const previous = sessions.active
-  await sessions.activate(id).catch(releaseFailed)
+  await sessions.activate(id).catch(reportOpenFailure)
   if (sessions.active === previous) publishActive()
 }
 async function close(id: string) {
   opening?.abort()
   const previous = sessions.active
-  await sessions.close(id).catch(releaseFailed)
+  await sessions.close(id).catch(reportOpenFailure)
   if (sessions.active === previous) publishActive()
 }
 watch(
   () => [props.document, props.request] as const,
   ([document]) => {
     opening?.abort()
-    if (document) void open(document).catch(releaseFailed)
-    else void sessions.reset().catch(releaseFailed)
+    if (document) void open(document).catch(reportOpenFailure)
+    else void sessions.reset().catch(reportOpenFailure)
   },
   // Read restore context after Vue has patched all sibling props, before rendering.
   { immediate: true, flush: 'pre' },
@@ -126,36 +125,39 @@ watch(
 onBeforeUnmount(() => {
   disposed = true
   opening?.abort()
-  void sessions.reset().catch(releaseFailed)
+  void sessions.reset().catch(reportOpenFailure)
 })
 defineExpose({ sessions, activate, close })
 </script>
 
 <template>
-  <div
-    v-if="selected"
-    :id="`${selected}-panel`"
-    role="tabpanel"
-    :aria-labelledby="`${selected}-tab`"
-    tabindex="0"
-    class="session-panel"
-  >
-    <template
-      v-for="owner in active ? [active] : []"
+  <div v-if="selected" class="session-workspace">
+    <div
+      v-for="owner in readers"
+      :id="`${owner.session.id}-panel`"
       :key="`${owner.session.id}:${owner.generation}`"
+      role="tabpanel"
+      :aria-labelledby="`${owner.session.id}-tab`"
+      tabindex="0"
+      :inert="owner.session.id !== selected || undefined"
+      :aria-hidden="owner.session.id !== selected || undefined"
+      class="session-panel"
+      :class="{ 'session-inactive': owner.session.id !== selected }"
     >
       <component
         :is="owner.document.format === 'PDF' ? PdfReaderWorkspace : EpubReaderWorkspace"
         :ref="(runtime: unknown) => attach(runtime, owner)"
         :document="owner.document"
+        :id-prefix="`${owner.session.id}-`"
         :initial-state="owner.session.state"
+        :active="owner.session.id === selected"
         @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
         @status="current(owner) && emit('status', $event)"
         @identity="identity(owner, $event)"
         @recent-ready="current(owner) && emit('recentReady', $event)"
         @utility-change="(panel: UtilityPanel, query: string) => utility(owner, panel, query)"
       />
-    </template>
+    </div>
     <p v-if="!active" role="status" class="p-4 text-sm text-muted">
       {{
         reconnect
@@ -163,22 +165,35 @@ defineExpose({ sessions, activate, close })
           : 'Opening document…'
       }}
     </p>
+    <template v-for="panel in panels" :key="panel.id">
+      <div
+        v-if="!readers.some((owner) => owner.session.id === panel.id)"
+        :id="`${panel.id}-panel`"
+        role="tabpanel"
+        :aria-labelledby="`${panel.id}-tab`"
+        hidden
+      />
+    </template>
   </div>
   <slot v-else />
-  <template v-for="panel in panels" :key="panel.id">
-    <div
-      v-if="panel.id !== selected"
-      :id="`${panel.id}-panel`"
-      role="tabpanel"
-      :aria-labelledby="`${panel.id}-tab`"
-      hidden
-    />
-  </template>
 </template>
-
 <style scoped>
+.session-workspace {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  isolation: isolate;
+}
 .session-panel {
   height: 100%;
   min-height: 0;
+}
+.session-inactive {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  z-index: -1;
 }
 </style>

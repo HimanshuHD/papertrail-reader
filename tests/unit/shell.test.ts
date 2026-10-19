@@ -124,7 +124,7 @@ describe('home and product shell', () => {
 
   it('keeps the production empty state while the sidebar collapses and restores', async () => {
     const { wrapper } = await mountApp('/app')
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
     expect(wrapper.text()).toContain('No documents selected yet')
     expect(wrapper.text()).not.toContain('The next chapter')
     expect(wrapper.text()).not.toContain('Demonstration workspace')
@@ -134,11 +134,11 @@ describe('home and product shell', () => {
     const opener = wrapper.get('button[aria-label="Show library"]')
     expect(opener.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('aside').exists()).toBe(false)
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
 
     await opener.trigger('click')
     expect(wrapper.find('aside').exists()).toBe(true)
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
     wrapper.unmount()
   })
 
@@ -196,7 +196,9 @@ describe('home and product shell', () => {
     await flushPromises()
 
     expect(document.activeElement).toBe(book.element)
-    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(wrapper.get('.session-panel:not(.session-inactive) [data-reader-title]').text()).toBe(
+      'book.epub',
+    )
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
     expect(wrapper.text()).not.toContain('Demonstration workspace')
     expect(wrapper.get('[role="tab"][aria-selected="true"]').attributes('aria-label')).toContain(
@@ -271,7 +273,7 @@ describe('home and product shell', () => {
 
     expect(guide.attributes('aria-pressed')).toBe('true')
     expect(pdfSessionMocks.open.mock.calls[0]?.[0]).toBe(files[0])
-    expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('guide.pdf')
     expect(wrapper.text()).toContain('Page 1 of 3')
     expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
 
@@ -292,8 +294,10 @@ describe('home and product shell', () => {
     await book.trigger('click')
     await flushPromises()
     expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
-    expect(pdfSessionMocks.close).toHaveBeenCalled()
-    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(pdfSessionMocks.close).not.toHaveBeenCalled()
+    expect(wrapper.get('.session-panel:not(.session-inactive) [data-reader-title]').text()).toBe(
+      'book.epub',
+    )
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
 
     const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
@@ -339,7 +343,7 @@ describe('home and product shell', () => {
     expect(wrapper.text()).toContain('PaperTrail searchable text')
 
     await searchInput.trigger('keydown', { key: 'c' })
-    expect(wrapper.find('#pdf-contents-title').exists()).toBe(false)
+    expect(wrapper.find('[id$=pdf-contents-title]').exists()).toBe(false)
 
     await searchInput.trigger('keydown', { key: 'Escape' })
     await wrapper.trigger('keydown', { key: '?' })

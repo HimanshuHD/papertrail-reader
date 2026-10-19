@@ -5,6 +5,7 @@ import type { AnnotationColor } from '../../services/annotation-storage'
 import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 import { toolbarPosition, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
 const props = defineProps<{
+  idPrefix?: string
   format: 'PDF' | 'EPUB'
   anchor: SelectionAnchor
   disabled: boolean
@@ -152,10 +153,10 @@ function preserveSelection(event: PointerEvent) {
             @click="cancelNote"
           >
             <UiIcon name="previous" /></button
-          ><label :for="`${format.toLowerCase()}-selection-note`">Add note</label>
+          ><label :for="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`">Add note</label>
         </div>
         <textarea
-          :id="`${format.toLowerCase()}-selection-note`"
+          :id="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`"
           ref="textarea"
           v-model="draft"
           rows="3"

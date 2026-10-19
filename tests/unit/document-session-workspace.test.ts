@@ -82,52 +82,40 @@ afterEach(() => {
   observations.hold = false
   observations.finish = undefined
 })
-it('mounts only after cleanup and restores owning session state across format changes', async () => {
+it('retains mounted readers while exposing only the active panel and disposes all on unmount', async () => {
   const a = doc('a'),
     b = doc('b', 'EPUB')
-  const onActiveChange = vi.fn()
-  const wrapper = mount(Workspace, { props: { document: a, onActiveChange } })
+  const wrapper = mount(Workspace, { props: { document: a } })
   await flushPromises()
-  observations.hold = true
+  const firstNode = wrapper.find('[data-reader="a"]').element
   await wrapper.setProps({ document: b })
   await flushPromises()
-  expect(observations.mounted).toEqual(['a'])
-  expect(wrapper.find('[data-reader]').exists()).toBe(false)
-  expect(
-    wrapper
-      .emitted('status')
-      ?.flat()
-      .some((message) => String(message).startsWith('stale')),
-  ).toBe(false)
-  expect(wrapper.emitted('identity')).toBeUndefined()
-  observations.hold = false
-  observations.finish!()
-  await flushPromises()
   expect(observations.mounted).toEqual(['a', 'b'])
+  expect(observations.disposed).toEqual([])
+  expect(wrapper.find('[data-reader="a"]').element).toBe(firstNode)
+  expect(wrapper.find('[data-reader="a"]').element.parentElement?.hasAttribute('inert')).toBe(true)
   await wrapper.setProps({ document: a })
   await flushPromises()
-  expect(observations.states[2]?.query).toBe('a')
-  expect(observations.states[1]?.query).toBe('')
-  expect(observations.maximum).toBe(1)
-  const changes = onActiveChange.mock.calls.length
-  expect(changes).toBeGreaterThan(0)
+  expect(wrapper.find('[data-reader="a"]').element).toBe(firstNode)
+  expect(observations.maximum).toBe(2)
   wrapper.unmount()
   await flushPromises()
-  expect(onActiveChange).toHaveBeenCalledTimes(changes)
   expect(observations.live).toBe(0)
 })
-it('rapid replacement and clearing the source never mount a queued reader', async () => {
+it('clearing sources removes all cached readers without waiting for unfinished disposal', async () => {
   const wrapper = mount(Workspace, { props: { document: doc('a') } })
   await flushPromises()
   observations.hold = true
   await wrapper.setProps({ document: doc('b') })
-  await wrapper.setProps({ document: doc('c', 'EPUB') })
-  await wrapper.setProps({ document: null })
-  observations.hold = false
-  observations.finish!()
   await flushPromises()
-  expect(observations.mounted).toEqual(['a'])
-  expect(observations.disposed).toEqual(['a'])
+  await wrapper.setProps({ document: null })
+  await flushPromises()
+  expect(wrapper.find('[data-reader]').exists()).toBe(false)
+  observations.hold = false
+  observations.finish?.()
+  await wrapper.setProps({ document: doc('c') })
+  await flushPromises()
+  expect(wrapper.find('[data-reader="c"]').exists()).toBe(true)
   wrapper.unmount()
 })
 
