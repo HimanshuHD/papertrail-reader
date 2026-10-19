@@ -5,6 +5,10 @@ import Workspace from '../../src/components/viewer/DocumentSessionWorkspace.vue'
 import type { DiscoveredDocument } from '../../src/features/library/discovery'
 import type { SessionState } from '../../src/features/reader/document-sessions'
 
+vi.mock('../../src/services/document-identity', () => ({
+  fingerprintDocument: vi.fn(async (file: File) => `test:${file.name}`),
+}))
+
 const observations = vi.hoisted(() => ({
   live: 0,
   maximum: 0,
@@ -81,14 +85,20 @@ afterEach(() => {
 it('mounts only after cleanup and restores owning session state across format changes', async () => {
   const a = doc('a'),
     b = doc('b', 'EPUB')
-  const wrapper = mount(Workspace, { props: { document: a } })
+  const onActiveChange = vi.fn()
+  const wrapper = mount(Workspace, { props: { document: a, onActiveChange } })
   await flushPromises()
   observations.hold = true
   await wrapper.setProps({ document: b })
   await flushPromises()
   expect(observations.mounted).toEqual(['a'])
   expect(wrapper.find('[data-reader]').exists()).toBe(false)
-  expect(wrapper.emitted('status')).toBeUndefined()
+  expect(
+    wrapper
+      .emitted('status')
+      ?.flat()
+      .some((message) => String(message).startsWith('stale')),
+  ).toBe(false)
   expect(wrapper.emitted('identity')).toBeUndefined()
   observations.hold = false
   observations.finish!()
@@ -99,8 +109,11 @@ it('mounts only after cleanup and restores owning session state across format ch
   expect(observations.states[2]?.query).toBe('a')
   expect(observations.states[1]?.query).toBe('')
   expect(observations.maximum).toBe(1)
+  const changes = onActiveChange.mock.calls.length
+  expect(changes).toBeGreaterThan(0)
   wrapper.unmount()
   await flushPromises()
+  expect(onActiveChange).toHaveBeenCalledTimes(changes)
   expect(observations.live).toBe(0)
 })
 it('rapid replacement and clearing the source never mount a queued reader', async () => {
@@ -133,3 +146,22 @@ it.each(['PDF', 'EPUB'] as const)(
     wrapper.unmount()
   },
 )
+
+it('a late content check cannot activate a document after a newer request', async () => {
+  const { fingerprintDocument } = await import('../../src/services/document-identity')
+  let finish!: (fingerprint: string) => void
+  vi.mocked(fingerprintDocument).mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const wrapper = mount(Workspace, { props: { document: doc('slow') } })
+  await wrapper.setProps({ document: doc('newer') })
+  await flushPromises()
+  expect(observations.mounted).toEqual(['newer'])
+  finish('slow-fingerprint')
+  await flushPromises()
+  expect(observations.mounted).toEqual(['newer'])
+  wrapper.unmount()
+})

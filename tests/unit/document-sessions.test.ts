@@ -118,10 +118,10 @@ describe('single live document session ownership', () => {
     const closing = sessions.close(queued.id)
     wait.resolve()
     await Promise.all([opening, closing])
-    expect(sessions.active).toBeNull()
+    expect(sessions.active?.session.id).toBe(first.session.id)
     expect(queued.phase).toBe('closed')
     await sessions.activate(queued.id)
-    expect(sessions.active).toBeNull()
+    expect(sessions.active?.session.id).toBe(first.session.id)
   })
 
   it('disposes stale runtime attachment and marks lost local access as reconnect', async () => {
@@ -154,4 +154,47 @@ describe('single live document session ownership', () => {
     expect(sessions.sessions.size).toBe(0)
     expect(sessions.active).toBeNull()
   })
+})
+
+it('deduplicates verified content across names without merging different content with identical names', async () => {
+  const sessions = new DocumentSessions()
+  const a = document('a')
+  await sessions.open(a, undefined, 'hash-one')
+  const first = sessions.active!
+  const duplicate = { ...document('alias'), name: 'renamed.pdf' }
+  await sessions.open(duplicate, undefined, 'hash-one')
+  expect(sessions.active?.session.id).toBe(first.session.id)
+  await sessions.open({ ...document('b'), name: a.name }, undefined, 'hash-two')
+  expect(sessions.active?.session.id).not.toBe(first.session.id)
+  expect([...sessions.sessions.values()].filter((s) => s.phase !== 'closed')).toHaveLength(2)
+  await sessions.disconnect(first.session.id)
+  await sessions.open(duplicate, undefined, 'hash-one')
+  expect(sessions.active?.session.id).toBe(first.session.id)
+  expect(sessions.active?.document.file).toBe(duplicate.file)
+  await sessions.reset()
+})
+it('inactive close keeps the live runtime; active close chooses right, then left, then empty', async () => {
+  const sessions = new DocumentSessions()
+  const ids: string[] = []
+  for (const id of ['a', 'b', 'c', 'd']) {
+    await sessions.open(document(id))
+    ids.push(sessions.active!.session.id)
+  }
+  await sessions.activate(ids[1]!)
+  const live = sessions.active!
+  const reader = runtime()
+  sessions.attach(live.session.id, live.generation, reader)
+  await sessions.close(ids[0]!)
+  expect(sessions.active).toBe(live)
+  expect(reader.dispose).not.toHaveBeenCalled()
+  await sessions.close(ids[1]!)
+  expect(sessions.active?.session.id).toBe(ids[2])
+  await sessions.close(ids[3]!)
+  await sessions.close(ids[2]!)
+  expect(sessions.active).toBeNull()
+  expect(sessions.selectedId).toBeNull()
+  expect(reader.dispose).toHaveBeenCalledTimes(1)
+  await sessions.open(document('reopened'))
+  expect(sessions.active).not.toBeNull()
+  await sessions.reset()
 })

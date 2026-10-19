@@ -178,6 +178,7 @@ watch(
     if (restoreFocus) focusAdd()
   },
 )
+defineExpose({ toggleMenu })
 onMounted(() => document.addEventListener('pointerdown', outsidePointer))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer))
 </script>

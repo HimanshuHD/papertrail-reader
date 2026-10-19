@@ -49,6 +49,8 @@ defineEmits<{
   clearRecents: []
   retryRecents: []
 }>()
+const sourcePicker = ref<InstanceType<typeof LibrarySourcePicker> | null>(null)
+defineExpose({ openSourcePicker: () => sourcePicker.value?.toggleMenu() })
 const header = ref<HTMLElement | null>(null)
 const heading = ref<HTMLElement | null>(null)
 const compactActions = ref(false)
@@ -94,6 +96,7 @@ watch(
     >
       <h2 ref="heading" class="min-w-0 truncate text-sm font-semibold">Local Documents</h2>
       <LibrarySourcePicker
+        ref="sourcePicker"
         :compact="compactActions"
         :can-forget="hasWorkspace"
         :selection-summary="selectionSummary"

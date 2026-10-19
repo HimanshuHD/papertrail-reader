@@ -193,13 +193,14 @@ describe('home and product shell', () => {
       .find((button) => button.text().includes('book.epub'))!
     ;(book.element as HTMLButtonElement).focus()
     await book.trigger('click')
+    await flushPromises()
 
     expect(document.activeElement).toBe(book.element)
     expect(wrapper.get('#reader-title').text()).toBe('book.epub')
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
     expect(wrapper.text()).not.toContain('Demonstration workspace')
-    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe(
-      'Opening local EPUB: book.epub.',
+    expect(wrapper.get('[role="tab"][aria-selected="true"]').attributes('aria-label')).toContain(
+      'EPUB: book.epub',
     )
     wrapper.unmount()
   })

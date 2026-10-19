@@ -2,7 +2,7 @@
 
 ## Compact workspace (#225)
 
-The current reader keeps branding and theme controls inside the open library header. Closing the library moves the compact branding/theme group and the distinct book-stack reopen button into a normal-flow row above the reader. It does not remount the PDF/EPUB workspace or clear its reading state. The existing separator, width limits, saved width and responsive overlay/grid behavior are unchanged. No functional tab strip is added by this shell increment; #221 owns that integration.
+The current reader keeps branding and theme controls inside the open library header. Closing the library moves the compact branding/theme group and the distinct book-stack reopen button into a normal-flow row above the reader. It does not remount the PDF/EPUB workspace or clear its reading state. The existing separator, width limits, saved width and responsive overlay/grid behavior are unchanged. The tab strip shares this same normal-flow row; it does not add another application header.
 
 The library header measures whether its title and three existing 44px action targets fit. When they do not, Add and Refresh move into a vertical library-action menu, alongside Forget when a workspace exists. The existing file/directory picker paths are reused; menu navigation skips disabled actions and preserves focus on responsive changes. Close remains separate at the right edge.
 
@@ -55,7 +55,7 @@ App buttons, icon controls, actionable links and menu summaries share the refere
 
 ## Document session ownership (#220)
 
-`DocumentSessionWorkspace` keeps one keyed PDF/EPUB component mounted. `DocumentSessions` owns session IDs and lifecycle (`loading`, `ready`, `suspended`, `reconnect`, `error`, `closed`), independent of library IDs and content fingerprints. Serializable records contain only metadata and reading/UI snapshots; local `File` access stays in a separate source map and the live runtime is a single attachment. This is an in-memory controller, with no tab strip or persisted tab list yet (#221/#222).
+`DocumentSessionWorkspace` keeps one keyed PDF/EPUB component mounted. `DocumentSessions` owns session IDs and lifecycle (`loading`, `ready`, `suspended`, `reconnect`, `error`, `closed`), independent of library IDs and content fingerprints. Serializable records contain only metadata and reading/UI snapshots; local `File` access stays in a separate source map and the live runtime is a single attachment. The compact tab strip exposes these in-memory sessions; persisted tab lists remain #222.
 
 | State                                                                                       | Owner and suspension behavior                                                                    |
 | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
@@ -69,4 +69,14 @@ App buttons, icon controls, actionable links and menu summaries share the refere
 
 Switching captures state before removing DOM, invalidates event ownership, cancels the old reader, flushes owned reading writes and waits for pending opens/engine disposal before mounting the next reader. Existing page/rendition cleanup releases canvases, workers, object URLs, iframe listeners, timers and observers. A cancelled late PDF/EPUB open destroys its result; generation checks reject stale identity/status/utility callbacks. Cleanup failure prevents mounting another viewer and reports recovery through reload. There is no `KeepAlive` cache. The one-viewer rule is deterministic resource ownership, not a browser-wide memory guarantee.
 
-Library activation uses this controller without visible tabs. Source replacement/forget clears sessions. Re-selecting an unchanged live `File` activates its existing session; a new `File` receives a new session rather than borrowing an unrelated state snapshot. `close` retains a closed metadata record but drops its source; `disconnect` drops access and marks reconnect without serializing file bytes. Full permission reconnection and session restoration across reload remain #222.
+Library/recent activation and the accessible tab strip use this controller. Source replacement/forget clears sessions. Bounded local full-content hashing verifies identity before opening. Re-selecting the same verified content/format activates its existing session even through another name/File object; distinct content with identical names remains separate. A WeakMap caches hashes only while their File objects remain reachable. `close` retains a closed metadata record but drops its source; `disconnect` drops access and marks reconnect without serializing file bytes. Full permission reconnection and session restoration across reload remain #222.
+
+## Accessible document tabs (#221)
+
+`DocumentTabs` owns presentation and focus, while `DocumentSessionWorkspace` remains the only runtime owner. Library clicks always issue an explicit activation request, so reselecting the last library item works after switching or closing tabs. Active-session events keep the library selection and existing single-document continuity metadata aligned; session IDs do not replace document storage keys.
+
+Arrow keys and Home/End move a single roving tab stop without activating; Enter/Space activates. Delete closes the focused tab, and each tab also exposes a labeled close button. Closing an inactive tab leaves the live viewer untouched. Closing the active tab selects right then left; final close focuses Add and shows the empty reader without deleting library/saved data. Active and hidden inactive panel IDs maintain tab/tabpanel relationships without mounting additional readers. Full labels and native title tooltips retain long names.
+
+A horizontally scrollable strip keeps touch access at small widths. The separate horizontal ellipsis lists every open document with its current/error/reconnect state and selected marker, supports arrow/Home/End/Escape navigation and returns focus predictably. Tab keys do not reach the reader's window shortcuts. The strip's plus opens the existing library source menu, including when the library starts closed; no second file picker is introduced. Existing source replacement/forget semantics remain; cross-source/reload restoration is not added here.
+
+Functional component/browser tests cover tab focus, content identity, close order, empty/add behavior, independent PDF/EPUB state, light/dark, reduced motion and narrow menu bounds. No automatic visual comparison/capture workflow or approved baseline changes are introduced. Full persisted tab/reconnect acceptance remains #222/#223.

@@ -13,6 +13,8 @@ export interface SessionState {
 export interface DocumentSession {
   id: string
   sourceId: string
+  title: string
+  name: string
   format: DiscoveredDocument['format']
   fingerprint: string | null
   phase: SessionPhase
@@ -32,6 +34,7 @@ export interface ActiveSession {
 export class DocumentSessions {
   readonly sessions = new Map<string, DocumentSession>()
   active: ActiveSession | null = null
+  selectedId: string | null = null
   private sources = new Map<string, DiscoveredDocument>()
   private runtime: SessionRuntime | null = null
   private generation = 0
@@ -56,7 +59,7 @@ export class DocumentSessions {
     this.active = null
     if (previous) {
       if (runtime) previous.session.state = structuredClone(runtime.capture())
-      previous.session.phase = 'suspended'
+      if (previous.session.phase !== 'error') previous.session.phase = 'suspended'
     }
     // Start cancellation synchronously; wait for disposal before mounting another viewer.
     if (runtime) {
@@ -66,23 +69,28 @@ export class DocumentSessions {
     this.changed()
   }
 
-  async open(document: DiscoveredDocument, initial?: Partial<SessionState>) {
+  async open(document: DiscoveredDocument, initial?: Partial<SessionState>, fingerprint?: string) {
     const existing = [...this.sessions.values()].find(
       (s) =>
         s.phase !== 'closed' &&
-        this.sources.get(s.id)?.file === document.file &&
-        s.sourceId === document.id,
+        ((this.sources.get(s.id)?.file === document.file && s.sourceId === document.id) ||
+          (Boolean(fingerprint) && s.fingerprint === fingerprint && s.format === document.format)),
     )
     const session = existing ?? {
       id: `reader-session-${++this.serial}`,
       sourceId: document.id,
+      title: document.title || document.name,
+      name: document.name,
       format: document.format,
-      fingerprint: null,
+      fingerprint: fingerprint ?? null,
       phase: 'suspended' as SessionPhase,
       state: { panel: initial?.panel ?? null, query: initial?.query ?? '' },
     }
     this.sessions.set(session.id, session)
-    this.sources.set(session.id, document)
+    if (!existing || !this.sources.has(session.id)) {
+      this.sources.set(session.id, document)
+      session.sourceId = document.id
+    }
     return this.activate(session.id)
   }
 
@@ -90,6 +98,7 @@ export class DocumentSessions {
     const session = this.sessions.get(id)
     if (!session || session.phase === 'closed') return
     if (this.active?.session === session) return
+    this.selectedId = id
     const owner = ++this.generation
     this.release()
     await this.cleanup
@@ -116,7 +125,11 @@ export class DocumentSessions {
 
   async close(id: string) {
     const session = this.sessions.get(id)
-    if (!session) return
+    if (!session || session.phase === 'closed') return
+    const open = [...this.sessions.values()].filter((item) => item.phase !== 'closed')
+    const index = open.indexOf(session)
+    const next = this.selectedId === id ? (open[index + 1] ?? open[index - 1]) : null
+    const selected = this.selectedId === id
     if (this.active?.session === session) {
       ++this.generation
       this.release()
@@ -124,6 +137,11 @@ export class DocumentSessions {
     session.phase = 'closed'
     this.sources.delete(id)
     this.changed()
+    if (selected) {
+      this.selectedId = next?.id ?? null
+      if (next) await this.activate(next.id)
+      else this.changed()
+    }
     await this.cleanup
   }
 
@@ -144,8 +162,10 @@ export class DocumentSessions {
     ++this.generation
     this.release()
     for (const session of this.sessions.values()) session.phase = 'closed'
+    this.selectedId = null
     this.sources.clear()
     this.sessions.clear()
+    this.changed()
     await this.cleanup
   }
 }

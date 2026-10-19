@@ -5,6 +5,8 @@ import WorkspaceBrand from '../components/layout/WorkspaceBrand.vue'
 import BuildFooter from '../components/BuildFooter.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
+import DocumentTabs from '../components/viewer/DocumentTabs.vue'
+import type { DocumentSession } from '../features/reader/document-sessions'
 import DocumentSessionWorkspace from '../components/viewer/DocumentSessionWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
 import {
@@ -43,7 +45,7 @@ function cancelRecent() {
   recentOpening.value = false
 }
 function rememberRecent(identity: { id: string; fingerprint: string }) {
-  const item = activeDocument.value
+  const item = currentDocument.value
   if (item)
     void recents.remember({
       ...identity,
@@ -99,6 +101,26 @@ const workspaceMessage = computed(
         ? 'Saved library. Resume access or use + to select the same source again.'
         : ''),
 )
+const readerSessions = ref<InstanceType<typeof DocumentSessionWorkspace> | null>(null)
+const librarySidebar = ref<InstanceType<typeof LibrarySidebar> | null>(null)
+const tabs = shallowRef<DocumentSession[]>([])
+const selectedTab = ref<string | null>(null)
+const documentRequest = ref(0)
+const currentDocument = shallowRef<DiscoveredDocument | null>(null)
+function sessionChanged(document: DiscoveredDocument | null, fingerprint: string | null) {
+  currentDocument.value = document
+  selectedLibraryDocumentId.value = document?.id ?? null
+  workspace.patch({
+    selectedPath: document?.relativePath ?? null,
+    activePath: document?.relativePath ?? null,
+    activeFingerprint: fingerprint,
+  })
+}
+async function addFromTabs() {
+  if (!sidebarOpen.value) await openSidebar()
+  await nextTick()
+  await librarySidebar.value?.openSourcePicker()
+}
 const restoringDocument = ref(false)
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activeDocument = shallowRef<DiscoveredDocument | null>(null)
@@ -193,7 +215,7 @@ function selectLibraryDocument(id: string, restoring = false) {
     reconnecting.value = false
   }
   const sameActive =
-    activeDocument.value?.id === document.id && activeDocument.value?.file === document.file
+    currentDocument.value?.id === document.id && currentDocument.value?.file === document.file
   selectedLibraryDocumentId.value = id
   workspace.patch({
     selectedPath: document.relativePath,
@@ -204,6 +226,7 @@ function selectLibraryDocument(id: string, restoring = false) {
   })
   restoringDocument.value = restoring
   activeDocument.value = document
+  documentRequest.value += 1
   announcement.value = `Opening local ${document.format}: ${document.name}.`
 }
 
@@ -474,6 +497,7 @@ async function closeSidebarAndRestoreFocus() {
         <div class="sidebar-workspace">
           <WorkspaceBrand class="border-b border-line" />
           <LibrarySidebar
+            ref="librarySidebar"
             :library-documents="displayDocuments"
             :recent-documents="recents.entries.value"
             :recent-message="recentMessage || recents.notice.value"
@@ -509,12 +533,30 @@ async function closeSidebarAndRestoreFocus() {
           <BuildFooter />
         </div>
       </template>
+      <template #tabs>
+        <DocumentTabs
+          :tabs="tabs"
+          :selected-id="selectedTab"
+          @activate="readerSessions?.activate($event)"
+          @close="readerSessions?.close($event)"
+          @add="addFromTabs"
+        />
+      </template>
       <DocumentSessionWorkspace
+        ref="readerSessions"
+        :request="documentRequest"
         :document="activeDocument"
         :initial-panel="restoringDocument ? workspace.snapshot.value?.utilityPanel : null"
         :initial-search-query="
           restoringDocument ? workspace.snapshot.value?.searchQuery : undefined
         "
+        @change="
+          (items, id) => {
+            tabs = items
+            selectedTab = id
+          }
+        "
+        @active-change="sessionChanged"
         @utility-change="
           (panel, query) => workspace.patch({ utilityPanel: panel, searchQuery: query })
         "
