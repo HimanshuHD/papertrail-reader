@@ -97,3 +97,33 @@ it('revokes prepared resources when a later chapter is invalid or preparation is
   ).rejects.toThrow()
   expect(revoke).toHaveBeenLastCalledWith('blob:cancelled')
 })
+
+it('flattens local SVG cover wrappers without admitting live SVG or remote images', async () => {
+  const { create, revoke } = urls()
+  const files = unzipSync(createFormattedEpubFixture())
+  const wrapper = (href: string) =>
+    `<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 120 60" onload="attack()"><title>Book cover</title><image xlink:href="${href}" width="120" height="60"/></svg>`
+  files['OPS/one.xhtml'] = new Uint8Array(
+    strToU8(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head/><body>${wrapper('images/illustration.svg')}${wrapper('https://evil.invalid/cover.png')}<p>Long chapter content remains readable.</p></body></html>`,
+    ),
+  )
+  const file = blob(zipSync(files, { level: 0 }))
+  const publication = await preparePublication(file)
+  const chapter = strFromU8(unzipSync(new Uint8Array(publication.bytes))['chapter-0.xhtml']!)
+  expect(chapter).toContain('src="blob:local-image"')
+  expect(chapter).toContain('alt="Book cover"')
+  expect(chapter).toContain('Long chapter content remains readable.')
+  expect(chapter).not.toMatch(/<svg|<image|onload|attack|evil/)
+  expect(create).toHaveBeenCalledOnce()
+  const plainPublication = await preparePublication(file, undefined, true)
+  const plain = strFromU8(unzipSync(new Uint8Array(plainPublication.bytes))['chapter-0.xhtml']!)
+  expect(plain).toContain('Book cover')
+  expect(plain).not.toMatch(/<img|<svg/)
+  expect(plain.match(/data-reader-node="[^"]+"/g)).toEqual(
+    chapter.match(/data-reader-node="[^"]+"/g),
+  )
+  publication.dispose()
+  plainPublication.dispose()
+  expect(revoke).toHaveBeenCalledOnce()
+})

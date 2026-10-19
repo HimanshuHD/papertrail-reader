@@ -101,24 +101,6 @@ export function useEpubReader() {
     })
     if (owner === operation && session.value) contentsEntry.value = selected
   }
-  async function turn(direction: -1 | 1) {
-    const current = session.value,
-      owner = operation
-    if (!current?.turn || busy.value) return
-    busy.value = true
-    try {
-      const index = await current.turn(direction)
-      if (owner === operation) {
-        chapter.value = index
-        contentsEntry.value = null
-        error.value = ''
-      }
-    } catch {
-      if (owner === operation) error.value = 'This page could not be displayed. Try again.'
-    } finally {
-      if (owner === operation) busy.value = false
-    }
-  }
   async function restore(location: EpubLocation) {
     const current = session.value
     const owner = operation
@@ -152,7 +134,6 @@ export function useEpubReader() {
     open,
     reopen,
     restore,
-    turn,
     go,
     close,
     settled: () => Promise.all([...openings]).then(() => {}),

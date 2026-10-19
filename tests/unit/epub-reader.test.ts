@@ -206,25 +206,3 @@ it('ignores a stale asynchronous location restore after a new source opens', asy
   expect(reader.busy.value).toBe(false)
   wrapper.unmount()
 })
-
-it('serializes spread turns and ignores their completion after source replacement', async () => {
-  const old = session()
-  const next = session()
-  let finish!: (chapter: number) => void
-  old.turn = vi.fn(() => new Promise<number>((resolve) => (finish = resolve)))
-  mocked.open.mockResolvedValueOnce(old).mockResolvedValueOnce(next)
-  const { reader, wrapper } = harness()
-  const host = document.createElement('div')
-  await reader.open(new File([], 'one.epub'), host, false, { twoPage: true })
-  const pending = reader.turn(1)
-  expect(reader.busy.value).toBe(true)
-  await reader.turn(1)
-  expect(old.turn).toHaveBeenCalledTimes(1)
-  await reader.open(new File([], 'two.epub'), host, false)
-  finish(1)
-  await pending
-  expect(reader.session.value).toBe(next)
-  expect(reader.chapter.value).toBe(0)
-  expect(reader.busy.value).toBe(false)
-  wrapper.unmount()
-})
