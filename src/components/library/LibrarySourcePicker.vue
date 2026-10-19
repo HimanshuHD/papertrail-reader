@@ -178,6 +178,7 @@ watch(
     if (restoreFocus) focusAdd()
   },
 )
+defineExpose({ toggleMenu })
 onMounted(() => document.addEventListener('pointerdown', outsidePointer))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer))
 </script>
@@ -202,6 +203,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         @keydown.down.prevent="!menuOpen && toggleMenu()"
       />
       <IconButton
+        class="pt-plain-control"
         label="Hide library"
         icon="close"
         aria-controls="document-sidebar"

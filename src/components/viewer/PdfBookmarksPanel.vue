@@ -3,6 +3,7 @@ import { nextTick, ref } from 'vue'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 
 const props = defineProps<{
+  idPrefix?: string
   bookmarks: readonly PdfBookmark[]
   available: boolean
   busy: boolean
@@ -14,6 +15,8 @@ const props = defineProps<{
   rename: (id: string, name: string) => Promise<boolean>
   remove: (id: string) => Promise<boolean>
 }>()
+const readerId = (id: string) => `${props.idPrefix ?? ''}${id}`
+
 const emit = defineEmits<{ navigate: [bookmark: PdfBookmark]; retry: [] }>()
 const name = ref('')
 const editing = ref<string | null>(null)
@@ -55,9 +58,9 @@ async function removeBookmark(id: string) {
 <template>
   <section
     class="min-h-0 flex-1 overflow-auto overscroll-contain p-3"
-    aria-labelledby="pdf-bookmarks-title"
+    :aria-labelledby="readerId('pdf-bookmarks-title')"
   >
-    <h3 id="pdf-bookmarks-title" class="sr-only">Bookmarks</h3>
+    <h3 :id="readerId('pdf-bookmarks-title')" class="sr-only">Bookmarks</h3>
     <p v-if="loading" role="status" class="mb-3 text-sm text-muted">Loading bookmarks…</p>
     <p
       v-if="notice"
@@ -82,9 +85,11 @@ async function removeBookmark(id: string) {
       </button>
     </template>
     <form class="mb-4 space-y-2" @submit.prevent="addBookmark">
-      <label for="pdf-bookmark-name" class="block text-xs font-medium">Bookmark name</label>
+      <label :for="readerId('pdf-bookmark-name')" class="block text-xs font-medium"
+        >Bookmark name</label
+      >
       <input
-        id="pdf-bookmark-name"
+        :id="readerId('pdf-bookmark-name')"
         ref="nameInput"
         v-model="name"
         type="text"
@@ -119,11 +124,11 @@ async function removeBookmark(id: string) {
           @submit.prevent="renameBookmark(bookmark.id)"
           @keydown.esc.stop.prevent="cancelRename"
         >
-          <label :for="`rename-${bookmark.id}`" class="block text-xs font-medium"
+          <label :for="readerId(`rename-${bookmark.id}`)" class="block text-xs font-medium"
             >New bookmark name</label
           >
           <input
-            :id="`rename-${bookmark.id}`"
+            :id="readerId(`rename-${bookmark.id}`)"
             :ref="
               (element) => {
                 editInput = element as HTMLInputElement | null

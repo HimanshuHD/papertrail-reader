@@ -20,8 +20,8 @@ import ThemePicker from '../ThemePicker.vue'
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  min-height: 52px;
-  padding: 4px 12px;
+  height: 46px;
+  padding: 0 12px;
   background: var(--pt-panel);
 }
 .workspace-logo {

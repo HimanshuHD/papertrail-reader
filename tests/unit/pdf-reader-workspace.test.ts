@@ -32,6 +32,7 @@ const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-need
 
 function mountReader(
   initial: {
+    active?: boolean
     initialPanel?: 'contents' | 'search'
     initialSearchQuery?: string
     initialState?: import('../../src/features/reader/document-sessions').SessionState
@@ -91,6 +92,42 @@ describe('PDF reader utility workspace', () => {
   afterEach(() => {
     wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
     vi.clearAllMocks()
+  })
+
+  it('only the active retained reader handles global shortcuts', async () => {
+    const first = mountReader({ active: false }),
+      second = mountReader({ active: true })
+    wrappers.push(first, second)
+    await flushPromises()
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }))
+    await flushPromises()
+    expect(first.find('input[aria-label="Search PDF text"]').exists()).toBe(false)
+    expect(second.find('input[aria-label="Search PDF text"]').exists()).toBe(true)
+    await first.setProps({ active: true })
+    await second.setProps({ active: false })
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }))
+    await flushPromises()
+    expect(first.find('input[aria-label="Search PDF text"]').exists()).toBe(true)
+  })
+
+  it('restores two-page layout and preserves it in captured and saved reading state', async () => {
+    const wrapper = mountReader({
+      initialState: {
+        panel: null,
+        query: '',
+        pdf: { page: 1, view: { fitMode: 'width', zoom: 1, twoPage: true } },
+      },
+    })
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(wrapper.find('.pdf-pages-spread').exists()).toBe(true)
+    expect(wrapper.vm.capture().pdf?.view.twoPage).toBe(true)
+    await wrapper.get('[aria-label="Next page"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 3 of 3')
+    await wrapper.get('[aria-label="Two-page view"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.vm.capture().pdf?.view.twoPage).toBeUndefined()
   })
 
   it('restores session state ahead of persisted state and captures before idempotent disposal', async () => {
@@ -277,7 +314,7 @@ describe('PDF reader utility workspace', () => {
     expect(wrapper.get('button[type="submit"]').attributes('disabled')).toBeUndefined()
   })
 
-  it('uses one accessible below-button tooltip, places Contents last, and omits the slider', async () => {
+  it('uses one portal tooltip associated with its control, places Contents last, and omits the slider', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)
     await flushPromises()
@@ -285,9 +322,31 @@ describe('PDF reader utility workspace', () => {
     expect(buttons.at(-1)?.attributes('aria-label')).toBe('Contents')
     for (const button of buttons) {
       expect(button.attributes('title')).toBeUndefined()
-      expect(button.get('.icon-tooltip').classes()).toContain('top-full')
     }
+    const zoom = wrapper.get('[aria-label="Zoom in"]')
+    await zoom.trigger('focus')
+    await flushPromises()
+    const tooltip = document.querySelector('[role="tooltip"]')
+    expect(tooltip?.textContent).toBe('Zoom in')
+    expect(zoom.attributes('aria-describedby')).toBe(tooltip?.id)
+    await zoom.trigger('blur')
+    await flushPromises()
+    expect(document.querySelector('[role="tooltip"]')).toBeNull()
     expect(wrapper.find('input[type="range"]').exists()).toBe(false)
+  })
+  it('restores the selected page independently of a neighboring viewport-center anchor', async () => {
+    const wrapper = mountReader({
+      initialState: {
+        panel: null,
+        query: '',
+        pdf: { page: 1, view: { fitMode: 'width', zoom: 1 }, anchor: { page: 2, x: 0.5, y: 0.5 } },
+      },
+    })
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(
+      (wrapper.get('input[aria-label="Current page"]').element as HTMLInputElement).value,
+    ).toBe('1')
   })
   it('increments zoom from the active fit scale and accumulates rapid clicks', async () => {
     const wrapper = mountReader()
@@ -296,11 +355,36 @@ describe('PDF reader utility workspace', () => {
     await wrapper.get('button[aria-label="Fit page"]').trigger('click')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('50%')
+    expect(
+      (wrapper.get('input[aria-label="PDF zoom percent"]').element as HTMLInputElement).value,
+    ).toBe('50')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('100%')
+    expect(
+      (wrapper.get('input[aria-label="PDF zoom percent"]').element as HTMLInputElement).value,
+    ).toBe('100')
+  })
+  it('applies direct zoom input, caps it at 400% and preserves a valid value after empty input', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get('input[aria-label="PDF zoom percent"]')
+    await input.setValue('175')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('175')
+    await input.setValue('900')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('400')
+    expect(continuity.save).toHaveBeenLastCalledWith(expect.any(Number), {
+      fitMode: 'custom',
+      zoom: 4,
+    })
+    await input.setValue('')
+    expect((input.element as HTMLInputElement).value).toBe('400')
+    await input.setValue('1')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('25')
   })
   it('regenerates a restored search only after its query watcher has settled', async () => {
     const wrapper = mountReader({ initialPanel: 'search', initialSearchQuery: 'Matching' })

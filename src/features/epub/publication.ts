@@ -111,6 +111,21 @@ function resolvePath(base: string, href: string): string {
 }
 
 const XHTML = 'http://www.w3.org/1999/xhtml'
+const SVG = 'http://www.w3.org/2000/svg'
+/** Flatten common ebook cover wrappers; never render the source SVG tree. */
+function coverImage(element: Element): Element | undefined {
+  if (element.namespaceURI !== SVG || element.localName !== 'svg') return
+  const children = [...element.children]
+  if (
+    children.some(
+      (child) =>
+        child.namespaceURI !== SVG || !['image', 'title', 'desc'].includes(child.localName),
+    )
+  )
+    return
+  const images = children.filter((child) => child.localName === 'image')
+  if (images.length === 1 && !images[0]!.children.length) return images[0]
+}
 const allowed = new Set(
   'a main header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
     ' ',
@@ -190,6 +205,22 @@ export function sanitizeChapter(
     if (node.nodeType !== Node.ELEMENT_NODE) return
     const element = node as Element
     const tag = element.localName.toLowerCase()
+    const cover = coverImage(element)
+    if (cover) {
+      const url = formatting?.images.get(element)
+      const fresh = output.createElementNS(XHTML, url ? 'img' : 'span')
+      fresh.setAttribute('data-reader-node', `pt-${nodes}`)
+      fresh.setAttribute('data-reader-image', '')
+      const alt = (
+        element.getElementsByTagNameNS(SVG, 'title')[0]?.textContent || 'Book illustration'
+      ).slice(0, 1000)
+      if (url) {
+        fresh.setAttribute('src', url)
+        fresh.setAttribute('alt', alt)
+      } else fresh.textContent = alt
+      parent.appendChild(fresh)
+      return
+    }
     if (element.namespaceURI !== XHTML || discarded.has(tag)) return
     // Only verified local images enter formatted view; retain alternate text otherwise.
     if (tag === 'img') {
@@ -367,6 +398,15 @@ export async function preparePublication(
       if (elements.length > 100000) throw new EpubArchiveError('EPUB chapter is too complex.')
       for (const element of elements) {
         signal?.throwIfAborted()
+        const cover = coverImage(element)
+        if (cover) {
+          const href =
+            cover.getAttribute('href') ??
+            cover.getAttributeNS('http://www.w3.org/1999/xlink', 'href') ??
+            ''
+          const url = await image(path, href)
+          if (url) images.set(element, url)
+        }
         if (element.namespaceURI !== XHTML) continue
         if (element.localName === 'style') sheets.push(await css(element.textContent ?? '', path))
         if (

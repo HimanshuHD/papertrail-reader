@@ -1,6 +1,7 @@
 import type { PdfFitMode } from '../features/pdf/pdf-session'
 
 export interface PdfViewSettings {
+  twoPage?: boolean
   fitMode: PdfFitMode
   zoom: number
 }
@@ -39,6 +40,7 @@ export interface PdfReadingState {
 export function normalizePdfView(value?: Partial<PdfViewSettings>): PdfViewSettings {
   const fitMode = value?.fitMode
   return {
+    ...(value?.twoPage === true ? { twoPage: true } : {}),
     fitMode: fitMode === 'page' || fitMode === 'custom' ? fitMode : 'width',
     zoom:
       typeof value?.zoom === 'number' && Number.isFinite(value.zoom)

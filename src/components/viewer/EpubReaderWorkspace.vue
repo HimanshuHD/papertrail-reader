@@ -35,7 +35,18 @@ import {
   type EpubTypography,
 } from '../../features/epub/typography'
 
-const props = defineProps<{ document: DiscoveredDocument; initialState?: SessionState }>()
+const props = withDefaults(
+  defineProps<{
+    document: DiscoveredDocument
+    initialState?: SessionState
+    active?: boolean
+    idPrefix?: string
+  }>(),
+  { active: true, idPrefix: '', initialState: undefined },
+)
+const restoringSession = ref(Boolean(props.initialState?.epub))
+const readerId = (id: string) => `${props.idPrefix}${id}`
+
 const emit = defineEmits<{
   phaseChange: [phase: 'ready' | 'error']
   utilityChange: [panel: UtilityPanel, query: string]
@@ -131,6 +142,7 @@ function scheduleHighlights() {
   highlightFrame = requestAnimationFrame(paintHighlights)
 }
 function captureHighlight(event?: Event) {
+  if (props.active === false) return
   if (loading.value) return
   const context = reader.session.value?.annotationContext?.()
   if (
@@ -325,6 +337,7 @@ function onFramePointer(event: PointerEvent) {
   closeTypography(false)
 }
 function onFrameKey(event: KeyboardEvent) {
+  if (props.active === false) return
   if (event.key !== 'Escape') return
   if (typographyOpen.value) {
     event.preventDefault()
@@ -445,7 +458,9 @@ watch(
   { immediate: true },
 )
 const loading = computed(() => reader.busy.value || continuity.preparing.value)
-const statisticsReady = computed(() => !loading.value && !!reader.session.value)
+const statisticsReady = computed(
+  () => props.active !== false && !loading.value && !!reader.session.value,
+)
 watch([rightPanel, statisticsReady], ([panel, ready]) => {
   if (ready) emit('utilityChange', panel, '')
 })
@@ -501,6 +516,7 @@ async function toggleTypography() {
   popover.value?.querySelector<HTMLButtonElement>('button')?.focus({ preventScroll: true })
 }
 function onKey(event: KeyboardEvent) {
+  if (props.active === false) return
   if (event.key !== 'Escape' || !root.value?.contains(event.target as Node)) return
   if (typographyOpen.value) closeTypography()
   else if (rightPanel.value) closePanel()
@@ -508,6 +524,7 @@ function onKey(event: KeyboardEvent) {
   event.preventDefault()
 }
 function onPointer(event: PointerEvent) {
+  if (props.active === false) return
   const target = event.target as Node
   if (
     typographyOpen.value &&
@@ -536,6 +553,18 @@ function dispose(): Promise<void> {
   disposed = Promise.all([writes, reader.settled()]).then(() => {})
   return disposed
 }
+watch(
+  () => props.active,
+  (active) => {
+    if (active === false) {
+      annotationsPanel.value?.closeMenu()
+      saveReading()
+      typographyOpen.value = false
+      pendingHighlight.value = null
+      selectionPosition.value = null
+    }
+  },
+)
 defineExpose({ capture, dispose })
 
 onMounted(() => {
@@ -642,6 +671,7 @@ async function open(preserve = false) {
       },
     )
     if (owner !== openGeneration || file !== props.document.file || !reader.session.value) return
+    restoringSession.value = false
     if (preserve) reader.contentsEntry.value = contentsEntry
     if (saved?.location && !normalizeLocation(saved.location, reader.session.value.chapters.length))
       continuity.notice.value = 'The saved chapter is unavailable. Reading starts at the beginning.'
@@ -720,23 +750,24 @@ watch(
     @pointerdown.capture="clearHighlightSelection"
   >
     <header
-      class="epub-header relative z-20 flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
+      class="epub-header relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
-      <div class="min-w-0 flex-1 basis-40">
+      <div class="min-w-24 flex-1 basis-40">
         <h2
-          id="reader-title"
-          class="truncate text-base font-semibold sm:text-lg"
+          :id="readerId('reader-title')"
+          data-reader-title
+          class="truncate text-sm leading-5 font-semibold sm:text-base"
           :title="document.name"
         >
           {{ metadata?.title || document.name }}
         </h2>
-        <p v-if="metadata" class="mt-1 text-xs text-muted">
+        <p v-if="metadata" class="mt-0.5 truncate text-xs leading-4 text-muted">
           Chapter {{ reader.chapter.value + 1 }} of {{ metadata.chapters.length }}
           <span v-if="textOnly"> · Text-only view</span>
         </p>
       </div>
       <div
-        class="flex min-w-0 flex-wrap items-center justify-end gap-1"
+        class="flex h-10 min-w-0 max-w-[calc(100%-6.5rem)] flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
         aria-label="EPUB reader controls"
       >
         <button
@@ -757,7 +788,7 @@ watch(
           :disabled="unavailable"
           :active="typographyOpen"
           :aria-expanded="typographyOpen"
-          aria-controls="epub-typography"
+          :aria-controls="readerId('epub-typography')"
           @click="toggleTypography"
         />
         <IconButton
@@ -774,7 +805,7 @@ watch(
           :disabled="unavailable"
           :active="rightPanel === 'annotations'"
           :aria-expanded="rightPanel === 'annotations'"
-          aria-controls="epub-utility-panel"
+          :aria-controls="readerId('epub-utility-panel')"
           @click="togglePanel('annotations')"
         />
         <IconButton
@@ -783,7 +814,7 @@ watch(
           :disabled="unavailable"
           :active="rightPanel === 'bookmarks'"
           :aria-expanded="rightPanel === 'bookmarks'"
-          aria-controls="epub-utility-panel"
+          :aria-controls="readerId('epub-utility-panel')"
           @click="togglePanel('bookmarks')"
         />
         <IconButton
@@ -792,7 +823,7 @@ watch(
           :disabled="unavailable"
           :active="rightPanel === 'contents'"
           :aria-expanded="rightPanel === 'contents'"
-          aria-controls="epub-utility-panel"
+          :aria-controls="readerId('epub-utility-panel')"
           @click="togglePanel('contents')"
         />
       </div>
@@ -803,13 +834,15 @@ watch(
       >
         <section
           v-if="typographyOpen"
-          id="epub-typography"
+          :id="readerId('epub-typography')"
           ref="popover"
           class="epub-popover rounded-2xl border border-line bg-panel p-4 shadow-2xl"
-          aria-labelledby="epub-typography-title"
+          :aria-labelledby="readerId('epub-typography-title')"
         >
           <div class="mb-3 flex items-center justify-between gap-2">
-            <h3 id="epub-typography-title" class="text-sm font-semibold">Typography</h3>
+            <h3 :id="readerId('epub-typography-title')" class="text-sm font-semibold">
+              Typography
+            </h3>
             <IconButton label="Close typography" icon="close" @click="closeTypography()" />
           </div>
           <fieldset class="space-y-4" :disabled="unavailable">
@@ -874,7 +907,13 @@ watch(
       </Transition>
     </header>
     <HighlightSelectionToolbar
-      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && !loading"
+      v-if="
+        props.active !== false &&
+        (pendingHighlight || toolbarSavedId) &&
+        selectionPosition &&
+        !loading
+      "
+      :id-prefix="idPrefix"
       format="EPUB"
       :anchor="selectionPosition"
       :disabled="!highlights.handle.value || highlights.busy.value"
@@ -929,11 +968,17 @@ watch(
         />
         <div v-if="loading" class="epub-loading-cover" aria-busy="true">
           <LoadingState
-            v-if="showLoader"
-            :label="metadata ? 'Loading chapter…' : 'Opening EPUB…'"
+            v-if="restoringSession || showLoader"
+            :label="
+              restoringSession
+                ? 'Restoring your reading position…'
+                : metadata
+                  ? 'Loading chapter…'
+                  : 'Opening EPUB…'
+            "
             detail="Preparing your reading space"
           />
-          <span v-else class="sr-only" role="status">Loading EPUB content…</span>
+          <span v-else role="status" class="sr-only">Loading EPUB content…</span>
         </div>
         <button
           class="epub-step epub-previous disabled:opacity-40"
@@ -985,7 +1030,7 @@ watch(
       >
         <aside
           v-if="rightPanel"
-          id="epub-utility-panel"
+          :id="readerId('epub-utility-panel')"
           data-reader-activity
           class="epub-side-panel border-l border-line bg-panel"
           aria-label="EPUB utility panel"
@@ -1027,6 +1072,7 @@ watch(
             v-else-if="rightPanel === 'annotations'"
             ref="annotationsPanel"
             :key="continuity.fingerprint.value ?? document.id"
+            :id-prefix="idPrefix"
             format="EPUB"
             :annotations="highlights.highlights.value"
             :selected-id="selectedHighlight"
@@ -1060,6 +1106,7 @@ watch(
           />
           <EpubBookmarksPanel
             v-else
+            :id-prefix="idPrefix"
             :bookmarks="bookmarks.bookmarks.value"
             :available="bookmarks.available.value"
             :busy="bookmarks.busy.value || unavailable"
@@ -1085,8 +1132,10 @@ watch(
   align-items: center;
   gap: 0.5rem;
   margin-right: 0.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 0.75rem;
-  min-height: 44px;
+  min-height: 40px;
 }
 .epub-mode-switch:disabled {
   opacity: 0.5;
@@ -1291,8 +1340,8 @@ watch(
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
 }

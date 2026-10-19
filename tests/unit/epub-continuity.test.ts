@@ -143,6 +143,7 @@ it('normalizes metadata, strips bytes and isolates future or ambiguous records',
     textOnly: true,
     typography: { fontSize: null, lineSpacing: null, readingWidth: null },
   })
+  expect(normalizeEpubRecord({ ...record, twoPage: true })).toEqual(record)
   expect(normalizeEpubRecord({ ...record, bytes: new Blob(['book']) })).toEqual(record)
   expect(normalizeEpubRecord({ ...record, format: 'PDF' })).toBeUndefined()
   expect(normalizeEpubRecord({ ...record, version: 2 })).toBeUndefined()

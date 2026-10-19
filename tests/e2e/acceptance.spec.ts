@@ -77,7 +77,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await open()
     const text =
       format === 'PDF'
-        ? page.locator('#pdf-page-1 .textLayer span').first()
+        ? page.locator('[data-pdf-page="1"] .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(text).toBeVisible()
     if (format === 'EPUB')
@@ -241,7 +241,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
     const text =
       format === 'PDF'
-        ? page.locator('#pdf-page-1 .textLayer span').first()
+        ? page.locator('[data-pdf-page="1"] .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(page.locator('.utility-panel-leave-active')).toHaveCount(0)
     await page.evaluate(async () => {
@@ -249,7 +249,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       await new Promise<void>((done) => requestAnimationFrame(() => done()))
     })
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     await expect(text).toBeVisible()
     await text.scrollIntoViewIfNeeded()
     await page.evaluate(async () => {
@@ -369,17 +372,20 @@ for (const rotation of [0, 90, 180, 270]) {
       for (let i = 0; i < 16; i++)
         await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
       if (zoomSteps) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-      await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
-      await page.locator('#pdf-page-1 .textLayer span').first().scrollIntoViewIfNeeded()
+      await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
+      await page.locator('[data-pdf-page="1"] .textLayer span').first().scrollIntoViewIfNeeded()
       await page.locator('.pdf-scroll').evaluate((pane) => {
-        const text = pane.querySelector('#pdf-page-1 .textLayer span')!
+        const text = pane.querySelector('[data-pdf-page="1"] .textLayer span')!
         pane.scrollTop += text.getBoundingClientRect().top - pane.getBoundingClientRect().top - 32
       })
-      await expect(page.locator('#pdf-page-1 .textLayer span').first()).toBeInViewport()
-      await expect(page.locator('#pdf-page-2 .textLayer span').first()).toBeInViewport()
+      await expect(page.locator('[data-pdf-page="1"] .textLayer span').first()).toBeInViewport()
+      await expect(page.locator('[data-pdf-page="2"] .textLayer span').first()).toBeInViewport()
       const endpoints = async (number: number) =>
         page
-          .locator(`#pdf-page-${number} .textLayer span`)
+          .locator(`[data-pdf-page="${number}"] .textLayer span`)
           .first()
           .evaluate((element, angle) => {
             const rect = element.getBoundingClientRect()
@@ -405,8 +411,8 @@ for (const rotation of [0, 90, 180, 270]) {
             point,
           ),
         ).toBe(true)
-      const one = (await page.locator('#pdf-page-1').boundingBox())!,
-        two = (await page.locator('#pdf-page-2').boundingBox())!
+      const one = (await page.locator('[data-pdf-page="1"]').boundingBox())!,
+        two = (await page.locator('[data-pdf-page="2"]').boundingBox())!
       for (const backward of [false, true]) {
         const start = backward ? second.end : first.start,
           end = backward ? first.start : second.end
@@ -527,7 +533,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.evaluate(() => window.dispatchEvent(new Event('blur')))
     await expect.poll(read).toEqual(saved)
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     else
       await expect(
         page.frameLocator('iframe').getByRole('heading', { name: 'First chapter' }),
@@ -549,9 +558,9 @@ test('PDF distant saved highlight lands 24px below the reading viewport after vi
   const field = page.getByRole('spinbutton', { name: 'Current page', exact: true })
   await field.fill('8')
   await field.press('Tab')
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'ready')
   await page
-    .locator('#pdf-page-8 .textLayer span')
+    .locator('[data-pdf-page="8"] .textLayer span')
     .first()
     .evaluate((element) => {
       const range = document.createRange()
@@ -563,14 +572,14 @@ test('PDF distant saved highlight lands 24px below the reading viewport after vi
   await page.getByRole('button', { name: 'Add highlight', exact: true }).click()
   await field.fill('1')
   await field.press('Tab')
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'pending')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'pending')
   await page.getByRole('button', { name: 'Annotations', exact: true }).click()
   await page.locator('[data-annotation-id]').first().click()
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'ready')
   await expect
     .poll(() =>
       page.locator('.pdf-scroll').evaluate((pane) => {
-        const text = pane.querySelector('#pdf-page-8 .textLayer span')!
+        const text = pane.querySelector('[data-pdf-page="8"] .textLayer span')!
         const range = document.createRange()
         range.selectNodeContents(text)
         return Math.round(

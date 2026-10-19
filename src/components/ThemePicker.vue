@@ -15,18 +15,18 @@ function toggleTheme() {
         aria-label="Dark mode"
         :aria-pressed="theme.preference === 'dark'"
         :title="theme.preference === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
-        class="pt-framed-control inline-flex min-h-11 items-center gap-2 rounded-full border border-line bg-panel p-1 text-ink focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand"
+        class="theme-toggle pt-plain-control inline-flex items-center rounded-full text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand"
         @click="toggleTheme"
       >
         <span
           :class="[
-            'rounded-full p-2',
-            theme.preference === 'light' ? 'bg-brand pt-on-brand' : 'text-muted',
+            'theme-option rounded-full',
+            theme.preference === 'light' ? 'pt-on-brand' : 'text-muted',
           ]"
         >
           <svg
             aria-hidden="true"
-            class="size-5"
+            class="size-[18px]"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -41,13 +41,13 @@ function toggleTheme() {
         </span>
         <span
           :class="[
-            'rounded-full p-2',
-            theme.preference === 'dark' ? 'bg-brand pt-on-brand' : 'text-muted',
+            'theme-option rounded-full',
+            theme.preference === 'dark' ? 'pt-on-brand' : 'text-muted',
           ]"
         >
           <svg
             aria-hidden="true"
-            class="size-5"
+            class="size-[18px]"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -67,17 +67,54 @@ function toggleTheme() {
 </template>
 
 <style scoped>
-.theme-compact button {
-  border: 0;
-  background: transparent;
+.theme-toggle {
+  position: relative;
+  height: 36px;
+  padding: 3px;
   gap: 0;
-  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--pt-brand) 45%, var(--pt-line));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--pt-brand) 12%, var(--pt-canvas));
 }
-.theme-compact button > span:not(.sr-only) {
-  padding: 7px;
+.theme-toggle::before {
+  content: '';
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  left: 2px;
+  top: 50%;
+  margin-top: -14px;
+  border-radius: 50%;
+  background: var(--pt-brand);
+  transform: translateX(0);
+  transition: transform 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.theme-toggle[aria-pressed='true']::before {
+  transform: translateX(28px);
+}
+.theme-option {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 5px;
+  transition: color 180ms ease;
+}
+.theme-compact button {
+  height: 34px;
+  padding: 2px;
 }
 .theme-compact p {
   max-width: 10rem;
   font-size: 0.75rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .theme-toggle::before,
+  .theme-option {
+    transition: none;
+  }
 }
 </style>
