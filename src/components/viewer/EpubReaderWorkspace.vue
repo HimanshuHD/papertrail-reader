@@ -929,11 +929,16 @@ watch(
         />
         <div v-if="loading" class="epub-loading-cover" aria-busy="true">
           <LoadingState
-            v-if="showLoader"
+            v-if="showLoader && !initialState?.epub"
             :label="metadata ? 'Loading chapter…' : 'Opening EPUB…'"
             detail="Preparing your reading space"
           />
-          <span v-else class="sr-only" role="status">Loading EPUB content…</span>
+          <span
+            v-else
+            role="status"
+            :class="initialState?.epub ? 'px-4 py-3 text-xs text-muted' : 'sr-only'"
+            >{{ initialState?.epub ? 'Restoring EPUB content…' : 'Loading EPUB content…' }}</span
+          >
         </div>
         <button
           class="epub-step epub-previous disabled:opacity-40"

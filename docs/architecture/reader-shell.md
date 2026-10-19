@@ -80,3 +80,11 @@ Arrow keys and Home/End move a single roving tab stop without activating; Enter/
 A horizontally scrollable strip keeps touch access at small widths. The separate horizontal ellipsis lists every open document with its current/error/reconnect state and selected marker, supports arrow/Home/End/Escape navigation and returns focus predictably. Tab keys do not reach the reader's window shortcuts. The strip's plus opens the existing library source menu, including when the library starts closed; no second file picker is introduced. Existing source replacement/forget semantics remain; cross-source/reload restoration is not added here.
 
 Functional component/browser tests cover tab focus, content identity, close order, empty/add behavior, independent PDF/EPUB state, light/dark, reduced motion and narrow menu bounds. No automatic visual comparison/capture workflow or approved baseline changes are introduced. Full persisted tab/reconnect acceptance remains #222/#223.
+
+### Tab presentation and warm identity reuse
+
+Tabs opt out of the shared button inset/selected treatment. Their own light outline, 6px spacing, small top radius and shadow-free hover state follow the approved reference. The active tab has no bottom border and joins the reader toolbar; inactive tabs keep a small bottom gutter. The smaller close icon is inside the single tab button, with Delete providing the keyboard close action rather than nesting another button.
+
+Reusable PDF/EPUB/DOC/generic SVG badges live in `src/assets/icons`, consumed by `FileTypeIcon`; each occupies 30 × 20 CSS pixels regardless of extension length. This increment uses them in tabs only. DOC/generic icons do not introduce additional reader formats.
+
+Completed content fingerprints are shared by the identity service in a WeakMap keyed by the immutable File snapshot. The tab host and reconstructed PDF/EPUB continuity use the same cached result; a new/reselected File is hashed again, and aborted/failed operations never populate the cache. Document bytes and live viewers are not cached. Returning sessions use a compact restoration status instead of the full opening animation; rendering stays covered until the saved reading position is ready. Re-parsing/re-rendering still has a cost under the one-live-viewer policy; this is not an instant-switch or large-document performance budget claim.

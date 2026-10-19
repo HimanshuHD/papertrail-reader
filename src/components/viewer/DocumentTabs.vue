@@ -2,6 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import type { DocumentSession } from '../../features/reader/document-sessions'
 import UiIcon from '../UiIcon.vue'
+import FileTypeIcon from '../icons/FileTypeIcon.vue'
 const props = defineProps<{ tabs: readonly DocumentSession[]; selectedId: string | null }>()
 const emit = defineEmits<{ activate: [id: string]; close: [id: string]; add: [] }>()
 const root = ref<HTMLElement | null>(null)
@@ -164,7 +165,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
           :aria-label="`${label(tab)} — ${status(tab)}`"
           :title="`${label(tab)} — ${status(tab)}. Delete closes this tab.`"
           aria-keyshortcuts="Delete"
-          class="tab-activate"
+          class="tab-activate pt-plain-control"
           @focus="focusTitle(tab.id)"
           @blur="focusedTitle = null"
           @mouseenter="hovered = tab.id"
@@ -172,7 +173,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
           @click="emit('activate', tab.id)"
           @keydown="keys($event, tab.id)"
         >
-          <span class="tab-format" aria-hidden="true">{{ tab.format }}</span>
+          <FileTypeIcon :extension="tab.format" />
           <span class="tab-title">{{ tab.title }}</span>
           <span
             v-if="tab.phase === 'loading' || tab.phase === 'error' || tab.phase === 'reconnect'"
@@ -180,15 +181,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
             class="tab-status"
             >{{ tab.phase === 'loading' ? '…' : '!' }}</span
           >
-        </button>
-        <button
-          type="button"
-          :aria-label="`Close ${label(tab)}`"
-          tabindex="-1"
-          class="tab-close"
-          @click="close(tab.id)"
-        >
-          <UiIcon name="close" />
+          <span
+            class="tab-close"
+            aria-hidden="true"
+            @click.stop="close(tab.id)"
+            @pointerdown.prevent
+            ><UiIcon name="close"
+          /></span>
         </button>
       </div>
     </div>
@@ -196,7 +195,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
       type="button"
       aria-label="Add local documents from tabs"
       title="Add local documents"
-      class="tab-action"
+      class="tab-action pt-plain-control"
       @click="emit('add')"
     >
       <UiIcon name="plus" />
@@ -209,7 +208,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
       aria-controls="open-document-menu"
       :aria-expanded="menuOpen"
       :disabled="!tabs.length"
-      class="tab-action tab-overflow"
+      class="tab-action tab-overflow pt-plain-control"
       @click="toggleMenu"
       @keydown.down.prevent="!menuOpen && toggleMenu()"
     >
@@ -255,53 +254,85 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   min-width: 0;
   position: relative;
   align-self: stretch;
+  z-index: 1;
   color: var(--pt-ink);
 }
 .tab-strip {
   display: flex;
   flex: 1;
+  gap: 6px;
   min-width: 0;
+  padding: 6px 12px 3px;
   overflow-x: auto;
-  scrollbar-width: thin;
+  overflow-y: hidden;
+  scrollbar-width: none;
   align-self: stretch;
 }
 .document-tab {
   display: flex;
-  flex: 0 0 auto;
-  max-width: 240px;
-  min-width: 72px;
-  border-right: 1px solid var(--pt-line);
-  border-bottom: 2px solid transparent;
-}
-.document-tab.selected {
-  border-bottom-color: var(--pt-brand);
-  background: var(--pt-canvas);
+  flex: 0 0 236px;
+  max-width: 260px;
+  min-width: 80px;
 }
 .tab-activate {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  width: 100%;
   min-width: 0;
-  padding: 0 8px;
+  padding: 0 6px 0 10px;
   min-height: 44px;
+  border: 1px solid var(--pt-line);
+  border-radius: 5px 5px 2px 2px;
+  background: color-mix(in srgb, var(--pt-panel) 75%, var(--pt-canvas));
+  color: var(--pt-ink);
+  box-shadow: none;
   text-align: left;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.tab-activate:hover {
+  border-color: color-mix(in srgb, var(--pt-brand) 60%, var(--pt-line));
+  background: var(--pt-control-surface);
+}
+.document-tab.selected .tab-activate {
+  border-color: var(--pt-brand);
+  border-width: 2px 2px 0;
+  /* Extend across the 3px gutter and shell rule, visually joining the reader toolbar. */
+  border-bottom-color: transparent;
+  border-radius: 5px 5px 0 0;
+  background: var(--pt-panel);
+  margin-bottom: -4px;
+  padding-bottom: 4px;
+  position: relative;
+  z-index: 1;
 }
 .tab-title {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tab-format {
-  font-size: 9px;
-  color: var(--pt-muted);
-  flex-shrink: 0;
-}
 .tab-status {
   color: var(--pt-brand);
 }
-.tab-action,
 .tab-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 24px;
+  height: 28px;
+  margin-left: auto;
+  color: var(--pt-muted);
+}
+.tab-close :deep(svg) {
+  width: 14px;
+  height: 14px;
+}
+.tab-close:hover,
+.selected .tab-close {
+  color: var(--pt-brand);
+}
+.tab-action {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -309,17 +340,16 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   width: 44px;
   min-height: 44px;
   color: var(--pt-muted);
+  border: 0;
+  box-shadow: none;
 }
-.tab-close {
-  width: 32px;
+.tab-action:hover {
+  background: var(--pt-canvas);
+  color: var(--pt-brand);
 }
 .tab-overflow {
   font-size: 24px;
   line-height: 1;
-}
-button:hover {
-  background: var(--pt-canvas);
-  color: var(--pt-brand);
 }
 button:focus-visible {
   outline: 2px solid var(--pt-brand);
@@ -370,9 +400,6 @@ button:disabled {
 @media (max-width: 600px) {
   .document-tab {
     max-width: 180px;
-  }
-  .tab-format {
-    display: none;
   }
 }
 </style>

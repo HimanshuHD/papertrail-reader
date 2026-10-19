@@ -110,10 +110,7 @@ onBeforeUnmount(() => {
       @keydown="resizeKey"
     ></div>
     <div :class="['reader-column', { 'opener-visible': !sidebarOpen }]">
-      <div
-        v-if="!sidebarOpen || $slots.tabs"
-        class="workspace-topbar border-b border-line bg-panel"
-      >
+      <div v-if="!sidebarOpen || $slots.tabs" class="workspace-topbar bg-panel">
         <div v-if="!sidebarOpen" class="library-opener"><slot name="opener" /></div>
         <slot name="tabs" />
       </div>
@@ -141,6 +138,14 @@ onBeforeUnmount(() => {
   min-height: 52px;
   position: relative;
   z-index: 31;
+}
+.workspace-topbar::after {
+  content: '';
+  position: absolute;
+  inset: auto 0 0;
+  height: 1px;
+  background: var(--pt-line);
+  pointer-events: none;
 }
 .library-opener {
   display: flex;

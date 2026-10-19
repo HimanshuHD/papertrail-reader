@@ -23,6 +23,15 @@ const pdf = (name: string, pages: number) => ({
 test('tabs preserve one viewer, manual keyboard activation, neighbor close and final empty library', async ({
   page,
 }) => {
+  await page.addInitScript(() => {
+    const reads: Record<string, number> = {}
+    Reflect.set(window, 'tabIdentityReads', reads)
+    const slice = File.prototype.slice
+    File.prototype.slice = function (...args) {
+      reads[this.name] = (reads[this.name] ?? 0) + 1
+      return slice.apply(this, args)
+    }
+  })
   const errors: string[] = []
   page.on('pageerror', (error) => errors.push(error.message))
   await page.goto('./#/app')
@@ -39,6 +48,16 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await open(page, 'PDF: first.pdf')
   const currentPage = page.getByRole('spinbutton', { name: 'Current page' })
   await expect(currentPage).toHaveValue('1')
+  const originalReads = await page.evaluate(
+    () => Reflect.get(window, 'tabIdentityReads')['first.pdf'] as number,
+  )
+  expect(originalReads).toBeGreaterThan(0)
+  const selectedStyle = await page.getByRole('tab', { selected: true }).evaluate((element) => {
+    const style = getComputedStyle(element)
+    return { shadow: style.boxShadow, bottom: style.borderBottomWidth }
+  })
+  expect(selectedStyle).toEqual({ shadow: 'none', bottom: '0px' })
+  await expect(page.getByRole('tab', { selected: true }).locator('button')).toHaveCount(0)
   await currentPage.fill('2')
   await currentPage.press('Tab')
   await page.getByRole('button', { name: 'Bookmarks', exact: true }).click()
@@ -81,6 +100,9 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await first.press('Enter')
   await expect(first).toHaveAttribute('aria-selected', 'true')
   await expect(currentPage).toHaveValue('2')
+  expect(
+    await page.evaluate(() => Reflect.get(window, 'tabIdentityReads')['first.pdf'] as number),
+  ).toBe(originalReads)
   await expect(page.getByRole('searchbox', { name: 'Search PDF text', exact: true })).toHaveValue(
     'First',
   )
@@ -93,7 +115,7 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await expect(second).toHaveAttribute('aria-selected', 'true')
   await expect(currentPage).toHaveValue('1')
   await expect(page.getByRole('button', { name: 'Close utility panel' })).toHaveCount(0)
-  await second.press('Delete')
+  await second.locator('.tab-close').click()
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(/EPUB: book.epub/)
   await expect(
     page.frameLocator('iframe').getByRole('heading', { name: 'Second chapter' }),

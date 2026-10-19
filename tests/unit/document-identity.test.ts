@@ -28,3 +28,18 @@ it('stops an abandoned fingerprint before reading bytes', async () => {
   await expect(fingerprintDocument(file, controller.signal)).rejects.toThrow()
   expect(read).not.toHaveBeenCalled()
 })
+
+it('reuses a completed immutable File identity without reading bytes again, while changed File objects are verified', async () => {
+  vi.stubGlobal('crypto', webcrypto)
+  const file = new File(['large document snapshot'], 'reader.pdf') as unknown as globalThis.File
+  const read = vi.spyOn(file, 'slice')
+  const first = await fingerprintDocument(file)
+  read.mockClear()
+  expect(await fingerprintDocument(file)).toBe(first)
+  expect(read).not.toHaveBeenCalled()
+  const abort = new AbortController()
+  abort.abort()
+  await expect(fingerprintDocument(file, abort.signal)).rejects.toThrow()
+  const changed = new File(['changed snapshot'], 'reader.pdf') as unknown as globalThis.File
+  expect(await fingerprintDocument(changed)).not.toBe(first)
+})

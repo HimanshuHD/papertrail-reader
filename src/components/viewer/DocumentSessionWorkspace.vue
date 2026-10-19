@@ -78,19 +78,17 @@ function releaseFailed() {
   )
 }
 let opening: AbortController | null = null
-const fingerprints = new WeakMap<File, string>()
 async function open(document: DiscoveredDocument) {
   opening?.abort()
   const owner = new AbortController()
   opening = owner
   emit('status', `Checking local ${document.format}: ${document.name}.`)
-  let fingerprint = fingerprints.get(document.file)
+  let fingerprint: string | undefined
   try {
-    fingerprint ??= await (document.format === 'EPUB' ? fingerprintEpub : fingerprintDocument)(
+    fingerprint = await (document.format === 'EPUB' ? fingerprintEpub : fingerprintDocument)(
       document.file,
       owner.signal,
     )
-    fingerprints.set(document.file, fingerprint)
   } catch {
     // Let the owning reader present unreadable/unsupported file errors locally.
   }

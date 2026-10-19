@@ -1287,7 +1287,10 @@ onBeforeUnmount(() => {
           v-if="phase === 'loading' || phase === 'restoring'"
           class="absolute inset-0 z-10 bg-canvas"
         >
-          <LoadingState label="Opening document" :detail="document.name" />
+          <p v-if="initialState?.pdf" role="status" class="px-4 py-3 text-xs text-muted">
+            Restoring your reading position…
+          </p>
+          <LoadingState v-else label="Opening document" :detail="document.name" />
         </div>
 
         <div

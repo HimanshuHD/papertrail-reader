@@ -77,3 +77,14 @@ it('final close sends focus to add and keeps the empty tab strip usable', async 
   expect(wrapper.emitted('add')).toHaveLength(1)
   wrapper.unmount()
 })
+
+it('keeps the small close affordance inside one tab button, without activating the closed tab', async () => {
+  const wrapper = mount(Tabs, { props: { tabs: [tab('a'), tab('b')], selectedId: 'a' } })
+  const inactive = wrapper.findAll('[role="tab"]')[1]!
+  expect(inactive.findAll('button')).toHaveLength(0)
+  await inactive.get('.tab-close').trigger('click')
+  expect(wrapper.emitted('close')).toEqual([['b']])
+  expect(wrapper.emitted('activate')).toBeUndefined()
+  expect(inactive.find('.file-type-icon').exists()).toBe(true)
+  wrapper.unmount()
+})
