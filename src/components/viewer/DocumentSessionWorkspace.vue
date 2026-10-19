@@ -50,7 +50,8 @@ watch(
         .catch(releaseFailed)
     else void sessions.reset().catch(releaseFailed)
   },
-  { immediate: true, flush: 'sync' },
+  // Read restore context after Vue has patched all sibling props, before rendering.
+  { immediate: true, flush: 'pre' },
 )
 onBeforeUnmount(() => {
   void sessions.reset().catch(releaseFailed)
