@@ -720,23 +720,23 @@ watch(
     @pointerdown.capture="clearHighlightSelection"
   >
     <header
-      class="epub-header relative z-20 flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
+      class="epub-header relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
-      <div class="min-w-0 flex-1 basis-40">
+      <div class="min-w-24 flex-1 basis-40">
         <h2
           id="reader-title"
-          class="truncate text-base font-semibold sm:text-lg"
+          class="truncate text-sm leading-5 font-semibold sm:text-base"
           :title="document.name"
         >
           {{ metadata?.title || document.name }}
         </h2>
-        <p v-if="metadata" class="mt-1 text-xs text-muted">
+        <p v-if="metadata" class="mt-0.5 truncate text-xs leading-4 text-muted">
           Chapter {{ reader.chapter.value + 1 }} of {{ metadata.chapters.length }}
           <span v-if="textOnly"> · Text-only view</span>
         </p>
       </div>
       <div
-        class="flex min-w-0 flex-wrap items-center justify-end gap-1"
+        class="flex h-10 min-w-0 max-w-[calc(100%-6.5rem)] flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
         aria-label="EPUB reader controls"
       >
         <button
@@ -1090,8 +1090,10 @@ watch(
   align-items: center;
   gap: 0.5rem;
   margin-right: 0.5rem;
+  flex-shrink: 0;
+  white-space: nowrap;
   font-size: 0.75rem;
-  min-height: 44px;
+  min-height: 40px;
 }
 .epub-mode-switch:disabled {
   opacity: 0.5;
@@ -1296,8 +1298,8 @@ watch(
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   display: grid;
   place-items: center;
 }

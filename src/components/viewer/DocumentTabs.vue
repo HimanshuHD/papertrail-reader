@@ -1,12 +1,44 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DocumentSession } from '../../features/reader/document-sessions'
 import UiIcon from '../UiIcon.vue'
 import FileTypeIcon from '../icons/FileTypeIcon.vue'
 const props = defineProps<{ tabs: readonly DocumentSession[]; selectedId: string | null }>()
-const emit = defineEmits<{ activate: [id: string]; close: [id: string]; add: [] }>()
+const emit = defineEmits<{ activate: [id: string]; close: [id: string]; emptyClose: [] }>()
 const root = ref<HTMLElement | null>(null)
 const strip = ref<HTMLElement | null>(null)
+const overflowing = ref(false)
+let observer: ResizeObserver | undefined
+function measureOverflow() {
+  const element = strip.value
+  if (!element) return
+  const available = element.clientWidth + (overflowing.value ? 44 : 0)
+  overflowing.value = props.tabs.length > 0 && element.scrollWidth > available + 1
+  if (!overflowing.value && (menuOpen.value || document.activeElement === menuButton.value)) {
+    dismiss()
+    if (props.selectedId) void focusTab(props.selectedId)
+  }
+}
+onMounted(() => {
+  measureOverflow()
+  if (typeof ResizeObserver !== 'undefined') {
+    observer = new ResizeObserver(measureOverflow)
+    if (root.value) observer.observe(root.value)
+    if (strip.value) observer.observe(strip.value)
+  }
+  window.addEventListener('resize', measureOverflow)
+})
+watch(
+  () => props.tabs.map((tab) => `${tab.id}:${tab.title}`).join('|'),
+  async () => {
+    await nextTick()
+    measureOverflow()
+  },
+)
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  window.removeEventListener('resize', measureOverflow)
+})
 const focused = ref<string | null>(null)
 const hovered = ref<string | null>(null)
 const focusedTitle = ref<string | null>(null)
@@ -80,10 +112,7 @@ async function close(id: string) {
   await nextTick()
   if (wasFocused) {
     if (next) await focusTab(next.id)
-    else
-      root.value
-        ?.querySelector<HTMLButtonElement>('[aria-label="Add local documents from tabs"]')
-        ?.focus()
+    else emit('emptyClose')
   }
 }
 async function toggleMenu() {
@@ -192,15 +221,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
       </div>
     </div>
     <button
-      type="button"
-      aria-label="Add local documents from tabs"
-      title="Add local documents"
-      class="tab-action pt-plain-control"
-      @click="emit('add')"
-    >
-      <UiIcon name="plus" />
-    </button>
-    <button
+      v-if="overflowing"
       ref="menuButton"
       type="button"
       aria-label="Open document list"
@@ -212,7 +233,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
       @click="toggleMenu"
       @keydown.down.prevent="!menuOpen && toggleMenu()"
     >
-      <span aria-hidden="true">…</span>
+      <UiIcon name="more" />
     </button>
     <div
       v-if="fullTitle && !menuOpen"
@@ -262,7 +283,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   flex: 1;
   gap: 6px;
   min-width: 0;
-  padding: 6px 12px 3px;
+  padding: 3px 12px 3px;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -281,7 +302,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   width: 100%;
   min-width: 0;
   padding: 0 6px 0 10px;
-  min-height: 44px;
+  min-height: 40px;
   border: 1px solid var(--pt-line);
   border-radius: 5px 5px 2px 2px;
   background: color-mix(in srgb, var(--pt-panel) 75%, var(--pt-canvas));

@@ -34,7 +34,7 @@ defineProps<{
     :aria-label="label"
     :disabled="disabled"
     :data-active="active || undefined"
-    class="icon-button relative inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40"
+    class="icon-button relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-canvas hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand disabled:opacity-40"
     :class="{
       'bg-canvas text-brand': active,
     }"

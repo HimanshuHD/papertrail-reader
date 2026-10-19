@@ -135,7 +135,7 @@ onBeforeUnmount(() => {
   align-items: center;
   flex-shrink: 0;
   min-width: 0;
-  min-height: 52px;
+  height: 46px;
   position: relative;
   z-index: 31;
 }
@@ -216,6 +216,11 @@ onBeforeUnmount(() => {
 .library-slide-leave-to {
   transform: translateX(-100%);
   opacity: 0;
+}
+@media (max-width: 1023px) {
+  .sidebar-visible .workspace-topbar {
+    z-index: 29;
+  }
 }
 @media (min-width: 1024px) {
   .reader-layout.sidebar-visible {

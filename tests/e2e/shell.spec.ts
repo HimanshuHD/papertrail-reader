@@ -1956,9 +1956,9 @@ test('PDF reading positions survive reload and rename without matching changed c
   await select('renamed.pdf', bytes)
   await expect(input).toHaveValue('3')
   await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible()
-  await expect(
-    page.getByText(new RegExp(`Page 3 of 4 ·.*${Math.round(savedView.zoom * 100)}%`)),
-  ).toBeVisible()
+  await expect(page.getByRole('spinbutton', { name: 'PDF zoom percent', exact: true })).toHaveValue(
+    String(Math.round(savedView.zoom * 100)),
+  )
   await expect
     .poll(() =>
       page.evaluate(

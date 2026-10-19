@@ -1,5 +1,5 @@
-import { mount } from '@vue/test-utils'
-import { afterEach, expect, it } from 'vitest'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import Tabs from '../../src/components/viewer/DocumentTabs.vue'
 import type { DocumentSession } from '../../src/features/reader/document-sessions'
 function tab(id: string, phase: DocumentSession['phase'] = 'ready'): DocumentSession {
@@ -14,7 +14,12 @@ function tab(id: string, phase: DocumentSession['phase'] = 'ready'): DocumentSes
     state: { panel: null, query: '' },
   }
 }
+beforeEach(() => {
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(400)
+  vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(900)
+})
 afterEach(() => {
+  vi.restoreAllMocks()
   document.body.innerHTML = ''
 })
 it('uses roving manual activation, full labels and keyboard close without leaking navigation keys', async () => {
@@ -46,6 +51,7 @@ it('overflow marks the active document, exposes local error/reconnect states and
     attachTo: document.body,
     props: { tabs: [tab('a', 'error'), tab('b', 'reconnect')], selectedId: 'a' },
   })
+  await flushPromises()
   await wrapper.get('[aria-label="Open document list"]').trigger('click')
   const items = wrapper.findAll('[role="menuitemradio"]')
   expect(items.map((item) => item.attributes('aria-checked'))).toEqual(['true', 'false'])
@@ -56,13 +62,14 @@ it('overflow marks the active document, exposes local error/reconnect states and
   await items[1]!.trigger('click')
   expect(wrapper.emitted('activate')).toEqual([['b']])
   expect(document.activeElement?.id).toBe('b-tab')
+  await flushPromises()
   await wrapper.get('[aria-label="Open document list"]').trigger('click')
   await wrapper.get('[role="menu"]').trigger('keydown', { key: 'Escape' })
   expect(wrapper.find('[role="menu"]').exists()).toBe(false)
   expect(document.activeElement?.getAttribute('aria-label')).toBe('Open document list')
   wrapper.unmount()
 })
-it('final close sends focus to add and keeps the empty tab strip usable', async () => {
+it('final close delegates focus to the library and removes redundant tab actions', async () => {
   const wrapper = mount(Tabs, {
     attachTo: document.body,
     props: { tabs: [tab('a')], selectedId: 'a' },
@@ -71,10 +78,28 @@ it('final close sends focus to add and keeps the empty tab strip usable', async 
   ;(button.element as HTMLButtonElement).focus()
   await button.trigger('keydown', { key: 'Delete' })
   await wrapper.setProps({ tabs: [], selectedId: null })
-  expect(document.activeElement?.getAttribute('aria-label')).toBe('Add local documents from tabs')
-  expect(wrapper.get('[aria-label="Open document list"]').attributes('disabled')).toBeDefined()
-  await wrapper.get('[aria-label="Add local documents from tabs"]').trigger('click')
-  expect(wrapper.emitted('add')).toHaveLength(1)
+  expect(wrapper.emitted('emptyClose')).toHaveLength(1)
+  expect(wrapper.find('[aria-label="Add local documents from tabs"]').exists()).toBe(false)
+  wrapper.unmount()
+})
+it('shows overflow only when content cannot fit, including after tabs are closed', async () => {
+  const scroll = vi.mocked(
+    Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'scrollWidth')!.get!,
+  )
+  scroll.mockReturnValue(400)
+  const wrapper = mount(Tabs, { props: { tabs: [tab('a')], selectedId: 'a' } })
+  expect(wrapper.find('[aria-label="Open document list"]').exists()).toBe(false)
+  scroll.mockReturnValue(900)
+  await wrapper.setProps({ tabs: [tab('a'), tab('b'), tab('c')] })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(wrapper.find('[aria-label="Open document list"]').exists()).toBe(true)
+  await flushPromises()
+  await wrapper.get('[aria-label="Open document list"]').trigger('click')
+  scroll.mockReturnValue(400)
+  await wrapper.setProps({ tabs: [tab('a')] })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+  expect(wrapper.find('[aria-label="Open document list"]').exists()).toBe(false)
   wrapper.unmount()
 })
 

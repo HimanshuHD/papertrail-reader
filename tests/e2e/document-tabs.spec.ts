@@ -126,7 +126,7 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await page.getByRole('tab', { selected: true }).press('Delete')
   await expect(tabs).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'Welcome to PaperTrail' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Add local documents from tabs' })).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Show library', exact: true })).toBeFocused()
   await openLibrary(page)
   await expect(page.getByRole('button', { name: 'PDF: first.pdf', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'PDF: first.pdf', exact: true }).click()
@@ -136,7 +136,9 @@ test('tabs preserve one viewer, manual keyboard activation, neighbor close and f
   await page.getByRole('tab', { selected: true }).focus()
   await page.getByRole('tab', { selected: true }).press('Delete')
   await expect(page.getByRole('tab')).toHaveCount(0)
-  await page.getByRole('button', { name: 'Add local documents from tabs' }).click()
+  await openLibrary(page)
+  const add = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
+  await add.click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder', exact: true })).toBeFocused()
   await expect(
     page.getByRole('menuitem', { name: 'Choose PDF / EPUB files', exact: true }),
@@ -155,6 +157,7 @@ test('verified duplicates reuse tabs; overflow, errors and both themes stay usab
     pdf(long, 3),
     pdf('identical-content-alias.pdf', 3),
     pdf('other.pdf', 2),
+    ...Array.from({ length: 4 }, (_, i) => pdf(`overflow-${i}.pdf`, i + 4)),
     {
       name: 'broken.pdf',
       mimeType: 'application/pdf',
@@ -167,10 +170,11 @@ test('verified duplicates reuse tabs; overflow, errors and both themes stay usab
   await expect(page.getByRole('tab')).toHaveCount(1)
   await open(page, 'PDF: other.pdf')
   await expect(page.getByRole('spinbutton', { name: 'Current page' })).toHaveValue('1')
+  for (let i = 0; i < 4; i++) await open(page, `PDF: overflow-${i}.pdf`)
   await open(page, 'PDF: broken.pdf')
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(/Unable to open/)
   await page.getByRole('button', { name: 'Open document list' }).click()
-  await expect(page.getByRole('menuitemradio')).toHaveCount(3)
+  await expect(page.getByRole('menuitemradio')).toHaveCount(7)
   await expect(page.getByRole('menuitemradio', { checked: true })).toContainText('broken.pdf')
   await page.getByRole('menuitemradio').first().click()
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(

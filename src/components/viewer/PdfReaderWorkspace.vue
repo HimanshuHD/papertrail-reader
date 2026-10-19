@@ -51,6 +51,7 @@ const emit = defineEmits<{
 import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-reading-state'
 
 let restoredAnchor: PdfReadingAnchor | undefined
+let restoredPage: number | undefined
 function saveReadingPoint() {
   if (phase.value !== 'ready') return
   const point = captureReadingPoint()
@@ -502,6 +503,7 @@ async function loadDocument() {
       return
     }
     restoredAnchor = restored?.anchor
+    restoredPage = restored?.page
     currentPage.value = restored?.page ?? 1
     fitMode.value = restored?.view.fitMode ?? 'width'
     zoom.value = restored?.view.zoom ?? 1
@@ -560,9 +562,15 @@ function chooseMostVisiblePage() {
       0,
       Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
     )
-    if (pixels > bestPixels) {
+    const page = Number(element.id.replace('pdf-page-', ''))
+    // Two fully visible pages can differ by a fractional CSS pixel after resizing.
+    // Preserve the selected page in a visibility tie instead of advancing spuriously.
+    if (
+      pixels > bestPixels + 1 ||
+      (page === currentPage.value && Math.abs(pixels - bestPixels) <= 1)
+    ) {
       bestPixels = pixels
-      bestPage = Number(element.id.replace('pdf-page-', ''))
+      bestPage = page
     }
   }
   if (bestPixels > 0 && bestPage !== currentPage.value) {
@@ -620,6 +628,9 @@ async function handleRendered(pageNumber: number, scale: number) {
     }
     await nextTick()
     if (sequence !== openSequence || phase.value !== 'restoring') return
+    // The viewport center can lie on a neighboring fully visible page. Keep the
+    // saved page indicator as well as the independently restored viewport anchor.
+    if (restoredPage !== undefined) currentPage.value = clampPage(restoredPage)
     phase.value = 'ready'
     emit('phaseChange', 'ready')
     if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
@@ -711,8 +722,25 @@ async function changeZoom(delta: number) {
     availableWidth.value,
     availableHeight.value,
   )
+  await applyCustomZoom(baseline + delta)
+}
+
+function handleZoomInput(event: Event) {
+  const input = event.target as HTMLInputElement
+  const value = input.valueAsNumber
+  if (!Number.isFinite(value)) {
+    input.value = String(zoomPercent.value)
+    return
+  }
+  const percentage = Math.min(400, Math.max(25, value))
+  input.value = String(Math.round(percentage))
+  void applyCustomZoom(percentage / 100)
+}
+async function applyCustomZoom(value: number) {
+  if (!session.value || phase.value !== 'ready') return
+  const point = captureReadingPoint()
   layoutOperation += 1
-  zoom.value = Math.min(4, Math.max(0.25, baseline + delta))
+  zoom.value = Math.min(4, Math.max(0.25, value))
   fitMode.value = 'custom'
   renderedScale.value = zoom.value
   await restoreReadingPoint(point)
@@ -1091,12 +1119,12 @@ onBeforeUnmount(() => {
       {{ persistenceNotice }}
     </p>
     <header
-      class="pdf-header relative z-20 flex flex-wrap items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
+      class="pdf-header relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
-      <div class="min-w-0 flex-1 basis-40">
+      <div class="min-w-24 flex-1 basis-40">
         <h2
           id="reader-title"
-          class="truncate text-base font-semibold sm:text-lg"
+          class="truncate text-sm leading-5 font-semibold sm:text-base"
           :title="document.name"
           :aria-label="document.name"
         >
@@ -1105,9 +1133,9 @@ onBeforeUnmount(() => {
         <p
           v-if="session"
           :style="{ visibility: phase === 'ready' ? 'visible' : 'hidden' }"
-          class="mt-1 text-xs text-muted"
+          class="mt-0.5 truncate text-xs leading-4 text-muted"
         >
-          Page {{ currentPage }} of {{ totalPages }} · {{ progressPercent }}% · {{ zoomPercent }}%
+          Page {{ currentPage }} of {{ totalPages }} · {{ progressPercent }}%
         </p>
       </div>
 
@@ -1118,7 +1146,7 @@ onBeforeUnmount(() => {
           visibility: phase === 'ready' ? 'visible' : 'hidden',
           opacity: phase === 'ready' ? 1 : 0,
         }"
-        class="flex min-w-0 flex-wrap items-center justify-end gap-1"
+        class="flex h-10 min-w-0 max-w-[calc(100%-6.5rem)] flex-nowrap items-center justify-start gap-1 overflow-x-auto overflow-y-hidden [scrollbar-width:none]"
         aria-label="PDF reader controls"
       >
         <IconButton
@@ -1132,7 +1160,7 @@ onBeforeUnmount(() => {
           type="number"
           min="1"
           :max="totalPages"
-          class="pdf-page-input h-10 w-14 rounded-lg border border-line bg-canvas px-2 text-center text-sm"
+          class="pdf-page-input h-8 w-14 shrink-0 rounded-lg border border-line bg-canvas px-2 text-center text-[13px]"
           aria-label="Current page"
           @focus="beginPageEdit"
           @input="limitPageDraft"
@@ -1146,6 +1174,25 @@ onBeforeUnmount(() => {
           @click="stepPage(1)"
         />
         <IconButton label="Zoom out" icon="zoom-out" @click="changeZoom(-0.25)" />
+        <label class="relative shrink-0">
+          <span class="sr-only">PDF zoom percent</span>
+          <input
+            :value="zoomPercent"
+            aria-label="PDF zoom percent"
+            type="number"
+            min="25"
+            max="400"
+            step="25"
+            class="pdf-page-input h-8 w-16 rounded-lg border border-line bg-canvas pr-5 pl-1 text-center text-[13px]"
+            @change="handleZoomInput"
+            @keydown.enter.prevent="handleZoomInput"
+          />
+          <span
+            class="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-[13px]"
+            aria-hidden="true"
+            >%</span
+          >
+        </label>
         <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
         <IconButton
           label="Fit width"

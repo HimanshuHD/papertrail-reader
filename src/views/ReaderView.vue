@@ -116,11 +116,15 @@ function sessionChanged(document: DiscoveredDocument | null, fingerprint: string
     activeFingerprint: fingerprint,
   })
 }
-async function addFromTabs() {
-  if (!sidebarOpen.value) await openSidebar()
+async function focusLibraryActions() {
   await nextTick()
-  await librarySidebar.value?.openSourcePicker()
+  if (!sidebarOpen.value) (sidebarToggle.value?.$el as HTMLButtonElement | undefined)?.focus()
+  else
+    (librarySidebar.value?.$el as HTMLElement | undefined)
+      ?.querySelector<HTMLButtonElement>('[aria-controls="library-source-menu"]')
+      ?.focus()
 }
+
 const restoringDocument = ref(false)
 const selectedLibraryDocumentId = ref<string | null>(null)
 const activeDocument = shallowRef<DiscoveredDocument | null>(null)
@@ -539,7 +543,7 @@ async function closeSidebarAndRestoreFocus() {
           :selected-id="selectedTab"
           @activate="readerSessions?.activate($event)"
           @close="readerSessions?.close($event)"
-          @add="addFromTabs"
+          @empty-close="focusLibraryActions"
         />
       </template>
       <DocumentSessionWorkspace

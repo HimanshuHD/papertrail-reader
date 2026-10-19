@@ -289,6 +289,20 @@ describe('PDF reader utility workspace', () => {
     }
     expect(wrapper.find('input[type="range"]').exists()).toBe(false)
   })
+  it('restores the selected page independently of a neighboring viewport-center anchor', async () => {
+    const wrapper = mountReader({
+      initialState: {
+        panel: null,
+        query: '',
+        pdf: { page: 1, view: { fitMode: 'width', zoom: 1 }, anchor: { page: 2, x: 0.5, y: 0.5 } },
+      },
+    })
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(
+      (wrapper.get('input[aria-label="Current page"]').element as HTMLInputElement).value,
+    ).toBe('1')
+  })
   it('increments zoom from the active fit scale and accumulates rapid clicks', async () => {
     const wrapper = mountReader()
     wrappers.push(wrapper)
@@ -296,11 +310,36 @@ describe('PDF reader utility workspace', () => {
     await wrapper.get('button[aria-label="Fit page"]').trigger('click')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('50%')
+    expect(
+      (wrapper.get('input[aria-label="PDF zoom percent"]').element as HTMLInputElement).value,
+    ).toBe('50')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await wrapper.get('button[aria-label="Zoom in"]').trigger('click')
     await flushPromises()
-    expect(wrapper.text()).toContain('100%')
+    expect(
+      (wrapper.get('input[aria-label="PDF zoom percent"]').element as HTMLInputElement).value,
+    ).toBe('100')
+  })
+  it('applies direct zoom input, caps it at 400% and preserves a valid value after empty input', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get('input[aria-label="PDF zoom percent"]')
+    await input.setValue('175')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('175')
+    await input.setValue('900')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('400')
+    expect(continuity.save).toHaveBeenLastCalledWith(expect.any(Number), {
+      fitMode: 'custom',
+      zoom: 4,
+    })
+    await input.setValue('')
+    expect((input.element as HTMLInputElement).value).toBe('400')
+    await input.setValue('1')
+    await flushPromises()
+    expect((input.element as HTMLInputElement).value).toBe('25')
   })
   it('regenerates a restored search only after its query watcher has settled', async () => {
     const wrapper = mountReader({ initialPanel: 'search', initialSearchQuery: 'Matching' })
