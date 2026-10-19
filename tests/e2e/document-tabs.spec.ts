@@ -244,6 +244,13 @@ test('annotations and notes remain owned by their document when tabs switch', as
   await expect(
     page.locator('.session-panel:not(.session-inactive) [data-annotation-id]'),
   ).toContainText('Note only for the first document')
+  await page.locator('.session-panel:not(.session-inactive) [data-menu-id]').first().click()
+  await expect(page.locator('.floating-popover')).toBeVisible()
+  const cleanTab = page.getByRole('tab', { name: /PDF: clean.pdf/ })
+  await cleanTab.focus()
+  await cleanTab.press('Enter')
+  await expect(page.locator('.floating-popover')).toHaveCount(0)
+  await page.getByRole('tab', { name: /PDF: annotated.pdf/ }).click()
   await page.getByRole('button', { name: 'Reading insights', exact: true }).click()
   await expect(
     page.locator('.session-panel:not(.session-inactive)').getByTestId('highlight-count'),

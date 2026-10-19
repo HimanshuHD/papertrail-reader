@@ -1087,6 +1087,7 @@ watch(
   () => props.active,
   (active) => {
     if (active === false) {
+      annotationsPanel.value?.closeMenu()
       if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
       saveReadingPoint()
       popover.value = null

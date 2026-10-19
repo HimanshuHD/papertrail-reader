@@ -557,6 +557,7 @@ watch(
   () => props.active,
   (active) => {
     if (active === false) {
+      annotationsPanel.value?.closeMenu()
       saveReading()
       typographyOpen.value = false
       pendingHighlight.value = null

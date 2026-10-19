@@ -127,7 +127,7 @@ async function revealAnnotation(id: string) {
       entry.getBoundingClientRect().top - root.value.getBoundingClientRect().top - 16
   entry?.focus({ preventScroll: true })
 }
-defineExpose({ editNote, revealAnnotation })
+defineExpose({ editNote, revealAnnotation, closeMenu })
 watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
 async function submitNote() {
   const item = selected.value
