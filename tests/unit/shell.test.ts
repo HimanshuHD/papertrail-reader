@@ -300,7 +300,7 @@ describe('home and product shell', () => {
     )
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
 
-    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
+    const reselect = wrapper.get('button[aria-label="Reselect files"]')
     await reselect.trigger('click')
     expect(click).toHaveBeenCalledOnce()
     wrapper.unmount()
@@ -379,7 +379,7 @@ describe('home and product shell', () => {
       ]),
     )
 
-    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect folder')
+    const reselect = wrapper.find('button[aria-label="Reselect folder"]')
     expect(reselect).toBeTruthy()
     wrapper.unmount()
   })
@@ -438,7 +438,7 @@ describe('home and product shell', () => {
 
       const refresh = wrapper
         .findAll('button')
-        .find((button) => button.text() === 'Refresh folder')!
+        .find((button) => button.attributes('aria-label') === 'Refresh folder')!
       await refresh.trigger('click')
       await finishDiscovery()
 

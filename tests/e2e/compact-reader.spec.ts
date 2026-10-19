@@ -54,12 +54,15 @@ test('compact headers, editable zoom and conditional tab actions retain reader s
   await expect(page.getByRole('group', { name: 'Page navigation', exact: true })).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Zoom controls', exact: true })).toHaveCount(1)
   await expect(page.getByRole('group', { name: 'Reader utilities', exact: true })).toHaveCount(1)
+  await expect(
+    page.getByRole('group', { name: 'Page layout', exact: true }).getByRole('button'),
+  ).toHaveCount(3)
   expect(await page.locator('.tab-strip').evaluate((el) => getComputedStyle(el).gap)).toBe('3px')
   await page.getByRole('tab', { selected: true }).hover()
   expect(
     await page
-      .getByRole('tab', { selected: true })
-      .locator('.tab-close svg')
+      .getByRole('button', { name: 'Close compact.pdf', exact: true })
+      .locator('svg')
       .evaluate((el) => getComputedStyle(el).strokeWidth),
   ).toBe('3px')
   expect(await theme.evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(

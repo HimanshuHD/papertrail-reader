@@ -69,7 +69,11 @@ function saveReadingPoint() {
   if (phase.value !== 'ready') return
   const point = captureReadingPoint()
   const page = Number(point?.page.closest('article')?.dataset.pdfPage)
-  const view = { fitMode: fitMode.value, zoom: zoom.value }
+  const view = {
+    fitMode: fitMode.value,
+    zoom: zoom.value,
+    ...(twoPage.value ? { twoPage: true } : {}),
+  }
   const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
   if (anchor) continuity.save(currentPage.value, view, anchor)
   else continuity.save(currentPage.value, view)
@@ -305,6 +309,10 @@ const statistics = useReadingStatistics(
   statisticsPosition,
 )
 const zoom = ref(1)
+const twoPage = ref(false)
+const pageAvailableWidth = computed(() =>
+  twoPage.value ? Math.max(1, (availableWidth.value - 24) / 2) : availableWidth.value,
+)
 const fitMode = ref<PdfFitMode>('width')
 watch(
   [currentPage, fitMode, zoom],
@@ -519,6 +527,7 @@ async function loadDocument() {
     restoredAnchor = restored?.anchor
     restoredPage = restored?.page
     currentPage.value = restored?.page ?? 1
+    twoPage.value = restored?.view.twoPage === true
     fitMode.value = restored?.view.fitMode ?? 'width'
     zoom.value = restored?.view.zoom ?? 1
     renderedScale.value = zoom.value
@@ -732,7 +741,7 @@ async function changeZoom(delta: number) {
     zoom.value,
     dimensions.width,
     dimensions.height,
-    availableWidth.value,
+    pageAvailableWidth.value,
     availableHeight.value,
   )
   await applyCustomZoom(baseline + delta)
@@ -759,6 +768,15 @@ async function applyCustomZoom(value: number) {
   await restoreReadingPoint(point)
   saveReadingPoint()
   emit('status', `PDF zoom set to ${Math.round(zoom.value * 100)}%.`)
+}
+
+async function toggleTwoPage() {
+  if (phase.value !== 'ready') return
+  const point = captureReadingPoint()
+  ++layoutOperation
+  twoPage.value = !twoPage.value
+  await restoreReadingPoint(point)
+  saveReadingPoint()
 }
 
 async function setFit(mode: Extract<PdfFitMode, 'width' | 'page'>) {
@@ -1034,12 +1052,12 @@ function handleShortcut(event: KeyboardEvent) {
     case 'ArrowRight':
     case 'PageDown':
       event.preventDefault()
-      stepPage(1)
+      stepPage(twoPage.value ? 2 : 1)
       break
     case 'ArrowLeft':
     case 'PageUp':
       event.preventDefault()
-      stepPage(-1)
+      stepPage(twoPage.value ? -2 : -1)
       break
     case 'Escape':
       closePopover(true)
@@ -1057,7 +1075,11 @@ function capture(): SessionState {
       ? {
           pdf: {
             page: currentPage.value,
-            view: { fitMode: fitMode.value, zoom: zoom.value },
+            view: {
+              fitMode: fitMode.value,
+              zoom: zoom.value,
+              ...(twoPage.value ? { twoPage: true } : {}),
+            },
             ...(anchor ? { anchor } : {}),
           },
         }
@@ -1189,7 +1211,7 @@ onBeforeUnmount(() => {
             label="Previous page"
             icon="previous"
             :disabled="currentPage <= 1"
-            @click="stepPage(-1)"
+            @click="stepPage(twoPage ? -2 : -1)"
           />
           <input
             :value="pageEditing ? pageDraft : currentPage"
@@ -1207,7 +1229,7 @@ onBeforeUnmount(() => {
             label="Next page"
             icon="next"
             :disabled="currentPage >= totalPages"
-            @click="stepPage(1)"
+            @click="stepPage(twoPage ? 2 : 1)"
           />
         </div>
         <div class="reader-control-section" role="group" aria-label="Zoom controls">
@@ -1228,6 +1250,8 @@ onBeforeUnmount(() => {
             <span class="pdf-zoom-adornment" aria-hidden="true">%</span>
           </label>
           <IconButton label="Zoom in" icon="zoom-in" @click="changeZoom(0.25)" />
+        </div>
+        <div class="reader-control-section" role="group" aria-label="Page layout">
           <IconButton
             label="Fit width"
             icon="fit-width"
@@ -1241,6 +1265,13 @@ onBeforeUnmount(() => {
             :active="fitMode === 'page'"
             :aria-pressed="fitMode === 'page'"
             @click="setFit('page')"
+          />
+          <IconButton
+            label="Two-page view"
+            icon="two-page"
+            :aria-pressed="twoPage"
+            :active="twoPage"
+            @click="toggleTwoPage"
           />
         </div>
         <div class="reader-control-section" role="group" aria-label="Reader utilities">
@@ -1336,7 +1367,12 @@ onBeforeUnmount(() => {
       </Transition>
     </header>
     <HighlightSelectionToolbar
-      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && phase === 'ready'"
+      v-if="
+        props.active !== false &&
+        (pendingHighlight || toolbarSavedId) &&
+        selectionPosition &&
+        phase === 'ready'
+      "
       :id-prefix="idPrefix"
       format="PDF"
       :anchor="selectionPosition"
@@ -1389,7 +1425,8 @@ onBeforeUnmount(() => {
 
         <div
           v-else-if="session"
-          class="flex min-w-0 flex-col items-center gap-6"
+          class="pdf-pages"
+          :class="{ 'pdf-pages-spread': twoPage }"
           :inert="phase !== 'ready'"
           :aria-hidden="phase !== 'ready'"
           :style="{
@@ -1405,7 +1442,7 @@ onBeforeUnmount(() => {
             :page-number="pageNumber"
             :fit-mode="fitMode"
             :zoom="zoom"
-            :available-width="availableWidth"
+            :available-width="pageAvailableWidth"
             :available-height="availableHeight"
             :scroll-root="viewport"
             :annotations="highlights.highlights.value"
@@ -1645,6 +1682,20 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-pages {
+  display: flex;
+  min-width: 100%;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+.pdf-pages-spread {
+  display: grid;
+  grid-template-columns: max-content max-content;
+  align-items: start;
+  justify-content: center;
+}
+
 .reader-control-section {
   display: flex;
   flex-shrink: 0;
@@ -1759,16 +1810,12 @@ onBeforeUnmount(() => {
   transform: translateX(100%);
   opacity: 0;
 }
-[aria-label='PDF reader controls'] :deep(.icon-button:nth-child(-n + 3) .icon-tooltip) {
-  left: 0;
-  right: auto;
-}
 .pdf-page-input:focus-visible {
   outline-offset: 1px;
 }
 .pdf-page-input {
   appearance: textfield;
-  margin-inline: 0.5rem;
+  margin-inline: 0;
 }
 .pdf-page-input::-webkit-inner-spin-button,
 .pdf-page-input::-webkit-outer-spin-button {

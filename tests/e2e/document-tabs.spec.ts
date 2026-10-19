@@ -121,7 +121,7 @@ test('tabs preserve retained readers, manual keyboard activation, neighbor close
   await expect(second).toHaveAttribute('aria-selected', 'true')
   await expect(currentPage).toHaveValue('1')
   await expect(page.getByRole('button', { name: 'Close utility panel' })).toHaveCount(0)
-  await second.locator('.tab-close').click()
+  await page.getByRole('button', { name: 'Close second.pdf', exact: true }).click()
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(/EPUB: book.epub/)
   await expect(
     page

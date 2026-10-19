@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import UiIcon from '../UiIcon.vue'
+import { useOverlayTarget } from '../../composables/useOverlayTarget'
+const overlayTarget = useOverlayTarget()
 import type { AnnotationColor } from '../../services/annotation-storage'
 import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
 import { toolbarPosition, type SelectionAnchor } from '../../features/annotations/selection-toolbar'
@@ -91,105 +93,109 @@ function preserveSelection(event: PointerEvent) {
 }
 </script>
 <template>
-  <div
-    ref="root"
-    class="selection-toolbar"
-    :class="{ 'composer-open': editing }"
-    :aria-label="`${format} highlights`"
-    role="group"
-    :style="{ left: position.left + 'px', top: position.top + 'px' }"
-    @pointerdown="preserveSelection"
-    @keydown.esc.stop.prevent="cancelNote"
-  >
-    <div class="highlight-controls">
-      <button
-        v-for="shade in colors"
-        :key="shade"
-        type="button"
-        class="color-action pt-color-swatch"
-        :aria-label="`Highlight ${shade}`"
-        :aria-pressed="color === shade"
-        :title="`Highlight ${shade}`"
-        :disabled="disabled"
-        @click="pickColor(shade)"
-      >
-        <span class="color-swatch" :class="`swatch-${shade}`" />
-      </button>
-      <span class="toolbar-divider" />
-      <button
-        type="button"
-        class="toolbar-action highlight-action"
-        aria-label="Add highlight"
-        :disabled="disabled || saved"
-        @click="emit('highlight', color, editing)"
-      >
-        <UiIcon name="highlight" /><span
-          role="tooltip"
-          class="highlight-tooltip"
-          :style="tooltipPosition"
-          >Add highlight</span
-        >
-      </button>
-      <span class="toolbar-divider" />
-      <button
-        ref="noteButton"
-        type="button"
-        class="toolbar-action note-action pt-framed-control"
-        aria-label="Add note"
-        :disabled="disabled"
-        @click="openNote"
-      >
-        <UiIcon name="note" /><span>Add note</span>
-      </button>
-    </div>
-    <Transition name="note-expand" @after-enter="measure" @after-leave="measure">
-      <form v-if="editing" class="note-composer" @submit.prevent="submitNote">
-        <div class="composer-heading">
-          <button
-            type="button"
-            class="toolbar-action"
-            aria-label="Back to highlight controls"
-            :disabled="disabled"
-            @click="cancelNote"
-          >
-            <UiIcon name="previous" /></button
-          ><label :for="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`">Add note</label>
-        </div>
-        <textarea
-          :id="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`"
-          ref="textarea"
-          v-model="draft"
-          rows="3"
-          placeholder="Write your note…"
-          :maxlength="ANNOTATION_LIMITS.note"
+  <Teleport :to="overlayTarget">
+    <div
+      ref="root"
+      class="selection-toolbar"
+      :class="{ 'composer-open': editing }"
+      :aria-label="`${format} highlights`"
+      role="group"
+      :style="{ left: position.left + 'px', top: position.top + 'px' }"
+      @pointerdown="preserveSelection"
+      @keydown.esc.stop.prevent="cancelNote"
+    >
+      <div class="highlight-controls">
+        <button
+          v-for="shade in colors"
+          :key="shade"
+          type="button"
+          class="color-action pt-color-swatch"
+          :aria-label="`Highlight ${shade}`"
+          :aria-pressed="color === shade"
+          :title="`Highlight ${shade}`"
           :disabled="disabled"
-        />
-        <p v-if="notice" class="composer-status" role="status">
-          {{ notice }}
-          <button v-if="retryable" type="button" class="underline" @click="emit('retry')">
-            Retry annotations
-          </button>
-        </p>
-        <div class="composer-footer">
-          <span class="composer-count">{{ draft.length }} / {{ ANNOTATION_LIMITS.note }}</span
-          ><button
-            type="button"
-            class="composer-cancel pt-framed-control"
+          @click="pickColor(shade)"
+        >
+          <span class="color-swatch" :class="`swatch-${shade}`" />
+        </button>
+        <span class="toolbar-divider" />
+        <button
+          type="button"
+          class="toolbar-action highlight-action"
+          aria-label="Add highlight"
+          :disabled="disabled || saved"
+          @click="emit('highlight', color, editing)"
+        >
+          <UiIcon name="highlight" /><span
+            role="tooltip"
+            class="highlight-tooltip"
+            :style="tooltipPosition"
+            >Add highlight</span
+          >
+        </button>
+        <span class="toolbar-divider" />
+        <button
+          ref="noteButton"
+          type="button"
+          class="toolbar-action note-action pt-framed-control"
+          aria-label="Add note"
+          :disabled="disabled"
+          @click="openNote"
+        >
+          <UiIcon name="note" /><span>Add note</span>
+        </button>
+      </div>
+      <Transition name="note-expand" @after-enter="measure" @after-leave="measure">
+        <form v-if="editing" class="note-composer" @submit.prevent="submitNote">
+          <div class="composer-heading">
+            <button
+              type="button"
+              class="toolbar-action"
+              aria-label="Back to highlight controls"
+              :disabled="disabled"
+              @click="cancelNote"
+            >
+              <UiIcon name="previous" /></button
+            ><label :for="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`"
+              >Add note</label
+            >
+          </div>
+          <textarea
+            :id="`${idPrefix ?? ''}${format.toLowerCase()}-selection-note`"
+            ref="textarea"
+            v-model="draft"
+            rows="3"
+            placeholder="Write your note…"
+            :maxlength="ANNOTATION_LIMITS.note"
             :disabled="disabled"
-            @click="cancelNote"
-          >
-            Cancel</button
-          ><button
-            type="submit"
-            class="composer-save pt-button-filled pt-stable-border"
-            :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
-          >
-            {{ saved ? 'Save note' : 'Save highlight with note' }}
-          </button>
-        </div>
-      </form>
-    </Transition>
-  </div>
+          />
+          <p v-if="notice" class="composer-status" role="status">
+            {{ notice }}
+            <button v-if="retryable" type="button" class="underline" @click="emit('retry')">
+              Retry annotations
+            </button>
+          </p>
+          <div class="composer-footer">
+            <span class="composer-count">{{ draft.length }} / {{ ANNOTATION_LIMITS.note }}</span
+            ><button
+              type="button"
+              class="composer-cancel pt-framed-control"
+              :disabled="disabled"
+              @click="cancelNote"
+            >
+              Cancel</button
+            ><button
+              type="submit"
+              class="composer-save pt-button-filled pt-stable-border"
+              :disabled="disabled || !draft.trim() || draft.length > ANNOTATION_LIMITS.note"
+            >
+              {{ saved ? 'Save note' : 'Save highlight with note' }}
+            </button>
+          </div>
+        </form>
+      </Transition>
+    </div>
+  </Teleport>
 </template>
 
 <style scoped>

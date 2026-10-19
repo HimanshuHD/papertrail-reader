@@ -25,10 +25,11 @@ it('keeps the toolbar inside narrow and edge viewports', () => {
 })
 it('preserves native selection on pointer down and delegates color/note actions', async () => {
   const wrapper = mount(HighlightSelectionToolbar, {
+    global: { stubs: { Teleport: true } },
     props: { format: 'EPUB', anchor: { left: 150, top: 200 }, disabled: false },
   })
   const event = new Event('pointerdown', { cancelable: true, bubbles: true })
-  wrapper.element.dispatchEvent(event)
+  wrapper.get('.selection-toolbar').element.dispatchEvent(event)
   expect(event.defaultPrevented).toBe(true)
   await wrapper.get('[aria-label="Highlight blue"]').trigger('click')
   await wrapper.findAll('button').at(-1)!.trigger('click')
@@ -45,6 +46,7 @@ it('preserves native selection on pointer down and delegates color/note actions'
 
 it('expands without writing, submits both fields, and cancels only the note draft', async () => {
   const wrapper = mount(HighlightSelectionToolbar, {
+    global: { stubs: { Teleport: true } },
     props: { format: 'PDF', anchor: { left: 150, top: 300 }, disabled: false },
   })
   await wrapper.get('[aria-label="Add note"]').trigger('click')
@@ -75,6 +77,7 @@ it('expands without writing, submits both fields, and cancels only the note draf
 
 it('allows textarea focus without clearing the document selection and preserves failed drafts', async () => {
   const wrapper = mount(HighlightSelectionToolbar, {
+    global: { stubs: { Teleport: true } },
     props: { format: 'EPUB', anchor: { left: 150, top: 300 }, disabled: false },
   })
   await wrapper.get('[aria-label="Add note"]').trigger('click')

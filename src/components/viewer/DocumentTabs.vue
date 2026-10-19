@@ -2,6 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { DocumentSession } from '../../features/reader/document-sessions'
 import UiIcon from '../UiIcon.vue'
+import IconButton from '../IconButton.vue'
+import AccessibleTooltip from '../AccessibleTooltip.vue'
+import { useId } from 'vue'
+const tooltipId = useId()
 import FileTypeIcon from '../icons/FileTypeIcon.vue'
 const props = defineProps<{ tabs: readonly DocumentSession[]; selectedId: string | null }>()
 const emit = defineEmits<{ activate: [id: string]; close: [id: string]; emptyClose: [] }>()
@@ -48,6 +52,14 @@ const fullTitle = computed(() =>
 const menuOpen = ref(false)
 const menuButton = ref<HTMLButtonElement | null>(null)
 const menu = ref<HTMLElement | null>(null)
+function dismissTitle() {
+  hovered.value = null
+  focusedTitle.value = null
+}
+function activateTab(id: string) {
+  dismissTitle()
+  emit('activate', id)
+}
 function focusTitle(id: string) {
   focused.value = id
   focusedTitle.value = id
@@ -192,14 +204,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
           :aria-controls="`${tab.id}-panel`"
           :tabindex="(focused || selectedId || tabs[0]?.id) === tab.id ? 0 : -1"
           :aria-label="`${label(tab)} — ${status(tab)}`"
-          :title="`${label(tab)} — ${status(tab)}. Delete closes this tab.`"
+          :aria-describedby="fullTitle?.id === tab.id ? tooltipId : undefined"
           aria-keyshortcuts="Delete"
           class="tab-activate pt-plain-control"
           @focus="focusTitle(tab.id)"
           @blur="focusedTitle = null"
           @mouseenter="hovered = tab.id"
           @mouseleave="hovered = null"
-          @click="emit('activate', tab.id)"
+          @click="activateTab(tab.id)"
           @keydown="keys($event, tab.id)"
         >
           <FileTypeIcon :extension="tab.format" />
@@ -210,14 +222,14 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
             class="tab-status"
             >{{ tab.phase === 'loading' ? '…' : '!' }}</span
           >
-          <span
-            class="tab-close"
-            aria-hidden="true"
-            @click.stop="close(tab.id)"
-            @pointerdown.prevent
-            ><UiIcon name="close"
-          /></span>
         </button>
+        <IconButton
+          class="tab-close pt-plain-control"
+          icon="close"
+          :label="`Close ${tab.title}`"
+          @click.stop="close(tab.id)"
+          @keydown.delete.stop.prevent="close(tab.id)"
+        />
       </div>
     </div>
     <button
@@ -235,13 +247,13 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
     >
       <UiIcon name="more" />
     </button>
-    <div
-      v-if="fullTitle && !menuOpen"
-      class="tab-tooltip border border-line bg-panel"
-      aria-hidden="true"
-    >
-      {{ label(fullTitle) }} — {{ status(fullTitle) }}
-    </div>
+    <AccessibleTooltip
+      :id="tooltipId"
+      :anchor="fullTitle ? (tabButton(fullTitle.id) ?? null) : null"
+      :open="!!fullTitle && !menuOpen"
+      :text="fullTitle ? `${label(fullTitle)} — ${status(fullTitle)}` : ''"
+      @dismiss="dismissTitle"
+    />
     <div
       v-if="menuOpen"
       id="open-document-menu"
@@ -257,7 +269,6 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
         type="button"
         role="menuitemradio"
         :aria-checked="selectedId === tab.id"
-        :title="label(tab)"
         @click="choose(tab.id)"
       >
         <span aria-hidden="true">{{ selectedId === tab.id ? '✓' : '' }}</span
@@ -290,6 +301,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   align-self: stretch;
 }
 .document-tab {
+  position: relative;
   display: flex;
   flex: 0 0 236px;
   max-width: 260px;
@@ -301,7 +313,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   gap: 8px;
   width: 100%;
   min-width: 0;
-  padding: 0 6px 0 10px;
+  padding: 0 36px 0 10px;
   min-height: 40px;
   border: 1px solid var(--pt-line);
   border-radius: 5px 5px 2px 2px;
@@ -337,6 +349,12 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outside))
   color: var(--pt-brand);
 }
 .tab-close {
+  position: absolute;
+  right: 6px;
+  top: 5px;
+  width: 24px;
+  padding: 0;
+  z-index: 2;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -378,19 +396,6 @@ button:focus-visible {
 }
 button:disabled {
   opacity: 0.4;
-}
-.tab-tooltip {
-  position: absolute;
-  right: 4px;
-  top: 100%;
-  z-index: 49;
-  pointer-events: none;
-  width: max-content;
-  max-width: min(320px, calc(100vw - 24px));
-  padding: 8px;
-  border-radius: 6px;
-  font-size: 12px;
-  overflow-wrap: anywhere;
 }
 .tab-menu {
   position: absolute;

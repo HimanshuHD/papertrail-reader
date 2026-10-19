@@ -103,11 +103,13 @@ it('shows overflow only when content cannot fit, including after tabs are closed
   wrapper.unmount()
 })
 
-it('keeps the small close affordance inside one tab button, without activating the closed tab', async () => {
+it('provides a labelled native close button inside the visual tab without nested interactive elements', async () => {
   const wrapper = mount(Tabs, { props: { tabs: [tab('a'), tab('b')], selectedId: 'a' } })
   const inactive = wrapper.findAll('[role="tab"]')[1]!
   expect(inactive.findAll('button')).toHaveLength(0)
-  await inactive.get('.tab-close').trigger('click')
+  const close = wrapper.get('button[aria-label="Close Long title b"]')
+  expect(close.element.tagName).toBe('BUTTON')
+  await close.trigger('click')
   expect(wrapper.emitted('close')).toEqual([['b']])
   expect(wrapper.emitted('activate')).toBeUndefined()
   expect(inactive.find('.file-type-icon').exists()).toBe(true)

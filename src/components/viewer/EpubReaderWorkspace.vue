@@ -907,7 +907,12 @@ watch(
       </Transition>
     </header>
     <HighlightSelectionToolbar
-      v-if="(pendingHighlight || toolbarSavedId) && selectionPosition && !loading"
+      v-if="
+        props.active !== false &&
+        (pendingHighlight || toolbarSavedId) &&
+        selectionPosition &&
+        !loading
+      "
       :id-prefix="idPrefix"
       format="EPUB"
       :anchor="selectionPosition"
