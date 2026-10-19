@@ -5,9 +5,8 @@ import WorkspaceBrand from '../components/layout/WorkspaceBrand.vue'
 import BuildFooter from '../components/BuildFooter.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
-import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
+import DocumentSessionWorkspace from '../components/viewer/DocumentSessionWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
-import EpubReaderWorkspace from '../components/viewer/EpubReaderWorkspace.vue'
 import {
   describeLibrarySelection,
   librarySelectionLabel,
@@ -44,7 +43,7 @@ function cancelRecent() {
   recentOpening.value = false
 }
 function rememberRecent(identity: { id: string; fingerprint: string }) {
-  const item = activePdfDocument.value ?? activeEpubDocument.value
+  const item = activeDocument.value
   if (item)
     void recents.remember({
       ...identity,
@@ -100,9 +99,9 @@ const workspaceMessage = computed(
         ? 'Saved library. Resume access or use + to select the same source again.'
         : ''),
 )
+const restoringDocument = ref(false)
 const selectedLibraryDocumentId = ref<string | null>(null)
-const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
-const activeEpubDocument = shallowRef<DiscoveredDocument | null>(null)
+const activeDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
 watch(sidebarOpen, (value) => workspace.patch({ sidebarOpen: value }))
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
@@ -194,26 +193,18 @@ function selectLibraryDocument(id: string, restoring = false) {
     reconnecting.value = false
   }
   const sameActive =
-    (activePdfDocument.value ?? activeEpubDocument.value)?.id === document.id &&
-    (activePdfDocument.value ?? activeEpubDocument.value)?.file === document.file
+    activeDocument.value?.id === document.id && activeDocument.value?.file === document.file
   selectedLibraryDocumentId.value = id
   workspace.patch({
     selectedPath: document.relativePath,
     activePath: document.relativePath,
+    ...(!restoring && !sameActive ? { utilityPanel: null, searchQuery: '' } : {}),
     activeFingerprint:
       restoring || sameActive ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
   })
-  if (document.format === 'PDF') {
-    activeEpubDocument.value = null
-    activePdfDocument.value = document
-    announcement.value = `Opening local PDF: ${document.name}.`
-    return
-  }
-
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
-  activeEpubDocument.value = document
-  announcement.value = `Opening local EPUB: ${document.name}.`
+  restoringDocument.value = restoring
+  activeDocument.value = document
+  announcement.value = `Opening local ${document.format}: ${document.name}.`
 }
 
 function restoreLibrarySelection(
@@ -294,8 +285,7 @@ async function reconnect(
 ) {
   reconnecting.value = true
   librarySelection.value = selection
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   try {
     await runDiscovery(selection, false, true)
     if (owner !== workspaceOperation || discoveryPhase.value !== 'ready') return
@@ -332,8 +322,7 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
     return
   }
   reconnecting.value = false
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   librarySelection.value = selection
   selectedLibraryDocumentId.value = null
   workspace.remember({
@@ -374,8 +363,7 @@ async function forgetWorkspace() {
   discoveryController = null
   metadataController = null
   reconnecting.value = false
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   librarySelection.value = null
   discoveredDocuments.value = []
   selectedLibraryDocumentId.value = null
@@ -426,8 +414,7 @@ async function refreshLibrary() {
   const selection = librarySelection.value
   if (!selection || selection.kind !== 'directory') return
 
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   announcement.value = `Refreshing folder ${selection.handle.name}.`
   await runDiscovery(selection, true)
 }
@@ -522,30 +509,24 @@ async function closeSidebarAndRestoreFocus() {
           <BuildFooter />
         </div>
       </template>
-      <PdfReaderWorkspace
-        v-if="activePdfDocument"
-        :document="activePdfDocument"
-        :initial-panel="workspace.snapshot.value?.utilityPanel"
-        :initial-search-query="workspace.snapshot.value?.searchQuery"
+      <DocumentSessionWorkspace
+        :document="activeDocument"
+        :initial-panel="restoringDocument ? workspace.snapshot.value?.utilityPanel : null"
+        :initial-search-query="
+          restoringDocument ? workspace.snapshot.value?.searchQuery : undefined
+        "
         @utility-change="
           (panel, query) => workspace.patch({ utilityPanel: panel, searchQuery: query })
         "
         @status="announcement = $event"
         @identity="workspace.patch({ activeFingerprint: $event })"
         @recent-ready="rememberRecent"
-      />
-      <EpubReaderWorkspace
-        v-else-if="activeEpubDocument"
-        :document="activeEpubDocument"
-        @identity="workspace.patch({ activeFingerprint: $event })"
-        @recent-ready="rememberRecent"
-        @status="announcement = $event"
-      />
-      <ReaderWorkspace
-        v-else
-        :selected-document="selectedLibraryDocument"
-        :has-library-selection="Boolean(librarySelection)"
-      />
+      >
+        <ReaderWorkspace
+          :selected-document="selectedLibraryDocument"
+          :has-library-selection="Boolean(librarySelection)"
+        />
+      </DocumentSessionWorkspace>
     </ReaderShell>
   </main>
 </template>

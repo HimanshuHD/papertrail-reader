@@ -679,3 +679,80 @@ it('captures iframe selections and saves, recolors and deletes fingerprint-scope
   expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(0)
   wrapper.unmount()
 })
+
+it('restores an owning session snapshot and captures EPUB state before flushing and destroying', async () => {
+  const location = {
+    version: 1 as const,
+    chapter: 1,
+    kind: 'text' as const,
+    mode: 'formatted' as const,
+    cfi: null,
+    node: 'pt-1',
+    character: 3,
+    quote: 'book',
+    offset: 0,
+    ratio: 0.4,
+    atEnd: false,
+  }
+  const settings = {
+    textOnly: true,
+    typography: { fontSize: 20, lineSpacing: 1.8, readingWidth: 640 },
+    location,
+  }
+  const session: EpubSession = {
+    title: 'Owned book',
+    contents: [],
+    contentsSource: 'spine',
+    chapters: [
+      { label: 'One', href: 'one' },
+      { label: 'Two', href: 'two' },
+    ],
+    typography: vi.fn(),
+    display: vi.fn(async () => {}),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+    location: () => location,
+  }
+  mocked.open.mockResolvedValueOnce(session)
+  const file = new File(['epub'], 'owned.epub')
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'owned',
+        name: file.name,
+        format: 'EPUB',
+        relativePath: file.name,
+        parentPath: '',
+        source: 'file-input',
+        file,
+      },
+      initialState: { epub: settings, panel: 'bookmarks', query: '' },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  expect(mocked.open.mock.calls.at(-1)![3]).toMatchObject(settings)
+  expect(wrapper.vm.capture()).toEqual({ epub: settings, panel: 'bookmarks', query: '' })
+  expect(wrapper.emitted('utilityChange')?.at(-1)).toEqual(['bookmarks', ''])
+  await wrapper.get('button[aria-label="Typography"]').trigger('click')
+  await wrapper.get('button[aria-label="Increase font size"]').trigger('click')
+  const updated = { ...settings, typography: { ...settings.typography, fontSize: 22 } }
+  let finish!: () => void
+  vi.mocked(session.display).mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  await wrapper.get('button[aria-label="Previous chapter"]').trigger('click')
+  await flushPromises()
+  expect(wrapper.vm.capture().epub).toEqual(updated)
+  await wrapper.vm.dispose()
+  await wrapper.vm.dispose()
+  finish()
+  await flushPromises()
+  expect(mocked.save).toHaveBeenLastCalledWith(expect.any(String), updated)
+  expect(session.destroy).toHaveBeenCalledTimes(1)
+  wrapper.unmount()
+  expect(session.destroy).toHaveBeenCalledTimes(1)
+})

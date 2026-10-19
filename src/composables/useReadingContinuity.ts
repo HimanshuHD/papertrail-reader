@@ -50,6 +50,7 @@ export function useReadingContinuity(storage: ReadingStorage = new IndexedDbRead
     documentId.value = null
     fingerprint.value = null
     notice.value = ''
+    return writes
   }
 
   async function restore(file: File, totalPages: number): Promise<PdfReadingState | null> {

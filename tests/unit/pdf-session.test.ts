@@ -64,6 +64,20 @@ describe('PDF open recovery', () => {
     expect(destroy).toHaveBeenCalledOnce()
   })
 
+  it('cancels an unresolved loading task before a document/engine is available', async () => {
+    const controller = new AbortController()
+    const destroy = vi.fn(async () => {})
+    const task = { promise: new Promise<never>(() => {}), destroy, onPassword: null }
+    const getDocument = vi.fn(() => task)
+    const loader = async () => ({ getDocument }) as unknown as typeof import('pdfjs-dist')
+    const pending = openPdfDocument(new File(['pending'], 'pending.pdf'), loader, controller.signal)
+    const rejected = expect(pending).rejects.toBeInstanceOf(Error)
+    await vi.waitFor(() => expect(getDocument).toHaveBeenCalledTimes(1))
+    controller.abort()
+    await rejected
+    expect(destroy).toHaveBeenCalledTimes(1)
+  })
+
   it('preserves already classified reader errors', () => {
     const error = new PdfOpenError('missing', 'gone')
     expect(classifyPdfOpenError(error)).toBe(error)
@@ -383,4 +397,39 @@ describe('local PDF title metadata', () => {
     expect(await readPdfTitle(new File(['bad'], 'bad.pdf'), controller.signal, loader)).toBeNull()
     expect(loader).toHaveBeenCalledOnce()
   })
+})
+
+it('all close callers await the same completed PDF resource teardown', async () => {
+  let finish!: () => void
+  const cleanup = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  const destroy = vi.fn(async () => {})
+  const session = new PdfDocumentSession({} as never, { destroy } as never, { cleanup } as never)
+  const first = session.close(),
+    second = session.close()
+  expect(second).toBe(first)
+  await vi.waitFor(() => expect(cleanup).toHaveBeenCalledTimes(1))
+  expect(destroy).not.toHaveBeenCalled()
+  finish()
+  await Promise.all([first, second])
+  expect(destroy).toHaveBeenCalledTimes(1)
+})
+
+it('destroys the PDF worker even if document cleanup fails', async () => {
+  const destroy = vi.fn(async () => {})
+  const session = new PdfDocumentSession(
+    {} as never,
+    { destroy } as never,
+    {
+      cleanup: vi.fn(async () => {
+        throw new Error('cleanup failed')
+      }),
+    } as never,
+  )
+  await expect(session.close()).rejects.toThrow('cleanup failed')
+  expect(destroy).toHaveBeenCalledTimes(1)
 })

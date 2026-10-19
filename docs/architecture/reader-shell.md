@@ -52,3 +52,21 @@ PR #50 browser screenshots/results are historical validation evidence. Automatic
 ## Shared button interaction theme (#156)
 
 App buttons, icon controls, actionable links and menu summaries share the reference Annotations control's tinted inset surface and accent outline. Global interaction tokens adapt to light/dark/system themes; filled accent actions use an explicit contrasting foreground and hover/pressed shades. Annotation/bookmark listing surfaces keep their own styling. Framed popover/theme controls own their normal outlines and interactive 2px bottom accents; note markers use only a left hover accent, and Save actions retain stable borders, disabled controls do not receive interactive styling, and keyboard focus retains its outline. Component shapes and color swatches retain their identities. Add new filled actions with `pt-button-filled`; button-like links also use `pt-button`.
+
+## Document session ownership (#220)
+
+`DocumentSessionWorkspace` keeps one keyed PDF/EPUB component mounted. `DocumentSessions` owns session IDs and lifecycle (`loading`, `ready`, `suspended`, `reconnect`, `error`, `closed`), independent of library IDs and content fingerprints. Serializable records contain only metadata and reading/UI snapshots; local `File` access stays in a separate source map and the live runtime is a single attachment. This is an in-memory controller, with no tab strip or persisted tab list yet (#221/#222).
+
+| State                                                                                       | Owner and suspension behavior                                                                    |
+| ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| PDF page, viewport anchor, fit mode, zoom                                                   | Session snapshot; restore ahead of saved document state after re-opening the adapter             |
+| EPUB chapter/character location, text-only mode, typography                                 | Session snapshot; reconstructed rendition restores location and responsive typography            |
+| PDF search query and utility panel                                                          | Session snapshot, including unsubmitted text; search results/outline are regenerated             |
+| EPUB utility panel                                                                          | Session snapshot; no EPUB search feature is introduced                                           |
+| Pending text selection, selection toolbar, highlight hover, page edit, popovers, fullscreen | Outgoing component only; dismissed on suspension; DOM/ranges never cached                        |
+| Bookmarks, highlights, notes, saved positions and statistics                                | Existing fingerprint/document-keyed stores; session identity does not replace document ownership |
+| Theme, library access, sidebar visibility/width                                             | Existing workspace settings                                                                      |
+
+Switching captures state before removing DOM, invalidates event ownership, cancels the old reader, flushes owned reading writes and waits for pending opens/engine disposal before mounting the next reader. Existing page/rendition cleanup releases canvases, workers, object URLs, iframe listeners, timers and observers. A cancelled late PDF/EPUB open destroys its result; generation checks reject stale identity/status/utility callbacks. Cleanup failure prevents mounting another viewer and reports recovery through reload. There is no `KeepAlive` cache. The one-viewer rule is deterministic resource ownership, not a browser-wide memory guarantee.
+
+Library activation uses this controller without visible tabs. Source replacement/forget clears sessions. Re-selecting an unchanged live `File` activates its existing session; a new `File` receives a new session rather than borrowing an unrelated state snapshot. `close` retains a closed metadata record but drops its source; `disconnect` drops access and marks reconnect without serializing file bytes. Full permission reconnection and session restoration across reload remain #222.

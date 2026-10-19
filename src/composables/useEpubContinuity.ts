@@ -47,6 +47,7 @@ export function useEpubContinuity(
     fingerprint.value = null
     preparing.value = false
     notice.value = ''
+    return writes
   }
   async function prepare(file: File) {
     reset()

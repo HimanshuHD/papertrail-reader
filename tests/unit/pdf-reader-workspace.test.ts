@@ -31,7 +31,11 @@ const documentFile = new File(['pdf data'], 'a-very-long-document-name-that-need
 })
 
 function mountReader(
-  initial: { initialPanel?: 'contents' | 'search'; initialSearchQuery?: string } = {},
+  initial: {
+    initialPanel?: 'contents' | 'search'
+    initialSearchQuery?: string
+    initialState?: import('../../src/features/reader/document-sessions').SessionState
+  } = {},
 ) {
   return mount(PdfReaderWorkspace, {
     attachTo: document.body,
@@ -87,6 +91,46 @@ describe('PDF reader utility workspace', () => {
   afterEach(() => {
     wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
     vi.clearAllMocks()
+  })
+
+  it('restores session state ahead of persisted state and captures before idempotent disposal', async () => {
+    continuity.restore.mockResolvedValueOnce({ page: 1, view: { fitMode: 'width', zoom: 1 } })
+    const state = {
+      pdf: { page: 2, view: { fitMode: 'custom' as const, zoom: 1.5 } },
+      panel: null,
+      query: 'unsubmitted',
+    }
+    const wrapper = mountReader({ initialState: state })
+    wrappers.push(wrapper)
+    await flushPromises()
+    expect(wrapper.text()).toContain('Page 2 of 3')
+    const captured = wrapper.vm.capture()
+    expect(captured.pdf).toEqual(state.pdf)
+    expect(captured.query).toBe('unsubmitted')
+    await wrapper.vm.dispose()
+    await wrapper.vm.dispose()
+    expect(pdfSession.close).toHaveBeenCalledTimes(1)
+    expect(continuity.save).toHaveBeenCalledWith(2, state.pdf.view)
+  })
+
+  it('waits for a cancelled late PDF open to release its engine without restoring identity', async () => {
+    let finish!: (value: { totalPages: number; close: () => Promise<void> }) => void
+    pdfSession.openPdfDocument.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+    )
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const closing = wrapper.vm.dispose()
+    expect(pdfSession.openPdfDocument.mock.calls.at(-1)![2].aborted).toBe(true)
+    const close = vi.fn(async () => {})
+    finish({ totalPages: 2, close })
+    await closing
+    expect(close).toHaveBeenCalledTimes(1)
+    expect(continuity.restore).not.toHaveBeenCalled()
+    expect(wrapper.emitted('recentReady')).toBeUndefined()
   })
 
   it('keeps pages hidden until saved state and the target bitmap are ready', async () => {

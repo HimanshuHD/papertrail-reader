@@ -24,7 +24,14 @@ export function useEpubReader() {
     busy.value = false
     activeFile = null
   }
-  async function open(
+  const openings = new Set<Promise<void>>()
+  function open(file: File, target: HTMLElement, dark: boolean, options: EpubOpenOptions = {}) {
+    const opening = load(file, target, dark, options)
+    openings.add(opening)
+    void opening.finally(() => openings.delete(opening))
+    return opening
+  }
+  async function load(
     file: File,
     target: HTMLElement,
     dark: boolean,
@@ -118,5 +125,17 @@ export function useEpubReader() {
     }
   }
   onBeforeUnmount(close)
-  return { session, busy, error, chapter, contentsEntry, open, reopen, restore, go, close }
+  return {
+    session,
+    busy,
+    error,
+    chapter,
+    contentsEntry,
+    open,
+    reopen,
+    restore,
+    go,
+    close,
+    settled: () => Promise.all([...openings]).then(() => {}),
+  }
 }

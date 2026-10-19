@@ -2083,6 +2083,7 @@ test('cached workspace preserves tree, selection and panel context without retai
     })
   })
   await page.reload()
+  await waitForWorkspaceReady(page)
   await expect(page.getByRole('button', { name: 'Show library' })).toBeVisible()
   await expect(page.locator('#reader-title')).toHaveText('book-20.pdf')
   await page.getByRole('button', { name: 'Show library' }).click()
