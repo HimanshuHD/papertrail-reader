@@ -196,13 +196,13 @@
     "production": "3667569efe2796d2a0bc05fb8767673528e23ccc"
   },
   "staging": {
-    "sha": "24c7f31c0d532abf7fb63f9b9e4525e132163884",
-    "runId": "39188725916",
-    "sourceSha": "7696aed0089851d1ff83e1b5f8db738da4fda9d5",
-    "tree": "9d501e065fbc766fd021ec65e10d533ddd1742b7",
+    "sha": "8b17a307e2533cdff1208f82e575b80982c19ceb",
+    "runId": "39292655033",
+    "sourceSha": "1632843b6df6880e7bf0c6e1c15407c29ff609c6",
+    "tree": "2544f0505c2636a7b155382526d4fc32ac16f72d",
     "version": "2.1.1",
     "branch": "staging",
-    "archiveId": "9d501e065fbc766fd021ec65e10d533ddd1742b7-39188725916"
+    "archiveId": "2544f0505c2636a7b155382526d4fc32ac16f72d-39292655033"
   },
   "releases": {
     "v2.1.1": {
