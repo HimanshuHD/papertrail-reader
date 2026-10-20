@@ -1,3 +1,4 @@
+import { UnsupportedWorkspaceSchemaError } from '../../src/features/reader/session-snapshot'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 import { useWorkspaceContinuity } from '../../src/composables/useWorkspaceContinuity'
@@ -248,4 +249,42 @@ it('revalidates an active EPUB with granted file access without borrowing a PDF 
   expect(
     (await revalidateWorkspace({ ...saved, activeFingerprint: 'changed' }, [item])).activeDocument,
   ).toBeNull()
+})
+
+it('skips queued saves for an obsolete source but flushes the last state on unmount', async () => {
+  const storage = repository()
+  const workspace = setup(storage)
+  workspace.remember(snapshot('old'))
+  window.dispatchEvent(new Event('pagehide'))
+  workspace.remember(snapshot('new'))
+  wrappers.pop()!.unmount()
+  await flushPromises()
+  expect(storage.save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ label: 'new' }))
+})
+
+it('preserves a queued pagehide save when unmounted before its microtask runs', async () => {
+  const storage = repository()
+  const workspace = setup(storage)
+  workspace.remember(snapshot('last'))
+  window.dispatchEvent(new Event('pagehide'))
+  wrappers.pop()!.unmount()
+  await flushPromises()
+  expect(storage.save).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ label: 'last' }))
+})
+
+it('explains newer workspace data and requires explicit reset without blocking reading', async () => {
+  const storage = repository()
+  vi.mocked(storage.load).mockRejectedValue(new UnsupportedWorkspaceSchemaError())
+  vi.mocked(storage.save).mockRejectedValue(new UnsupportedWorkspaceSchemaError())
+  const workspace = setup(storage)
+  expect(await workspace.restore()).toBeNull()
+  expect(workspace.notice.value).toContain('newer format')
+  workspace.remember(snapshot())
+  window.dispatchEvent(new Event('pagehide'))
+  await flushPromises()
+  expect(workspace.notice.value).toContain('Forget library')
+  expect(storage.clear).not.toHaveBeenCalled()
+  await workspace.forget()
+  expect(storage.clear).toHaveBeenCalledOnce()
+  expect(workspace.notice.value).toBe('')
 })

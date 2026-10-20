@@ -1,3 +1,8 @@
+import {
+  assertWorkspaceSchemaSupported,
+  normalizeWorkspaceTabs,
+  type WorkspaceTabs,
+} from '../features/reader/session-snapshot'
 import { environmentDatabaseName } from './environment-storage'
 import type { DiscoveredDocument, LibraryDocumentMetadata } from '../features/library/discovery'
 import type { BrowserLibrarySelection } from '../features/library/browser-selection'
@@ -8,6 +13,7 @@ export interface CachedLibraryDocument extends LibraryDocumentMetadata {
 }
 export interface WorkspaceSnapshot {
   version: 1
+  tabs?: WorkspaceTabs
   source: BrowserLibrarySelection['source']
   label: string
   handle: FileSystemDirectoryHandle | null
@@ -44,9 +50,11 @@ export function cacheLibraryDocuments(
   }))
 }
 
-function validateSnapshot(value: unknown): WorkspaceSnapshot | null {
+export function validateWorkspaceSnapshot(value: unknown): WorkspaceSnapshot | null {
   if (!value || typeof value !== 'object') return null
   const state = value as WorkspaceSnapshot
+  const tabs = state.tabs === undefined ? undefined : normalizeWorkspaceTabs(state.tabs)
+  if (tabs === null) return null
   if (
     state.version !== 1 ||
     !Array.isArray(state.documents) ||
@@ -76,6 +84,7 @@ function validateSnapshot(value: unknown): WorkspaceSnapshot | null {
     return null
   return {
     version: 1,
+    ...(tabs ? { tabs } : {}),
     source: state.source,
     label: state.label,
     handle:
@@ -123,7 +132,11 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
     this.databaseName = environmentDatabaseName(databaseName)
   }
   private async transaction<T>(
-    run: (store: IDBObjectStore, result: (value: T) => void) => void,
+    run: (
+      store: IDBObjectStore,
+      result: (value: T) => void,
+      fail: (error: unknown) => void,
+    ) => void,
   ): Promise<T> {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       if (!globalThis.indexedDB) return reject(new Error('Workspace storage unavailable.'))
@@ -144,17 +157,25 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
       return await new Promise<T>((resolve, reject) => {
         const transaction = database.transaction('workspace', 'readwrite')
         let result: T
+        let failure: unknown
+        const fail = (error: unknown) => {
+          failure = error
+          transaction.abort()
+        }
         transaction.oncomplete = () => resolve(result)
         transaction.onerror = () => reject(transaction.error)
         transaction.onabort = () =>
-          reject(transaction.error ?? new Error('Workspace transaction aborted.'))
+          reject(failure ?? transaction.error ?? new Error('Workspace transaction aborted.'))
         try {
-          run(transaction.objectStore('workspace'), (value) => {
-            result = value
-          })
+          run(
+            transaction.objectStore('workspace'),
+            (value) => {
+              result = value
+            },
+            fail,
+          )
         } catch (error) {
-          transaction.abort()
-          reject(error)
+          fail(error)
         }
       })
     } finally {
@@ -162,17 +183,35 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
     }
   }
   load(): Promise<WorkspaceSnapshot | null> {
-    return this.transaction((store, done) => {
+    return this.transaction((store, done, fail) => {
       const request = store.get('current')
-      request.onsuccess = () => done(validateSnapshot(request.result))
+      request.onsuccess = () => {
+        try {
+          assertWorkspaceSchemaSupported(request.result)
+          done(validateWorkspaceSnapshot(request.result))
+        } catch (error) {
+          fail(error)
+        }
+      }
     })
   }
   save(snapshot: WorkspaceSnapshot): Promise<void> {
-    return this.transaction((store, done) => {
-      const safe = validateSnapshot(snapshot)
+    return this.transaction((store, done, fail) => {
+      assertWorkspaceSchemaSupported(snapshot)
+      const safe = validateWorkspaceSnapshot(snapshot)
       if (!safe) throw new Error('Invalid workspace metadata.')
-      store.put(safe, 'current')
-      done(undefined)
+      // Read/check/write in the same transaction: another window may have saved
+      // a newer schema after this window loaded. Only explicit Forget may remove it.
+      const request = store.get('current')
+      request.onsuccess = () => {
+        try {
+          assertWorkspaceSchemaSupported(request.result)
+          store.put(safe, 'current')
+          done(undefined)
+        } catch (error) {
+          fail(error)
+        }
+      }
     })
   }
   clear(): Promise<void> {
