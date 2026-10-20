@@ -42,6 +42,9 @@ export class DocumentSessions {
   readonly sessions = new Map<string, DocumentSession>()
   active: ActiveSession | null = null
   selectedId: string | null = null
+  /** Transient layout only; never included in the persisted tab snapshot. */
+  comparison: [string, string] | null = null
+  comparisonCompact = true
   private remembered = new Map<string, CachedLibraryDocument>()
   private sources = new Map<string, DiscoveredDocument>()
   readonly retained = new Map<string, ActiveSession>()
@@ -107,24 +110,87 @@ export class DocumentSessions {
     if (runtime) this.disposeRuntime(runtime)
   }
 
-  private suspend() {
-    const previous = this.active
-    if (!previous) return
-    const id = previous.session.id
-    this.capture(id)
-    clearTimeout(this.timers.get(id))
-    this.timers.set(
-      id,
-      setTimeout(
-        () => {
-          if (this.selectedId === id || this.retained.get(id) !== previous) return
-          this.release(id)
-          this.changed()
-        },
-        5 * 60 * 1000,
-      ),
-    )
-    this.active = null
+  get visibleIds(): string[] {
+    return this.comparison && !this.comparisonCompact
+      ? [...this.comparison]
+      : this.selectedId
+        ? [this.selectedId]
+        : []
+  }
+
+  canCompare(id: string): boolean {
+    const session = this.sessions.get(id)
+    return !!session?.fingerprint && session.phase !== 'closed' && this.sources.has(id)
+  }
+
+  private ensureReader(id: string) {
+    if (this.retained.has(id)) return
+    const session = this.sessions.get(id)
+    if (!session || session.phase === 'closed') return
+    const document = this.sources.get(id)
+    if (!document) {
+      session.phase = 'reconnect'
+      return
+    }
+    session.phase = 'loading'
+    this.retained.set(id, { session, document, generation: ++this.generation })
+  }
+
+  private syncVisibility() {
+    const visible = new Set(this.visibleIds)
+    for (const id of visible) this.ensureReader(id)
+    this.active = this.retained.get(this.selectedId ?? '') ?? null
+    for (const [id, owner] of this.retained) {
+      if (visible.has(id)) {
+        clearTimeout(this.timers.get(id))
+        this.timers.delete(id)
+      } else if (!this.timers.has(id)) {
+        this.capture(id)
+        this.timers.set(
+          id,
+          setTimeout(
+            () => {
+              if (this.visibleIds.includes(id) || this.retained.get(id) !== owner) return
+              this.release(id)
+              this.changed()
+            },
+            5 * 60 * 1000,
+          ),
+        )
+      }
+    }
+  }
+
+  compareWith(id: string): boolean {
+    const current = this.selectedId
+    if (!current || current === id || !this.canCompare(current) || !this.canCompare(id))
+      return false
+    this.comparison = [current, id]
+    this.syncVisibility()
+    this.changed()
+    return true
+  }
+
+  endComparison() {
+    if (!this.comparison) return
+    this.comparison = null
+    this.syncVisibility()
+    this.changed()
+  }
+
+  swapComparison() {
+    if (!this.comparison) return
+    this.comparison = [this.comparison[1], this.comparison[0]]
+    this.changed()
+  }
+
+  setComparisonCompact(compact: boolean) {
+    if (this.comparisonCompact === compact) return
+    this.comparisonCompact = compact
+    if (this.comparison) {
+      this.syncVisibility()
+      this.changed()
+    }
   }
 
   async open(document: DiscoveredDocument, initial?: Partial<SessionState>, fingerprint?: string) {
@@ -159,25 +225,13 @@ export class DocumentSessions {
     const session = this.sessions.get(id)
     if (!session || session.phase === 'closed') return
     if (this.active?.session === session) return
-    this.suspend()
+    if (this.selectedId) this.capture(this.selectedId)
+    if (this.comparison && !this.comparison.includes(id)) {
+      const slot = this.comparison.indexOf(this.selectedId ?? '')
+      this.comparison[slot === 1 ? 1 : 0] = id
+    }
     this.selectedId = id
-    clearTimeout(this.timers.get(id))
-    this.timers.delete(id)
-    const retained = this.retained.get(id)
-    if (retained) {
-      this.active = retained
-      this.changed()
-      return
-    }
-    const document = this.sources.get(id)
-    if (!document) {
-      session.phase = 'reconnect'
-      this.changed()
-      return
-    }
-    session.phase = 'loading'
-    this.active = { session, document, generation: ++this.generation }
-    this.retained.set(id, this.active)
+    this.syncVisibility()
     this.changed()
   }
 
@@ -195,18 +249,21 @@ export class DocumentSessions {
     if (!session || session.phase === 'closed') return
     const open = [...this.sessions.values()].filter((item) => item.phase !== 'closed')
     const index = open.indexOf(session)
-    const next = this.selectedId === id ? (open[index + 1] ?? open[index - 1]) : null
+    const paired = this.comparison?.includes(id)
+      ? this.comparison.find((other) => other !== id)
+      : undefined
+    if (paired) this.comparison = null
     const selected = this.selectedId === id
+    const next = selected
+      ? (this.sessions.get(paired ?? '') ?? open[index + 1] ?? open[index - 1])
+      : null
     this.release(id)
     session.phase = 'closed'
     this.sources.delete(id)
     this.remembered.delete(id)
+    if (selected) this.selectedId = next?.id ?? null
+    this.syncVisibility()
     this.changed()
-    if (selected) {
-      this.selectedId = next?.id ?? null
-      if (next) await this.activate(next.id)
-      else this.changed()
-    }
   }
 
   async disconnect(id: string) {
@@ -244,6 +301,7 @@ export class DocumentSessions {
     const saved = normalizeWorkspaceTabs(value)
     if (!saved) return false
     ++this.generation
+    this.comparison = null
     for (const id of [...this.retained.keys()]) this.release(id)
     this.sessions.clear()
     this.sources.clear()
@@ -284,12 +342,14 @@ export class DocumentSessions {
     session.name = document.name
     session.title = document.title || document.name
     session.phase = 'suspended'
+    if (this.comparison?.includes(id)) this.syncVisibility()
     this.changed()
     return true
   }
 
   async reset() {
     ++this.generation
+    this.comparison = null
     for (const id of [...this.retained.keys()]) this.release(id)
     for (const session of this.sessions.values()) session.phase = 'closed'
     this.selectedId = null

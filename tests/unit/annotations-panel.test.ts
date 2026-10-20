@@ -267,3 +267,16 @@ it('disables export for an empty saved collection and after its last annotation 
   await button.trigger('click')
   expect(downloadJson).toHaveBeenCalledTimes(calls)
 })
+
+it('does not steal focus when an unfocused comparison pane mounts its saved annotations', async () => {
+  const { wrapper } = await panel()
+  const input = wrapper.get('#epub-annotations-filter').element as HTMLInputElement
+  input.focus()
+  const other = mount(AnnotationsPanel, {
+    attachTo: document.body,
+    props: { ...wrapper.props(), idPrefix: 'other-', autoFocus: false },
+  })
+  wrappers.push(other)
+  await flushPromises()
+  expect(document.activeElement).toBe(input)
+})

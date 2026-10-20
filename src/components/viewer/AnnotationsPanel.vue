@@ -8,6 +8,7 @@ import { prepareAnnotationExport } from '../../services/annotation-export'
 import { downloadJson } from '../../services/file-download'
 
 const props = defineProps<{
+  autoFocus?: boolean
   identity?: AnnotationIdentity | null
   documentName?: string
   documentTitle?: string
@@ -126,7 +127,9 @@ watch(selected, (item, previous) => {
   if (!item) draft.value = ''
   else if (draft.value === previous?.note) draft.value = item.note
 })
-onMounted(() => filterInput.value?.focus({ preventScroll: true }))
+onMounted(() => {
+  if (props.autoFocus !== false) filterInput.value?.focus({ preventScroll: true })
+})
 async function focusEditor() {
   await nextTick()
   if (!pendingEditorFocus || props.busy || props.loading) return

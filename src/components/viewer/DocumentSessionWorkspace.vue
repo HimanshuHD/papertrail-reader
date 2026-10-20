@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, shallowRef, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
 import { fingerprintDocument } from '../../services/document-identity'
 import { fingerprintEpub } from '../../services/epub-reading-storage'
 import PdfReaderWorkspace from './PdfReaderWorkspace.vue'
@@ -22,6 +22,7 @@ const props = defineProps<{
   initialSearchQuery?: string
 }>()
 const emit = defineEmits<{
+  comparisonChange: [ids: [string, string] | null]
   status: [message: string]
   snapshotChange: []
   recover: []
@@ -34,13 +35,26 @@ const emit = defineEmits<{
 const active = shallowRef<ActiveSession | null>(null)
 const readers = shallowRef<ActiveSession[]>([])
 const selected = shallowRef<string | null>(null)
-const reconnect = shallowRef(false)
 const panels = shallowRef<DocumentSession[]>([])
+const root = ref<HTMLElement | null>(null)
+const comparison = shallowRef<[string, string] | null>(null)
+const visible = shallowRef<string[]>([])
+const compact = ref(true)
+const comparedPanels = computed(
+  () =>
+    comparison.value
+      ?.map((id) => panels.value.find((panel) => panel.id === id))
+      .filter((panel): panel is DocumentSession => !!panel) ?? [],
+)
+let observer: ResizeObserver | undefined
 let disposed = false
 const sessions = new DocumentSessions(() => {
   if (disposed) return
   selected.value = sessions.selectedId
-  reconnect.value = sessions.sessions.get(sessions.selectedId ?? '')?.phase === 'reconnect'
+  comparison.value = sessions.comparison ? [...sessions.comparison] : null
+  visible.value = sessions.visibleIds
+  compact.value = sessions.comparisonCompact
+  emit('comparisonChange', comparison.value)
   const previous = active.value
   active.value = sessions.active
   readers.value = [...sessions.retained.values()]
@@ -63,10 +77,10 @@ function publishActive() {
   emit('utilityChange', owner.session.state.panel, owner.session.state.query)
 }
 function utility(owner: ActiveSession, panel: UtilityPanel, query: string) {
-  if (!current(owner)) return
+  if (!sessions.retainedOwns(owner.session.id, owner.generation)) return
   owner.session.state.panel = panel
   owner.session.state.query = query
-  emit('utilityChange', panel, query)
+  if (current(owner)) emit('utilityChange', panel, query)
   emit('snapshotChange')
 }
 function attach(runtime: unknown, owner: ActiveSession) {
@@ -129,6 +143,7 @@ watch(
   { immediate: true, flush: 'pre' },
 )
 onBeforeUnmount(() => {
+  observer?.disconnect()
   disposed = true
   opening?.abort()
   void sessions.reset().catch(reportOpenFailure)
@@ -145,8 +160,48 @@ async function reset() {
   opening?.abort()
   await sessions.reset()
 }
+function focusPane(id: string, moveFocus = false) {
+  if (!sessions.visibleIds.includes(id) && !sessions.comparison?.includes(id)) return
+  if (id === sessions.selectedId && !moveFocus) return
+  void activate(id).then(async () => {
+    if (moveFocus) {
+      await nextTick()
+      document.getElementById(`${id}-panel`)?.focus({ preventScroll: true })
+    }
+  })
+}
+async function compareWith(id: string) {
+  opening?.abort()
+  if (!sessions.compareWith(id)) return
+  await nextTick()
+  document.getElementById(`${sessions.selectedId}-panel`)?.focus({ preventScroll: true })
+}
+async function endComparison() {
+  sessions.endComparison()
+  await nextTick()
+  document.getElementById(`${sessions.selectedId}-tab`)?.focus({ preventScroll: true })
+}
+watch(
+  root,
+  (element) => {
+    observer?.disconnect()
+    if (!element) return
+    const measure = () => sessions.setComparisonCompact(element.getBoundingClientRect().width < 960)
+    measure()
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(measure)
+      observer.observe(element)
+    }
+  },
+  { flush: 'post' },
+)
+function order(id: string) {
+  return comparison.value?.indexOf(id) ?? 0
+}
 defineExpose({
   sessions,
+  compareWith,
+  endComparison,
   activate,
   close,
   restoreWorkspace,
@@ -157,83 +212,158 @@ defineExpose({
 </script>
 
 <template>
-  <div v-if="selected" class="session-workspace">
+  <div v-if="selected" ref="root" class="session-workspace">
     <div
-      v-for="owner in readers"
-      :id="`${owner.session.id}-panel`"
-      :key="`${owner.session.id}:${owner.generation}`"
-      role="tabpanel"
-      :aria-labelledby="`${owner.session.id}-tab`"
-      tabindex="0"
-      :inert="owner.session.id !== selected || undefined"
-      :aria-hidden="owner.session.id !== selected || undefined"
-      class="session-panel"
-      :class="{ 'session-inactive': owner.session.id !== selected }"
+      v-if="comparison"
+      class="comparison-controls border-b border-line bg-panel"
+      aria-label="Split view controls"
+      role="group"
     >
-      <component
-        :is="owner.document.format === 'PDF' ? PdfReaderWorkspace : EpubReaderWorkspace"
-        :ref="(runtime: unknown) => attach(runtime, owner)"
-        :document="owner.document"
-        :id-prefix="`${owner.session.id}-`"
-        :initial-state="owner.session.state"
-        :active="owner.session.id === selected"
-        @reading-change="emit('snapshotChange')"
-        @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
-        @status="current(owner) && emit('status', $event)"
-        @identity="identity(owner, $event)"
-        @recent-ready="current(owner) && emit('recentReady', $event)"
-        @utility-change="(panel: UtilityPanel, query: string) => utility(owner, panel, query)"
-      />
-    </div>
-    <div
-      v-if="!active"
-      :id="`${selected}-panel`"
-      role="tabpanel"
-      :aria-labelledby="`${selected}-tab`"
-      tabindex="0"
-      class="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-sm text-muted"
-    >
-      <h1 :id="`${selected}-reader-title`" class="text-base font-semibold text-ink">
-        {{ panels.find((panel) => panel.id === selected)?.title }}
-      </h1>
-      <p role="status">
+      <button
+        v-for="(panel, index) in comparedPanels"
+        :key="panel.id"
+        type="button"
+        class="comparison-document pt-plain-control"
+        :aria-pressed="selected === panel.id"
+        :aria-label="`${compact ? 'Show' : 'Focus'} ${index === 0 ? 'left' : 'right'} split view document: ${panel.title}`"
+        @click="focusPane(panel.id, true)"
+      >
+        {{ panel.title }}
+      </button>
+      <button
+        type="button"
+        class="comparison-action pt-plain-control"
+        aria-label="Swap split view panes"
+        @click="sessions.swapComparison()"
+      >
+        Swap
+      </button>
+      <button type="button" class="comparison-action pt-plain-control" @click="endComparison">
+        Exit split view
+      </button>
+      <p class="sr-only" role="status">
         {{
-          reconnect
-            ? 'This saved document needs local access. Reselect its source to verify and restore your reading position. Missing or changed files stay disconnected.'
-            : 'Opening document…'
+          compact
+            ? 'Split view shows one document at a time. Choose a document to switch.'
+            : 'Split view shows two documents side by side. Focus a pane for shortcuts and reading time.'
         }}
       </p>
-      <button
-        v-if="reconnect"
-        type="button"
-        class="pt-list-entry rounded-md border border-line px-4 py-2 text-ink hover:bg-canvas"
-        @click="emit('recover')"
-      >
-        Reconnect local document
-      </button>
     </div>
-    <template v-for="panel in panels" :key="panel.id">
+    <div class="session-readers" :class="{ 'comparison-wide': comparison && !compact }">
       <div
-        v-if="panel.id !== selected && !readers.some((owner) => owner.session.id === panel.id)"
-        :id="`${panel.id}-panel`"
-        role="tabpanel"
-        :aria-labelledby="`${panel.id}-tab`"
-        hidden
-      />
-    </template>
+        v-for="owner in readers"
+        :id="`${owner.session.id}-panel`"
+        :key="`${owner.session.id}:${owner.generation}`"
+        :role="comparison?.includes(owner.session.id) ? 'region' : 'tabpanel'"
+        :aria-label="
+          comparison?.includes(owner.session.id)
+            ? `${owner.session.title} split view pane`
+            : undefined
+        "
+        :aria-labelledby="
+          comparison?.includes(owner.session.id) ? undefined : `${owner.session.id}-tab`
+        "
+        tabindex="0"
+        :inert="!visible.includes(owner.session.id) || undefined"
+        :aria-hidden="!visible.includes(owner.session.id) || undefined"
+        class="session-panel"
+        :style="{ order: order(owner.session.id) }"
+        :class="{
+          'session-inactive': !visible.includes(owner.session.id),
+          'comparison-pane': comparison?.includes(owner.session.id),
+          'comparison-focused':
+            comparison?.includes(owner.session.id) && selected === owner.session.id,
+        }"
+        @pointerdown.capture="focusPane(owner.session.id)"
+        @focusin="focusPane(owner.session.id)"
+      >
+        <component
+          :is="owner.document.format === 'PDF' ? PdfReaderWorkspace : EpubReaderWorkspace"
+          :ref="(runtime: unknown) => attach(runtime, owner)"
+          :document="owner.document"
+          :id-prefix="`${owner.session.id}-`"
+          :initial-state="owner.session.state"
+          :active="owner.session.id === selected"
+          @focus-pane="visible.includes(owner.session.id) && focusPane(owner.session.id)"
+          @reading-change="emit('snapshotChange')"
+          @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
+          @status="current(owner) && emit('status', $event)"
+          @identity="identity(owner, $event)"
+          @recent-ready="current(owner) && emit('recentReady', $event)"
+          @utility-change="(panel: UtilityPanel, query: string) => utility(owner, panel, query)"
+        />
+      </div>
+      <template v-for="panel in panels" :key="panel.id">
+        <div
+          v-if="!readers.some((owner) => owner.session.id === panel.id)"
+          :id="`${panel.id}-panel`"
+          :role="comparison?.includes(panel.id) ? 'region' : 'tabpanel'"
+          :aria-label="
+            comparison?.includes(panel.id) ? `${panel.title} split view pane` : undefined
+          "
+          :aria-labelledby="comparison?.includes(panel.id) ? undefined : `${panel.id}-tab`"
+          tabindex="0"
+          :inert="!visible.includes(panel.id) || undefined"
+          :aria-hidden="!visible.includes(panel.id) || undefined"
+          class="session-panel session-placeholder"
+          :style="{ order: order(panel.id) }"
+          :class="{
+            'session-inactive': !visible.includes(panel.id),
+            'comparison-pane': comparison?.includes(panel.id),
+            'comparison-focused': comparison?.includes(panel.id) && selected === panel.id,
+          }"
+          @pointerdown.capture="focusPane(panel.id)"
+          @focusin="focusPane(panel.id)"
+        >
+          <h1 :id="`${panel.id}-reader-title`" class="text-base font-semibold text-ink">
+            {{ panel.title }}
+          </h1>
+          <p role="status">
+            {{
+              panel.phase === 'reconnect'
+                ? 'This saved document needs local access. Reselect its source to verify and restore your reading position. Missing or changed files stay disconnected.'
+                : 'Opening document…'
+            }}
+          </p>
+          <button
+            v-if="panel.phase === 'reconnect'"
+            type="button"
+            class="pt-list-entry rounded-md border border-line px-4 py-2 text-ink hover:bg-canvas"
+            @click="emit('recover')"
+          >
+            Reconnect local document
+          </button>
+        </div>
+      </template>
+    </div>
   </div>
   <slot v-else />
 </template>
 <style scoped>
 .session-workspace {
+  display: flex;
+  flex-direction: column;
   position: relative;
   height: 100%;
   min-height: 0;
   isolation: isolate;
 }
+.session-readers {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  flex: 1;
+  min-height: 0;
+}
+.comparison-wide {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
 .session-panel {
+  position: relative;
   height: 100%;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 .session-inactive {
   position: absolute;
@@ -242,5 +372,58 @@ defineExpose({
   opacity: 0;
   pointer-events: none;
   z-index: -1;
+}
+.session-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--pt-muted);
+}
+.comparison-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  min-width: 0;
+  min-height: 36px;
+  flex-shrink: 0;
+  font-size: 12px;
+}
+.comparison-document {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 6px;
+  border-bottom: 2px solid transparent;
+  border-radius: 4px;
+}
+.comparison-document[aria-pressed='true'] {
+  color: var(--pt-brand);
+  border-bottom-color: var(--pt-brand);
+}
+.comparison-action {
+  flex-shrink: 0;
+  padding: 6px;
+  border-radius: 4px;
+}
+.comparison-pane {
+  outline: 1px solid var(--pt-line);
+  outline-offset: -1px;
+}
+.comparison-focused {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: -2px;
+}
+.comparison-pane :deep(.pdf-side-panel) {
+  position: absolute;
+  width: min(21rem, 100%);
+  box-shadow: -8px 0 24px #0002;
 }
 </style>

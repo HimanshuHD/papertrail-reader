@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
+import { settleReaderLayout } from '../fixtures/browser'
 
 test('compact workspace preserves reading state while resizing and closing the library', async ({
   page,
@@ -82,6 +83,7 @@ test('compact workspace preserves reading state while resizing and closing the l
   await chooser.setFiles([])
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('spinbutton', { name: 'Current page' })).toHaveValue('2')
+  await settleReaderLayout(page.locator('.reader-layout'))
   const closedWidth = (await page.locator('.reader-column').boundingBox())!.width
   await opener.click()
   await expect(rail).toHaveAttribute('aria-valuenow', narrow!)
@@ -93,6 +95,7 @@ test('compact workspace preserves reading state while resizing and closing the l
     ).toBeVisible()
     await expect(actions).toHaveCount(0)
   } else await expect(actions).toBeVisible()
+  await settleReaderLayout(page.locator('.reader-layout'))
   if (info.project.use.viewport!.width >= 1024)
     expect((await page.locator('.reader-column').boundingBox())!.width).toBeLessThan(closedWidth)
   await rail.focus()

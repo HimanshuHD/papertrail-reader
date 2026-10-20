@@ -193,3 +193,109 @@ it('inactive close keeps the live runtime; active close chooses right, then left
   expect(sessions.active).not.toBeNull()
   await sessions.reset()
 })
+
+it('compares only distinct verified local tabs and keeps a single shortcut owner', async () => {
+  const sessions = new DocumentSessions()
+  await sessions.open(document('unverified'))
+  const unverified = sessions.selectedId!
+  await sessions.open(document('a'), undefined, 'a-hash')
+  const a = sessions.active!
+  await sessions.open(document('b', 'EPUB'), undefined, 'b-hash')
+  const b = sessions.active!
+  expect(sessions.compareWith(b.session.id)).toBe(false)
+  expect(sessions.compareWith(unverified)).toBe(false)
+  sessions.setComparisonCompact(false)
+  expect(sessions.compareWith(a.session.id)).toBe(true)
+  expect(sessions.visibleIds).toEqual([b.session.id, a.session.id])
+  expect(sessions.active).toBe(b)
+  expect(sessions.owns(a.session.id, a.generation)).toBe(false)
+  sessions.swapComparison()
+  expect(sessions.visibleIds).toEqual([a.session.id, b.session.id])
+  expect(sessions.active).toBe(b)
+  await sessions.activate(a.session.id)
+  expect(sessions.active).toBe(a)
+  await sessions.disconnect(b.session.id)
+  expect(sessions.canCompare(b.session.id)).toBe(false)
+  expect(sessions.retained.get(a.session.id)).toBe(a)
+  await sessions.reset()
+})
+
+it('pins both visible panes, expires hidden readers and restores a compact partner only when shown', async () => {
+  vi.useFakeTimers()
+  try {
+    const sessions = new DocumentSessions()
+    await sessions.open(document('a'), undefined, 'a-hash')
+    const a = sessions.active!,
+      reader = runtime()
+    sessions.attach(a.session.id, a.generation, reader)
+    sessions.update(a.session.id, a.generation, 'ready')
+    await sessions.open(document('b'), undefined, 'b-hash')
+    const b = sessions.active!
+    sessions.setComparisonCompact(false)
+    sessions.compareWith(a.session.id)
+    await vi.advanceTimersByTimeAsync(300001)
+    expect(sessions.retained.get(a.session.id)).toBe(a)
+    expect(sessions.retained.get(b.session.id)).toBe(b)
+    sessions.setComparisonCompact(true)
+    await vi.advanceTimersByTimeAsync(300001)
+    expect(sessions.retained.has(a.session.id)).toBe(false)
+    expect(reader.dispose).toHaveBeenCalledTimes(1)
+    expect(sessions.visibleIds).toEqual([b.session.id])
+    await sessions.activate(a.session.id)
+    expect(sessions.active!.generation).not.toBe(a.generation)
+    expect(sessions.active!.session.state).toEqual(state)
+    sessions.endComparison()
+    await vi.advanceTimersByTimeAsync(300001)
+    expect(sessions.retained.has(b.session.id)).toBe(false)
+    await sessions.reset()
+    expect(vi.getTimerCount()).toBe(0)
+  } finally {
+    vi.useRealTimers()
+  }
+})
+
+it('replaces the focused comparison slot with a third tab and closes back to the paired document', async () => {
+  const sessions = new DocumentSessions()
+  const owners = []
+  for (const name of ['a', 'b', 'c']) {
+    await sessions.open(document(name), undefined, name + '-hash')
+    owners.push(sessions.active!)
+  }
+  const [a, b, c] = owners
+  await sessions.activate(a!.session.id)
+  sessions.setComparisonCompact(false)
+  sessions.compareWith(b!.session.id)
+  await sessions.activate(c!.session.id)
+  expect(sessions.visibleIds).toEqual([c!.session.id, b!.session.id])
+  expect(sessions.retained.get(b!.session.id)).toBe(b)
+  expect(sessions.update(c!.session.id, c!.generation, 'error')).toBe(true)
+  expect(sessions.retained.get(b!.session.id)).toBe(b)
+  await sessions.close(c!.session.id)
+  expect(sessions.comparison).toBeNull()
+  expect(sessions.active).toBe(b)
+  expect(sessions.update(c!.session.id, c!.generation, 'ready')).toBe(false)
+  await sessions.close(a!.session.id)
+  await sessions.close(b!.session.id)
+  expect(sessions.visibleIds).toEqual([])
+  await sessions.reset()
+})
+
+it('keeps comparison transient across reload while persisting the focused tab and isolated states', async () => {
+  const sessions = new DocumentSessions()
+  await sessions.open(document('a'), undefined, 'sha256-chunks-v1:' + 'a'.repeat(64))
+  const a = sessions.active!
+  sessions.attach(a.session.id, a.generation, runtime())
+  sessions.update(a.session.id, a.generation, 'ready')
+  await sessions.open(document('b'), undefined, 'sha256-chunks-v1:' + 'b'.repeat(64))
+  const b = sessions.active!
+  sessions.compareWith(a.session.id)
+  const snapshot = sessions.snapshot()
+  expect(Object.keys(snapshot).sort()).toEqual(['activeId', 'sessions', 'version'])
+  expect(snapshot.activeId).toBe(b.session.id)
+  expect(snapshot.sessions[0]!.state).toEqual(state)
+  expect(sessions.restoreWorkspace(snapshot)).toBe(true)
+  expect(sessions.comparison).toBeNull()
+  expect(sessions.retained.size).toBe(0)
+  expect(sessions.visibleIds).toEqual([b.session.id])
+  await sessions.reset()
+})

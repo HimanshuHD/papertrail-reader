@@ -107,5 +107,25 @@ test('local PDF and formatted EPUB remain readable through reselection and reloa
     'aria-checked',
     'true',
   )
+  await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
+  await page.setViewportSize(info.project.use.viewport ?? { width: 768, height: 900 })
+  await page.getByRole('button', { name: 'Split view', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Choose a document for split view' })
+    .getByRole('button', { name: 'Split with support.pdf', exact: true })
+    .click()
+  await page.getByRole('button', { name: /^(Focus|Show) right split view document:/ }).click()
+  await expect(currentPage).toHaveValue('2')
+  if ((info.project.use.viewport?.width ?? 768) < 960)
+    await page.getByRole('button', { name: /^(Focus|Show) left split view document:/ }).click()
+  await frame.getByRole('heading', { name: 'Formatted chapter' }).click()
+  await expect(page.getByRole('tab', { selected: true })).toContainText('support.epub')
+  await expect(page.getByRole('switch', { name: 'Text-only view' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await page.screenshot({ path: info.outputPath('supported-comparison-dark.png') })
+  await page.getByRole('button', { name: 'Exit split view', exact: true }).click()
+  await expect(page.locator('.session-panel:not(.session-inactive)')).toHaveCount(1)
   expect(requests).toEqual([])
 })
