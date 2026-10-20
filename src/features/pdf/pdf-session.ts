@@ -129,6 +129,7 @@ export function resolvePdfScale(
 export class PdfDocumentSession {
   private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
+  private closing: Promise<void> | undefined
   private readonly dimensions = new Map<number, { width: number; height: number }>()
   private readonly previews = new Map<number, HTMLCanvasElement>()
 
@@ -386,9 +387,14 @@ export class PdfDocumentSession {
     }
   }
 
-  async close(): Promise<void> {
-    if (this.closed) return
+  close(): Promise<void> {
+    if (this.closing) return this.closing
     this.closed = true
+    this.closing = this.releaseResources()
+    return this.closing
+  }
+
+  private async releaseResources(): Promise<void> {
     await this.cancelAllRenders()
     for (const preview of this.previews.values()) {
       preview.width = 0
@@ -396,8 +402,11 @@ export class PdfDocumentSession {
     }
     this.previews.clear()
     this.dimensions.clear()
-    await this.document.cleanup()
-    await this.loadingTask.destroy()
+    try {
+      await this.document.cleanup()
+    } finally {
+      await this.loadingTask.destroy()
+    }
   }
 }
 
@@ -406,9 +415,24 @@ export async function openPdfDocument(
   loader: PdfJsLoader = loadPdfJs,
   signal?: AbortSignal,
 ): Promise<PdfDocumentSession> {
+  signal?.throwIfAborted()
   const pdfjs = await loader()
+  signal?.throwIfAborted()
   const data = new Uint8Array(await file.arrayBuffer())
+  signal?.throwIfAborted()
   const loadingTask = pdfjs.getDocument({ data })
+  let destruction: Promise<void> | undefined
+  const destroyLoading = () => (destruction ??= loadingTask.destroy())
+  let rejectAbort!: (reason: DOMException) => void
+  const cancelled = new Promise<never>((_resolve, reject) => {
+    rejectAbort = reject
+  })
+  const cancelLoading = () => {
+    rejectAbort(new DOMException('PDF preparation cancelled.', 'AbortError'))
+    void destroyLoading().catch(() => undefined)
+  }
+  signal?.addEventListener('abort', cancelLoading, { once: true })
+  if (signal?.aborted) cancelLoading()
 
   const passwordRequest = new Promise<never>((_resolve, reject) => {
     loadingTask.onPassword = () => {
@@ -423,7 +447,8 @@ export async function openPdfDocument(
 
   let ownedBySession = false
   try {
-    const document = await Promise.race([loadingTask.promise, passwordRequest])
+    const document = await Promise.race([loadingTask.promise, passwordRequest, cancelled])
+    signal?.removeEventListener('abort', cancelLoading)
     const session = new PdfDocumentSession(pdfjs, loadingTask, document)
     ownedBySession = true
     const abort = () => {
@@ -441,8 +466,10 @@ export async function openPdfDocument(
       signal?.removeEventListener('abort', abort)
     }
   } catch (error) {
-    if (!ownedBySession) await loadingTask.destroy()
+    if (!ownedBySession) await destroyLoading()
     throw classifyPdfOpenError(error)
+  } finally {
+    signal?.removeEventListener('abort', cancelLoading)
   }
 }
 

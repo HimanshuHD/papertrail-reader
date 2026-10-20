@@ -82,6 +82,7 @@ describe('browser library selection', () => {
 
   it.each([
     ['AbortError', 'dismissed-or-denied'],
+    ['NotAllowedError', 'dismissed-or-denied'],
     ['SecurityError', 'blocked'],
   ] as const)('normalizes %s directory picker failures', async (name, reason) => {
     configureWindow(true, vi.fn().mockRejectedValue(new DOMException('picker failure', name)))

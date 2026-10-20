@@ -3,6 +3,8 @@ config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, expect, it, vi } from 'vitest'
 import AnnotationsPanel from '../../src/components/viewer/AnnotationsPanel.vue'
+import { downloadJson } from '../../src/services/file-download'
+vi.mock('../../src/services/file-download', () => ({ downloadJson: vi.fn() }))
 import type { Annotation } from '../../src/services/annotation-storage'
 
 const records: Annotation[] = [
@@ -191,4 +193,90 @@ it('selects the editor entry without requesting reader navigation', async () => 
   await flushPromises()
   expect(wrapper.emitted('select')).toEqual([['second']])
   expect(wrapper.emitted('navigate')).toBeUndefined()
+})
+
+it('exports every committed annotation despite filters and excludes an unsaved draft', async () => {
+  const { wrapper, saveNote, recolor, remove } = await panel()
+  const second = { ...structuredClone(records[0]!), id: 'other', note: 'Other saved note' }
+  await wrapper.setProps({
+    identity: { format: 'EPUB', fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64) },
+    documentName: 'book.epub',
+    annotations: [records[0]!, second],
+  })
+  await wrapper.get('textarea').setValue('Unsaved draft')
+  // Keep the editor open and prove export does not close it or commit the draft.
+  const button = wrapper.get('[aria-label="Export annotations (JSON)"]')
+  await button.trigger('click')
+  const [json, filename] = vi.mocked(downloadJson).mock.calls.at(-1)!
+  expect(filename).toBe('papertrail-book-annotations.json')
+  expect(JSON.parse(json).annotations.map((item: Annotation) => item.note)).toEqual([
+    records[0]!.note,
+    'Other saved note',
+  ])
+  expect(wrapper.get('textarea').element).toHaveProperty('value', 'Unsaved draft')
+  expect(saveNote).not.toHaveBeenCalled()
+  expect(recolor).not.toHaveBeenCalled()
+  expect(remove).not.toHaveBeenCalled()
+  await wrapper.get('#epub-annotations-filter').setValue('nothing matches')
+  await button.trigger('click')
+  expect(JSON.parse(vi.mocked(downloadJson).mock.calls.at(-1)![0]).annotations).toHaveLength(2)
+  expect(wrapper.text()).toContain('Download requested.')
+})
+it('disables unavailable/busy exports and reports a recoverable download failure', async () => {
+  const { wrapper } = await panel()
+  const button = wrapper.get('[aria-label="Export annotations (JSON)"]')
+  expect(button.attributes('disabled')).toBeDefined()
+  await wrapper.setProps({
+    identity: { format: 'EPUB', fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64) },
+    documentName: 'book.epub',
+    annotations: [records[0]!],
+  })
+  for (const props of [{ busy: true }, { loading: true }, { available: false }]) {
+    await wrapper.setProps({ busy: false, loading: false, available: true, ...props })
+    expect(button.attributes('disabled')).toBeDefined()
+  }
+  await wrapper.setProps({ busy: false, loading: false, available: true })
+  vi.mocked(downloadJson).mockImplementationOnce(() => {
+    throw Error('blocked')
+  })
+  await button.trigger('click')
+  expect(wrapper.text()).toContain('Close and reopen annotations, then try again.')
+  expect(button.attributes('aria-describedby')).toBe('epub-annotations-export-help')
+})
+
+it('disables export for an empty saved collection and after its last annotation is removed', async () => {
+  const { wrapper } = await panel()
+  await wrapper.setProps({
+    identity: { format: 'EPUB', fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64) },
+    documentName: 'book.epub',
+    annotations: [],
+    selectedId: '',
+  })
+  const button = wrapper.get('[aria-label="Export annotations (JSON)"]')
+  const calls = vi.mocked(downloadJson).mock.calls.length
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(downloadJson).toHaveBeenCalledTimes(calls)
+  await wrapper.setProps({ annotations: [records[0]!] })
+  expect(button.attributes('disabled')).toBeUndefined()
+  await wrapper.get('#epub-annotations-filter').setValue('no matching annotations')
+  expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(0)
+  expect(button.attributes('disabled')).toBeUndefined()
+  await wrapper.setProps({ annotations: [] })
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(downloadJson).toHaveBeenCalledTimes(calls)
+})
+
+it('does not steal focus when an unfocused comparison pane mounts its saved annotations', async () => {
+  const { wrapper } = await panel()
+  const input = wrapper.get('#epub-annotations-filter').element as HTMLInputElement
+  input.focus()
+  const other = mount(AnnotationsPanel, {
+    attachTo: document.body,
+    props: { ...wrapper.props(), idPrefix: 'other-', autoFocus: false },
+  })
+  wrappers.push(other)
+  await flushPromises()
+  expect(document.activeElement).toBe(input)
 })

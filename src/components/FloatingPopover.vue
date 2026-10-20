@@ -2,7 +2,15 @@
 import { useOverlayTarget } from '../composables/useOverlayTarget'
 const overlayTarget = useOverlayTarget()
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
-const props = defineProps<{ anchor: HTMLElement | null; expanded?: boolean }>()
+const props = withDefaults(
+  defineProps<{
+    anchor: HTMLElement | null
+    expanded?: boolean
+    compact?: boolean
+    reserveAsideHeader?: boolean
+  }>(),
+  { reserveAsideHeader: true },
+)
 const emit = defineEmits<{ close: [] }>()
 const root = ref<HTMLElement | null>(null)
 const position = ref({
@@ -18,7 +26,9 @@ function place() {
     popup = root.value
   if (!anchor || !popup) return
   // Keep the owning utility panel’s header and close control reachable.
-  const header = props.anchor?.closest('aside')?.firstElementChild?.getBoundingClientRect()
+  const header = props.reserveAsideHeader
+    ? props.anchor?.closest('aside')?.firstElementChild?.getBoundingClientRect()
+    : undefined
   const minTop = Math.max(8, Math.min(header ? header.bottom + 8 : 8, innerHeight - 56))
   const maxHeight = Math.max(40, innerHeight - minTop - 8)
   const width = popup.offsetWidth,
@@ -101,7 +111,7 @@ watch(
     <div
       ref="root"
       class="floating-popover"
-      :class="{ expanded }"
+      :class="{ expanded, compact }"
       :style="position"
       @pointerdown.stop
     >
@@ -126,6 +136,12 @@ watch(
     0 20px 56px #0007,
     0 6px 18px #0004,
     0 0 0 1px var(--pt-line);
+}
+.compact {
+  width: min(224px, calc(100vw - 16px));
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px #0003;
 }
 .expanded {
   width: min(380px, calc(100vw - 16px));

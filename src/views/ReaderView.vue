@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch, shallowRef } from 'vue'
-import { RouterLink } from 'vue-router'
-import BrandMark from '../components/BrandMark.vue'
 import IconButton from '../components/IconButton.vue'
-import ThemePicker from '../components/ThemePicker.vue'
+import WorkspaceBrand from '../components/layout/WorkspaceBrand.vue'
+import BuildFooter from '../components/BuildFooter.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
-import PdfReaderWorkspace from '../components/viewer/PdfReaderWorkspace.vue'
+import DocumentTabs from '../components/viewer/DocumentTabs.vue'
+import ComparisonPicker from '../components/viewer/ComparisonPicker.vue'
+import type { DocumentSession } from '../features/reader/document-sessions'
+import DocumentSessionWorkspace from '../components/viewer/DocumentSessionWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
-import EpubReaderWorkspace from '../components/viewer/EpubReaderWorkspace.vue'
 import {
   describeLibrarySelection,
   librarySelectionLabel,
@@ -28,14 +29,31 @@ import { enrichPdfTitles } from '../features/library/pdf-titles'
 import { useWorkspaceContinuity } from '../composables/useWorkspaceContinuity'
 import { startupScreen } from '../services/startup-screen'
 import { cacheLibraryDocuments, type WorkspaceSnapshot } from '../services/workspace-storage'
-import { revalidateWorkspace } from '../services/workspace-revalidation'
+import { revalidateTabs } from '../services/tab-revalidation'
+import { migrateWorkspaceTabs } from '../features/reader/session-snapshot'
 
 import { useRecentDocuments } from '../composables/useRecentDocuments'
 import { matchRecent, type RecentDocument } from '../services/recent-documents'
 
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
-const workspace = useWorkspaceContinuity()
+const workspace = useWorkspaceContinuity(undefined, saveTabs)
+let tabsHydrated = false
+let lastTabs = ''
+function saveTabs() {
+  if (!tabsHydrated || !workspace.snapshot.value || !readerSessions.value) return
+  try {
+    const saved = readerSessions.value.snapshot()
+    const serialized = JSON.stringify(saved)
+    if (serialized !== lastTabs) {
+      lastTabs = serialized
+      workspace.patch({ tabs: saved })
+    }
+  } catch {
+    workspace.notice.value =
+      'Tab state could not be saved. Close some tabs or use Forget library to reset workspace storage.'
+  }
+}
 const recents = useRecentDocuments()
 const recentMessage = ref('')
 const recentOpening = ref(false)
@@ -45,7 +63,7 @@ function cancelRecent() {
   recentOpening.value = false
 }
 function rememberRecent(identity: { id: string; fingerprint: string }) {
-  const item = activePdfDocument.value ?? activeEpubDocument.value
+  const item = currentDocument.value
   if (item)
     void recents.remember({
       ...identity,
@@ -101,9 +119,35 @@ const workspaceMessage = computed(
         ? 'Saved library. Resume access or use + to select the same source again.'
         : ''),
 )
+const readerSessions = ref<InstanceType<typeof DocumentSessionWorkspace> | null>(null)
+const librarySidebar = ref<InstanceType<typeof LibrarySidebar> | null>(null)
+const tabs = shallowRef<DocumentSession[]>([])
+const selectedTab = ref<string | null>(null)
+const comparisonIds = shallowRef<[string, string] | null>(null)
+const documentRequest = ref(0)
+const currentDocument = shallowRef<DiscoveredDocument | null>(null)
+function sessionChanged(document: DiscoveredDocument | null, fingerprint: string | null) {
+  if (!tabsHydrated) return
+  currentDocument.value = document
+  selectedLibraryDocumentId.value = document?.id ?? null
+  workspace.patch({
+    selectedPath: document?.relativePath ?? null,
+    activePath: document?.relativePath ?? null,
+    activeFingerprint: fingerprint,
+  })
+}
+async function focusLibraryActions() {
+  await nextTick()
+  if (!sidebarOpen.value) (sidebarToggle.value?.$el as HTMLButtonElement | undefined)?.focus()
+  else
+    (librarySidebar.value?.$el as HTMLElement | undefined)
+      ?.querySelector<HTMLButtonElement>('[aria-controls="library-source-menu"]')
+      ?.focus()
+}
+
+const restoringDocument = ref(false)
 const selectedLibraryDocumentId = ref<string | null>(null)
-const activePdfDocument = shallowRef<DiscoveredDocument | null>(null)
-const activeEpubDocument = shallowRef<DiscoveredDocument | null>(null)
+const activeDocument = shallowRef<DiscoveredDocument | null>(null)
 const sidebarOpen = ref(true)
 watch(sidebarOpen, (value) => workspace.patch({ sidebarOpen: value }))
 const sidebarToggle = ref<InstanceType<typeof IconButton> | null>(null)
@@ -121,6 +165,7 @@ const discoveryProblems = shallowRef<readonly DiscoveryProblem[]>([])
 let discoveryController: AbortController | null = null
 let metadataController: AbortController | null = null
 onBeforeUnmount(() => {
+  saveTabs()
   workspaceOperation += 1
   cancelRecent()
   discoveryController?.abort()
@@ -195,26 +240,19 @@ function selectLibraryDocument(id: string, restoring = false) {
     reconnecting.value = false
   }
   const sameActive =
-    (activePdfDocument.value ?? activeEpubDocument.value)?.id === document.id &&
-    (activePdfDocument.value ?? activeEpubDocument.value)?.file === document.file
+    currentDocument.value?.id === document.id && currentDocument.value?.file === document.file
   selectedLibraryDocumentId.value = id
   workspace.patch({
     selectedPath: document.relativePath,
     activePath: document.relativePath,
+    ...(!restoring && !sameActive ? { utilityPanel: null, searchQuery: '' } : {}),
     activeFingerprint:
       restoring || sameActive ? (workspace.snapshot.value?.activeFingerprint ?? null) : null,
   })
-  if (document.format === 'PDF') {
-    activeEpubDocument.value = null
-    activePdfDocument.value = document
-    announcement.value = `Opening local PDF: ${document.name}.`
-    return
-  }
-
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
-  activeEpubDocument.value = document
-  announcement.value = `Opening local EPUB: ${document.name}.`
+  restoringDocument.value = restoring
+  activeDocument.value = document
+  documentRequest.value += 1
+  announcement.value = `Opening local ${document.format}: ${document.name}.`
 }
 
 function restoreLibrarySelection(
@@ -292,49 +330,62 @@ async function reconnect(
   selection: BrowserLibrarySelection,
   saved: WorkspaceSnapshot,
   owner: number,
+  allowRenames = false,
 ) {
   reconnecting.value = true
-  librarySelection.value = selection
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
   try {
+    const remembered = readerSessions.value?.snapshot() ?? migrateWorkspaceTabs(saved)
+    librarySelection.value = selection
+    activeDocument.value = null
+    await readerSessions.value?.disconnectSources()
+    if (owner !== workspaceOperation) return
     await runDiscovery(selection, false, true)
     if (owner !== workspaceOperation || discoveryPhase.value !== 'ready') return
-    const result = await revalidateWorkspace(
-      saved,
+    const matches = await revalidateTabs(
+      remembered,
       discoveredDocuments.value,
       discoveryController?.signal,
+      allowRenames,
     )
     if (owner !== workspaceOperation) return
-    selectedLibraryDocumentId.value = result.selectedId
-    if (result.activeDocument) {
-      selectLibraryDocument(result.activeDocument.id, true)
-    } else if (saved.activePath) {
-      workspace.notice.value =
-        'The previously opened document changed or is unavailable. Select a document to continue.'
-      workspace.patch({ activePath: null, activeFingerprint: null })
+    for (const entry of remembered.sessions) {
+      const document = matches.get(entry.id)
+      if (document && entry.fingerprint)
+        readerSessions.value?.sessions.reconnect(entry.id, document, entry.fingerprint)
     }
+    const selected = readerSessions.value?.sessions.selectedId
+    if (selected) await readerSessions.value?.activate(selected)
+    if (matches.size < remembered.sessions.length)
+      workspace.notice.value =
+        'Some saved documents are missing, changed or unavailable. Reselect their source to reconnect matching content, or close those tabs.'
+    else workspace.notice.value = ''
+    saveTabs()
   } catch {
     if (owner === workspaceOperation)
-      workspace.notice.value = 'Library access could not be restored. Choose your source again.'
+      workspace.notice.value =
+        'Library access could not be restored. Choose your source again. Saved tabs and reading positions are retained.'
   } finally {
     if (owner === workspaceOperation) reconnecting.value = false
   }
 }
 
 async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  saveTabs()
   const saved = workspace.snapshot.value
   const owner = ++workspaceOperation
   cancelRecent()
   const label = librarySelectionLabel(selection)
-  if (saved && cached.value && saved.label === label && saved.source === selection.source) {
-    workspace.patch({ handle: selection.kind === 'directory' ? selection.handle : null })
-    await reconnect(selection, saved, owner)
+  if (saved) {
+    workspace.patch({
+      source: selection.source,
+      label,
+      handle: selection.kind === 'directory' ? selection.handle : null,
+    })
+    await reconnect(selection, saved, owner, true)
     return
   }
   reconnecting.value = false
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   librarySelection.value = selection
   selectedLibraryDocumentId.value = null
   workspace.remember({
@@ -351,8 +402,18 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
     sidebarOpen: sidebarOpen.value,
     sidebarWidth: sidebarWidth.value,
   })
+  tabsHydrated = true
+  lastTabs = ''
+  saveTabs()
   announcement.value = describeLibrarySelection(selection)
   await runDiscovery(selection, false)
+}
+
+async function recoverSession() {
+  sidebarOpen.value = true
+  await nextTick()
+  if (workspace.snapshot.value?.handle && cached.value) await resumeWorkspace()
+  else librarySidebar.value?.openSourcePicker()
 }
 
 async function resumeWorkspace() {
@@ -368,16 +429,19 @@ async function resumeWorkspace() {
 }
 
 async function forgetWorkspace() {
+  tabsHydrated = false
+  lastTabs = ''
   workspaceOperation += 1
+  await readerSessions.value?.reset()
   cancelRecent()
   discoveryController?.abort()
   metadataController?.abort()
   discoveryController = null
   metadataController = null
   reconnecting.value = false
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  activeDocument.value = null
   librarySelection.value = null
+  currentDocument.value = null
   discoveredDocuments.value = []
   selectedLibraryDocumentId.value = null
   discoveryPhase.value = 'idle'
@@ -405,6 +469,10 @@ onMounted(async () => {
     sidebarWidth.value = saved.sidebarWidth
     selectedLibraryDocumentId.value =
       saved.documents.find((item) => item.relativePath === saved.selectedPath)?.id ?? null
+    readerSessions.value?.restoreWorkspace(migrateWorkspaceTabs(saved))
+    tabsHydrated = true
+    lastTabs = ''
+    saveTabs()
     // Saved metadata is usable before permission checks or folder rescans finish.
     startupScreen.complete('library')
     startupScreen.stage('reader', 'Preparing the reader')
@@ -420,17 +488,14 @@ onMounted(async () => {
 })
 
 async function refreshLibrary() {
-  workspaceOperation += 1
-  cancelRecent()
-  reconnecting.value = false
-  workspace.patch({ activePath: null, activeFingerprint: null })
   const selection = librarySelection.value
-  if (!selection || selection.kind !== 'directory') return
-
-  activePdfDocument.value = null
-  activeEpubDocument.value = null
+  const saved = workspace.snapshot.value
+  if (!selection || selection.kind !== 'directory' || !saved) return
+  saveTabs()
+  const owner = ++workspaceOperation
+  cancelRecent()
   announcement.value = `Refreshing folder ${selection.handle.name}.`
-  await runDiscovery(selection, true)
+  await reconnect(selection, saved, owner, true)
 }
 
 function cancelDiscovery() {
@@ -463,28 +528,6 @@ async function closeSidebarAndRestoreFocus() {
 
 <template>
   <main class="reader-app w-full" aria-label="PaperTrail application">
-    <header
-      class="app-header flex flex-wrap items-center justify-between gap-4 border-b border-line bg-panel px-5 py-3 sm:px-8"
-    >
-      <div class="flex flex-wrap items-center gap-4">
-        <RouterLink
-          to="/"
-          class="inline-flex items-center gap-2 text-xl font-bold tracking-tight"
-          aria-label="PaperTrail home"
-          ><BrandMark class="h-8 w-8" />PaperTrail<span class="ml-2 text-xs font-normal text-muted"
-            >Home ↗</span
-          ></RouterLink
-        >
-        <span class="rounded-full border border-line px-3 py-1 text-xs text-muted">{{
-          activePdfDocument
-            ? 'PDF reader'
-            : selectedLibraryDocument?.format === 'EPUB'
-              ? 'EPUB reader'
-              : 'Reader workspace'
-        }}</span>
-      </div>
-      <ThemePicker />
-    </header>
     <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
 
     <ReaderShell
@@ -494,6 +537,7 @@ async function closeSidebarAndRestoreFocus() {
       @close="closeSidebarAndRestoreFocus"
     >
       <template v-if="!sidebarOpen" #opener>
+        <WorkspaceBrand />
         <IconButton
           ref="sidebarToggle"
           label="Show library"
@@ -501,69 +545,96 @@ async function closeSidebarAndRestoreFocus() {
           tooltip-align="start"
           aria-controls="document-sidebar"
           aria-expanded="false"
-          class="floating-library border border-line bg-panel text-brand shadow-lg"
+          class="text-brand"
           @click="openSidebar"
         />
       </template>
       <template #sidebar>
-        <LibrarySidebar
-          :library-documents="displayDocuments"
-          :recent-documents="recents.entries.value"
-          :recent-message="recentMessage || recents.notice.value"
-          :recent-busy="recentOpening || recents.busy.value"
-          :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
-          :scroll-position="workspace.snapshot.value?.libraryScroll"
-          :cached="cached"
-          :has-workspace="Boolean(workspace.snapshot.value) || Boolean(workspace.notice.value)"
-          :workspace-message="workspaceMessage"
-          :can-resume="Boolean(workspace.snapshot.value?.handle) && cached && !reconnecting"
-          :selected-library-document-id="selectedLibraryDocumentId"
-          :library-label="libraryLabel"
-          :show-library-results="showLibraryResults"
-          :refresh-action="refreshAction"
-          :selection-summary="librarySelectionSummary"
-          :discovery-summary="discoverySummary"
-          :discovery-busy="discoveryPhase === 'indexing' && !cached"
-          :discovery-problem-count="discoveryProblems.length"
-          @open-recent="openRecent"
-          @remove-recent="recents.remove($event)"
-          @clear-recents="recents.remove()"
-          @retry-recents="recents.reload()"
-          @toggle-folder="toggleFolder"
-          @library-scroll="workspace.patch({ libraryScroll: $event })"
-          @resume-workspace="resumeWorkspace"
-          @forget-workspace="forgetWorkspace"
-          @select-library-document="selectLibraryDocument"
-          @library-selection="acceptLibrarySelection"
-          @refresh-library="refreshLibrary"
-          @cancel-discovery="cancelDiscovery"
-          @close="closeSidebarAndRestoreFocus"
+        <div class="sidebar-workspace">
+          <WorkspaceBrand class="border-b border-line" />
+          <LibrarySidebar
+            ref="librarySidebar"
+            :library-documents="displayDocuments"
+            :recent-documents="recents.entries.value"
+            :recent-message="recentMessage || recents.notice.value"
+            :recent-busy="recentOpening || recents.busy.value"
+            :collapsed-paths="workspace.snapshot.value?.collapsedPaths"
+            :scroll-position="workspace.snapshot.value?.libraryScroll"
+            :cached="cached"
+            :has-workspace="Boolean(workspace.snapshot.value) || Boolean(workspace.notice.value)"
+            :workspace-message="workspaceMessage"
+            :can-resume="Boolean(workspace.snapshot.value?.handle) && cached && !reconnecting"
+            :selected-library-document-id="selectedLibraryDocumentId"
+            :library-label="libraryLabel"
+            :show-library-results="showLibraryResults"
+            :refresh-action="refreshAction"
+            :selection-summary="librarySelectionSummary"
+            :discovery-summary="discoverySummary"
+            :discovery-busy="discoveryPhase === 'indexing' && !cached"
+            :discovery-problem-count="discoveryProblems.length"
+            @open-recent="openRecent"
+            @remove-recent="recents.remove($event)"
+            @clear-recents="recents.remove()"
+            @retry-recents="recents.reload()"
+            @toggle-folder="toggleFolder"
+            @library-scroll="workspace.patch({ libraryScroll: $event })"
+            @resume-workspace="resumeWorkspace"
+            @forget-workspace="forgetWorkspace"
+            @select-library-document="selectLibraryDocument"
+            @library-selection="acceptLibrarySelection"
+            @refresh-library="refreshLibrary"
+            @cancel-discovery="cancelDiscovery"
+            @close="closeSidebarAndRestoreFocus"
+          />
+          <BuildFooter />
+        </div>
+      </template>
+      <template #tabs>
+        <DocumentTabs
+          :tabs="tabs"
+          :selected-id="selectedTab"
+          @activate="readerSessions?.activate($event)"
+          @close="readerSessions?.close($event)"
+          @empty-close="focusLibraryActions"
+        />
+        <ComparisonPicker
+          v-if="!comparisonIds"
+          :tabs="tabs"
+          :selected-id="selectedTab"
+          @compare="readerSessions?.compareWith($event)"
         />
       </template>
-      <PdfReaderWorkspace
-        v-if="activePdfDocument"
-        :document="activePdfDocument"
-        :initial-panel="workspace.snapshot.value?.utilityPanel"
-        :initial-search-query="workspace.snapshot.value?.searchQuery"
+      <DocumentSessionWorkspace
+        ref="readerSessions"
+        persistent
+        :request="documentRequest"
+        :document="activeDocument"
+        :initial-panel="restoringDocument ? workspace.snapshot.value?.utilityPanel : null"
+        :initial-search-query="
+          restoringDocument ? workspace.snapshot.value?.searchQuery : undefined
+        "
+        @change="
+          (items, id) => {
+            tabs = items
+            selectedTab = id
+          }
+        "
+        @comparison-change="comparisonIds = $event"
+        @snapshot-change="saveTabs"
+        @recover="recoverSession"
+        @active-change="sessionChanged"
         @utility-change="
           (panel, query) => workspace.patch({ utilityPanel: panel, searchQuery: query })
         "
         @status="announcement = $event"
         @identity="workspace.patch({ activeFingerprint: $event })"
         @recent-ready="rememberRecent"
-      />
-      <EpubReaderWorkspace
-        v-else-if="activeEpubDocument"
-        :document="activeEpubDocument"
-        @identity="workspace.patch({ activeFingerprint: $event })"
-        @recent-ready="rememberRecent"
-        @status="announcement = $event"
-      />
-      <ReaderWorkspace
-        v-else
-        :selected-document="selectedLibraryDocument"
-        :has-library-selection="Boolean(librarySelection)"
-      />
+      >
+        <ReaderWorkspace
+          :selected-document="selectedLibraryDocument"
+          :has-library-selection="Boolean(librarySelection)"
+        />
+      </DocumentSessionWorkspace>
     </ReaderShell>
   </main>
 </template>
@@ -576,9 +647,20 @@ async function closeSidebarAndRestoreFocus() {
   min-height: 0;
   overflow: hidden;
 }
-.app-header {
+.sidebar-workspace {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+.sidebar-workspace > .library-panel {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+}
+.sidebar-workspace > .build-footer {
   flex-shrink: 0;
-  max-height: min(25%, 100px);
+  max-height: 20dvh;
   overflow: auto;
 }
 </style>

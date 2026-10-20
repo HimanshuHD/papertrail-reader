@@ -18,3 +18,30 @@ export async function openAnnotationActions(trigger: Locator) {
   )
   await trigger.click()
 }
+
+/** Library actions move into the vertical menu when the current sidebar is narrow. */
+export async function libraryAction(page: Page, name: string): Promise<Locator> {
+  const direct = page.getByRole('button', { name, exact: true })
+  if (await direct.isVisible()) return direct
+  const menu = page.getByRole('menu', { name: 'Library actions', exact: true })
+  if (!(await menu.isVisible()))
+    await page.getByRole('button', { name: 'Library actions', exact: true }).click()
+  return menu.getByRole('menuitem', { name, exact: true })
+}
+
+/** Wait for finite layout transitions and their ResizeObserver/animation-frame work. */
+export async function settleReaderLayout(reader: Locator) {
+  await reader.evaluate(async (element) => {
+    const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+    await frame()
+    await frame()
+    await Promise.all(
+      (element.closest('.reader-layout') ?? element)
+        .getAnimations({ subtree: true })
+        .filter((animation) => animation.effect?.getComputedTiming().iterations !== Infinity)
+        .map((animation) => animation.finished.catch(() => {})),
+    )
+    await frame()
+    await frame()
+  })
+}

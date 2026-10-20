@@ -20,7 +20,7 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
   }
 })
 vi.mock('../../src/services/document-identity', () => ({
-  fingerprintDocument: vi.fn(async () => 'shell-fixture'),
+  fingerprintDocument: vi.fn(async () => 'sha256-chunks-v1:' + 'a'.repeat(64)),
 }))
 import App from '../../src/App.vue'
 import * as discovery from '../../src/features/library/discovery'
@@ -124,7 +124,7 @@ describe('home and product shell', () => {
 
   it('keeps the production empty state while the sidebar collapses and restores', async () => {
     const { wrapper } = await mountApp('/app')
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
     expect(wrapper.text()).toContain('No documents selected yet')
     expect(wrapper.text()).not.toContain('The next chapter')
     expect(wrapper.text()).not.toContain('Demonstration workspace')
@@ -134,11 +134,33 @@ describe('home and product shell', () => {
     const opener = wrapper.get('button[aria-label="Show library"]')
     expect(opener.attributes('aria-expanded')).toBe('false')
     expect(wrapper.find('aside').exists()).toBe(false)
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
 
     await opener.trigger('click')
     expect(wrapper.find('aside').exists()).toBe(true)
-    expect(wrapper.get('#reader-title').text()).toBe('Welcome to PaperTrail')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
+    wrapper.unmount()
+  })
+
+  it('moves branding with the library and hides only the sidebar footer on collapse', async () => {
+    const { wrapper } = await mountApp('/app')
+    expect(wrapper.find('.reader-app > .app-header').exists()).toBe(false)
+    expect(wrapper.find('#document-sidebar .workspace-brand').exists()).toBe(true)
+    expect(wrapper.find('#document-sidebar .build-footer').exists()).toBe(true)
+    const theme = wrapper.get('button[aria-label="Dark mode"]')
+    await theme.trigger('click')
+    const appearance = theme.attributes('aria-pressed')
+    await wrapper.get('button[aria-label="Hide library"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('.build-footer').exists()).toBe(false)
+    expect(wrapper.find('.workspace-topbar .workspace-brand').exists()).toBe(true)
+    expect(wrapper.get('button[aria-label="Dark mode"]').attributes('aria-pressed')).toBe(
+      appearance,
+    )
+    await wrapper.get('button[aria-label="Show library"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.findAll('.workspace-brand')).toHaveLength(1)
+    expect(wrapper.findAll('.build-footer')).toHaveLength(1)
     wrapper.unmount()
   })
 
@@ -171,13 +193,16 @@ describe('home and product shell', () => {
       .find((button) => button.text().includes('book.epub'))!
     ;(book.element as HTMLButtonElement).focus()
     await book.trigger('click')
+    await flushPromises()
 
     expect(document.activeElement).toBe(book.element)
-    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(wrapper.get('.session-panel:not(.session-inactive) [data-reader-title]').text()).toBe(
+      'book.epub',
+    )
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
     expect(wrapper.text()).not.toContain('Demonstration workspace')
-    expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe(
-      'Opening local EPUB: book.epub.',
+    expect(wrapper.get('[role="tab"][aria-selected="true"]').attributes('aria-label')).toContain(
+      'EPUB: book.epub',
     )
     wrapper.unmount()
   })
@@ -248,7 +273,7 @@ describe('home and product shell', () => {
 
     expect(guide.attributes('aria-pressed')).toBe('true')
     expect(pdfSessionMocks.open.mock.calls[0]?.[0]).toBe(files[0])
-    expect(wrapper.get('#reader-title').text()).toBe('guide.pdf')
+    expect(wrapper.get('[id$="reader-title"]').text()).toBe('guide.pdf')
     expect(wrapper.text()).toContain('Page 1 of 3')
     expect(wrapper.find('button[aria-label="Next page"]').exists()).toBe(true)
 
@@ -269,11 +294,13 @@ describe('home and product shell', () => {
     await book.trigger('click')
     await flushPromises()
     expect(pdfSessionMocks.open).toHaveBeenCalledTimes(1)
-    expect(pdfSessionMocks.close).toHaveBeenCalled()
-    expect(wrapper.get('#reader-title').text()).toBe('book.epub')
+    expect(pdfSessionMocks.close).not.toHaveBeenCalled()
+    expect(wrapper.get('.session-panel:not(.session-inactive) [data-reader-title]').text()).toBe(
+      'book.epub',
+    )
     expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('false')
 
-    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect files')!
+    const reselect = wrapper.get('button[aria-label="Reselect files"]')
     await reselect.trigger('click')
     expect(click).toHaveBeenCalledOnce()
     wrapper.unmount()
@@ -316,7 +343,7 @@ describe('home and product shell', () => {
     expect(wrapper.text()).toContain('PaperTrail searchable text')
 
     await searchInput.trigger('keydown', { key: 'c' })
-    expect(wrapper.find('#pdf-contents-title').exists()).toBe(false)
+    expect(wrapper.find('[id$=pdf-contents-title]').exists()).toBe(false)
 
     await searchInput.trigger('keydown', { key: 'Escape' })
     await wrapper.trigger('keydown', { key: '?' })
@@ -352,7 +379,7 @@ describe('home and product shell', () => {
       ]),
     )
 
-    const reselect = wrapper.findAll('button').find((button) => button.text() === 'Reselect folder')
+    const reselect = wrapper.find('button[aria-label="Reselect folder"]')
     expect(reselect).toBeTruthy()
     wrapper.unmount()
   })
@@ -411,7 +438,7 @@ describe('home and product shell', () => {
 
       const refresh = wrapper
         .findAll('button')
-        .find((button) => button.text() === 'Refresh folder')!
+        .find((button) => button.attributes('aria-label') === 'Refresh folder')!
       await refresh.trigger('click')
       await finishDiscovery()
 

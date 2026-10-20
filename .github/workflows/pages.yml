@@ -107,7 +107,8 @@ jobs:
               core.setOutput('kind','release');
             } else if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='preview') {
               if(!/^[1-9]\d*$/.test(process.env.PR_NUMBER)) throw Error('Enter a positive ready PR number');
-              plan=await selectCandidate({github,owner,repo,branch,prNumber:process.env.PR_NUMBER});
+              // Preview review needs an accepted build, not approval of visual differences.
+              plan=await selectCandidate({github,owner,repo,branch,prNumber:process.env.PR_NUMBER,candidateAcceptance:true});
               fs.writeFileSync('promotion-plan.json',JSON.stringify(plan));
               core.setOutput('kind','publish'); core.setOutput('run_id',plan.runId);
             } else if(context.eventName==='workflow_dispatch' && process.env.OPERATION==='rollback') {

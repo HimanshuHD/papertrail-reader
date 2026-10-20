@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import IconButton from '../IconButton.vue'
 import {
   canUseDirectoryPicker,
@@ -11,6 +11,8 @@ import {
 } from '../../features/library/browser-selection'
 
 const props = defineProps<{
+  compact?: boolean
+  canForget?: boolean
   selectionSummary: string
   refreshAction: LibraryRefreshAction | null
   refreshBusy: boolean
@@ -20,6 +22,7 @@ const emit = defineEmits<{
   selected: [selection: BrowserLibrarySelection]
   refresh: []
   close: []
+  forget: []
 }>()
 
 const directoryInput = ref<HTMLInputElement | null>(null)
@@ -74,6 +77,11 @@ function chooseFiles() {
   feedback.value = ''
   feedbackIsError.value = false
   fileInput.value?.click()
+}
+
+function forgetLibrary() {
+  dismissMenu(true)
+  emit('forget')
 }
 
 function refreshCurrentSource() {
@@ -139,7 +147,9 @@ function menuKeydown(event: KeyboardEvent) {
     dismissMenu(true)
     return
   }
-  const buttons = Array.from(menu.value?.querySelectorAll<HTMLButtonElement>('button') ?? [])
+  const buttons = Array.from(
+    menu.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [],
+  )
   const current = buttons.indexOf(document.activeElement as HTMLButtonElement)
   let next: number
   if (event.key === 'ArrowDown') next = (current + 1) % buttons.length
@@ -157,22 +167,35 @@ function focusLeaves(event: FocusEvent) {
   if (event.relatedTarget instanceof Node && !controls.value?.contains(event.relatedTarget))
     dismissMenu()
 }
+watch(
+  () => props.compact,
+  async () => {
+    const focused = document.activeElement as HTMLElement | null
+    const restoreFocus =
+      controls.value?.contains(focused) && focused?.getAttribute('aria-label') !== 'Hide library'
+    dismissMenu()
+    await nextTick()
+    if (restoreFocus) focusAdd()
+  },
+)
+defineExpose({ toggleMenu })
 onMounted(() => document.addEventListener('pointerdown', outsidePointer))
 onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer))
 </script>
 
 <template>
-  <div ref="controls" class="relative" @focusout="focusLeaves">
+  <div ref="controls" class="relative shrink-0" @focusout="focusLeaves">
     <div class="flex items-center gap-1">
       <IconButton
+        v-if="!compact"
         :label="refreshBusy && refreshAction === 'refresh-directory' ? 'Refreshing…' : refreshLabel"
         icon="refresh"
         :disabled="!refreshAction || refreshBusy"
         @click="refreshCurrentSource"
       />
       <IconButton
-        label="Add local documents"
-        icon="plus"
+        :label="compact ? 'Library actions' : 'Add local documents'"
+        :icon="compact ? 'more' : 'plus'"
         aria-controls="library-source-menu"
         aria-haspopup="menu"
         :aria-expanded="menuOpen"
@@ -180,6 +203,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         @keydown.down.prevent="!menuOpen && toggleMenu()"
       />
       <IconButton
+        class="pt-plain-control"
         label="Hide library"
         icon="close"
         aria-controls="document-sidebar"
@@ -197,10 +221,11 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         id="library-source-menu"
         ref="menu"
         role="menu"
-        aria-label="Add local documents"
-        class="absolute top-full right-0 z-40 mt-2 w-60 max-w-[calc(100vw-2rem)] rounded-lg border border-line bg-panel p-1 shadow-lg"
+        :aria-label="compact ? 'Library actions' : 'Add local documents'"
+        class="library-action-surface absolute top-full right-0 z-40 mt-2 w-60 rounded-lg border border-line bg-panel p-1 shadow-lg"
         @keydown="menuKeydown"
       >
+        <p v-if="compact" class="px-3 py-2 text-xs font-semibold text-muted">Add local documents</p>
         <button
           type="button"
           role="menuitem"
@@ -216,6 +241,25 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
           @click="chooseFiles"
         >
           Choose PDF / EPUB files
+        </button>
+        <button
+          v-if="compact"
+          type="button"
+          role="menuitem"
+          :disabled="!refreshAction || refreshBusy"
+          class="pt-list-entry min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas disabled:opacity-40"
+          @click="refreshCurrentSource"
+        >
+          {{ refreshBusy && refreshAction === 'refresh-directory' ? 'Refreshing…' : refreshLabel }}
+        </button>
+        <button
+          v-if="compact && canForget"
+          type="button"
+          role="menuitem"
+          class="pt-list-entry min-h-11 w-full rounded-md px-3 py-2 text-left text-sm hover:bg-canvas"
+          @click="forgetLibrary"
+        >
+          Forget library
         </button>
       </div>
     </Transition>
@@ -244,7 +288,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
     </p>
     <p
       v-if="feedback"
-      class="absolute top-full right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-panel p-3 text-xs text-muted shadow-md"
+      class="library-action-surface absolute top-full right-0 z-30 mt-2 w-60 rounded-lg border border-line bg-panel p-3 text-xs text-muted shadow-md"
       :role="feedbackIsError ? 'alert' : undefined"
       :aria-live="feedbackIsError ? 'assertive' : 'polite'"
     >
@@ -254,6 +298,9 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
 </template>
 
 <style scoped>
+.library-action-surface {
+  max-width: min(calc(var(--library-width, 100vw) - 24px), calc(100vw - 32px));
+}
 .source-menu-enter-active,
 .source-menu-leave-active {
   transition:

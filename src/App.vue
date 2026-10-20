@@ -13,7 +13,7 @@ import BuildFooter from './components/BuildFooter.vue'
     ]"
   >
     <div class="min-h-0 flex-1"><RouterView /></div>
-    <BuildFooter />
+    <BuildFooter v-if="route.name !== 'reader'" />
     <ToastHost />
   </div>
 </template>

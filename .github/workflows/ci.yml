@@ -2,19 +2,19 @@ name: Frontend CI
 on:
   pull_request:
     branches: [main, staging]
-    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited, labeled]
+    types: [opened, ready_for_review, synchronize, reopened, converted_to_draft, edited]
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
   pull-requests: read
 concurrency:
-  group: frontend-ci-${{ github.event.action == 'labeled' && github.event.label.name == 'qa:visual' && format('visual-{0}', github.event.pull_request.number) || (github.event.action == 'labeled' || (github.event.action == 'edited' && github.event.changes.base == null)) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
+  group: frontend-ci-${{ (github.event.action == 'edited' && github.event.changes.base == null) && format('metadata-{0}', github.run_id) || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 jobs:
   frontend:
     name: Validate and build website
-    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))
+    if: github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))
     outputs:
       website: ${{ steps.build.outputs.publish }}
     runs-on: ubuntu-latest
@@ -63,8 +63,6 @@ jobs:
     timeout-minutes: 20
     if: always() && (github.event_name == 'workflow_dispatch' || (github.event.pull_request.state == 'open' && github.event.pull_request.draft == false))
     needs: [frontend, browser]
-    outputs:
-      candidate_run: ${{ github.run_id }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -72,7 +70,7 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha || github.sha }}
           persist-credentials: false
       - name: Verify existing candidate for ignored metadata events
-        if: ${{ !(github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))) }}
+        if: ${{ !(github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))) }}
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
         with:
           script: |
@@ -82,7 +80,7 @@ jobs:
             const plan=await waitForCandidate({github,...context.repo,branch:pr.base.ref,prNumber:pr.number,candidateAcceptance:true,excludeRun:context.runId,expectedHead:pr.head.sha,expectedBase:pr.base.sha},{onWait:attempt=>core.info('Waiting for actual candidate validation: '+attempt)});
             core.summary.addRaw('Verified existing current candidate run '+plan.runId+'; this metadata run did not build a candidate.').write();
       - name: Verify required candidate checks
-        if: ${{ (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual'))) }}
+        if: ${{ (github.event_name == 'workflow_dispatch' || ((github.event.pull_request.state == 'open' && github.event.pull_request.draft == false) && (github.event.action != 'edited' || github.event.changes.base != null))) }}
         env:
           FRONTEND: ${{ needs.frontend.result }}
           BROWSER: ${{ needs.browser.result }}
@@ -91,18 +89,3 @@ jobs:
         run: |
           test "$FRONTEND" = success
           if [ "$TARGET" = main ] && [ "$WEBSITE" = true ]; then test "$BROWSER" = success; fi
-
-  visual-qa:
-    name: Visual QA
-    needs: gate
-    if: always() && needs.gate.result == 'success' && (github.event.action != 'edited' || github.event.changes.base != null) && (github.event.action != 'labeled' || github.event.label.name == 'qa:visual') && github.event_name == 'pull_request' && github.event.pull_request.state == 'open' && github.event.pull_request.draft == false && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'qa:visual')
-    permissions:
-      contents: read
-      actions: read
-      pull-requests: read
-    uses: ./.github/workflows/visual-qa.yml
-    with:
-      pr_number: ${{ format('{0}', github.event.pull_request.number) }}
-      profile: auto
-      tooling_sha: ${{ github.event.pull_request.base.sha }}
-      candidate_run: ${{ needs.gate.outputs.candidate_run }}

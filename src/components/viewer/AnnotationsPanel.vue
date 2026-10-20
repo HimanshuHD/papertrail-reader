@@ -3,9 +3,16 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Annotation, AnnotationColor } from '../../services/annotation-storage'
 import FloatingPopover from '../FloatingPopover.vue'
 import UiIcon from '../UiIcon.vue'
-import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
+import { ANNOTATION_LIMITS, type AnnotationIdentity } from '../../features/annotations/selectors'
+import { prepareAnnotationExport } from '../../services/annotation-export'
+import { downloadJson } from '../../services/file-download'
 
 const props = defineProps<{
+  autoFocus?: boolean
+  identity?: AnnotationIdentity | null
+  documentName?: string
+  documentTitle?: string
+  idPrefix?: string
   format: 'PDF' | 'EPUB'
   annotations: readonly Annotation[]
   selectedId: string
@@ -21,6 +28,38 @@ const props = defineProps<{
 const emit = defineEmits<{ navigate: [id: string]; select: [id: string]; retry: [] }>()
 const root = ref<HTMLElement | null>(null)
 const filterInput = ref<HTMLInputElement | null>(null)
+const exportNotice = ref('')
+const canExport = computed(
+  () =>
+    props.available &&
+    !props.loading &&
+    !props.busy &&
+    !!props.identity &&
+    !!props.documentName &&
+    props.annotations.length > 0,
+)
+function exportAnnotations() {
+  if (!canExport.value || !props.identity || !props.documentName) return
+  try {
+    const file = prepareAnnotationExport({
+      identity: props.identity,
+      name: props.documentName,
+      title: props.documentTitle,
+      annotations: props.annotations,
+    })
+    downloadJson(file.json, file.filename)
+    exportNotice.value = 'Download requested.'
+  } catch {
+    exportNotice.value =
+      'Annotations could not be exported. Close and reopen annotations, then try again.'
+  }
+}
+watch(
+  () => props.identity?.fingerprint,
+  () => {
+    exportNotice.value = ''
+  },
+)
 const query = ref('')
 const colorFilter = ref<AnnotationColor | ''>('')
 const notesOnly = ref(false)
@@ -47,7 +86,7 @@ async function changeColor(id: string, color: AnnotationColor) {
 async function deleteHighlight(id: string) {
   if ((await props.remove(id)) && menuId.value === id) closeMenu()
 }
-const prefix = computed(() => props.format.toLowerCase() + '-annotations')
+const prefix = computed(() => (props.idPrefix ?? '') + props.format.toLowerCase() + '-annotations')
 const selected = computed(() => props.annotations.find((item) => item.id === props.selectedId))
 const colors: Record<AnnotationColor, string> = {
   yellow: 'Yellow',
@@ -88,7 +127,9 @@ watch(selected, (item, previous) => {
   if (!item) draft.value = ''
   else if (draft.value === previous?.note) draft.value = item.note
 })
-onMounted(() => filterInput.value?.focus({ preventScroll: true }))
+onMounted(() => {
+  if (props.autoFocus !== false) filterInput.value?.focus({ preventScroll: true })
+})
 async function focusEditor() {
   await nextTick()
   if (!pendingEditorFocus || props.busy || props.loading) return
@@ -126,7 +167,7 @@ async function revealAnnotation(id: string) {
       entry.getBoundingClientRect().top - root.value.getBoundingClientRect().top - 16
   entry?.focus({ preventScroll: true })
 }
-defineExpose({ editNote, revealAnnotation })
+defineExpose({ editNote, revealAnnotation, closeMenu })
 watch(() => [props.busy, props.loading, props.selectedId], focusEditor)
 async function submitNote() {
   const item = selected.value
@@ -169,6 +210,22 @@ function cancelEdit() {
     >
       Retry annotations
     </button>
+    <div class="mb-3">
+      <button
+        type="button"
+        class="pt-framed-control annotation-button"
+        aria-label="Export annotations (JSON)"
+        :aria-describedby="`${prefix}-export-help`"
+        :disabled="!canExport"
+        @click="exportAnnotations"
+      >
+        Export annotations (JSON)
+      </button>
+      <p :id="`${prefix}-export-help`" class="mt-1 text-xs text-muted">
+        All saved highlights and notes. Save note edits first to include them.
+      </p>
+      <p role="status" aria-live="polite" class="mt-1 text-xs text-muted">{{ exportNotice }}</p>
+    </div>
     <div class="annotation-filter-bar">
       <label :for="`${prefix}-filter`" class="sr-only">Find annotations</label>
       <input

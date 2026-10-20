@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import LibrarySourcePicker from './LibrarySourcePicker.vue'
 import LibraryTree from './LibraryTree.vue'
 import RecentDocuments from './RecentDocuments.vue'
@@ -49,6 +49,31 @@ defineEmits<{
   clearRecents: []
   retryRecents: []
 }>()
+const sourcePicker = ref<InstanceType<typeof LibrarySourcePicker> | null>(null)
+defineExpose({ openSourcePicker: () => sourcePicker.value?.toggleMenu() })
+const header = ref<HTMLElement | null>(null)
+const heading = ref<HTMLElement | null>(null)
+const compactActions = ref(false)
+let headerObserver: ResizeObserver | null = null
+function measureActions() {
+  if (!header.value || !heading.value || !header.value.clientWidth) return
+  // Three 40px targets, two 4px action gaps, header padding and heading gap.
+  const needed = heading.value.scrollWidth + 3 * 40 + 8 + 24 + 4
+  compactActions.value = header.value.clientWidth < Math.ceil(needed)
+}
+onMounted(() => {
+  measureActions()
+  if (typeof ResizeObserver !== 'undefined' && header.value) {
+    headerObserver = new ResizeObserver(measureActions)
+    headerObserver.observe(header.value)
+    if (heading.value) headerObserver.observe(heading.value)
+  }
+  window.addEventListener('resize', measureActions)
+})
+onBeforeUnmount(() => {
+  headerObserver?.disconnect()
+  window.removeEventListener('resize', measureActions)
+})
 const query = ref('')
 const filtered = computed(() => filterLibrary(props.libraryDocuments, query.value))
 const list = ref<HTMLElement | null>(null)
@@ -66,13 +91,18 @@ watch(
 <template>
   <div class="library-panel flex h-full min-h-0 flex-col" @keydown.esc.stop="$emit('close')">
     <header
-      class="relative z-40 flex shrink-0 items-center justify-between gap-1 border-b border-line bg-panel px-3 py-2"
+      ref="header"
+      class="relative z-40 flex h-14 shrink-0 items-center justify-between gap-1 border-b border-line bg-panel px-3 py-2"
     >
-      <h2 class="text-sm font-semibold">Library</h2>
+      <h2 ref="heading" class="min-w-0 truncate text-sm font-semibold">Local Documents</h2>
       <LibrarySourcePicker
+        ref="sourcePicker"
+        :compact="compactActions"
+        :can-forget="hasWorkspace"
         :selection-summary="selectionSummary"
         :refresh-action="refreshAction"
         :refresh-busy="discoveryBusy"
+        @forget="$emit('forgetWorkspace')"
         @selected="$emit('librarySelection', $event)"
         @refresh="$emit('refreshLibrary')"
         @close="$emit('close')"
@@ -107,7 +137,10 @@ watch(
       <p v-if="query" role="status" class="sr-only">{{ filtered.length }} matching documents</p>
     </div>
 
-    <div v-if="hasWorkspace" class="shrink-0 border-b border-line px-3 py-2 text-xs">
+    <div
+      v-if="hasWorkspace && (!compactActions || workspaceMessage || canResume)"
+      class="shrink-0 border-b border-line px-3 py-2 text-xs"
+    >
       <p v-if="workspaceMessage" role="status" class="mb-2 text-muted">{{ workspaceMessage }}</p>
       <button
         v-if="canResume"
@@ -117,7 +150,12 @@ watch(
       >
         Resume library
       </button>
-      <button type="button" class="text-muted hover:text-brand" @click="$emit('forgetWorkspace')">
+      <button
+        v-if="!compactActions"
+        type="button"
+        class="text-muted hover:text-brand"
+        @click="$emit('forgetWorkspace')"
+      >
         Forget library
       </button>
     </div>

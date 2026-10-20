@@ -41,7 +41,7 @@ Frontend CI checks lint, format, unit/pipeline tests, types and candidate builds
 
 ## Manually publish a preview
 
-1. Wait for the latest ready PR's **Candidate validation** to pass.
+1. Wait for the latest ready PR's **Candidate validation** to pass. Manual previews require successful frontend and Candidate validation jobs plus the current unexpired build artifact. Separate Visual QA differences or pending visual review do not block preview publication; review and baseline adoption remain separate. Release/hotfix Candidate validation still requires its production-candidate Browser E2E acceptance.
 2. Actions → **Publish website** → Run workflow; normally select main as the trusted workflow branch after activation.
 3. Choose target environment branch `staging` for a staging PR or `main` for a release/hotfix PR.
 4. Choose operation `preview`, enter the PR number, and run.
@@ -144,9 +144,9 @@ Record final-head CI and browser runs, merged source/tree, artifact run/channel,
 
 ## Design QA evidence
 
-[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and regression integration. Full Browser E2E triggers and publication policy remain unchanged.
+[Design QA and reviewed visual baselines](visual-qa.md) documents manual current-candidate capture, owner source comparison, separate statuses and user-requested comparison. Full Browser E2E triggers and publication policy remain unchanged.
 
-Visual QA is manually dispatched through its own Actions workflow after reviewed main activation. PRs carrying **qa:visual** queue Visual QA **after successful Candidate validation**, using that gate's exact artifact run. Fixed-#176 smoke callers and Frontend CI manual-QA workarounds are removed; existing manual build/recovery retains its delivery purpose. See [Visual QA operation](visual-qa.md).
+Visual QA is **manual-only** through Actions → Visual QA → Run workflow. It has no automatic CI caller, label trigger, baseline-change trigger, embedded Browser E2E comparison or delivery dependency. Select a PR, available channel and profile; optionally request repeat stability. Failed or missing visual comparison does not block functional CI, preview publication, integration or release delivery. Existing required functional checks and artifact/source verification remain intact. Baseline review/adoption is explicit and separate. See [Visual QA operation](visual-qa.md).
 
 Title/body-only PR edits skip all Frontend CI jobs and do not poll for candidates. Source commit updates validate through synchronize; target changes validate through edited with changes.base. GitHub cannot filter edited by field at the event level, so title/body edits can still leave an all-skipped workflow entry. Candidate acceptance remains attached to source-changing validation, not descriptive edits.
 

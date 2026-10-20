@@ -1,4 +1,4 @@
-import { openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
+import { libraryAction, openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -43,7 +43,7 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   await expect(reader.getByRole('heading', { name: 'Local test book' })).toBeVisible()
   const openerBounds = await page.getByRole('button', { name: 'Show library' }).boundingBox()
   const titleBounds = await reader.getByRole('heading', { name: 'Local test book' }).boundingBox()
-  expect(titleBounds!.x).toBeGreaterThanOrEqual(openerBounds!.x + openerBounds!.width + 12)
+  expect(titleBounds!.y).toBeGreaterThanOrEqual(openerBounds!.y + openerBounds!.height)
   const frame = reader.frameLocator('iframe')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
   await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
@@ -674,16 +674,18 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   }
   const bytes = createPdfFixture(2, undefined, true)
   await select('highlights.pdf', bytes)
-  await page.locator('#pdf-page-2').scrollIntoViewIfNeeded()
-  await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await page.locator('[data-pdf-page="2"]').scrollIntoViewIfNeeded()
+  await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await page.evaluate(async () => {
     await document.fonts.ready
     await new Promise<void>((resolve) =>
       requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
     )
-    const first = document.querySelector('#pdf-page-1 .textLayer span')!.firstChild!
-    const last = [...document.querySelectorAll('#pdf-page-2 .textLayer span')].at(-1)!.firstChild!
+    const first = document.querySelector('[data-pdf-page="1"] .textLayer span')!.firstChild!
+    const last = [...document.querySelectorAll('[data-pdf-page="2"] .textLayer span')].at(
+      -1,
+    )!.firstChild!
     const range = document.createRange()
     range.setStart(first, 0)
     range.setEnd(last, last.textContent!.length)
@@ -695,9 +697,9 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   const panel = page.getByRole('complementary', { name: 'PDF annotations panel' })
   const entries = panel.locator('[data-annotation-id]')
   await expect(panel).toHaveCount(0)
-  await page.locator('#pdf-selection-note').fill('A persistent PDF note')
+  await page.locator('[id$=pdf-selection-note]').fill('A persistent PDF note')
   await page.getByRole('button', { name: 'Save highlight with note', exact: true }).click()
-  await page.locator('#pdf-page-2 .reader-note-indicator').click()
+  await page.locator('[data-pdf-page="2"] .reader-note-indicator').click()
   await expect(entries).toHaveCount(1)
   await expect(entries.first()).toContainText('A persistent PDF note')
   await verifyAnnotationOverview(page, info, 'PDF')
@@ -726,8 +728,8 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
   await expect(page.locator('.floating-popover')).toHaveCount(0)
   await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
-  await expect(page.locator('#pdf-page-1 .pdf-saved-highlight').first()).toHaveCSS(
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="1"] .pdf-saved-highlight').first()).toHaveCSS(
     'background-color',
     'rgb(251, 207, 232)',
   )
@@ -764,8 +766,8 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
     .getByRole('button', { name: 'PDF: rotated.pdf', exact: true })
     .click()
   await page.getByRole('button', { name: 'Hide library' }).click()
-  const layer = page.locator('#pdf-page-1 .textLayer')
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  const layer = page.locator('[data-pdf-page="1"] .textLayer')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await layer.evaluate((element) => {
     const range = document.createRange()
     range.selectNodeContents(element.querySelector('span')!)
@@ -774,7 +776,7 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
     document.dispatchEvent(new Event('selectionchange'))
   })
   await page.getByRole('button', { name: 'Add highlight', exact: true }).click()
-  const overlay = page.locator('#pdf-page-1 .pdf-saved-highlight').first()
+  const overlay = page.locator('[data-pdf-page="1"] .pdf-saved-highlight').first()
   await expect(overlay).toBeVisible()
   const aligned = async () => {
     const expected = await layer.locator('span').first().boundingBox(),
@@ -784,14 +786,14 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
   }
   await aligned()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await aligned()
   await page.getByRole('spinbutton', { name: 'Current page', exact: true }).fill('8')
   await page.getByRole('spinbutton', { name: 'Current page', exact: true }).press('Tab')
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'pending')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'pending')
   await page.getByRole('spinbutton', { name: 'Current page', exact: true }).fill('1')
   await page.getByRole('spinbutton', { name: 'Current page', exact: true }).press('Tab')
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await expect(overlay).toBeVisible()
   await aligned()
   await capture(page, info, 'pdf-rotated-highlight')
@@ -812,10 +814,10 @@ test('home and app respond in both themes without overflow', async ({ page }, in
     await capture(page, info, `home-${theme}`)
     await page.getByRole('link', { name: 'Go to app' }).click()
     await expect(page).toHaveURL(/#\/app$/)
-    await expect(page.locator('#reader-title')).toBeVisible()
+    await expect(page.locator('[id$="reader-title"]:visible')).toBeVisible()
     await noOverflow(page)
     const sidebar = await page.getByRole('complementary').boundingBox()
-    const title = await page.locator('#reader-title').boundingBox()
+    const title = await page.locator('[id$="reader-title"]:visible').boundingBox()
     expect(sidebar).not.toBeNull()
     expect(title).not.toBeNull()
     expect(title!.width).toBeGreaterThan(200)
@@ -835,21 +837,21 @@ test('empty reader survives sidebar collapse and source actions remain available
   page,
 }) => {
   await page.goto('./#/app')
-  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
   await expect(page.getByRole('heading', { name: 'No documents selected yet' })).toBeVisible()
   await expect(page.getByText('A quiet space for your next chapter')).toBeVisible()
   await expect(page.getByText('Getting started')).toHaveCount(0)
   await expect(page.getByText('Demonstration workspace')).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Contents' })).toHaveCount(0)
 
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder' })).toBeEnabled()
   await expect(page.getByRole('menuitem', { name: 'Choose PDF / EPUB files' })).toBeEnabled()
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'Hide library' }).click()
   await expect(page.getByRole('complementary')).toHaveCount(0)
-  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
   await noOverflow(page)
 
   await page.getByRole('button', { name: 'Show library' }).click()
@@ -865,7 +867,7 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/#\/app$/)
 
-  const addDocuments = page.getByRole('button', { name: 'Add local documents' })
+  const addDocuments = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await addDocuments.focus()
   await page.keyboard.press('Escape')
   const libraryToggle = page.getByRole('button', { name: 'Show library' })
@@ -945,7 +947,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   const discoveryStatus = page.locator('#discovery-status')
   const localLibrary = page.locator('section[aria-labelledby="local-library-title"]')
 
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('Folder “Mock library” selected')
   await expect(discoveryStatus).toContainText('2 supported documents found.')
@@ -957,13 +959,18 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   let book = localLibrary.getByRole('button', { name: /book.epub/ })
   await book.click()
   await expect(book).toHaveAttribute('aria-pressed', 'true')
-  await expect(page.locator('#reader-title')).toHaveText('book.epub')
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('book.epub')
   await expect(page.getByRole('alert')).toContainText('EPUB archive size is unsupported.')
 
-  await page.getByRole('button', { name: 'Refresh folder' }).click()
+  await (await libraryAction(page, 'Refresh folder')).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')
   book = localLibrary.getByRole('button', { name: /book.epub/ })
-  await expect(book).toHaveAttribute('aria-pressed', 'true')
+  // This fixture changes its bytes on every scan; a path alone cannot rebind it.
+  await expect(book).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(
+    /book.epub.*Reconnect required/,
+  )
+  await expect(page.locator('.epub-reader')).toHaveCount(0)
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -973,7 +980,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
       },
     })
   })
-  await page.getByRole('button', { name: 'Add local documents' }).click()
+  await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
   await page.getByRole('menuitem', { name: 'Choose folder' }).click()
   await expect(sourceStatus).toContainText('cancelled or permission was not granted')
 
@@ -996,8 +1003,15 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(localLibrary.locator('button[aria-expanded]')).toHaveCount(0)
   await expect(localLibrary.getByRole('button', { name: /guide.pdf/ })).toBeVisible()
   await expect(localLibrary.getByRole('button', { name: /book.epub/ })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Reselect files' })).toBeVisible()
-  await expect(page.locator('#reader-title')).toHaveText('Welcome to PaperTrail')
+  await expect(await libraryAction(page, 'Reselect files')).toBeVisible()
+  // Source replacement retains the recoverable tab until the owner closes it.
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('book.epub')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(
+    /book.epub.*Reconnect required/,
+  )
+  await page.getByRole('button', { name: 'Hide library', exact: true }).click()
+  await page.getByRole('button', { name: 'Close book.epub', exact: true }).click()
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
 })
 
 test('PDF reader renders local pages, text layer, navigation and malformed-file recovery', async ({
@@ -1016,7 +1030,7 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await localLibrary.getByRole('button', { name: /reader\.pdf/ }).click()
 
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.locator('#reader-title')).toHaveText('reader.pdf')
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('reader.pdf')
   await expect(page.getByText(/Page 1 of 2 ·/)).toBeVisible()
   await page.getByLabel('Rendered PDF page 1').scrollIntoViewIfNeeded()
   await expect(page.getByLabel('Rendered PDF page 1')).toBeVisible()
@@ -1026,12 +1040,16 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(nextPage).not.toHaveAttribute('title')
   await expect(page.getByLabel('PDF page progress')).toHaveCount(0)
   await nextPage.hover()
-  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  await expect(page.getByRole('tooltip')).toHaveText('Next page')
+  await expect(nextPage).toHaveAttribute(
+    'aria-describedby',
+    (await page.getByRole('tooltip').getAttribute('id'))!,
+  )
   const buttonBox = await nextPage.boundingBox()
-  const tooltipBox = await nextPage.locator('.icon-tooltip').boundingBox()
+  const tooltipBox = await page.getByRole('tooltip').boundingBox()
   expect(tooltipBox!.y).toBeGreaterThanOrEqual(buttonBox!.y + buttonBox!.height)
   await nextPage.focus()
-  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  await expect(page.getByRole('tooltip')).toBeVisible()
   await nextPage.click()
   await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
   await page.getByLabel('Rendered PDF page 2').scrollIntoViewIfNeeded()
@@ -1068,7 +1086,7 @@ test('PDF search, keyboard utilities and fullscreen work on a real text PDF', as
   const longName = 'searchable-document-name-that-is-much-longer-than-toolbar-space.pdf'
   await localLibrary.getByRole('button', { name: new RegExp(longName) }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
-  const title = page.locator('#reader-title')
+  const title = page.locator('[id$="reader-title"]:visible')
   await expect(title).toHaveText(longName)
   await expect(title).toHaveAttribute('title', longName)
   await expect(title).toHaveAttribute('aria-label', longName)
@@ -1190,9 +1208,10 @@ test('app bounds and library/PDF scrolling stay independent at short heights', a
 
 test('compact library menu dismisses independently and restores panel focus', async ({ page }) => {
   await page.goto('./#/app')
-  const plus = page.getByRole('button', { name: 'Add local documents' })
+  const plus = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await expect(page.getByRole('button', { name: 'Show library' })).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Refresh library' })).toBeDisabled()
+  const refresh = page.getByRole('button', { name: 'Refresh library', exact: true })
+  if (await refresh.count()) await expect(refresh).toBeDisabled()
   await plus.focus()
   await page.keyboard.press('Enter')
   const folder = page.getByRole('menuitem', { name: 'Choose folder' })
@@ -1256,9 +1275,9 @@ test('library width resizes within bounds and top opener preserves title space',
   const opener = page.getByRole('button', { name: 'Show library' })
   await expect(opener).toBeFocused()
   const openerBounds = (await opener.boundingBox())!
-  const title = (await page.locator('#reader-title').boundingBox())!
+  const title = (await page.locator('[id$="reader-title"]:visible').boundingBox())!
   expect(openerBounds.y).toBeLessThanOrEqual(title.y)
-  expect(openerBounds.x + openerBounds.width + 12).toBeLessThanOrEqual(title.x)
+  expect(openerBounds.y + openerBounds.height).toBeLessThanOrEqual(title.y)
   await opener.click()
   await expect(rail).toHaveAttribute('aria-valuenow', remembered!)
   await noOverflow(page)
@@ -1300,7 +1319,7 @@ test('PDF geometry and canvas stay stable after large scroll jumps and panel res
   await expect
     .poll(() => shells.evaluateAll((nodes) => nodes.map((n) => n.getBoundingClientRect().height)))
     .toEqual(heights)
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   const identity = await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())
   await pane.evaluate((node) => {
     node.scrollTop = node.scrollHeight
@@ -1310,7 +1329,7 @@ test('PDF geometry and canvas stay stable after large scroll jumps and panel res
     node.scrollTop = 0
   })
   await expect(first).toBeVisible()
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   expect(await first.evaluate((node) => (node as HTMLCanvasElement).toDataURL())).toBe(identity)
   await page.getByRole('button', { name: 'Contents', exact: true }).click()
   await page.getByRole('button', { name: 'Close utility panel' }).click()
@@ -1342,16 +1361,16 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
   await page.getByRole('button', { name: /zoom-anchor.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await page.getByLabel('Current page', { exact: true }).fill('4')
   await page.getByLabel('Current page', { exact: true }).press('Tab')
   const canvas = pane.getByLabel('Rendered PDF page 4', { exact: true })
   await expect(canvas).toBeVisible()
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('4')
-  await expect(pane.locator('#pdf-page-4')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="4"]')).toHaveAttribute('data-render-state', 'ready')
   const readingPoint = () =>
     pane.evaluate((node) => {
-      const box = node.querySelector('#pdf-page-4 .pdf-page')!.getBoundingClientRect()
+      const box = node.querySelector('[data-pdf-page="4"] .pdf-page')!.getBoundingClientRect()
       const viewport = node.getBoundingClientRect()
       return (viewport.top + node.clientHeight / 2 - box.top) / box.height
     })
@@ -1375,6 +1394,9 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
 test('scrollbar jumps update the page field and navigation starts from the visible page', async ({
   page,
 }) => {
+  // Keep the last page dominant at every width; a tall narrow viewport can
+  // fully show multiple short pages, where the selected page intentionally wins ties.
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
   await page.goto('./#/app')
   await page.locator('input[accept*=".pdf"]').setInputFiles({
     name: 'scroll-page-tracking.pdf',
@@ -1384,9 +1406,9 @@ test('scrollbar jumps update the page field and navigation starts from the visib
   await page.getByRole('button', { name: /scroll-page-tracking.pdf/ }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await pane.evaluate((node) => {
-    const target = node.querySelector('#pdf-page-6')!
+    const target = node.querySelector('[data-pdf-page="6"]')!
     node.scrollTop += target.getBoundingClientRect().top - node.getBoundingClientRect().top
   })
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('6')
@@ -1418,7 +1440,7 @@ test('a 1,001-page PDF opens without all-page rendering and supports a distant j
   const started = Date.now()
   await page.getByRole('button', { name: /large-document.pdf/ }).click()
   const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await info.attach('first-page-ready-ms', {
     body: String(Date.now() - started),
     contentType: 'text/plain',
@@ -1431,7 +1453,7 @@ test('a 1,001-page PDF opens without all-page rendering and supports a distant j
   await pane.evaluate((node) => {
     node.scrollTop = node.scrollHeight
   })
-  await expect(pane.locator('#pdf-page-1001')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1001"]')).toHaveAttribute('data-render-state', 'ready')
   await expect(page.getByLabel('Current page', { exact: true })).toHaveValue('1001')
   await expect(pane.getByLabel('Selectable text for PDF page 1001', { exact: true })).toContainText(
     'Page 1001',
@@ -1446,7 +1468,7 @@ test('a 1,001-page PDF opens without all-page rendering and supports a distant j
   await pane.evaluate((node) => {
     node.scrollTop = 0
   })
-  await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+  await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
 })
 
 test('library labels use embedded title or filename and the opener tooltip stays onscreen', async ({
@@ -1480,8 +1502,9 @@ test('library labels use embedded title or filename and the opener tooltip stays
   await page.getByRole('button', { name: 'Hide library' }).click()
   const opener = page.getByRole('button', { name: 'Show library' })
   await opener.hover()
-  const tooltip = opener.locator('.icon-tooltip')
-  await expect(tooltip).toBeVisible()
+  const tooltip = page.getByRole('tooltip')
+  await expect(tooltip).toHaveText('Show library')
+  await expect(opener).toHaveAttribute('aria-describedby', (await tooltip.getAttribute('id'))!)
   const box = await tooltip.boundingBox()
   expect(box!.x).toBeGreaterThanOrEqual(0)
   expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
@@ -1534,13 +1557,15 @@ test('library and document loaders are centered, responsive and respect reduced 
   try {
     await page.goto('./#/app')
     const library = page.getByRole('region', { name: 'Library documents', exact: true })
-    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
     await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     await expect(library).toHaveAttribute('aria-busy', 'true')
     const libraryCard = library.locator('.loading-card')
     await expect(libraryCard).toBeVisible()
     await expect(library.getByRole('button', { name: 'Cancel scan' })).toBeEnabled()
-    await expect(page.getByRole('button', { name: 'Add local documents' })).toBeEnabled()
+    await expect(
+      page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }),
+    ).toBeEnabled()
     await expect
       .poll(() =>
         libraryCard.evaluate((element) => {
@@ -1580,7 +1605,7 @@ test('library and document loaders are centered, responsive and respect reduced 
     await expect(pane.locator('.loading-view')).toHaveCSS('opacity', '1')
     await capture(page, info, 'pdf-centered-opening')
     releaseWorker()
-    await expect(pane.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+    await expect(pane.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
     await expect(pane).toHaveAttribute('aria-busy', 'false')
     await noOverflow(page)
   } finally {
@@ -1698,7 +1723,7 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
   await expect(search).toBeFocused()
   await page.getByRole('button', { name: 'Show library' }).click()
   await expect(page.getByRole('button', { name: 'Hide library' })).toBeFocused()
-  const add = page.getByRole('button', { name: 'Add local documents' })
+  const add = page.getByRole('button', { name: /^(Add local documents|Library actions)$/ })
   await add.click()
   await expect(page.getByRole('menuitem', { name: 'Choose folder', exact: true })).toBeFocused()
   await expect(page.getByRole('menu')).toHaveCSS('transition-duration', '0s')
@@ -1712,43 +1737,25 @@ test('reader polish keeps tabs distinct, focus clear and motion accessible in bo
     'background-color',
     await page.locator('.app-header').evaluate((el) => getComputedStyle(el).backgroundColor),
   )
-  // The CI build has no deployment metadata. Stress its real footer CSS with representative
-  // preview links and a long branch token; component tests verify the actual metadata template.
-  await footer.evaluate((element) => {
-    const nodes = [
-      'Preview · PR #98',
-      'Branch fix/reader-polish-with-a-very-long-branch-name-that-wraps-on-a-small-screen',
-      'SHA f44d675',
-    ].map((text, index) => {
-      const span = document.createElement('span')
-      const link = document.createElement('a')
-      // Match Vue's compiled scoped markup so the real component's link rules apply.
-      for (const attribute of element
-        .getAttributeNames()
-        .filter((name) => name.startsWith('data-v-'))) {
-        span.setAttribute(attribute, '')
-        link.setAttribute(attribute, '')
-      }
-      link.textContent = text
-      link.href =
-        index === 0
-          ? 'https://github.com/HimanshuHD/papertrail-reader/pull/98'
-          : index === 1
-            ? 'https://github.com/HimanshuHD/papertrail-reader/tree/fix/reader-polish'
-            : 'https://github.com/HimanshuHD/papertrail-reader/commit/f44d67517ba17053d15e4b420372526a5002a10c'
-      span.append(link)
-      return span
-    })
-    element.replaceChildren(...nodes)
-  })
-  for (const link of await footer.getByRole('link').all()) {
-    const box = (await link.boundingBox())!
-    expect(box.x).toBeGreaterThanOrEqual(0)
-    expect(box.x + box.width).toBeLessThanOrEqual(page.viewportSize()!.width)
-    expect(box.height).toBeGreaterThanOrEqual(24)
+  const detailsButton = footer.getByRole('button', { name: 'Build details', exact: true })
+  await detailsButton.focus()
+  await detailsButton.press('ArrowDown')
+  const details = page.getByRole('region', { name: 'Build details', exact: true })
+  await expect(details).toBeVisible()
+  const popup = (await details.locator('..').boundingBox())!
+  expect(popup.x).toBeGreaterThanOrEqual(0)
+  expect(popup.x + popup.width).toBeLessThanOrEqual(page.viewportSize()!.width)
+  expect(popup.y).toBeGreaterThanOrEqual(0)
+  expect(popup.y + popup.height).toBeLessThanOrEqual(500)
+  for (const link of await details.getByRole('link').all()) {
+    expect((await link.boundingBox())!.height).toBeGreaterThanOrEqual(24)
     await link.focus()
     await expect(link).toBeFocused()
   }
+  await page.keyboard.press('Escape')
+  await expect(details).toHaveCount(0)
+  await expect(detailsButton).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Hide library' })).toBeVisible()
   await noOverflow(page)
   expect(
     await page.evaluate(() => document.documentElement.scrollHeight <= window.innerHeight),
@@ -1782,13 +1789,13 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   expect(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true)
   await panel.getByRole('button', { name: /Page 2 · Match 2/ }).click()
   await expect(page.getByLabel('Current page')).toHaveValue('2')
-  const highlight = page.locator('#pdf-page-2 .pdf-match.selected[data-occurrence="2"]')
+  const highlight = page.locator('[data-pdf-page="2"] .pdf-match.selected[data-occurrence="2"]')
   await expect(highlight).toHaveCount(1)
   async function alignedAndVisible(requireVisible = true) {
     await expect
       .poll(() =>
         highlight.evaluate((el) => {
-          const span = [...document.querySelectorAll('#pdf-page-2 .textLayer span')].find(
+          const span = [...document.querySelectorAll('[data-pdf-page="2"] .textLayer span')].find(
             (s) => s.textContent === 'needle',
           )!
           const range = document.createRange()
@@ -1809,7 +1816,7 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
     await expect
       .poll(() =>
         highlight.evaluate((el) => {
-          const canvas = document.querySelector<HTMLCanvasElement>('#pdf-page-2 canvas')!
+          const canvas = document.querySelector<HTMLCanvasElement>('[data-pdf-page="2"] canvas')!
           const bounds = canvas.getBoundingClientRect(),
             box = el.getBoundingClientRect()
           const scale = bounds.width / 612
@@ -1842,7 +1849,7 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await capture(page, info, 'selected-search-occurrence')
   for (const button of ['Zoom in', 'Fit page', 'Fit width']) {
     await page.getByRole('button', { name: button, exact: true }).click()
-    await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
+    await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute('data-render-state', 'ready')
     // Fit/zoom retains the existing reading point, not a sticky search target.
     await alignedAndVisible(false)
   }
@@ -1858,9 +1865,9 @@ test('search excerpts wrap and selected PDF occurrences stay aligned after zoom 
   await page.getByRole('search').getByRole('button', { name: 'Search', exact: true }).click()
   await expect(panel.locator('mark')).toHaveText('wrapped match')
   await panel.getByRole('button', { name: /Page 2 · Match 1/ }).click()
-  await expect(page.locator('#pdf-page-2 .pdf-match.selected').first()).toBeVisible()
+  await expect(page.locator('[data-pdf-page="2"] .pdf-match.selected').first()).toBeVisible()
   await expect
-    .poll(() => page.locator('#pdf-page-2 .pdf-match.selected').count())
+    .poll(() => page.locator('[data-pdf-page="2"] .pdf-match.selected').count())
     .toBeGreaterThanOrEqual(2)
   await expect(panel.getByRole('searchbox')).toHaveValue('wrapped match')
   await expect(panel.getByRole('button', { name: /Page 2 · Match 1/ })).toHaveAttribute(
@@ -1971,9 +1978,9 @@ test('PDF reading positions survive reload and rename without matching changed c
   await select('renamed.pdf', bytes)
   await expect(input).toHaveValue('3')
   await expect(page.getByRole('button', { name: 'Zoom in' })).toBeVisible()
-  await expect(
-    page.getByText(new RegExp(`Page 3 of 4 ·.*${Math.round(savedView.zoom * 100)}%`)),
-  ).toBeVisible()
+  await expect(page.getByRole('spinbutton', { name: 'PDF zoom percent', exact: true })).toHaveValue(
+    String(Math.round(savedView.zoom * 100)),
+  )
   await expect
     .poll(() =>
       page.evaluate(
@@ -2098,8 +2105,9 @@ test('cached workspace preserves tree, selection and panel context without retai
     })
   })
   await page.reload()
+  await waitForWorkspaceReady(page)
   await expect(page.getByRole('button', { name: 'Show library' })).toBeVisible()
-  await expect(page.locator('#reader-title')).toHaveText('book-20.pdf')
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('book-20.pdf')
   await page.getByRole('button', { name: 'Show library' }).click()
   const library = page.getByRole('region', { name: 'Library documents', exact: true })
   await expect(
@@ -2122,7 +2130,7 @@ test('cached workspace preserves tree, selection and panel context without retai
     true,
   )
   await capture(page, info, 'workspace-reselection')
-  await page.getByRole('button', { name: 'Forget library', exact: true }).click()
+  await (await libraryAction(page, 'Forget library')).click()
   await expect.poll(() => readSavedWorkspace(page)).toBeNull()
   await page.reload()
   await expect(page.getByText('No documents selected yet', { exact: true })).toBeVisible()
@@ -2161,7 +2169,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
       },
       [...createPdfFixture(8)],
     )
-    await page.getByRole('button', { name: 'Add local documents' }).click()
+    await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
     await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     await page.getByRole('button', { name: 'PDF: book.pdf', exact: true }).click()
     const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
@@ -2214,7 +2222,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
       .toBeLessThan(0.025)
     await expect.poll(async () => (await reading()).anchor.page).toBe(before.anchor.page)
     const restoredY = await pane.evaluate((element, anchor) => {
-      const pdf = element.querySelector(`#pdf-page-${anchor.page} .pdf-page`)!
+      const pdf = element.querySelector(`[data-pdf-page="${anchor.page}"] .pdf-page`)!
       const box = pdf.getBoundingClientRect()
       return (element.getBoundingClientRect().top + element.clientHeight / 2 - box.top) / box.height
     }, before.anchor)
@@ -2235,7 +2243,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     await page.getByRole('button', { name: 'Show library' }).click()
     await expect(
       page.getByText(
-        'The previously opened document changed or is unavailable. Select a document to continue.',
+        'Some saved documents are missing, changed or unavailable. Reselect their source to reconnect matching content, or close those tabs.',
         { exact: true },
       ),
     ).toBeVisible()
@@ -2321,7 +2329,7 @@ test('PDF bookmarks retain named anchors across reload and rename and isolate ch
     .poll(() =>
       pane.evaluate((element, anchor) => {
         const box = element
-          .querySelector(`#pdf-page-${anchor.page} .pdf-page`)!
+          .querySelector(`[data-pdf-page="${anchor.page}"] .pdf-page`)!
           .getBoundingClientRect()
         return Math.abs(
           (element.getBoundingClientRect().top + element.clientHeight / 2 - box.top) / box.height -
@@ -2460,7 +2468,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     .locator('input[accept*=".pdf"]')
     .setInputFiles({ name: 'renamed.pdf', mimeType: 'application/pdf', buffer: bytes })
   await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).waitFor()
-  await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
+  await library.getByRole('button', { name: 'Open recent PDF renamed.pdf', exact: true }).click()
   await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
     'aria-busy',
     'false',
@@ -2531,8 +2539,15 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
     selection.addRange(range)
     element.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }))
   })
-  await reader.getByRole('button', { name: 'Highlight pink', exact: true }).click()
-  await expect(reader.getByRole('button', { name: 'Add highlight', exact: true })).toBeVisible()
+  await page
+    .getByRole('group', { name: 'EPUB highlights', exact: true })
+    .getByRole('button', { name: 'Highlight pink', exact: true })
+    .click()
+  await expect(
+    page
+      .getByRole('group', { name: 'EPUB highlights', exact: true })
+      .getByRole('button', { name: 'Add highlight', exact: true }),
+  ).toBeVisible()
   expect(
     await reader
       .frameLocator('iframe')
@@ -2546,8 +2561,12 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
           ).CSS.highlights.get('papertrail-pink')?.size ?? 0,
       ),
   ).toBe(0)
-  await reader.getByRole('button', { name: 'Add highlight', exact: true }).click()
+  await page
+    .getByRole('group', { name: 'EPUB highlights', exact: true })
+    .getByRole('button', { name: 'Add highlight', exact: true })
+    .click()
   const painted = async () => {
+    await expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
     await expect
       .poll(() =>
         reader
@@ -2596,8 +2615,13 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await verifyAnnotationOverview(page, info, 'EPUB')
   await reader.getByRole('button', { name: 'Close utility panel' }).click()
   await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toBeFocused()
+  await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe(null)
   await page.reload()
   await open()
+  await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await saved.first().click()
   await openAnnotationActions(panel.locator('[data-menu-id]').first())
@@ -2774,7 +2798,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(idleTime)
     const saved = await storedTime()
     await page.reload()
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     await expect.poll(storedTime).toBeGreaterThanOrEqual(saved)
     await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2785,7 +2812,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(0)
     const other = await page.context().newPage()
     await other.goto('./#/app')
-    await expect(other.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(other)
+    await expect(
+      other.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open(other)
     const otherInsights = other.getByRole('region', { name: 'Local reading insights', exact: true })
     await otherInsights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2820,11 +2850,11 @@ test('PDF native margin and outside-page drags retain the intended anchor in bot
   })
   await page.getByRole('button', { name: 'PDF: native-drag.pdf', exact: true }).click()
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
-  const text = page.locator('#pdf-page-1 .textLayer span').first()
+  await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
+  const text = page.locator('[data-pdf-page="1"] .textLayer span').first()
   await expect(text).toBeVisible()
   const line = (await text.boundingBox())!,
-    sheet = (await page.locator('#pdf-page-1').boundingBox())!
+    sheet = (await page.locator('[data-pdf-page="1"]').boundingBox())!
   const y = line.y + line.height / 2
   await page.mouse.move(Math.max(sheet.x + 2, line.x - 6), y)
   await page.mouse.down()
@@ -2884,7 +2914,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     const insights = page.getByRole('region', { name: 'Local reading insights', exact: true })
     await expect(insights).toContainText('Local reading insights are unavailable')
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     else
       await expect(
         page
@@ -2967,13 +3000,19 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }
     })
     await page.goto('./#/app')
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     await expect(insights).toContainText('Local reading insights are unavailable')
     await insights.getByRole('button', { name: 'Retry', exact: true }).click()
     await expect(insights).toContainText('Local reading insights are unavailable')
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     else
       await expect(
         page

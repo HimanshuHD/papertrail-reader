@@ -1,4 +1,8 @@
-import { openAnnotationActions } from '../fixtures/browser'
+import {
+  openAnnotationActions,
+  settleReaderLayout,
+  waitForWorkspaceReady,
+} from '../fixtures/browser'
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
@@ -71,12 +75,13 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .getByRole('button', { name: /anchor\./ })
         .click()
       await page.getByRole('button', { name: 'Hide library' }).click()
+      await settleReaderLayout(page.locator(format === 'PDF' ? '.pdf-reader' : '.epub-reader'))
     }
     await page.goto('./#/app')
     await open()
     const text =
       format === 'PDF'
-        ? page.locator('#pdf-page-1 .textLayer span').first()
+        ? page.locator('[data-pdf-page="1"] .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(text).toBeVisible()
     if (format === 'EPUB')
@@ -121,11 +126,16 @@ for (const format of ['PDF', 'EPUB'] as const) {
     }, format)
     await page.goto('./#/app')
     // Saved sidebar state can unmount the file input while workspace metadata restores.
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     const pane = page.locator(format === 'PDF' ? '.pdf-scroll' : '.epub-container')
-    const before = await pane.evaluate((element) => element.scrollTop)
     await page.getByRole('button', { name: 'Annotations', exact: true }).click()
+    // Opening the panel resizes/reflows the reader. Only annotation activation must not navigate.
+    await settleReaderLayout(page.locator(format === 'PDF' ? '.pdf-reader' : '.epub-reader'))
+    const before = await pane.evaluate((element) => element.scrollTop)
     await page.locator('[data-annotation-id]').first().click()
     await expect(page.locator('[data-annotation-id]')).toContainText('Unresolved')
     await expect.poll(() => pane.evaluate((element) => element.scrollTop)).toBe(before)
@@ -238,7 +248,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
     const text =
       format === 'PDF'
-        ? page.locator('#pdf-page-1 .textLayer span').first()
+        ? page.locator('[data-pdf-page="1"] .textLayer span').first()
         : page.frameLocator('iframe').locator('p').first()
     await expect(page.locator('.utility-panel-leave-active')).toHaveCount(0)
     await page.evaluate(async () => {
@@ -246,7 +256,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       await new Promise<void>((done) => requestAnimationFrame(() => done()))
     })
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     await expect(text).toBeVisible()
     await text.scrollIntoViewIfNeeded()
     await page.evaluate(async () => {
@@ -266,7 +279,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     })
     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()
     await page.getByRole('button', { name: 'Add note', exact: true }).click()
-    await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')
+    await page
+      .getByRole('group', { name: `${format} highlights`, exact: true })
+      .getByRole('textbox', { name: 'Add note', exact: true })
+      .fill('Draft only')
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeEnabled()
     expect(
@@ -293,7 +309,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }),
     ).toBe(0)
     await page.getByRole('button', { name: 'Add note', exact: true }).click()
-    await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Committed note')
+    await page
+      .getByRole('group', { name: `${format} highlights`, exact: true })
+      .getByRole('textbox', { name: 'Add note', exact: true })
+      .fill('Committed note')
     await page.evaluate(() => (Reflect.get(window, 'armRefreshFailure') as () => void)())
     await page.getByRole('button', { name: 'Save highlight with note', exact: true }).click()
     await expect(
@@ -305,7 +324,14 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .first(),
     ).toBeVisible()
     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())
-    await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()
+    // EPUB keeps its note composer open; its own Retry remains above the reader.
+    const retry =
+      format === 'EPUB'
+        ? page
+            .getByRole('group', { name: 'EPUB highlights', exact: true })
+            .getByRole('button', { name: 'Retry annotations', exact: true })
+        : page.getByRole('button', { name: 'Retry annotations', exact: true }).first()
+    await retry.click()
     if (format === 'EPUB')
       await page.getByRole('region', { name: 'EPUB reader' }).click({ position: { x: 1, y: 1 } })
     await text.evaluate((element) => {
@@ -366,17 +392,20 @@ for (const rotation of [0, 90, 180, 270]) {
       for (let i = 0; i < 16; i++)
         await page.getByRole('button', { name: 'Zoom out', exact: true }).click()
       if (zoomSteps) await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
-      await expect(page.locator('#pdf-page-2')).toHaveAttribute('data-render-state', 'ready')
-      await page.locator('#pdf-page-1 .textLayer span').first().scrollIntoViewIfNeeded()
+      await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
+      await page.locator('[data-pdf-page="1"] .textLayer span').first().scrollIntoViewIfNeeded()
       await page.locator('.pdf-scroll').evaluate((pane) => {
-        const text = pane.querySelector('#pdf-page-1 .textLayer span')!
+        const text = pane.querySelector('[data-pdf-page="1"] .textLayer span')!
         pane.scrollTop += text.getBoundingClientRect().top - pane.getBoundingClientRect().top - 32
       })
-      await expect(page.locator('#pdf-page-1 .textLayer span').first()).toBeInViewport()
-      await expect(page.locator('#pdf-page-2 .textLayer span').first()).toBeInViewport()
+      await expect(page.locator('[data-pdf-page="1"] .textLayer span').first()).toBeInViewport()
+      await expect(page.locator('[data-pdf-page="2"] .textLayer span').first()).toBeInViewport()
       const endpoints = async (number: number) =>
         page
-          .locator(`#pdf-page-${number} .textLayer span`)
+          .locator(`[data-pdf-page="${number}"] .textLayer span`)
           .first()
           .evaluate((element, angle) => {
             const rect = element.getBoundingClientRect()
@@ -402,8 +431,8 @@ for (const rotation of [0, 90, 180, 270]) {
             point,
           ),
         ).toBe(true)
-      const one = (await page.locator('#pdf-page-1').boundingBox())!,
-        two = (await page.locator('#pdf-page-2').boundingBox())!
+      const one = (await page.locator('[data-pdf-page="1"]').boundingBox())!,
+        two = (await page.locator('[data-pdf-page="2"]').boundingBox())!
       for (const backward of [false, true]) {
         const start = backward ? second.end : first.start,
           end = backward ? first.start : second.end
@@ -524,7 +553,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await page.evaluate(() => window.dispatchEvent(new Event('blur')))
     await expect.poll(read).toEqual(saved)
     if (format === 'PDF')
-      await expect(page.locator('#pdf-page-1')).toHaveAttribute('data-render-state', 'ready')
+      await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
     else
       await expect(
         page.frameLocator('iframe').getByRole('heading', { name: 'First chapter' }),
@@ -546,9 +578,9 @@ test('PDF distant saved highlight lands 24px below the reading viewport after vi
   const field = page.getByRole('spinbutton', { name: 'Current page', exact: true })
   await field.fill('8')
   await field.press('Tab')
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'ready')
   await page
-    .locator('#pdf-page-8 .textLayer span')
+    .locator('[data-pdf-page="8"] .textLayer span')
     .first()
     .evaluate((element) => {
       const range = document.createRange()
@@ -560,14 +592,14 @@ test('PDF distant saved highlight lands 24px below the reading viewport after vi
   await page.getByRole('button', { name: 'Add highlight', exact: true }).click()
   await field.fill('1')
   await field.press('Tab')
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'pending')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'pending')
   await page.getByRole('button', { name: 'Annotations', exact: true }).click()
   await page.locator('[data-annotation-id]').first().click()
-  await expect(page.locator('#pdf-page-8')).toHaveAttribute('data-render-state', 'ready')
+  await expect(page.locator('[data-pdf-page="8"]')).toHaveAttribute('data-render-state', 'ready')
   await expect
     .poll(() =>
       page.locator('.pdf-scroll').evaluate((pane) => {
-        const text = pane.querySelector('#pdf-page-8 .textLayer span')!
+        const text = pane.querySelector('[data-pdf-page="8"] .textLayer span')!
         const range = document.createRange()
         range.selectNodeContents(text)
         return Math.round(
