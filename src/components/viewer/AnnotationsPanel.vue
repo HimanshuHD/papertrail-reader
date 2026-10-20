@@ -3,9 +3,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import type { Annotation, AnnotationColor } from '../../services/annotation-storage'
 import FloatingPopover from '../FloatingPopover.vue'
 import UiIcon from '../UiIcon.vue'
-import { ANNOTATION_LIMITS } from '../../features/annotations/selectors'
+import { ANNOTATION_LIMITS, type AnnotationIdentity } from '../../features/annotations/selectors'
+import { prepareAnnotationExport } from '../../services/annotation-export'
+import { downloadJson } from '../../services/file-download'
 
 const props = defineProps<{
+  identity?: AnnotationIdentity | null
+  documentName?: string
+  documentTitle?: string
   idPrefix?: string
   format: 'PDF' | 'EPUB'
   annotations: readonly Annotation[]
@@ -22,6 +27,33 @@ const props = defineProps<{
 const emit = defineEmits<{ navigate: [id: string]; select: [id: string]; retry: [] }>()
 const root = ref<HTMLElement | null>(null)
 const filterInput = ref<HTMLInputElement | null>(null)
+const exportNotice = ref('')
+const canExport = computed(
+  () =>
+    props.available && !props.loading && !props.busy && !!props.identity && !!props.documentName,
+)
+function exportAnnotations() {
+  if (!canExport.value || !props.identity || !props.documentName) return
+  try {
+    const file = prepareAnnotationExport({
+      identity: props.identity,
+      name: props.documentName,
+      title: props.documentTitle,
+      annotations: props.annotations,
+    })
+    downloadJson(file.json, file.filename)
+    exportNotice.value = 'Download requested.'
+  } catch {
+    exportNotice.value =
+      'Annotations could not be exported. Close and reopen annotations, then try again.'
+  }
+}
+watch(
+  () => props.identity?.fingerprint,
+  () => {
+    exportNotice.value = ''
+  },
+)
 const query = ref('')
 const colorFilter = ref<AnnotationColor | ''>('')
 const notesOnly = ref(false)
@@ -170,6 +202,22 @@ function cancelEdit() {
     >
       Retry annotations
     </button>
+    <div class="mb-3">
+      <button
+        type="button"
+        class="pt-framed-control annotation-button"
+        aria-label="Export annotations (JSON)"
+        :aria-describedby="`${prefix}-export-help`"
+        :disabled="!canExport"
+        @click="exportAnnotations"
+      >
+        Export annotations (JSON)
+      </button>
+      <p :id="`${prefix}-export-help`" class="mt-1 text-xs text-muted">
+        All saved highlights and notes. Save note edits first to include them.
+      </p>
+      <p role="status" aria-live="polite" class="mt-1 text-xs text-muted">{{ exportNotice }}</p>
+    </div>
     <div class="annotation-filter-bar">
       <label :for="`${prefix}-filter`" class="sr-only">Find annotations</label>
       <input
