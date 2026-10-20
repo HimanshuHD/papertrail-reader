@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.0 — Multiple-document workspace — release candidate, 20 October 2026
+
+Adds independent PDF/EPUB tabs, session restoration and local-source reconnection, five-minute inactive-reader retention, a compact collapsible library and reader workspace, portable current-document annotation JSON export, and optional two-document **Split view**. Each pane keeps independent navigation/settings/annotations; only the focused pane receives shortcuts and active reading time. Split view performs no automated text/data comparison.
+
+Visual QA becomes manual-only and independent of functional CI and deployment. PDF supports two-page viewing; EPUB stays scrolling-only. No annotation importer, linked scrolling, three-or-more-pane layouts, cloud sync, or broad memory-budget certification is included. Release acceptance and exact source evidence: [v2.2.0 release record](docs/releases/v2.2.0.md), [release notes](docs/releases/v2.2.0-notes.md), #244. Production remains v2.1.1 until the reviewed main release is deployed.
+
 ## 2.1.1 — Versioned delivery and visual regression reliability — prepared 17 October 2026
 
 Adds exact-tag/package validation, checksummed dual release packages, draft release assets, immutable version URLs and explicit acknowledged promotion/rollback through the serialized Pages publisher. Activates channel-specific approved visual references and corrects hidden-library capture timing, while retaining strict comparison tolerances and historical evidence. Adds read-only startup measurement tooling; broader #16 measurements remain separate.
