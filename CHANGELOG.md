@@ -1,10 +1,10 @@
 # Changelog
 
-## 2.2.0 — Multiple-document workspace — release candidate, 20 October 2026
+## 2.2.0 — Multiple-document workspace — deployed 20 October 2026
 
 Adds independent PDF/EPUB tabs, session restoration and local-source reconnection, five-minute inactive-reader retention, a compact collapsible library and reader workspace, portable current-document annotation JSON export, and optional two-document **Split view**. Each pane keeps independent navigation/settings/annotations; only the focused pane receives shortcuts and active reading time. Split view performs no automated text/data comparison.
 
-Visual QA becomes manual-only and independent of functional CI and deployment. PDF supports two-page viewing; EPUB stays scrolling-only. No annotation importer, linked scrolling, three-or-more-pane layouts, cloud sync, or broad memory-budget certification is included. Release acceptance and exact source evidence: [v2.2.0 release record](docs/releases/v2.2.0.md), [release notes](docs/releases/v2.2.0-notes.md), #244. Production remains v2.1.1 until the reviewed main release is deployed.
+Visual QA becomes manual-only and independent of functional CI and deployment. PDF supports two-page viewing; EPUB stays scrolling-only. No annotation importer, linked scrolling, three-or-more-pane layouts, cloud sync, or broad memory-budget certification is included. Release acceptance and exact source evidence: [v2.2.0 release record](docs/releases/v2.2.0.md), [release notes](docs/releases/v2.2.0-notes.md), #244. Owner reviewed and merged #245 at `dcac149b84f74eaf2fa0effb9225ae2da1f7e797`; production identity/assets and acknowledged receipt passed in integration 39452365103. Release Browser E2E passed 442 cases, 12 intentional skips and zero failures/flakes. #246 synchronized main and the release fixes into staging; its staging acceptance is tracked separately. GitHub Release tag/package/publication and immutable archive remain pending under #244.
 
 ## 2.1.1 — Versioned delivery and visual regression reliability — prepared 17 October 2026
 
