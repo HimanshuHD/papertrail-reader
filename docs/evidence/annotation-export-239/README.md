@@ -24,5 +24,5 @@ The final source additionally makes visible and accessible export labels identic
 
 1. Open a PDF; save highlights and a note. In Annotations, activate **Export annotations (JSON)** with click or keyboard. Inspect the downloaded JSON and its document identity/selectors/note text.
 2. Apply a filter hiding entries and export again: all saved entries remain included. Edit a note without saving, then export: the prior saved note is included and the draft is untouched.
-3. Repeat with EPUB, switch between tabs, and export again. Each file contains only its own annotations; page/chapter and saved annotations remain intact. Empty documents may export an empty collection. Loading/unavailable/saving states disable export.
+3. Repeat with EPUB, switch between tabs, and export again. Each file contains only its own annotations; page/chapter and saved annotations remain intact. Documents with no saved annotations have export disabled, including after deleting the final annotation. Filtering existing entries out does not disable export. Loading/unavailable/saving states also disable export.
 4. Cancelling a browser save dialog does not delete or change annotations. This is export only; import and comparison are separate scope. #240 follows after #239 is accepted.

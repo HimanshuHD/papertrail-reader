@@ -243,3 +243,27 @@ it('disables unavailable/busy exports and reports a recoverable download failure
   expect(wrapper.text()).toContain('Close and reopen annotations, then try again.')
   expect(button.attributes('aria-describedby')).toBe('epub-annotations-export-help')
 })
+
+it('disables export for an empty saved collection and after its last annotation is removed', async () => {
+  const { wrapper } = await panel()
+  await wrapper.setProps({
+    identity: { format: 'EPUB', fingerprint: 'sha256-chunks-v1:' + 'a'.repeat(64) },
+    documentName: 'book.epub',
+    annotations: [],
+    selectedId: '',
+  })
+  const button = wrapper.get('[aria-label="Export annotations (JSON)"]')
+  const calls = vi.mocked(downloadJson).mock.calls.length
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(downloadJson).toHaveBeenCalledTimes(calls)
+  await wrapper.setProps({ annotations: [records[0]!] })
+  expect(button.attributes('disabled')).toBeUndefined()
+  await wrapper.get('#epub-annotations-filter').setValue('no matching annotations')
+  expect(wrapper.findAll('[data-annotation-id]')).toHaveLength(0)
+  expect(button.attributes('disabled')).toBeUndefined()
+  await wrapper.setProps({ annotations: [] })
+  expect(button.attributes('disabled')).toBeDefined()
+  await button.trigger('click')
+  expect(downloadJson).toHaveBeenCalledTimes(calls)
+})

@@ -1,6 +1,6 @@
 # Portable annotation JSON
 
-Open a PDF or EPUB, open **Annotations**, then choose **Export annotations (JSON)**. The download contains every saved highlight and note for that document, including entries hidden by search/color/note filters. Save note edits before exporting: unsaved editor drafts are excluded. Empty saved collections produce an empty `annotations` array. Export is unavailable while annotations are loading, saving or unavailable.
+Open a PDF or EPUB, open **Annotations**, then choose **Export annotations (JSON)**. The download contains every saved highlight and note for that document, including entries hidden by search/color/note filters. Save note edits before exporting: unsaved editor drafts are excluded. Export is disabled when the document has no saved annotations, and while annotations are loading, saving or unavailable. Filtering all entries out does not disable export when saved annotations still exist.
 
 The browser decides how to save the download. “Download requested” does not mean the file was saved; cancelling the save dialog does not change annotations. A failed request leaves the reader and saved data intact and can be retried. Export runs locally without a network request. The downloaded file contains selected quotes and notes; it is the reader's portable copy of that content.
 

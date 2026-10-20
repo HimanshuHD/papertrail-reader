@@ -30,7 +30,12 @@ const filterInput = ref<HTMLInputElement | null>(null)
 const exportNotice = ref('')
 const canExport = computed(
   () =>
-    props.available && !props.loading && !props.busy && !!props.identity && !!props.documentName,
+    props.available &&
+    !props.loading &&
+    !props.busy &&
+    !!props.identity &&
+    !!props.documentName &&
+    props.annotations.length > 0,
 )
 function exportAnnotations() {
   if (!canExport.value || !props.identity || !props.documentName) return
