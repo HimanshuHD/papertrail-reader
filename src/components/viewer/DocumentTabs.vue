@@ -403,7 +403,7 @@ button:disabled {
   top: 100%;
   z-index: 50;
   width: 320px;
-  max-width: calc(100vw - 24px);
+  max-width: min(calc(100% - 8px), calc(100vw - 24px));
   max-height: min(360px, 60dvh);
   overflow: auto;
   border-radius: 8px;
