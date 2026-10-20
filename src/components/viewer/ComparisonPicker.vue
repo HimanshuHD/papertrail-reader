@@ -47,7 +47,7 @@ function leaves(event: FocusEvent) {
 <template>
   <div v-if="tabs.length > 1" class="comparison-picker shrink-0">
     <IconButton
-      label="Compare documents"
+      label="Split view"
       icon="compare"
       :disabled="!enabled"
       :aria-expanded="open"
@@ -60,10 +60,10 @@ function leaves(event: FocusEvent) {
         :id="id"
         ref="menu"
         role="dialog"
-        aria-label="Choose a document to compare"
+        aria-label="Choose a document for split view"
         @focusout="leaves"
       >
-        <p class="mb-2 text-xs text-muted">Compare with another open document</p>
+        <p class="mb-2 text-xs text-muted">Read alongside another open document</p>
         <button
           v-for="tab in choices"
           :key="tab.id"
@@ -71,7 +71,7 @@ function leaves(event: FocusEvent) {
           class="pt-list-entry block w-full rounded-md p-2 text-left text-sm break-words"
           @click="choose(tab.id)"
         >
-          Compare with {{ tab.title }}
+          Split with {{ tab.title }}
         </button>
       </div>
     </FloatingPopover>

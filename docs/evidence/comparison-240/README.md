@@ -1,4 +1,4 @@
-# Comparison acceptance (#240)
+# Split view acceptance (#240)
 
 Base: accepted #242 staging `333a2c5f9f97bbef0f4ff846c994d2c7ec9c243f`, tree `7fa661de366a6008307afd4fa553d78f9e38c5fa`. Branch `feature/240-document-comparison`; the PR records exact final source/tree and required CI. This is candidate evidence, not owner preview acceptance, accepted comparison staging delivery, or production activation.
 
@@ -20,11 +20,11 @@ The first six-case local probe had **2 passed, 4 failed**. Two bounds assertions
 
 ## Preview checklist
 
-1. Open two different PDFs/EPUBs. Use **Compare documents** beside tabs, then select a partner. Check two columns with at least 960px of reader space, or explicit Show controls below that.
+1. Open two different PDFs/EPUBs. Use **Split view** beside tabs, then select a partner. Check two columns with at least 960px of reader space, or explicit Show controls below that.
 2. Focus/click either pane, including EPUB text. Only its selected tab, shortcuts and reading time should be active. Verify independent page/chapter/settings, annotations, and utility drawers. Swap keeps state and reader instances.
 3. Resize/collapse/reopen the library; the comparison should adapt without losing state. Select a third tab to replace the focused slot. Exit keeps the focused document. Close either compared tab and verify the surviving document remains usable.
 4. Reselect a source missing one document, then restore it. Matching content reconnects; the other pane and its notes remain usable. Close the final tab without a reload and open a fresh file.
-5. Reload intentionally returns to normal single-reader tab restoration; comparison arrangement is transient. Production remains v2.1.1. Manual visual comparison and baseline adoption remain separate under #230.
+5. Reload intentionally returns to normal single-reader tab restoration; split view arrangement is transient. Production remains v2.1.1. Manual visual comparison and baseline adoption remain separate under #230.
 
 ## Captures
 
@@ -32,3 +32,7 @@ The first six-case local probe had **2 passed, 4 failed**. Two bounds assertions
 ![Wide light comparison](comparison-light-1440.png)
 ![Narrow dark comparison](comparison-dark-320.png)
 ![Wide dark comparison](comparison-dark-1440.png)
+
+## Terminology update
+
+The controls now call this feature **Split view**. The retained captures above predate the wording update. This is independent two-document reading, with no text/data comparison or difference highlighting.

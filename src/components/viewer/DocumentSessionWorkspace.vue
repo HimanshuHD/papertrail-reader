@@ -216,7 +216,7 @@ defineExpose({
     <div
       v-if="comparison"
       class="comparison-controls border-b border-line bg-panel"
-      aria-label="Comparison controls"
+      aria-label="Split view controls"
       role="group"
     >
       <button
@@ -225,7 +225,7 @@ defineExpose({
         type="button"
         class="comparison-document pt-plain-control"
         :aria-pressed="selected === panel.id"
-        :aria-label="`${compact ? 'Show' : 'Focus'} ${index === 0 ? 'left' : 'right'} comparison document: ${panel.title}`"
+        :aria-label="`${compact ? 'Show' : 'Focus'} ${index === 0 ? 'left' : 'right'} split view document: ${panel.title}`"
         @click="focusPane(panel.id, true)"
       >
         {{ panel.title }}
@@ -233,19 +233,19 @@ defineExpose({
       <button
         type="button"
         class="comparison-action pt-plain-control"
-        aria-label="Swap comparison panes"
+        aria-label="Swap split view panes"
         @click="sessions.swapComparison()"
       >
         Swap
       </button>
       <button type="button" class="comparison-action pt-plain-control" @click="endComparison">
-        Exit comparison
+        Exit split view
       </button>
       <p class="sr-only" role="status">
         {{
           compact
-            ? 'Comparison shows one document at a time. Choose a document to switch.'
-            : 'Comparison shows two documents side by side. Focus a pane for shortcuts and reading time.'
+            ? 'Split view shows one document at a time. Choose a document to switch.'
+            : 'Split view shows two documents side by side. Focus a pane for shortcuts and reading time.'
         }}
       </p>
     </div>
@@ -257,7 +257,7 @@ defineExpose({
         :role="comparison?.includes(owner.session.id) ? 'region' : 'tabpanel'"
         :aria-label="
           comparison?.includes(owner.session.id)
-            ? `${owner.session.title} comparison pane`
+            ? `${owner.session.title} split view pane`
             : undefined
         "
         :aria-labelledby="
@@ -299,7 +299,7 @@ defineExpose({
           :id="`${panel.id}-panel`"
           :role="comparison?.includes(panel.id) ? 'region' : 'tabpanel'"
           :aria-label="
-            comparison?.includes(panel.id) ? `${panel.title} comparison pane` : undefined
+            comparison?.includes(panel.id) ? `${panel.title} split view pane` : undefined
           "
           :aria-labelledby="comparison?.includes(panel.id) ? undefined : `${panel.id}-tab`"
           tabindex="0"

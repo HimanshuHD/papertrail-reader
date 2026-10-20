@@ -28,13 +28,13 @@ it('offers only different verified tabs, focuses its choices and delegates compa
     },
   })
   wrappers.push(wrapper)
-  await wrapper.get('[aria-label="Compare documents"]').trigger('click')
+  await wrapper.get('[aria-label="Split view"]').trigger('click')
   await flushPromises()
   const popup = document.querySelector(
-    '[role="dialog"][aria-label="Choose a document to compare"]',
+    '[role="dialog"][aria-label="Choose a document for split view"]',
   )!
   expect(popup.querySelectorAll('button')).toHaveLength(1)
-  expect(document.activeElement?.textContent).toContain('Compare with two')
+  expect(document.activeElement?.textContent).toContain('Split with two')
   ;(popup.querySelector('button') as HTMLButtonElement).click()
   expect(wrapper.emitted('compare')).toEqual([['two']])
 })
@@ -43,7 +43,7 @@ it('disables comparison when the focused document or all partners lack verified 
     props: { selectedId: 'one', tabs: [tab('one'), tab('two', 'reconnect')] },
   })
   wrappers.push(wrapper)
-  expect(wrapper.get('[aria-label="Compare documents"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('[aria-label="Split view"]').attributes('disabled')).toBeDefined()
   await wrapper.setProps({ tabs: [tab('one', 'reconnect'), tab('two')] })
-  expect(wrapper.get('[aria-label="Compare documents"]').attributes('disabled')).toBeDefined()
+  expect(wrapper.get('[aria-label="Split view"]').attributes('disabled')).toBeDefined()
 })

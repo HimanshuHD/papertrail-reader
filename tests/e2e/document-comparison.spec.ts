@@ -37,17 +37,17 @@ async function open(page: Page, label: string) {
   await settleReaderLayout(page.locator('.reader-layout'))
 }
 async function compare(page: Page, title: string) {
-  await page.getByRole('button', { name: 'Compare documents', exact: true }).click()
+  await page.getByRole('button', { name: 'Split view', exact: true }).click()
   await page
-    .getByRole('dialog', { name: 'Choose a document to compare' })
-    .getByRole('button', { name: `Compare with ${title}`, exact: true })
+    .getByRole('dialog', { name: 'Choose a document for split view' })
+    .getByRole('button', { name: `Split with ${title}`, exact: true })
     .click()
-  await expect(page.getByRole('group', { name: 'Comparison controls' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Split view controls' })).toBeVisible()
 }
 const pane = (page: Page, name: string) =>
-  page.getByRole('region', { name: `${name} comparison pane`, exact: true })
+  page.getByRole('region', { name: `${name} split view pane`, exact: true })
 const choose = (page: Page, side: 'left' | 'right') =>
-  page.getByRole('button', { name: new RegExp(`^(Focus|Show) ${side} comparison document:`) })
+  page.getByRole('button', { name: new RegExp(`^(Focus|Show) ${side} split view document:`) })
 async function readyPdf(page: Page) {
   await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
     'aria-busy',
@@ -143,7 +143,7 @@ test('comparison preserves mixed reader state, iframe focus, drawer bounds, swap
   await page
     .locator('.epub-reader:visible iframe')
     .evaluate((el) => Reflect.set(window, 'comparisonEpub', el))
-  await page.getByRole('button', { name: 'Swap comparison panes', exact: true }).click()
+  await page.getByRole('button', { name: 'Swap split view panes', exact: true }).click()
   await expect(choose(page, 'right')).toHaveAttribute('aria-pressed', 'true')
   expect(
     await page
@@ -155,8 +155,8 @@ test('comparison preserves mixed reader state, iframe focus, drawer bounds, swap
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await info.attach('comparison-dark', { body: await page.screenshot(), contentType: 'image/png' })
-  await page.getByRole('button', { name: 'Exit comparison', exact: true }).click()
-  await expect(page.getByRole('group', { name: 'Comparison controls' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Exit split view', exact: true }).click()
+  await expect(page.getByRole('group', { name: 'Split view controls' })).toHaveCount(0)
   await expect(page.locator('.session-panel:not(.session-inactive)')).toHaveCount(1)
   await compare(page, 'left.pdf')
   await expect
@@ -168,7 +168,7 @@ test('comparison preserves mixed reader state, iframe focus, drawer bounds, swap
     .toBe(3)
   await page.reload()
   await waitForWorkspaceReady(page)
-  await expect(page.getByRole('group', { name: 'Comparison controls' })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Split view controls' })).toHaveCount(0)
   await expect(page.locator('.session-panel:not(.session-inactive)')).toHaveCount(1)
   await expect(
     page.getByRole('button', { name: 'Reconnect local document', exact: true }),
@@ -229,7 +229,7 @@ test('comparison retains visible readers, expires a hidden partner and isolates 
   ).toBeVisible()
   await page.getByRole('tab', { name: /broken.pdf/ }).focus()
   await page.getByRole('tab', { name: /broken.pdf/ }).press('Delete')
-  await expect(page.getByRole('group', { name: 'Comparison controls' })).toHaveCount(0)
+  await expect(page.getByRole('group', { name: 'Split view controls' })).toHaveCount(0)
   await expect(page.getByRole('tab', { selected: true })).toContainText('book.epub')
   while (await page.getByRole('tab').count()) {
     const selected = page.getByRole('tab', { selected: true })
@@ -258,7 +258,7 @@ test('same-format comparison keeps PDF shortcuts and EPUB iframe focus independe
   await expect(
     pane(page, 'left.pdf').getByRole('spinbutton', { name: 'Current page', exact: true }),
   ).toHaveValue('1')
-  await page.getByRole('button', { name: 'Exit comparison', exact: true }).click()
+  await page.getByRole('button', { name: 'Exit split view', exact: true }).click()
   await open(page, 'EPUB: book.epub')
   await expect(
     page
@@ -388,7 +388,7 @@ test('comparison preserves document-owned notes through partial source reconnect
     await settleReaderLayout(page.locator('.reader-layout'))
   }
   await reselect([files[0]!])
-  await expect(page.getByRole('group', { name: 'Comparison controls' })).toBeVisible()
+  await expect(page.getByRole('group', { name: 'Split view controls' })).toBeVisible()
   await choose(page, 'left').click()
   await expect(
     pane(page, 'book.epub').getByRole('button', { name: 'Reconnect local document', exact: true }),
