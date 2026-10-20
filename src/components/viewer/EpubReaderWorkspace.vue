@@ -332,6 +332,13 @@ let framePointerStart: { x: number; y: number } | null = null
 function onFrameFocus() {
   emit('focusPane')
 }
+function onWindowBlur() {
+  // Sandboxed WebKit frames do not dispatch callbacks installed in their document.
+  // Observe focus entering our iframe from the trusted parent instead.
+  queueMicrotask(() => {
+    if (host.value?.contains(document.activeElement)) onFrameFocus()
+  })
+}
 function onFramePointer(event: PointerEvent) {
   onFrameFocus()
   framePointerStart =
@@ -584,6 +591,7 @@ onMounted(() => {
     noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
     noteResizeObserver.observe(host.value)
   }
+  globalThis.addEventListener('blur', onWindowBlur)
   globalThis.addEventListener('keydown', onKey)
   globalThis.addEventListener('pointerdown', onPointer, true)
   globalThis.addEventListener('resize', updateWindowWidth)
@@ -593,6 +601,7 @@ onBeforeUnmount(() => {
   noteResizeObserver?.disconnect()
   cancelAnimationFrame(noteFrame)
   ++openGeneration
+  globalThis.removeEventListener('blur', onWindowBlur)
   globalThis.removeEventListener('keydown', onKey)
   globalThis.removeEventListener('pointerdown', onPointer, true)
   globalThis.removeEventListener('resize', updateWindowWidth)
