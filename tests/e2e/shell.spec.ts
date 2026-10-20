@@ -965,7 +965,12 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await (await libraryAction(page, 'Refresh folder')).click()
   await expect(discoveryStatus).toContainText('2 supported documents found.')
   book = localLibrary.getByRole('button', { name: /book.epub/ })
-  await expect(book).toHaveAttribute('aria-pressed', 'true')
+  // This fixture changes its bytes on every scan; a path alone cannot rebind it.
+  await expect(book).toHaveAttribute('aria-pressed', 'false')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(
+    /book.epub.*Reconnect required/,
+  )
+  await expect(page.locator('.epub-reader')).toHaveCount(0)
 
   await page.evaluate(() => {
     Object.defineProperty(window, 'showDirectoryPicker', {
@@ -999,6 +1004,13 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(localLibrary.getByRole('button', { name: /guide.pdf/ })).toBeVisible()
   await expect(localLibrary.getByRole('button', { name: /book.epub/ })).toBeVisible()
   await expect(await libraryAction(page, 'Reselect files')).toBeVisible()
+  // Source replacement retains the recoverable tab until the owner closes it.
+  await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('book.epub')
+  await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(
+    /book.epub.*Reconnect required/,
+  )
+  await page.getByRole('button', { name: 'Hide library', exact: true }).click()
+  await page.getByRole('button', { name: 'Close book.epub', exact: true }).click()
   await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
 })
 
@@ -2456,7 +2468,7 @@ test('library filtering and recent PDF recovery preserve document metadata', asy
     .locator('input[accept*=".pdf"]')
     .setInputFiles({ name: 'renamed.pdf', mimeType: 'application/pdf', buffer: bytes })
   await library.getByRole('button', { name: 'PDF: Recent guide', exact: true }).waitFor()
-  await library.getByRole('button', { name: 'Open recent PDF guide.pdf', exact: true }).click()
+  await library.getByRole('button', { name: 'Open recent PDF renamed.pdf', exact: true }).click()
   await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
     'aria-busy',
     'false',
@@ -2603,8 +2615,13 @@ test('EPUB highlights persist across view changes, reload and local edits', asyn
   await verifyAnnotationOverview(page, info, 'EPUB')
   await reader.getByRole('button', { name: 'Close utility panel' }).click()
   await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toBeFocused()
+  await expect.poll(async () => (await readSavedWorkspace(page))?.utilityPanel).toBe(null)
   await page.reload()
   await open()
+  await expect(reader.getByRole('button', { name: 'Annotations', exact: true })).toHaveAttribute(
+    'aria-expanded',
+    'false',
+  )
   await reader.getByRole('button', { name: 'Annotations', exact: true }).click()
   await saved.first().click()
   await openAnnotationActions(panel.locator('[data-menu-id]').first())
@@ -2781,7 +2798,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(idleTime)
     const saved = await storedTime()
     await page.reload()
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     await expect.poll(storedTime).toBeGreaterThanOrEqual(saved)
     await insights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2792,7 +2812,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     await expect.poll(storedTime).toBeGreaterThan(0)
     const other = await page.context().newPage()
     await other.goto('./#/app')
-    await expect(other.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(other)
+    await expect(
+      other.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open(other)
     const otherInsights = other.getByRole('region', { name: 'Local reading insights', exact: true })
     await otherInsights.getByRole('button', { name: 'Reset this document’s insights' }).click()
@@ -2977,7 +3000,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }
     })
     await page.goto('./#/app')
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     await expect(insights).toContainText('Local reading insights are unavailable')
     await insights.getByRole('button', { name: 'Retry', exact: true }).click()
