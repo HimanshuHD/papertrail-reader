@@ -288,3 +288,25 @@ it('explains newer workspace data and requires explicit reset without blocking r
   expect(storage.clear).toHaveBeenCalledOnce()
   expect(workspace.notice.value).toBe('')
 })
+
+it('captures the latest reader state before taking the lifecycle flush snapshot', async () => {
+  const storage = repository()
+  let workspace!: ReturnType<typeof useWorkspaceContinuity>
+  let page = 1
+  wrappers.push(
+    mount({
+      setup() {
+        workspace = useWorkspaceContinuity(storage, () =>
+          workspace.patch({ searchQuery: String(page) }),
+        )
+        return () => null
+      },
+    }),
+  )
+  await workspace.restore()
+  workspace.patch({ searchQuery: 'old' })
+  page = 9
+  window.dispatchEvent(new Event('pagehide'))
+  await flushPromises()
+  expect(storage.save).toHaveBeenLastCalledWith(expect.objectContaining({ searchQuery: '9' }))
+})

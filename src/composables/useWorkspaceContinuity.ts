@@ -9,6 +9,7 @@ import { restoreDirectoryAccess, type LibraryAccess } from '../services/library-
 
 export function useWorkspaceContinuity(
   storage: WorkspaceStorage = new IndexedDbWorkspaceStorage(),
+  beforeFlush?: () => void,
 ) {
   const snapshot = shallowRef<WorkspaceSnapshot | null>(null)
   const notice = ref('')
@@ -20,6 +21,7 @@ export function useWorkspaceContinuity(
   let disposed = false
 
   function flush() {
+    beforeFlush?.()
     clearTimeout(timer)
     const next = pending
     pending = null

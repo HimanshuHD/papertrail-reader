@@ -20,7 +20,7 @@ vi.mock('../../src/features/pdf/pdf-session', async (importOriginal) => {
   }
 })
 vi.mock('../../src/services/document-identity', () => ({
-  fingerprintDocument: vi.fn(async () => 'shell-fixture'),
+  fingerprintDocument: vi.fn(async () => 'sha256-chunks-v1:' + 'a'.repeat(64)),
 }))
 import App from '../../src/App.vue'
 import * as discovery from '../../src/features/library/discovery'

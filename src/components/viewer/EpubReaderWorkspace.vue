@@ -48,6 +48,7 @@ const restoringSession = ref(Boolean(props.initialState?.epub))
 const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
+  readingChange: []
   phaseChange: [phase: 'ready' | 'error']
   utilityChange: [panel: UtilityPanel, query: string]
   status: [message: string]
@@ -247,7 +248,7 @@ async function chooseHighlight(id: string) {
   paintHighlights()
   const range = paintedHighlights?.resolvedRanges.get(id)
   unresolvedHighlights.value[id] = !range || !session?.revealRange?.(range)
-  if (!unresolvedHighlights.value[id]) continuity.save()
+  if (!unresolvedHighlights.value[id]) persistReading()
 }
 async function createHighlight(color: AnnotationColor, keepOpen = false) {
   highlightColor.value = color
@@ -358,11 +359,15 @@ function captureReading(): EpubReadingSettings | undefined {
   }
   return lastReading
 }
+function persistReading() {
+  continuity.save()
+  emit('readingChange')
+}
 function saveReading() {
   scheduleNoteIndicators()
   toolbarSavedId.value = ''
   pendingHighlight.value = null
-  continuity.save()
+  persistReading()
 }
 function clearFrameListeners() {
   hoverDisposers.splice(0).forEach((dispose) => dispose())
@@ -614,7 +619,7 @@ function selectContents(entry: EpubContentsEntry) {
 }
 function applyTypography() {
   reader.session.value?.typography(typography.value)
-  continuity.save()
+  persistReading()
 }
 function resetTypography() {
   typography.value = { ...DEFAULT_EPUB_TYPOGRAPHY }
@@ -627,7 +632,7 @@ function toggleTextOnly() {
 async function navigateBookmark(bookmark: EpubBookmark) {
   if (!(await reader.restore(bookmark.location))) {
     bookmarks.notice.value = 'This saved place is unavailable. You can continue reading.'
-  } else continuity.save()
+  } else persistReading()
 }
 async function addBookmark(name: string) {
   const location = reader.session.value?.location?.()
@@ -675,7 +680,7 @@ async function open(preserve = false) {
     if (preserve) reader.contentsEntry.value = contentsEntry
     if (saved?.location && !normalizeLocation(saved.location, reader.session.value.chapters.length))
       continuity.notice.value = 'The saved chapter is unavailable. Reading starts at the beginning.'
-    continuity.save()
+    persistReading()
     if (continuity.fingerprint.value) {
       emit('identity', continuity.fingerprint.value)
       emit('recentReady', {
