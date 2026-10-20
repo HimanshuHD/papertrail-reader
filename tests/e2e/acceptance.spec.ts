@@ -272,7 +272,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     })
     await page.getByRole('button', { name: 'Highlight blue', exact: true }).click()
     await page.getByRole('button', { name: 'Add note', exact: true }).click()
-    await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Draft only')
+    await page
+      .getByRole('group', { name: `${format} highlights`, exact: true })
+      .getByRole('textbox', { name: 'Add note', exact: true })
+      .fill('Draft only')
     await page.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Add highlight', exact: true })).toBeEnabled()
     expect(
@@ -299,7 +302,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
       }),
     ).toBe(0)
     await page.getByRole('button', { name: 'Add note', exact: true }).click()
-    await page.locator(`#${format.toLowerCase()}-selection-note`).fill('Committed note')
+    await page
+      .getByRole('group', { name: `${format} highlights`, exact: true })
+      .getByRole('textbox', { name: 'Add note', exact: true })
+      .fill('Committed note')
     await page.evaluate(() => (Reflect.get(window, 'armRefreshFailure') as () => void)())
     await page.getByRole('button', { name: 'Save highlight with note', exact: true }).click()
     await expect(
@@ -311,7 +317,14 @@ for (const format of ['PDF', 'EPUB'] as const) {
         .first(),
     ).toBeVisible()
     await page.evaluate(() => (Reflect.get(window, 'restoreAnnotationStorage') as () => void)())
-    await page.getByRole('button', { name: 'Retry annotations', exact: true }).first().click()
+    // EPUB keeps its note composer open; its own Retry remains above the reader.
+    const retry =
+      format === 'EPUB'
+        ? page
+            .getByRole('group', { name: 'EPUB highlights', exact: true })
+            .getByRole('button', { name: 'Retry annotations', exact: true })
+        : page.getByRole('button', { name: 'Retry annotations', exact: true }).first()
+    await retry.click()
     if (format === 'EPUB')
       await page.getByRole('region', { name: 'EPUB reader' }).click({ position: { x: 1, y: 1 } })
     await text.evaluate((element) => {

@@ -1028,12 +1028,16 @@ test('PDF reader renders local pages, text layer, navigation and malformed-file 
   await expect(nextPage).not.toHaveAttribute('title')
   await expect(page.getByLabel('PDF page progress')).toHaveCount(0)
   await nextPage.hover()
-  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  await expect(page.getByRole('tooltip')).toHaveText('Next page')
+  await expect(nextPage).toHaveAttribute(
+    'aria-describedby',
+    (await page.getByRole('tooltip').getAttribute('id'))!,
+  )
   const buttonBox = await nextPage.boundingBox()
-  const tooltipBox = await nextPage.locator('.icon-tooltip').boundingBox()
+  const tooltipBox = await page.getByRole('tooltip').boundingBox()
   expect(tooltipBox!.y).toBeGreaterThanOrEqual(buttonBox!.y + buttonBox!.height)
   await nextPage.focus()
-  await expect(nextPage.locator('.icon-tooltip')).toBeVisible()
+  await expect(page.getByRole('tooltip')).toBeVisible()
   await nextPage.click()
   await expect(page.getByText(/Page 2 of 2 ·/)).toBeVisible()
   await page.getByLabel('Rendered PDF page 2').scrollIntoViewIfNeeded()
@@ -1378,6 +1382,9 @@ test('zoom and fit preserve the current reading point and zoom advances from fit
 test('scrollbar jumps update the page field and navigation starts from the visible page', async ({
   page,
 }) => {
+  // Keep the last page dominant at every width; a tall narrow viewport can
+  // fully show multiple short pages, where the selected page intentionally wins ties.
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 })
   await page.goto('./#/app')
   await page.locator('input[accept*=".pdf"]').setInputFiles({
     name: 'scroll-page-tracking.pdf',
@@ -1483,8 +1490,9 @@ test('library labels use embedded title or filename and the opener tooltip stays
   await page.getByRole('button', { name: 'Hide library' }).click()
   const opener = page.getByRole('button', { name: 'Show library' })
   await opener.hover()
-  const tooltip = opener.locator('.icon-tooltip')
-  await expect(tooltip).toBeVisible()
+  const tooltip = page.getByRole('tooltip')
+  await expect(tooltip).toHaveText('Show library')
+  await expect(opener).toHaveAttribute('aria-describedby', (await tooltip.getAttribute('id'))!)
   const box = await tooltip.boundingBox()
   expect(box!.x).toBeGreaterThanOrEqual(0)
   expect(box!.x + box!.width).toBeLessThanOrEqual(page.viewportSize()!.width)
