@@ -107,5 +107,25 @@ test('local PDF and formatted EPUB remain readable through reselection and reloa
     'aria-checked',
     'true',
   )
+  await page.getByRole('button', { name: 'Close utility panel', exact: true }).click()
+  await page.setViewportSize(info.project.use.viewport ?? { width: 768, height: 900 })
+  await page.getByRole('button', { name: 'Compare documents', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Choose a document to compare' })
+    .getByRole('button', { name: 'Compare with support.pdf', exact: true })
+    .click()
+  await page.getByRole('button', { name: /^(Focus|Show) right comparison document:/ }).click()
+  await expect(currentPage).toHaveValue('2')
+  if ((info.project.use.viewport?.width ?? 768) < 960)
+    await page.getByRole('button', { name: /^(Focus|Show) left comparison document:/ }).click()
+  await frame.getByRole('heading', { name: 'Formatted chapter' }).click()
+  await expect(page.getByRole('tab', { selected: true })).toContainText('support.epub')
+  await expect(page.getByRole('switch', { name: 'Text-only view' })).toHaveAttribute(
+    'aria-checked',
+    'true',
+  )
+  await page.screenshot({ path: info.outputPath('supported-comparison-dark.png') })
+  await page.getByRole('button', { name: 'Exit comparison', exact: true }).click()
+  await expect(page.locator('.session-panel:not(.session-inactive)')).toHaveCount(1)
   expect(requests).toEqual([])
 })

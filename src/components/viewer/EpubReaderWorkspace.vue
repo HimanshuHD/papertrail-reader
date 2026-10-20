@@ -48,6 +48,7 @@ const restoringSession = ref(Boolean(props.initialState?.epub))
 const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
+  focusPane: []
   readingChange: []
   phaseChange: [phase: 'ready' | 'error']
   utilityChange: [panel: UtilityPanel, query: string]
@@ -328,7 +329,11 @@ const pageAppearances: ReturnType<typeof bindEpubPageAppearance>[] = []
 const colorPreviews: ReturnType<typeof selectionColorPreview>[] = []
 watch(highlightColor, (color) => colorPreviews.forEach((preview) => preview.set(color)))
 let framePointerStart: { x: number; y: number } | null = null
+function onFrameFocus() {
+  emit('focusPane')
+}
 function onFramePointer(event: PointerEvent) {
+  onFrameFocus()
   framePointerStart =
     event.button === 0 && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey
       ? { x: event.clientX, y: event.clientY }
@@ -384,6 +389,7 @@ function clearFrameListeners() {
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
   for (const doc of frameDocuments) {
+    doc.removeEventListener('focusin', onFrameFocus, true)
     doc.removeEventListener('pointerdown', onFramePointer, true)
     doc.removeEventListener('keydown', onFrameKey, true)
     doc.removeEventListener('pointerup', captureHighlight)
@@ -400,6 +406,7 @@ function bindFrameListeners() {
     if (!doc) continue
     noteResizeObserver?.observe(frame)
     noteResizeObserver?.observe(doc.body)
+    doc.addEventListener('focusin', onFrameFocus, true)
     doc.addEventListener('pointerdown', onFramePointer, true)
     doc.addEventListener('keydown', onFrameKey, true)
     doc.addEventListener('pointerup', captureHighlight)
@@ -1077,6 +1084,7 @@ watch(
             v-else-if="rightPanel === 'annotations'"
             ref="annotationsPanel"
             :key="continuity.fingerprint.value ?? document.id"
+            :auto-focus="active"
             :identity="highlights.handle.value?.identity ?? null"
             :document-name="document.name"
             :document-title="document.title"

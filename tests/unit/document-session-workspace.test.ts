@@ -153,3 +153,33 @@ it('a late content check cannot activate a document after a newer request', asyn
   expect(observations.mounted).toEqual(['newer'])
   wrapper.unmount()
 })
+
+it('shows two independent comparison regions, changes owner on focus and returns to one pane', async () => {
+  const wrapper = mount(Workspace, { attachTo: document.body, props: { document: doc('a') } })
+  await flushPromises()
+  const a = wrapper.vm.sessions.active!
+  await wrapper.setProps({ document: doc('b') })
+  await flushPromises()
+  const b = wrapper.vm.sessions.active!
+  wrapper.vm.sessions.setComparisonCompact(false)
+  await wrapper.vm.compareWith(a.session.id)
+  await flushPromises()
+  const visible = () =>
+    wrapper.findAll('.session-panel').filter((panel) => !panel.classes('session-inactive'))
+  expect(visible()).toHaveLength(2)
+  expect(visible().map((panel) => panel.attributes('role'))).toEqual(['region', 'region'])
+  const aNode = wrapper.get('[data-reader="a"]').element
+  await wrapper.get(`#${a.session.id}-panel`).trigger('focusin')
+  expect(wrapper.vm.sessions.active).toBe(a)
+  wrapper.vm.sessions.swapComparison()
+  await flushPromises()
+  expect(wrapper.get('[data-reader="a"]').element).toBe(aNode)
+  await wrapper.vm.endComparison()
+  await flushPromises()
+  expect(visible()).toHaveLength(1)
+  expect(wrapper.vm.sessions.active).toBe(a)
+  expect(wrapper.vm.sessions.retained.get(b.session.id)).toBe(b)
+  wrapper.unmount()
+  await flushPromises()
+  expect(observations.live).toBe(0)
+})

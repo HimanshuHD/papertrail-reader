@@ -6,6 +6,7 @@ import BuildFooter from '../components/BuildFooter.vue'
 import ReaderShell from '../components/layout/ReaderShell.vue'
 import LibrarySidebar from '../components/library/LibrarySidebar.vue'
 import DocumentTabs from '../components/viewer/DocumentTabs.vue'
+import ComparisonPicker from '../components/viewer/ComparisonPicker.vue'
 import type { DocumentSession } from '../features/reader/document-sessions'
 import DocumentSessionWorkspace from '../components/viewer/DocumentSessionWorkspace.vue'
 import ReaderWorkspace from '../components/viewer/ReaderWorkspace.vue'
@@ -122,6 +123,7 @@ const readerSessions = ref<InstanceType<typeof DocumentSessionWorkspace> | null>
 const librarySidebar = ref<InstanceType<typeof LibrarySidebar> | null>(null)
 const tabs = shallowRef<DocumentSession[]>([])
 const selectedTab = ref<string | null>(null)
+const comparisonIds = shallowRef<[string, string] | null>(null)
 const documentRequest = ref(0)
 const currentDocument = shallowRef<DiscoveredDocument | null>(null)
 function sessionChanged(document: DiscoveredDocument | null, fingerprint: string | null) {
@@ -595,6 +597,12 @@ async function closeSidebarAndRestoreFocus() {
           @close="readerSessions?.close($event)"
           @empty-close="focusLibraryActions"
         />
+        <ComparisonPicker
+          v-if="!comparisonIds"
+          :tabs="tabs"
+          :selected-id="selectedTab"
+          @compare="readerSessions?.compareWith($event)"
+        />
       </template>
       <DocumentSessionWorkspace
         ref="readerSessions"
@@ -611,6 +619,7 @@ async function closeSidebarAndRestoreFocus() {
             selectedTab = id
           }
         "
+        @comparison-change="comparisonIds = $event"
         @snapshot-change="saveTabs"
         @recover="recoverSession"
         @active-change="sessionChanged"

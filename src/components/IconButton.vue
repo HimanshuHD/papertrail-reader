@@ -20,6 +20,7 @@ defineProps<{
     | 'fit-width'
     | 'fit-page'
     | 'two-page'
+    | 'compare'
     | 'annotations'
     | 'bookmark'
     | 'contents'

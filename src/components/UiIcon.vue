@@ -17,6 +17,7 @@ defineProps<{
     | 'fit-width'
     | 'fit-page'
     | 'two-page'
+    | 'compare'
     | 'annotations'
     | 'highlight'
     | 'more'
@@ -30,6 +31,7 @@ defineProps<{
     | 'info'
 }>()
 const paths = {
+  compare: 'M3 5h7v14H3zM14 5h7v14h-7zM10 9l4 3-4 3',
   'two-page': 'M3 4h8v16H3zM13 4h8v16h-8z',
   edit: 'm16 3 5 5-13 13H3v-5L16 3ZM14 5l5 5',
   trash: 'M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7',

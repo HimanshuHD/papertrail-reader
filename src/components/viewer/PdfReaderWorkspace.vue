@@ -1567,6 +1567,7 @@ onBeforeUnmount(() => {
             v-else-if="rightPanel === 'annotations'"
             ref="annotationsPanel"
             :key="continuity.fingerprint.value ?? document.id"
+            :auto-focus="active"
             :identity="highlights.handle.value?.identity ?? null"
             :document-name="document.name"
             :document-title="document.title"
