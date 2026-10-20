@@ -1009,6 +1009,7 @@ test('browser library builds a tree, refreshes live handles and keeps file fallb
   await expect(page.getByRole('tab', { selected: true })).toHaveAccessibleName(
     /book.epub.*Reconnect required/,
   )
+  await page.getByRole('button', { name: 'Hide library', exact: true }).click()
   await page.getByRole('button', { name: 'Close book.epub', exact: true }).click()
   await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
 })
