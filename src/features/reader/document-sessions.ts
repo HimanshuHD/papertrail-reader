@@ -76,7 +76,8 @@ export class DocumentSessions {
   private capture(id: string) {
     const session = this.sessions.get(id),
       runtime = this.runtimes.get(id)
-    if (session && runtime) {
+    // Until restoration finishes, capture() can still report a default first page.
+    if (session?.phase === 'ready' && runtime) {
       try {
         session.state = structuredClone(runtime.capture())
       } catch {

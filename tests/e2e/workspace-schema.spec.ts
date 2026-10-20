@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 import { environmentDatabaseName } from '../../src/services/environment-storage'
 import { expect, test, type Page } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'

@@ -200,6 +200,7 @@ describe('reader shell restoration foundation', () => {
       capture: () => saved().sessions[0]!.state,
       dispose,
     })
+    sessions.update(owner.session.id, owner.generation, 'ready')
     expect(sessions.snapshot().sessions[0]!.state.pdf?.page).toBe(3)
     expect(sessions.restoreWorkspace({ version: 2 })).toBe(false)
     expect(sessions.active).toBe(owner)
@@ -210,6 +211,25 @@ describe('reader shell restoration foundation', () => {
     expect(dispose).toHaveBeenCalledOnce()
     await sessions.reset()
   })
+  it('does not overwrite a saved reading point while its reader is still restoring', async () => {
+    const sessions = new DocumentSessions()
+    sessions.restoreWorkspace(saved())
+    sessions.reconnect('reader-session-7', document(), fingerprint)
+    await sessions.activate('reader-session-7')
+    const owner = sessions.active!
+    const capture = vi.fn(() => ({
+      panel: null,
+      query: '',
+      pdf: { page: 1, view: { fitMode: 'width' as const, zoom: 1 } },
+    }))
+    sessions.attach(owner.session.id, owner.generation, { capture, dispose: async () => {} })
+    expect(sessions.snapshot().sessions[0]!.state.pdf?.page).toBe(3)
+    expect(capture).not.toHaveBeenCalled()
+    await sessions.open(document('second.epub', 'EPUB'), undefined, otherFingerprint)
+    expect(sessions.sessions.get(owner.session.id)!.state.pdf?.page).toBe(3)
+    await sessions.reset()
+  })
+
   it('preserves state and de-duplicates a verified explicit reselect after hydration', async () => {
     const sessions = new DocumentSessions()
     sessions.restoreWorkspace(saved())

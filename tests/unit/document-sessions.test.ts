@@ -60,6 +60,7 @@ describe('retained document session ownership', () => {
       const a = sessions.active!,
         reader = runtime()
       sessions.attach(a.session.id, a.generation, reader)
+      sessions.update(a.session.id, a.generation, 'ready')
       await sessions.open(document('b'))
       const b = sessions.active!
       await vi.advanceTimersByTimeAsync(299999)
@@ -97,6 +98,7 @@ describe('retained document session ownership', () => {
         kind === 'rejected' ? Promise.reject(new Error('cleanup failed')) : wait.promise,
       )
       sessions.attach(a.session.id, a.generation, reader)
+      sessions.update(a.session.id, a.generation, 'ready')
       await sessions.open(document('b'))
       await sessions.close(a.session.id)
       await sessions.open(document('c'))
@@ -139,6 +141,7 @@ describe('retained document session ownership', () => {
     const first = sessions.active!,
       value = structuredClone(state)
     sessions.attach(first.session.id, first.generation, runtime(value))
+    sessions.update(first.session.id, first.generation, 'ready')
     await sessions.open(document('a'))
     value.query = 'mutated after suspension'
     expect(first.session.state.query).toBe('needle')
