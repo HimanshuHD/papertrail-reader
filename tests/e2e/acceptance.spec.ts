@@ -1,4 +1,8 @@
-import { openAnnotationActions, settleReaderLayout } from '../fixtures/browser'
+import {
+  openAnnotationActions,
+  settleReaderLayout,
+  waitForWorkspaceReady,
+} from '../fixtures/browser'
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
@@ -122,7 +126,10 @@ for (const format of ['PDF', 'EPUB'] as const) {
     }, format)
     await page.goto('./#/app')
     // Saved sidebar state can unmount the file input while workspace metadata restores.
-    await expect(page.getByText(/Reconnect your library or reselect the source/)).toBeVisible()
+    await waitForWorkspaceReady(page)
+    await expect(
+      page.getByRole('button', { name: 'Reconnect local document', exact: true }),
+    ).toBeVisible()
     await open()
     const pane = page.locator(format === 'PDF' ? '.pdf-scroll' : '.epub-container')
     await page.getByRole('button', { name: 'Annotations', exact: true }).click()

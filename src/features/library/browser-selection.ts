@@ -46,7 +46,8 @@ export async function requestDirectory(
     }
   } catch (error) {
     if (error instanceof DOMException) {
-      if (error.name === 'AbortError') return { ok: false, reason: 'dismissed-or-denied' }
+      if (error.name === 'AbortError' || error.name === 'NotAllowedError')
+        return { ok: false, reason: 'dismissed-or-denied' }
       if (error.name === 'SecurityError') return { ok: false, reason: 'blocked' }
     }
     return { ok: false, reason: 'failed' }
