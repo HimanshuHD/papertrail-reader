@@ -11,16 +11,20 @@ import {
   type SessionRuntime,
   type UtilityPanel,
 } from '../../features/reader/document-sessions'
+import type { WorkspaceTabs } from '../../features/reader/session-snapshot'
 import type { DiscoveredDocument } from '../../features/library/discovery'
 
 const props = defineProps<{
   document: DiscoveredDocument | null
+  persistent?: boolean
   request?: number
   initialPanel?: UtilityPanel
   initialSearchQuery?: string
 }>()
 const emit = defineEmits<{
   status: [message: string]
+  snapshotChange: []
+  recover: []
   change: [tabs: DocumentSession[], selectedId: string | null]
   activeChange: [document: DiscoveredDocument | null, fingerprint: string | null]
   identity: [fingerprint: string]
@@ -48,6 +52,7 @@ const sessions = new DocumentSessions(() => {
       .map((item) => ({ ...item })),
     sessions.selectedId,
   )
+  emit('snapshotChange')
   if (active.value && previous !== active.value) publishActive()
   else if (!sessions.selectedId) emit('activeChange', null, null)
 })
@@ -62,6 +67,7 @@ function utility(owner: ActiveSession, panel: UtilityPanel, query: string) {
   owner.session.state.panel = panel
   owner.session.state.query = query
   emit('utilityChange', panel, query)
+  emit('snapshotChange')
 }
 function attach(runtime: unknown, owner: ActiveSession) {
   if (runtime) sessions.attach(owner.session.id, owner.generation, runtime as SessionRuntime)
@@ -117,7 +123,7 @@ watch(
   ([document]) => {
     opening?.abort()
     if (document) void open(document).catch(reportOpenFailure)
-    else void sessions.reset().catch(reportOpenFailure)
+    else if (!props.persistent) void sessions.reset().catch(reportOpenFailure)
   },
   // Read restore context after Vue has patched all sibling props, before rendering.
   { immediate: true, flush: 'pre' },
@@ -127,7 +133,27 @@ onBeforeUnmount(() => {
   opening?.abort()
   void sessions.reset().catch(reportOpenFailure)
 })
-defineExpose({ sessions, activate, close })
+function restoreWorkspace(saved: WorkspaceTabs) {
+  opening?.abort()
+  return sessions.restoreWorkspace(saved)
+}
+async function disconnectSources() {
+  opening?.abort()
+  for (const session of sessions.sessions.values()) await sessions.disconnect(session.id)
+}
+async function reset() {
+  opening?.abort()
+  await sessions.reset()
+}
+defineExpose({
+  sessions,
+  activate,
+  close,
+  restoreWorkspace,
+  disconnectSources,
+  reset,
+  snapshot: () => sessions.snapshot(),
+})
 </script>
 
 <template>
@@ -151,6 +177,7 @@ defineExpose({ sessions, activate, close })
         :id-prefix="`${owner.session.id}-`"
         :initial-state="owner.session.state"
         :active="owner.session.id === selected"
+        @reading-change="emit('snapshotChange')"
         @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
         @status="current(owner) && emit('status', $event)"
         @identity="identity(owner, $event)"
@@ -158,16 +185,36 @@ defineExpose({ sessions, activate, close })
         @utility-change="(panel: UtilityPanel, query: string) => utility(owner, panel, query)"
       />
     </div>
-    <p v-if="!active" role="status" class="p-4 text-sm text-muted">
-      {{
-        reconnect
-          ? 'Local access is unavailable. Use + to reselect the source.'
-          : 'Opening document…'
-      }}
-    </p>
+    <div
+      v-if="!active"
+      :id="`${selected}-panel`"
+      role="tabpanel"
+      :aria-labelledby="`${selected}-tab`"
+      tabindex="0"
+      class="flex h-full flex-col items-center justify-center gap-3 p-4 text-center text-sm text-muted"
+    >
+      <h1 :id="`${selected}-reader-title`" class="text-base font-semibold text-ink">
+        {{ panels.find((panel) => panel.id === selected)?.title }}
+      </h1>
+      <p role="status">
+        {{
+          reconnect
+            ? 'This saved document needs local access. Reselect its source to verify and restore your reading position. Missing or changed files stay disconnected.'
+            : 'Opening document…'
+        }}
+      </p>
+      <button
+        v-if="reconnect"
+        type="button"
+        class="pt-list-entry rounded-md border border-line px-4 py-2 text-ink hover:bg-canvas"
+        @click="emit('recover')"
+      >
+        Reconnect local document
+      </button>
+    </div>
     <template v-for="panel in panels" :key="panel.id">
       <div
-        v-if="!readers.some((owner) => owner.session.id === panel.id)"
+        v-if="panel.id !== selected && !readers.some((owner) => owner.session.id === panel.id)"
         :id="`${panel.id}-panel`"
         role="tabpanel"
         :aria-labelledby="`${panel.id}-tab`"

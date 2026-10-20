@@ -1,3 +1,10 @@
+import {
+  normalizeSessionState,
+  normalizeWorkspaceTabs,
+  sessionDocument,
+  type WorkspaceTabs,
+} from './session-snapshot'
+import type { CachedLibraryDocument } from '../../services/workspace-storage'
 import type { DiscoveredDocument } from '../library/discovery'
 import type { PdfReadingState } from '../../services/pdf-reading-state'
 import type { EpubReadingSettings } from '../../services/epub-reading-storage'
@@ -35,6 +42,7 @@ export class DocumentSessions {
   readonly sessions = new Map<string, DocumentSession>()
   active: ActiveSession | null = null
   selectedId: string | null = null
+  private remembered = new Map<string, CachedLibraryDocument>()
   private sources = new Map<string, DiscoveredDocument>()
   readonly retained = new Map<string, ActiveSession>()
   private runtimes = new Map<string, SessionRuntime>()
@@ -43,6 +51,14 @@ export class DocumentSessions {
   private serial = 0
 
   constructor(private changed: () => void = () => {}) {}
+
+  private nextId() {
+    let id: string
+    do {
+      id = `reader-session-${++this.serial}`
+    } while (this.sessions.has(id))
+    return id
+  }
 
   owns(id: string, generation: number) {
     return this.active?.session.id === id && this.active.generation === generation
@@ -60,7 +76,8 @@ export class DocumentSessions {
   private capture(id: string) {
     const session = this.sessions.get(id),
       runtime = this.runtimes.get(id)
-    if (session && runtime) {
+    // Until restoration finishes, capture() can still report a default first page.
+    if (session?.phase === 'ready' && runtime) {
       try {
         session.state = structuredClone(runtime.capture())
       } catch {
@@ -118,18 +135,21 @@ export class DocumentSessions {
           (Boolean(fingerprint) && s.fingerprint === fingerprint && s.format === document.format)),
     )
     const session = existing ?? {
-      id: `reader-session-${++this.serial}`,
+      id: this.nextId(),
       sourceId: document.id,
       title: document.title || document.name,
       name: document.name,
       format: document.format,
       fingerprint: fingerprint ?? null,
       phase: 'suspended' as SessionPhase,
-      state: { panel: initial?.panel ?? null, query: initial?.query ?? '' },
+      state: normalizeSessionState(initial, document.format),
     }
     this.sessions.set(session.id, session)
     if (!existing || !this.sources.has(session.id)) {
       this.sources.set(session.id, document)
+      this.remembered.set(session.id, sessionDocument(document))
+      session.name = document.name
+      session.title = document.title || document.name
       session.sourceId = document.id
     }
     return this.activate(session.id)
@@ -180,6 +200,7 @@ export class DocumentSessions {
     this.release(id)
     session.phase = 'closed'
     this.sources.delete(id)
+    this.remembered.delete(id)
     this.changed()
     if (selected) {
       this.selectedId = next?.id ?? null
@@ -197,12 +218,83 @@ export class DocumentSessions {
     this.changed()
   }
 
+  /** Capture all warm readers, but persist only bounded, validated metadata. */
+  snapshot(): WorkspaceTabs {
+    const entries = [...this.sessions.values()].filter((session) => session.phase !== 'closed')
+    for (const session of entries) this.capture(session.id)
+    const snapshot = normalizeWorkspaceTabs({
+      version: 1,
+      activeId: this.selectedId,
+      sessions: entries.map((session) => ({
+        id: session.id,
+        document: this.remembered.get(session.id),
+        fingerprint: session.fingerprint,
+        state: session.state,
+      })),
+    })
+    if (!snapshot)
+      throw new Error(
+        'The tab workspace exceeds its saved metadata limits. Close some tabs before saving.',
+      )
+    return snapshot
+  }
+
+  /** Restore shells without starting readers or granting access to any file. */
+  restoreWorkspace(value: unknown): boolean {
+    const saved = normalizeWorkspaceTabs(value)
+    if (!saved) return false
+    ++this.generation
+    for (const id of [...this.retained.keys()]) this.release(id)
+    this.sessions.clear()
+    this.sources.clear()
+    this.remembered.clear()
+    for (const entry of saved.sessions) {
+      this.sessions.set(entry.id, {
+        id: entry.id,
+        sourceId: entry.document.id,
+        name: entry.document.name,
+        title: entry.document.title || entry.document.name,
+        format: entry.document.format,
+        fingerprint: entry.fingerprint,
+        phase: 'reconnect',
+        state: entry.state,
+      })
+      this.remembered.set(entry.id, entry.document)
+    }
+    this.selectedId = saved.activeId
+    this.changed()
+    return true
+  }
+
+  /** Caller supplies a freshly verified fingerprint; filenames alone never rebind. */
+  reconnect(id: string, document: DiscoveredDocument, fingerprint: string): boolean {
+    const session = this.sessions.get(id)
+    if (
+      !session ||
+      session.phase === 'closed' ||
+      !session.fingerprint ||
+      session.fingerprint !== fingerprint ||
+      session.format !== document.format
+    )
+      return false
+    this.release(id)
+    this.sources.set(id, document)
+    this.remembered.set(id, sessionDocument(document))
+    session.sourceId = document.id
+    session.name = document.name
+    session.title = document.title || document.name
+    session.phase = 'suspended'
+    this.changed()
+    return true
+  }
+
   async reset() {
     ++this.generation
     for (const id of [...this.retained.keys()]) this.release(id)
     for (const session of this.sessions.values()) session.phase = 'closed'
     this.selectedId = null
     this.sources.clear()
+    this.remembered.clear()
     this.sessions.clear()
     this.changed()
   }

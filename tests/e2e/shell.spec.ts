@@ -2231,7 +2231,7 @@ test('native persisted directory reopens the PDF at its anchor and rejects chang
     await page.getByRole('button', { name: 'Show library' }).click()
     await expect(
       page.getByText(
-        'The previously opened document changed or is unavailable. Select a document to continue.',
+        'Some saved documents are missing, changed or unavailable. Reselect their source to reconnect matching content, or close those tabs.',
         { exact: true },
       ),
     ).toBeVisible()

@@ -51,6 +51,7 @@ const props = withDefaults(
 const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
+  readingChange: []
   phaseChange: [phase: 'ready' | 'error']
   status: [message: string]
   identity: [fingerprint: string]
@@ -77,6 +78,7 @@ function saveReadingPoint() {
   const anchor = point ? normalizePdfAnchor({ page, x: point.x, y: point.y }) : undefined
   if (anchor) continuity.save(currentPage.value, view, anchor)
   else continuity.save(currentPage.value, view)
+  emit('readingChange')
 }
 
 type ReaderPhase = 'loading' | 'restoring' | 'ready' | 'error'

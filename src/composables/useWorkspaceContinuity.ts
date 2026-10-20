@@ -1,3 +1,4 @@
+import { UnsupportedWorkspaceSchemaError } from '../features/reader/session-snapshot'
 import { onBeforeUnmount, ref, shallowRef } from 'vue'
 import {
   IndexedDbWorkspaceStorage,
@@ -8,6 +9,7 @@ import { restoreDirectoryAccess, type LibraryAccess } from '../services/library-
 
 export function useWorkspaceContinuity(
   storage: WorkspaceStorage = new IndexedDbWorkspaceStorage(),
+  beforeFlush?: () => void,
 ) {
   const snapshot = shallowRef<WorkspaceSnapshot | null>(null)
   const notice = ref('')
@@ -19,16 +21,22 @@ export function useWorkspaceContinuity(
   let disposed = false
 
   function flush() {
+    beforeFlush?.()
     clearTimeout(timer)
     const next = pending
     pending = null
     if (!next) return
     const owner = generation
     writes = writes
-      .then(() => storage.save(next))
-      .catch(() => {
+      .then(() => {
+        if (owner === generation) return storage.save(next)
+      })
+      .catch((error: unknown) => {
         if (owner === generation && !disposed)
-          notice.value = 'Your workspace could not be saved. You can continue reading.'
+          notice.value =
+            error instanceof UnsupportedWorkspaceSchemaError
+              ? error.message
+              : 'Your workspace could not be saved. You can continue reading. Try Forget library to reset workspace storage.'
       })
   }
   function patch(value: Partial<WorkspaceSnapshot>) {
@@ -59,9 +67,12 @@ export function useWorkspaceContinuity(
       if (owner !== generation || disposed) return null
       access.value = result.status
       return result
-    } catch {
+    } catch (error) {
       if (owner === generation && !disposed)
-        notice.value = 'Saved workspace access is unavailable. Choose your files again to continue.'
+        notice.value =
+          error instanceof UnsupportedWorkspaceSchemaError
+            ? error.message
+            : 'Saved workspace access is unavailable. Choose your files again to continue.'
       return null
     }
   }
@@ -96,7 +107,6 @@ export function useWorkspaceContinuity(
   document.addEventListener('visibilitychange', hide)
   onBeforeUnmount(() => {
     disposed = true
-    generation += 1
     flush()
     globalThis.removeEventListener('pagehide', flush)
     document.removeEventListener('visibilitychange', hide)

@@ -28,14 +28,31 @@ import { enrichPdfTitles } from '../features/library/pdf-titles'
 import { useWorkspaceContinuity } from '../composables/useWorkspaceContinuity'
 import { startupScreen } from '../services/startup-screen'
 import { cacheLibraryDocuments, type WorkspaceSnapshot } from '../services/workspace-storage'
-import { revalidateWorkspace } from '../services/workspace-revalidation'
+import { revalidateTabs } from '../services/tab-revalidation'
+import { migrateWorkspaceTabs } from '../features/reader/session-snapshot'
 
 import { useRecentDocuments } from '../composables/useRecentDocuments'
 import { matchRecent, type RecentDocument } from '../services/recent-documents'
 
 type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 
-const workspace = useWorkspaceContinuity()
+const workspace = useWorkspaceContinuity(undefined, saveTabs)
+let tabsHydrated = false
+let lastTabs = ''
+function saveTabs() {
+  if (!tabsHydrated || !workspace.snapshot.value || !readerSessions.value) return
+  try {
+    const saved = readerSessions.value.snapshot()
+    const serialized = JSON.stringify(saved)
+    if (serialized !== lastTabs) {
+      lastTabs = serialized
+      workspace.patch({ tabs: saved })
+    }
+  } catch {
+    workspace.notice.value =
+      'Tab state could not be saved. Close some tabs or use Forget library to reset workspace storage.'
+  }
+}
 const recents = useRecentDocuments()
 const recentMessage = ref('')
 const recentOpening = ref(false)
@@ -108,6 +125,7 @@ const selectedTab = ref<string | null>(null)
 const documentRequest = ref(0)
 const currentDocument = shallowRef<DiscoveredDocument | null>(null)
 function sessionChanged(document: DiscoveredDocument | null, fingerprint: string | null) {
+  if (!tabsHydrated) return
   currentDocument.value = document
   selectedLibraryDocumentId.value = document?.id ?? null
   workspace.patch({
@@ -145,6 +163,7 @@ const discoveryProblems = shallowRef<readonly DiscoveryProblem[]>([])
 let discoveryController: AbortController | null = null
 let metadataController: AbortController | null = null
 onBeforeUnmount(() => {
+  saveTabs()
   workspaceOperation += 1
   cancelRecent()
   discoveryController?.abort()
@@ -309,43 +328,58 @@ async function reconnect(
   selection: BrowserLibrarySelection,
   saved: WorkspaceSnapshot,
   owner: number,
+  allowRenames = false,
 ) {
   reconnecting.value = true
-  librarySelection.value = selection
-  activeDocument.value = null
   try {
+    const remembered = readerSessions.value?.snapshot() ?? migrateWorkspaceTabs(saved)
+    librarySelection.value = selection
+    activeDocument.value = null
+    await readerSessions.value?.disconnectSources()
+    if (owner !== workspaceOperation) return
     await runDiscovery(selection, false, true)
     if (owner !== workspaceOperation || discoveryPhase.value !== 'ready') return
-    const result = await revalidateWorkspace(
-      saved,
+    const matches = await revalidateTabs(
+      remembered,
       discoveredDocuments.value,
       discoveryController?.signal,
+      allowRenames,
     )
     if (owner !== workspaceOperation) return
-    selectedLibraryDocumentId.value = result.selectedId
-    if (result.activeDocument) {
-      selectLibraryDocument(result.activeDocument.id, true)
-    } else if (saved.activePath) {
-      workspace.notice.value =
-        'The previously opened document changed or is unavailable. Select a document to continue.'
-      workspace.patch({ activePath: null, activeFingerprint: null })
+    for (const entry of remembered.sessions) {
+      const document = matches.get(entry.id)
+      if (document && entry.fingerprint)
+        readerSessions.value?.sessions.reconnect(entry.id, document, entry.fingerprint)
     }
+    const selected = readerSessions.value?.sessions.selectedId
+    if (selected) await readerSessions.value?.activate(selected)
+    if (matches.size < remembered.sessions.length)
+      workspace.notice.value =
+        'Some saved documents are missing, changed or unavailable. Reselect their source to reconnect matching content, or close those tabs.'
+    else workspace.notice.value = ''
+    saveTabs()
   } catch {
     if (owner === workspaceOperation)
-      workspace.notice.value = 'Library access could not be restored. Choose your source again.'
+      workspace.notice.value =
+        'Library access could not be restored. Choose your source again. Saved tabs and reading positions are retained.'
   } finally {
     if (owner === workspaceOperation) reconnecting.value = false
   }
 }
 
 async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
+  saveTabs()
   const saved = workspace.snapshot.value
   const owner = ++workspaceOperation
   cancelRecent()
   const label = librarySelectionLabel(selection)
-  if (saved && cached.value && saved.label === label && saved.source === selection.source) {
-    workspace.patch({ handle: selection.kind === 'directory' ? selection.handle : null })
-    await reconnect(selection, saved, owner)
+  if (saved) {
+    workspace.patch({
+      source: selection.source,
+      label,
+      handle: selection.kind === 'directory' ? selection.handle : null,
+    })
+    await reconnect(selection, saved, owner, true)
     return
   }
   reconnecting.value = false
@@ -366,8 +400,18 @@ async function acceptLibrarySelection(selection: BrowserLibrarySelection) {
     sidebarOpen: sidebarOpen.value,
     sidebarWidth: sidebarWidth.value,
   })
+  tabsHydrated = true
+  lastTabs = ''
+  saveTabs()
   announcement.value = describeLibrarySelection(selection)
   await runDiscovery(selection, false)
+}
+
+async function recoverSession() {
+  sidebarOpen.value = true
+  await nextTick()
+  if (workspace.snapshot.value?.handle && cached.value) await resumeWorkspace()
+  else librarySidebar.value?.openSourcePicker()
 }
 
 async function resumeWorkspace() {
@@ -383,7 +427,10 @@ async function resumeWorkspace() {
 }
 
 async function forgetWorkspace() {
+  tabsHydrated = false
+  lastTabs = ''
   workspaceOperation += 1
+  await readerSessions.value?.reset()
   cancelRecent()
   discoveryController?.abort()
   metadataController?.abort()
@@ -392,6 +439,7 @@ async function forgetWorkspace() {
   reconnecting.value = false
   activeDocument.value = null
   librarySelection.value = null
+  currentDocument.value = null
   discoveredDocuments.value = []
   selectedLibraryDocumentId.value = null
   discoveryPhase.value = 'idle'
@@ -419,6 +467,10 @@ onMounted(async () => {
     sidebarWidth.value = saved.sidebarWidth
     selectedLibraryDocumentId.value =
       saved.documents.find((item) => item.relativePath === saved.selectedPath)?.id ?? null
+    readerSessions.value?.restoreWorkspace(migrateWorkspaceTabs(saved))
+    tabsHydrated = true
+    lastTabs = ''
+    saveTabs()
     // Saved metadata is usable before permission checks or folder rescans finish.
     startupScreen.complete('library')
     startupScreen.stage('reader', 'Preparing the reader')
@@ -434,16 +486,14 @@ onMounted(async () => {
 })
 
 async function refreshLibrary() {
-  workspaceOperation += 1
-  cancelRecent()
-  reconnecting.value = false
-  workspace.patch({ activePath: null, activeFingerprint: null })
   const selection = librarySelection.value
-  if (!selection || selection.kind !== 'directory') return
-
-  activeDocument.value = null
+  const saved = workspace.snapshot.value
+  if (!selection || selection.kind !== 'directory' || !saved) return
+  saveTabs()
+  const owner = ++workspaceOperation
+  cancelRecent()
   announcement.value = `Refreshing folder ${selection.handle.name}.`
-  await runDiscovery(selection, true)
+  await reconnect(selection, saved, owner, true)
 }
 
 function cancelDiscovery() {
@@ -548,6 +598,7 @@ async function closeSidebarAndRestoreFocus() {
       </template>
       <DocumentSessionWorkspace
         ref="readerSessions"
+        persistent
         :request="documentRequest"
         :document="activeDocument"
         :initial-panel="restoringDocument ? workspace.snapshot.value?.utilityPanel : null"
@@ -560,6 +611,8 @@ async function closeSidebarAndRestoreFocus() {
             selectedTab = id
           }
         "
+        @snapshot-change="saveTabs"
+        @recover="recoverSession"
         @active-change="sessionChanged"
         @utility-change="
           (panel, query) => workspace.patch({ utilityPanel: panel, searchQuery: query })
