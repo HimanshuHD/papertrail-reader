@@ -13,7 +13,7 @@ PaperTrail is a local-first PDF and EPUB reader that runs in your browser, built
 - Fullscreen PDF reading, keyboard shortcuts and accessible loading/error states.
 - Local document processing; files are not sent to a server.
 
-Latest stable: [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1). The v2.2.0 multiple-document workspace candidate is in release preparation (#244); it is not yet a published release. See [release records](docs/releases/README.md) for support, limitations and validation.
+Production runs **v2.2.0 — Multiple-document workspace** after owner-reviewed #245 and verified deployment. Latest published GitHub Release: [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1); v2.2.0 tag/package/publication remains tracked in #244. See [release records](docs/releases/README.md) for support, limitations and validation.
 
 ## Run and verify
 
