@@ -764,3 +764,67 @@ it('restores an owning session snapshot and captures EPUB state before flushing 
   wrapper.unmount()
   expect(session.destroy).toHaveBeenCalledTimes(1)
 })
+
+it('does not reobserve the EPUB host or rebind frames after disposal and releases tracked shell owners', async () => {
+  const { diagnostics } = await import('../../src/features/diagnostics/recorder')
+  let notify!: ResizeObserverCallback
+  const observe = vi.fn(),
+    disconnect = vi.fn()
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        notify = callback
+      }
+      observe = observe
+      disconnect = disconnect
+    },
+  )
+  mocked.open.mockResolvedValueOnce({
+    title: 'Book',
+    contents: [],
+    contentsSource: 'spine',
+    chapters: [{ label: 'One', href: 'one' }],
+    typography: vi.fn(),
+    appearance: vi.fn(),
+    display: vi.fn(async () => {}),
+    destroy: vi.fn(),
+  })
+  const baseline = diagnostics.snapshot().resources
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'private',
+        name: 'private.epub',
+        format: 'EPUB',
+        relativePath: 'private.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'private.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  try {
+    await flushPromises()
+    expect(diagnostics.snapshot().resources.ownedListeners ?? 0).toBe(
+      (baseline.ownedListeners ?? 0) + 4,
+    )
+    observe.mockClear()
+    await (wrapper.vm as unknown as { dispose(): Promise<void> }).dispose()
+    await flushPromises()
+    expect(observe).not.toHaveBeenCalled()
+    expect(disconnect).toHaveBeenCalled()
+    const requestFrame = vi.spyOn(globalThis, 'requestAnimationFrame')
+    requestFrame.mockClear()
+    notify([], {} as ResizeObserver)
+    expect(requestFrame).not.toHaveBeenCalled()
+    wrapper.unmount()
+    await flushPromises()
+    expect(observe).not.toHaveBeenCalled()
+    expect(diagnostics.snapshot().resources.ownedListeners ?? 0).toBe(baseline.ownedListeners ?? 0)
+    expect(diagnostics.snapshot().resources.ownedObservers ?? 0).toBe(baseline.ownedObservers ?? 0)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})

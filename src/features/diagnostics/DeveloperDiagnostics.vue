@@ -40,6 +40,12 @@ function clearBaseline() {
   diagnostics.investigation.clearBaseline()
   refresh()
 }
+async function refreshPageMemory() {
+  const pending = diagnostics.investigation.refreshPageMemory()
+  refresh()
+  await pending
+  refresh()
+}
 async function refreshStorage() {
   const pending = diagnostics.investigation.refreshStorage()
   refresh()
@@ -231,6 +237,7 @@ onBeforeUnmount(() => {
               @mark="markBaseline"
               @clear="clearBaseline"
               @storage="refreshStorage"
+              @memory="refreshPageMemory"
             />
           </template>
           <template #sensors>

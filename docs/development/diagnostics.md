@@ -130,7 +130,7 @@ A separate `IndicatorMonitor` now replaces the initial three-sample launcher hel
 
 The versioned local configuration uses a 30s foreground observation window, three consecutive supported samples, three fresh healthy evaluations for recovery and a 5s freshness limit. Duplicate UI refreshes do not advance recovery. Background/pause/resume/reset starts a fresh evaluation window; background operation durations are excluded. Responsiveness defaults remain provisional (50/150ms frame intervals, 200/1000ms long-task duration per sample), pending #16 calibration. Missing readings break sustained series and are not zeros.
 
-In the final Technical details tab, select an instrumented operation and explicitly apply/remove duration or pending-age targets. Inputs require positive finite milliseconds with critical greater than attention, capped at one hour. Operation/pending targets default unconfigured; no arbitrary PDF/EPUB/library workload budget is inferred. Cold/warm/restore attribution is not yet captured separately; this first increment must not claim separate validated profiles. Completed duration statistics exclude cancelled/failed/unavailable records; p95 still requires 20 completions.
+In the final Technical details tab, select an instrumented operation and explicitly apply/remove duration or pending-age targets. Inputs require positive finite milliseconds with critical greater than attention, capped at one hour. Operation/pending targets default unconfigured; no arbitrary PDF/EPUB/library workload budget is inferred. Resources request evidence now distinguishes reader cold/warm/restored/expired instances and persistence intent (see #252 attribution below); the operation target selector still uses aggregate metrics. Separate validated target profiles remain #250 work. Completed duration statistics exclude cancelled/failed/unavailable records; p95 still requires 20 completions.
 
 Export schema 2 adds monotonic page-relative `observedAtMs`, `startedAtMs`, `endedAtMs`, anonymous pending operation details and indicator configuration/current finding/history. No wall-clock/document identifiers or contents are added. Transition history is limited to 120 entries. Timestamps permit truthful recency; the operation table still describes retained history rather than a fixed time window.
 
@@ -153,3 +153,84 @@ Time labels use page-relative minutes/seconds. Exact timestamps, rule snapshots 
 ## Repeatable workload acceptance (#253)
 
 Use the manual [diagnostics acceptance runner](../diagnostics/acceptance.md) to build and checksum default/diagnostic artifacts and compare production, closed, sampling/minimized and paused reader workloads. It records real fixture timings with explicit provenance/limitations and runs capability/privacy/lifecycle browser checks. It does not run Visual QA, publish a deployment or certify #16 performance budgets.
+
+### Persistence intent and reader activation attribution (#252)
+
+Resources → Requests and local JSON distinguish `reading.read`, `reading.write`,
+`reading.restore`, `workspace.restore`, `workspace.write` and `workspace.clear`.
+PDF/EPUB position/settings restoration and bookmark reads/edits identify their
+logical intent. Restore/resolve may create a fresh record or migrate saved
+metadata; it is not a read-only transaction. Other metadata services retain the
+explicit generic `reading.transaction` label rather than guessing intent.
+Connection wait ends when IndexedDB opens; processing ends on transaction
+completion/commit, including validation and any read/modify/write work. It is
+not disk I/O or database-engine CPU time. Failed/aborted transactions retain
+only the existing fixed failure category.
+
+Reader instance creation is labelled `pdf.cold-open` / `epub.cold-open` on first
+creation, `*.restored-open` for a reconnected saved workspace shell, or
+`*.expired-open` when an inactive reader is recreated after the five-minute
+retention deadline. These span creation to the reader's ready/error signal,
+including its restoration, rather than isolating engine parsing. “Cold” refers
+to the application reader instance, not flushed browser, OS or filesystem caches.
+A `*.warm-activate` record covers synchronous selection dispatch for a retained,
+ready reader. It does **not** measure browser paint or first-readable latency;
+do not compare it as an equivalent open-duration measurement. Selecting the
+already active tab produces no activation record. Selecting a retained reader
+that is still loading does not fabricate a completed warm activation.
+
+Close/disconnect/expiry cancels unfinished creation evidence. Generation checks
+reject stale reader callbacks, and pause/reset/close discard recording tickets
+so old completions cannot enter a new diagnostic session. Opening diagnostics
+mid-operation does not backfill an invented start. Buffers remain bounded and
+no title, source path, fingerprint or session/document identifier is exported.
+Explicit owned registrations, release timing and optional manual page memory are
+described below. Engine-internal stages remain untracked where no API exposes them. These labels do not establish accepted budgets.
+
+`tests/diagnostics/attribution.spec.ts` exercises real PDF/EPUB warm reuse and
+reader recreation with an accelerated browser clock. That is functional
+retention evidence, **not** a real-time overhead measurement. The normal repeated
+workload keeps its real clock and separate performance limitations.
+
+### Explicit ownership, release settling and optional page memory (#252)
+
+Cleanup → Byte estimates and remaining owned counts includes tracked listeners,
+observers and timers. Coverage is explicit: PDF shell listeners/viewport observer,
+shared PDF text-selection guard, EPUB shell listeners/note observer, EPUB direct
+frame bindings/highlight observers, EPUB loader timeout and document-session
+retention timeouts. ResizeObserver counts refer to active observer instances,
+not observed element totals. Multiple PDF page layers share one selection guard.
+Framework, browser engine, animation frame callbacks and other helpers are not
+claimed as tracked registrations. Live ownership counts continue reflecting
+registrations while recording is paused; reset clears history/baselines without
+pretending existing owners were released. Disposed owners reject late updates.
+
+`pdf.reader-release` / `epub.reader-release` run from release scheduling until the
+runtime disposal promise settles, including persistence. `reader.release` labels
+a detached runtime with unknown format. A failed cleanup records a fixed failure
+category and does not block later opening/reset. These are application release
+boundaries, not garbage-collection, process-memory or native-thread evidence.
+
+The manual **Measure page memory** control retains only numeric total bytes,
+observation time and elapsed request duration from the optional
+`performance.measureUserAgentSpecificMemory()` API. It never reads or exports
+breakdown URLs, worker URLs, attribution IDs or DOM container information. The
+[API specification](https://wicg.github.io/performance-measure-memory/) defines
+this browser-specific page estimate; it is not total OS process/GPU allocation.
+Secure context, cross-origin isolation and API availability are checked without
+changing hosting headers. Unsupported, restricted and malformed results show
+Unavailable and null, not fabricated zeros. This estimate overlaps other memory
+readings and must not be summed with them.
+
+Measurement is manual and may wait for browser collection. Native requests
+cannot be aborted: pause/close/reset invalidate results; a pending native request
+prevents another measurement until it settles. It does not enable new automatic
+polling or participate in health scores/accepted budgets.
+
+An EPUB cleanup regression is fixed: disposing/unmounting never re-observes the
+host and queued frame rebinding cannot re-register resources after disposal.
+`tests/diagnostics/cleanup.spec.ts` runs three PDF/EPUB open/close cycles and polls
+released readers/task owners/Blob URLs/listeners/observers/timers against a marked
+baseline. Retention expiry uses the separate accelerated functional case;
+performance workloads retain real clocks. Larger/native-device and total expanded
+panel/optional-sensor overhead acceptance remain #253/#16.

@@ -139,6 +139,7 @@ export class IndexedDbEpubReadingStorage implements EpubReadingStorage {
           done({ record, ambiguous: matches.length > 0 })
         }
       },
+      __READER_DIAGNOSTICS__ ? 'reading.restore' : undefined,
     )
   }
   private update<T>(
@@ -146,24 +147,27 @@ export class IndexedDbEpubReadingStorage implements EpubReadingStorage {
     edit: (record: EpubReadingRecord) => { record: EpubReadingRecord; result: T },
     write = true,
   ): Promise<T> {
-    return this.database.transaction<T>((store, done) => {
-      const request = store.get(id)
-      request.onsuccess = () => {
-        const record = normalizeEpubRecord(request.result)
-        // Clearing storage must not resurrect a deleted reading record.
-        if (!record) {
-          store.transaction.abort()
-          return
+    return this.database.transaction<T>(
+      (store, done) => {
+        const request = store.get(id)
+        request.onsuccess = () => {
+          const record = normalizeEpubRecord(request.result)
+          // Clearing storage must not resurrect a deleted reading record.
+          if (!record) {
+            store.transaction.abort()
+            return
+          }
+          try {
+            const next = edit(record)
+            if (write) store.put(next.record)
+            done(next.result)
+          } catch {
+            store.transaction.abort()
+          }
         }
-        try {
-          const next = edit(record)
-          if (write) store.put(next.record)
-          done(next.result)
-        } catch {
-          store.transaction.abort()
-        }
-      }
-    })
+      },
+      __READER_DIAGNOSTICS__ ? (write ? 'reading.write' : 'reading.read') : undefined,
+    )
   }
   save(id: string, settings: EpubReadingSettings) {
     const safe = normalizeEpubSettings(settings)

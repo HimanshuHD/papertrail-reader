@@ -1,6 +1,15 @@
 /** Fixed-vocabulary, bounded investigation evidence. Never accepts keys, document IDs or arbitrary errors. */
 export type ResourceOperation =
-  'pdf.render-request' | 'pdf.release' | 'reading.transaction' | 'workspace.transaction'
+  | 'pdf.render-request'
+  | 'pdf.release'
+  | 'pdf.reader-release'
+  | 'epub.reader-release'
+  | 'reader.release'
+  | 'reading.transaction'
+  | 'workspace.transaction'
+  | `reading.${'read' | 'write' | 'restore'}`
+  | `workspace.${'restore' | 'write' | 'clear'}`
+  | `${'pdf' | 'epub'}.${'cold-open' | 'warm-activate' | 'expired-open' | 'restored-open'}`
 export type ResourceFailure = 'quota' | 'security' | 'cancelled' | 'blocked' | 'other'
 export type CacheKind = 'preview' | 'dimensions'
 export type ResourceOutcome = 'completed' | 'cancelled' | 'failed' | 'unavailable'
@@ -14,6 +23,9 @@ export const OWNED_KEYS = [
   'blobURLs',
   'blobBytes',
   'canvasBytes',
+  'ownedListeners',
+  'ownedObservers',
+  'ownedTimers',
 ] as const
 export type OwnedKey = (typeof OWNED_KEYS)[number]
 type Counts = Partial<Record<OwnedKey, number>>
@@ -64,6 +76,14 @@ export class ResourceInvestigation {
     observedAtMs: null,
     status: 'Not sampled: use Refresh storage estimate',
   }
+  private pageMemory = {
+    bytes: null as number | null,
+    observedAtMs: null as number | null,
+    durationMs: null as number | null,
+    status: 'Not sampled: manual page memory only',
+  }
+  private memoryRequest = 0
+  private memoryInFlight = false
   private dropped = 0
   resume() {
     this.active = true
@@ -73,6 +93,14 @@ export class ResourceInvestigation {
     this.epoch++
     this.pending.clear()
     this.storageRequest++
+    this.memoryRequest++
+    if (this.pageMemory.status === 'Sampling')
+      this.pageMemory = {
+        bytes: null,
+        observedAtMs: null,
+        durationMs: null,
+        status: 'Interrupted: sampling stopped',
+      }
     if (this.storage.status === 'Sampling') this.storage.status = 'Interrupted: sampling stopped'
   }
   reset() {
@@ -90,6 +118,12 @@ export class ResourceInvestigation {
       quotaBytes: null,
       observedAtMs: null,
       status: 'Not sampled: use Refresh storage estimate',
+    }
+    this.pageMemory = {
+      bytes: null,
+      observedAtMs: null,
+      durationMs: null,
+      status: 'Not sampled: manual page memory only',
     }
     this.dropped = 0
   }
@@ -198,6 +232,52 @@ export class ResourceInvestigation {
       )
     }
   }
+  async refreshPageMemory() {
+    if (!this.active || this.memoryInFlight) return
+    const epoch = this.epoch,
+      request = ++this.memoryRequest
+    const apply = (
+      status: string,
+      bytes: number | null = null,
+      durationMs: number | null = null,
+    ) => {
+      if (this.active && epoch === this.epoch && request === this.memoryRequest)
+        this.pageMemory = {
+          status,
+          bytes,
+          durationMs,
+          observedAtMs: bytes === null ? null : performance.now(),
+        }
+    }
+    try {
+      const reason = pageMemoryUnavailable()
+      if (reason) {
+        apply(reason)
+        return
+      }
+      this.pageMemory = { status: 'Sampling', bytes: null, durationMs: null, observedAtMs: null }
+      this.memoryInFlight = true
+      const start = performance.now()
+      const measure = (
+        performance as Performance & {
+          measureUserAgentSpecificMemory(): Promise<{ bytes: unknown }>
+        }
+      ).measureUserAgentSpecificMemory
+      const result = await measure.call(performance)
+      const bytes = numeric(result.bytes)
+      apply(
+        bytes === null
+          ? 'Unavailable: invalid page memory result'
+          : 'Browser page memory estimate; attribution discarded',
+        bytes,
+        Math.max(0, performance.now() - start),
+      )
+    } catch {
+      apply('Unavailable: page memory measurement failed or restricted')
+    } finally {
+      this.memoryInFlight = false
+    }
+  }
   snapshot(resources: Counts, heapBytes: number | null) {
     const owned = counts(resources)
     const heap = numeric(heapBytes)
@@ -233,30 +313,37 @@ export class ResourceInvestigation {
       })),
       dropped: this.dropped,
       storage: { ...this.storage },
+      pageMemory: { ...this.pageMemory, pending: this.memoryInFlight },
       scope: {
         owned:
           'Instrumented application owners only; zero means no tracked ownership, never browser-wide zero. Canvas RGBA is a pixel estimate; Blob bytes are logical payload size. Do not sum these with heap/process memory.',
         timings:
-          'PDF wait covers previous-render cancellation/preparation; processing includes asynchronous PDF.js/render response. IndexedDB wait covers opening the connection; processing ends with transaction completion. Not worker CPU or engine-internal queue/response phases.',
+          'PDF wait covers previous-render cancellation/preparation; processing includes asynchronous PDF.js/render response. IndexedDB wait covers opening the connection; processing ends with transaction completion. Reading restore resolves saved identity/settings and may create or migrate metadata; read/write labels describe logical intent, not IDB transaction mode. Reader open runs from instance creation to its ready/error signal (including restoration); warm activation measures synchronous selection dispatch, not paint or first-readable latency. Not worker CPU or engine-internal queue/response phases.',
         caches:
           'Session-window hits/misses and capacity evictions at instrumented PDF preview/dimension lookups; no cache keys, files or document identities.',
         cleanup:
-          'Mark before open/switch/close, then compare after disposal settles. Expected inactive readers can remain for five minutes. Positive deltas are investigation hints, not leak proof.',
+          'Mark before open/switch/close, then compare after disposal settles. Expected inactive readers can remain for five minutes. Reader release timings run from release scheduling through the runtime disposal promise (including persistence settling), not proof of garbage collection. Positive deltas are investigation hints, not leak proof.',
         untracked:
-          'Reader-wide listener/observer/timer registrations, engine-internal worker stages and cold/warm/restore attribution are not instrumented in this increment.',
-        pageMemory: optionalPageMemory(),
+          'Explicit PDF/EPUB shell, EPUB frame bindings, PDF selection guard and retention/loader timer registrations only; Vue/engine/internal/helper registrations and browser paint after warm selection remain untracked. Generic transactions from other metadata services remain unattributed.',
+        pageMemory:
+          pageMemoryUnavailable() ??
+          'Optional page memory available for manual sampling; browser estimate, not process/GPU memory. Attribution URLs/IDs are discarded. No hosting changes.',
       },
     }
   }
 }
 export type InvestigationSnapshot = ReturnType<ResourceInvestigation['snapshot']>
 
-function optionalPageMemory(): string {
+function pageMemoryUnavailable(): string | null {
   try {
+    if (globalThis.isSecureContext !== true)
+      return 'Unavailable: secure context required for page memory'
+    if (globalThis.crossOriginIsolated !== true)
+      return 'Unavailable: cross-origin isolation required for page memory; no hosting changes'
     return typeof (performance as Performance & { measureUserAgentSpecificMemory?: unknown })
       .measureUserAgentSpecificMemory === 'function'
-      ? 'Optional page memory API detected; not sampled. Requires secure context and cross-origin isolation; no hosting changes made.'
-      : 'Unavailable: optional page memory API unsupported; no hosting changes made.'
+      ? null
+      : 'Unavailable: optional page memory API unsupported; no hosting changes'
   } catch {
     return 'Unavailable: optional page memory access restricted'
   }

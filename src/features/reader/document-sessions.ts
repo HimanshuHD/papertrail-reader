@@ -1,3 +1,5 @@
+import { diagnostics } from '../diagnostics/recorder'
+import type { ResourceInvestigation } from '../diagnostics/resource-investigation'
 import {
   normalizeSessionState,
   normalizeWorkspaceTabs,
@@ -52,6 +54,13 @@ export class DocumentSessions {
   private timers = new Map<string, ReturnType<typeof setTimeout>>()
   private generation = 0
   private serial = 0
+  private attribution = __READER_DIAGNOSTICS__
+    ? {
+        expired: new Set<string>(),
+        restored: new Set<string>(),
+        openings: new Map<string, ReturnType<ResourceInvestigation['begin']>>(),
+      }
+    : undefined
 
   constructor(private changed: () => void = () => {}) {}
 
@@ -73,7 +82,7 @@ export class DocumentSessions {
 
   attach(id: string, generation: number, runtime: SessionRuntime) {
     if (this.retainedOwns(id, generation)) this.runtimes.set(id, runtime)
-    else this.disposeRuntime(runtime)
+    else this.disposeRuntime(runtime, this.sessions.get(id)?.format)
   }
 
   private capture(id: string) {
@@ -89,16 +98,36 @@ export class DocumentSessions {
     }
   }
 
-  private disposeRuntime(runtime: SessionRuntime) {
+  private disposeRuntime(runtime: SessionRuntime, format?: 'PDF' | 'EPUB') {
+    const ticket = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.begin(
+          format === 'PDF'
+            ? 'pdf.reader-release'
+            : format === 'EPUB'
+              ? 'epub.reader-release'
+              : 'reader.release',
+        )
+      : undefined
     // A failed or unfinished reader must never block unrelated activation/reset.
     void Promise.resolve()
-      .then(() => runtime.dispose())
-      .catch(() => {})
+      .then(() => {
+        ticket?.start()
+        return runtime.dispose()
+      })
+      .then(
+        () => ticket?.finish(),
+        () => ticket?.finish('failed', 'other'),
+      )
   }
 
   private release(id: string) {
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.openings.get(id)?.finish('cancelled', 'cancelled')
+      this.attribution!.openings.delete(id)
+    }
     clearTimeout(this.timers.get(id))
     this.timers.delete(id)
+    this.recordTimers()
     this.capture(id)
     const runtime = this.runtimes.get(id)
     this.runtimes.delete(id)
@@ -107,7 +136,7 @@ export class DocumentSessions {
     const session = this.sessions.get(id)
     if (session && session.phase !== 'closed' && session.phase !== 'error')
       session.phase = 'suspended'
-    if (runtime) this.disposeRuntime(runtime)
+    if (runtime) this.disposeRuntime(runtime, session?.format)
   }
 
   get visibleIds(): string[] {
@@ -133,7 +162,30 @@ export class DocumentSessions {
       return
     }
     session.phase = 'loading'
+    if (__READER_DIAGNOSTICS__) {
+      const reason = this.attribution!.expired.has(id)
+        ? 'expired-open'
+        : this.attribution!.restored.has(id)
+          ? 'restored-open'
+          : 'cold-open'
+      const ticket = diagnostics.investigation.begin(
+        `${session.format === 'PDF' ? 'pdf' : 'epub'}.${reason}`,
+      )
+      ticket?.start()
+      this.attribution!.openings.set(id, ticket)
+    }
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.expired.delete(id)
+      this.attribution!.restored.delete(id)
+    }
     this.retained.set(id, { session, document, generation: ++this.generation })
+  }
+
+  private recordTimers() {
+    if (__READER_DIAGNOSTICS__) {
+      if (this.timers.size) diagnostics.resources(this, { ownedTimers: this.timers.size })
+      else diagnostics.release(this)
+    }
   }
 
   private syncVisibility() {
@@ -152,6 +204,7 @@ export class DocumentSessions {
             () => {
               if (this.visibleIds.includes(id) || this.retained.get(id) !== owner) return
               this.release(id)
+              if (__READER_DIAGNOSTICS__) this.attribution!.expired.add(id)
               this.changed()
             },
             5 * 60 * 1000,
@@ -159,6 +212,7 @@ export class DocumentSessions {
         )
       }
     }
+    this.recordTimers()
   }
 
   compareWith(id: string): boolean {
@@ -230,15 +284,30 @@ export class DocumentSessions {
       const slot = this.comparison.indexOf(this.selectedId ?? '')
       this.comparison[slot === 1 ? 1 : 0] = id
     }
+    const warm =
+      __READER_DIAGNOSTICS__ && this.retained.has(id) && session.phase === 'ready'
+        ? diagnostics.investigation.begin(
+            `${session.format === 'PDF' ? 'pdf' : 'epub'}.warm-activate`,
+          )
+        : undefined
+    warm?.start()
     this.selectedId = id
     this.syncVisibility()
     this.changed()
+    warm?.finish()
   }
 
   update(id: string, generation: number, phase: 'ready' | 'error', fingerprint?: string) {
     if (!this.retainedOwns(id, generation)) return false
     const session = this.retained.get(id)!.session
     session.phase = phase
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.openings.get(id)?.finish(
+        phase === 'ready' ? 'completed' : 'failed',
+        phase === 'ready' ? null : 'other',
+      )
+      this.attribution!.openings.delete(id)
+    }
     if (fingerprint) session.fingerprint = fingerprint
     this.changed()
     return true
@@ -259,6 +328,10 @@ export class DocumentSessions {
       : null
     this.release(id)
     session.phase = 'closed'
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.expired.delete(id)
+      this.attribution!.restored.delete(id)
+    }
     this.sources.delete(id)
     this.remembered.delete(id)
     if (selected) this.selectedId = next?.id ?? null
@@ -304,9 +377,14 @@ export class DocumentSessions {
     this.comparison = null
     for (const id of [...this.retained.keys()]) this.release(id)
     this.sessions.clear()
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.expired.clear()
+      this.attribution!.restored.clear()
+    }
     this.sources.clear()
     this.remembered.clear()
     for (const entry of saved.sessions) {
+      if (__READER_DIAGNOSTICS__) this.attribution!.restored.add(entry.id)
       this.sessions.set(entry.id, {
         id: entry.id,
         sourceId: entry.document.id,
@@ -356,6 +434,10 @@ export class DocumentSessions {
     this.sources.clear()
     this.remembered.clear()
     this.sessions.clear()
+    if (__READER_DIAGNOSTICS__) {
+      this.attribution!.expired.clear()
+      this.attribution!.restored.clear()
+    }
     this.changed()
   }
 }

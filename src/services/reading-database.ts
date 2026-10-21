@@ -31,9 +31,10 @@ export class ReadingMetadataDatabase {
 
   async transaction<T>(
     run: (store: IDBObjectStore, result: (value: T) => void) => void,
+    operation?: 'reading.transaction' | 'reading.read' | 'reading.write' | 'reading.restore',
   ): Promise<T> {
     return __READER_DIAGNOSTICS__
-      ? diagnostics.investigation.track('reading.transaction', (start) =>
+      ? diagnostics.investigation.track(operation ?? 'reading.transaction', (start) =>
           this.runTransaction(run, start),
         )
       : this.runTransaction(run)

@@ -1,0 +1,1116 @@
+{
+  "schema": 1,
+  "source": {
+    "sha": "cea424f6ee4b2e64127ec9c3b902dcda859c5aa6",
+    "tree": "a79c7b5b988cf2b6dcd2d511d2be841298110c76",
+    "dirty": false
+  },
+  "options": {
+    "engines": ["chromium", "webkit"],
+    "trials": 3
+  },
+  "environment": {
+    "node": "v24.19.0",
+    "platform": "linux",
+    "release": "6.18.55",
+    "architecture": "x64",
+    "logicalCPUs": 9,
+    "totalRAMBytes": 10451439616
+  },
+  "builds": {
+    "production": {
+      "files": [
+        {
+          "path": "assets/bootstrap-BczD-I5m.js",
+          "bytes": 597585,
+          "sha256": "d9c1aaf5c2f8c1e18d3631dc26961cc5618e522c32211d5af3650fe4a5f3606c"
+        },
+        {
+          "path": "assets/bootstrap-CCa9o1hg.css",
+          "bytes": 67003,
+          "sha256": "f255044bcaff66680272915dfb35135cc02529a6c72fad91a80972d76f5fb51c"
+        },
+        {
+          "path": "assets/index-BPP7dHNJ.js",
+          "bytes": 4896,
+          "sha256": "639f4a8e5ec807ecc4a16ee4002bcea40ce671d1c924f4e453e70b0c4f37aab7"
+        },
+        {
+          "path": "assets/index-DQN-V4eb.css",
+          "bytes": 4637,
+          "sha256": "ea171d5c1c349a63e56b4c5b73b9a0cdf5450bb2d4961e7a862f9fd1c406418a"
+        },
+        {
+          "path": "assets/pdf-BetE-EoD.js",
+          "bytes": 430931,
+          "sha256": "b8ef84674c2df1f7bbbf98483bf0cb4d5318971d637d175c585c1cbbea217b64"
+        },
+        {
+          "path": "assets/pdf.worker.min-Dswkl-cV.mjs",
+          "bytes": 1265413,
+          "sha256": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386"
+        },
+        {
+          "path": "assets/pdf.worker.min-zC6nfbxG.js",
+          "bytes": 65,
+          "sha256": "6daffb35c9375447020d21ab4eae82a54a32b40c5e601e0b494e421d4b69b0cd"
+        },
+        {
+          "path": "assets/src-BRrFXaEn.js",
+          "bytes": 371107,
+          "sha256": "f86371ad05dd507c0117dae8725886bbadd2af1fad6ae359e154e42bd74025f0"
+        },
+        {
+          "path": "index.html",
+          "bytes": 3683,
+          "sha256": "52ed50fd9c547e1b81dab00583dd3bcb9bc81054f87756974a8faee1a24f0a2e"
+        },
+        {
+          "path": "papertrail.svg",
+          "bytes": 1048,
+          "sha256": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c"
+        },
+        {
+          "path": "startup/book-sprite.webp",
+          "bytes": 87398,
+          "sha256": "c9a5fb6ae8fe7ac2bb4130dea4b8c61cbbccfedb13221772f02e11a4d0ee4f05"
+        },
+        {
+          "path": "startup/brand.webp",
+          "bytes": 1380,
+          "sha256": "3188afc4cc8cf6f0a5882b0e8b43432cc604e4bd19c12f7ae82c95ac32197ff2"
+        },
+        {
+          "path": "startup/README.md",
+          "bytes": 632,
+          "sha256": "1aa46901b68eb0c61336a4d7d6db2a3c7d159f2860cb5dfe54d8835e06c67317"
+        }
+      ],
+      "bytes": 2835778,
+      "diagnosticMarkers": {
+        "Developer diagnostics": false,
+        "resourceInvestigation": false,
+        "What remains after closing?": false,
+        "Capture sensors": false
+      }
+    },
+    "diagnostic": {
+      "files": [
+        {
+          "path": "assets/bootstrap-CCa9o1hg.css",
+          "bytes": 67003,
+          "sha256": "f255044bcaff66680272915dfb35135cc02529a6c72fad91a80972d76f5fb51c"
+        },
+        {
+          "path": "assets/bootstrap-CwtjdAzr.js",
+          "bytes": 611652,
+          "sha256": "45be4328b8cf9c983dc6d8c8420a7a0d61d58a99f9ae4aa9abcf62ad53bbad10"
+        },
+        {
+          "path": "assets/DeveloperDiagnostics-C_xDV8AH.css",
+          "bytes": 18159,
+          "sha256": "33f112d53aeff5b3cd6fbe889e54b0380b85cc809968030414dfbc4912396558"
+        },
+        {
+          "path": "assets/DeveloperDiagnostics-C68T-wSl.js",
+          "bytes": 61992,
+          "sha256": "ff43b482b4912a32000e6b06c2f8b411a2de65e8facc8dde63af691302020ef1"
+        },
+        {
+          "path": "assets/index-DcuDIcKV.js",
+          "bytes": 4896,
+          "sha256": "ca16ce99bf0f0223f25a54ea58933d16e7ae8359b3ce3994b4499c2817e974b0"
+        },
+        {
+          "path": "assets/index-DQN-V4eb.css",
+          "bytes": 4637,
+          "sha256": "ea171d5c1c349a63e56b4c5b73b9a0cdf5450bb2d4961e7a862f9fd1c406418a"
+        },
+        {
+          "path": "assets/pdf-CQEmhsG7.js",
+          "bytes": 430931,
+          "sha256": "4587d421b8e67cd0874a4d5ada1359309a0a5e99f9e0f76cc1109fe3a9567f0c"
+        },
+        {
+          "path": "assets/pdf.worker.min-Dswkl-cV.mjs",
+          "bytes": 1265413,
+          "sha256": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386"
+        },
+        {
+          "path": "assets/pdf.worker.min-zC6nfbxG.js",
+          "bytes": 65,
+          "sha256": "6daffb35c9375447020d21ab4eae82a54a32b40c5e601e0b494e421d4b69b0cd"
+        },
+        {
+          "path": "assets/src-CSSbPdSs.js",
+          "bytes": 371107,
+          "sha256": "ff0c695a462dbdb01faf4e35933504b92058781da79e7a61f2ac94bc53aefbbb"
+        },
+        {
+          "path": "index.html",
+          "bytes": 3683,
+          "sha256": "a50be19f0926b44d81597154fd0e4494a45ea444cd9f2ff459c416027b084307"
+        },
+        {
+          "path": "papertrail.svg",
+          "bytes": 1048,
+          "sha256": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c"
+        },
+        {
+          "path": "startup/book-sprite.webp",
+          "bytes": 87398,
+          "sha256": "c9a5fb6ae8fe7ac2bb4130dea4b8c61cbbccfedb13221772f02e11a4d0ee4f05"
+        },
+        {
+          "path": "startup/brand.webp",
+          "bytes": 1380,
+          "sha256": "3188afc4cc8cf6f0a5882b0e8b43432cc604e4bd19c12f7ae82c95ac32197ff2"
+        },
+        {
+          "path": "startup/README.md",
+          "bytes": 632,
+          "sha256": "1aa46901b68eb0c61336a4d7d6db2a3c7d159f2860cb5dfe54d8835e06c67317"
+        }
+      ],
+      "bytes": 2929996,
+      "diagnosticMarkers": {
+        "Developer diagnostics": true,
+        "resourceInvestigation": true,
+        "What remains after closing?": true,
+        "Capture sensors": true
+      }
+    }
+  },
+  "trials": [
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 1,
+      "mode": "production",
+      "elapsedMs": 1346.365898,
+      "stages": {
+        "fileInjectionAndListing": 39.27706400000079,
+        "pdfOpen": 349.8793370000003,
+        "pdfDistantNavigation": 89.1418020000001,
+        "epubOpen": 491.2251390000001,
+        "warmSwitches": 284.8639210000001,
+        "closeBoth": 91.67873099999997
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 1,
+      "mode": "closed",
+      "elapsedMs": 1243.3653160000003,
+      "stages": {
+        "fileInjectionAndListing": 38.53204199999982,
+        "pdfOpen": 330.910922,
+        "pdfDistantNavigation": 74.80379900000025,
+        "epubOpen": 399.35741300000063,
+        "warmSwitches": 304.59016900000006,
+        "closeBoth": 95.11523600000055
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 1,
+      "mode": "sampling",
+      "elapsedMs": 1279.6913839999997,
+      "stages": {
+        "fileInjectionAndListing": 22.58559400000013,
+        "pdfOpen": 356.26194899999973,
+        "pdfDistantNavigation": 116.07888699999967,
+        "epubOpen": 383.65729099999953,
+        "warmSwitches": 300.88628100000096,
+        "closeBoth": 100.18489699999918
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 1,
+        "samplerCallbackSubset": {
+          "samples": 1,
+          "totalMs": 0.599999999627471,
+          "maxMs": 0.599999999627471
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 1,
+      "mode": "paused",
+      "elapsedMs": 1320.8067150000006,
+      "stages": {
+        "fileInjectionAndListing": 23.33440000000155,
+        "pdfOpen": 341.77023799999915,
+        "pdfDistantNavigation": 78.7477600000002,
+        "epubOpen": 413.0366460000005,
+        "warmSwitches": 355.45381799999996,
+        "closeBoth": 108.29908400000022
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 2,
+      "mode": "closed",
+      "elapsedMs": 1266.435821000001,
+      "stages": {
+        "fileInjectionAndListing": 31.219951999999466,
+        "pdfOpen": 357.05088199999955,
+        "pdfDistantNavigation": 87.15227500000037,
+        "epubOpen": 386.2877609999996,
+        "warmSwitches": 310.54759300000114,
+        "closeBoth": 94.14470900000015
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 2,
+      "mode": "sampling",
+      "elapsedMs": 1360.9144830000005,
+      "stages": {
+        "fileInjectionAndListing": 23.64818000000014,
+        "pdfOpen": 352.84374299999945,
+        "pdfDistantNavigation": 120.43314199999986,
+        "epubOpen": 429.6550559999996,
+        "warmSwitches": 309.8132289999994,
+        "closeBoth": 124.48601000000053
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 1,
+        "samplerCallbackSubset": {
+          "samples": 1,
+          "totalMs": 0.5,
+          "maxMs": 0.5
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 2,
+      "mode": "paused",
+      "elapsedMs": 1305.839203999998,
+      "stages": {
+        "fileInjectionAndListing": 20.53964199999973,
+        "pdfOpen": 364.81045300000005,
+        "pdfDistantNavigation": 88.61091900000065,
+        "epubOpen": 446.2993889999998,
+        "warmSwitches": 290.2340580000018,
+        "closeBoth": 95.31176300000152
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 2,
+      "mode": "production",
+      "elapsedMs": 1219.3268329999992,
+      "stages": {
+        "fileInjectionAndListing": 39.599435999996786,
+        "pdfOpen": 323.25980600000184,
+        "pdfDistantNavigation": 63.449445999998716,
+        "epubOpen": 418.6245630000012,
+        "warmSwitches": 295.04085799999666,
+        "closeBoth": 79.3190340000001
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 3,
+      "mode": "sampling",
+      "elapsedMs": 1276.953469,
+      "stages": {
+        "fileInjectionAndListing": 23.548740000002,
+        "pdfOpen": 339.6862349999974,
+        "pdfDistantNavigation": 69.29258100000152,
+        "epubOpen": 385.6749060000002,
+        "warmSwitches": 345.2508940000007,
+        "closeBoth": 113.470147
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 1,
+        "samplerCallbackSubset": {
+          "samples": 1,
+          "totalMs": 0.7000000001862645,
+          "maxMs": 0.7000000001862645
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 3,
+      "mode": "paused",
+      "elapsedMs": 1273.7707640000008,
+      "stages": {
+        "fileInjectionAndListing": 29.24242299999969,
+        "pdfOpen": 337.09317100000044,
+        "pdfDistantNavigation": 76.34632699999929,
+        "epubOpen": 453.90817199999947,
+        "warmSwitches": 288.4713699999993,
+        "closeBoth": 88.68384199999855
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 3,
+      "mode": "production",
+      "elapsedMs": 1187.457027999997,
+      "stages": {
+        "fileInjectionAndListing": 32.849098999999114,
+        "pdfOpen": 320.5506150000001,
+        "pdfDistantNavigation": 105.9525450000001,
+        "epubOpen": 344.9023210000014,
+        "warmSwitches": 290.0078140000005,
+        "closeBoth": 93.16990599999917
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "chromium",
+      "browserVersion": "153.0.8010.0",
+      "trial": 3,
+      "mode": "closed",
+      "elapsedMs": 1183.8547309999994,
+      "stages": {
+        "fileInjectionAndListing": 31.29497199999969,
+        "pdfOpen": 314.83836200000223,
+        "pdfDistantNavigation": 105.37515500000154,
+        "epubOpen": 367.67671100000007,
+        "warmSwitches": 287.7441660000004,
+        "closeBoth": 76.89764499999728
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 1,
+      "mode": "production",
+      "elapsedMs": 2814.080770999999,
+      "stages": {
+        "fileInjectionAndListing": 58.767777000000024,
+        "pdfOpen": 648.2017500000002,
+        "pdfDistantNavigation": 277.2290039999998,
+        "epubOpen": 863.1206319999992,
+        "warmSwitches": 822.1838680000001,
+        "closeBoth": 144.38710299999912
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 1,
+      "mode": "closed",
+      "elapsedMs": 2306.271611,
+      "stages": {
+        "fileInjectionAndListing": 46.51296300000104,
+        "pdfOpen": 605.076751999999,
+        "pdfDistantNavigation": 252.64426699999967,
+        "epubOpen": 720.0343100000009,
+        "warmSwitches": 540.5189979999996,
+        "closeBoth": 141.41974299999856
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 1,
+      "mode": "sampling",
+      "elapsedMs": 2149.2641539999986,
+      "stages": {
+        "fileInjectionAndListing": 54.416119000001345,
+        "pdfOpen": 563.8586810000015,
+        "pdfDistantNavigation": 152.54451599999993,
+        "epubOpen": 717.5147919999999,
+        "warmSwitches": 525.5275730000012,
+        "closeBoth": 135.35264800000004
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 2,
+        "samplerCallbackSubset": {
+          "samples": 2,
+          "totalMs": 2,
+          "maxMs": 1
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 1,
+      "mode": "paused",
+      "elapsedMs": 2113.6585919999998,
+      "stages": {
+        "fileInjectionAndListing": 36.447157000000516,
+        "pdfOpen": 485.2960949999997,
+        "pdfDistantNavigation": 224.2911949999998,
+        "epubOpen": 669.5560620000015,
+        "warmSwitches": 570.3941320000013,
+        "closeBoth": 127.62959400000182
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 2,
+      "mode": "closed",
+      "elapsedMs": 2067.7607370000005,
+      "stages": {
+        "fileInjectionAndListing": 41.748006000001624,
+        "pdfOpen": 518.127798999998,
+        "pdfDistantNavigation": 238.14063499999975,
+        "epubOpen": 506.5292950000003,
+        "warmSwitches": 599.6066470000005,
+        "closeBoth": 163.55851999999868
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 2,
+      "mode": "sampling",
+      "elapsedMs": 2367.1019670000023,
+      "stages": {
+        "fileInjectionAndListing": 33.29879599999913,
+        "pdfOpen": 526.9638589999995,
+        "pdfDistantNavigation": 253.75739500000054,
+        "epubOpen": 657.5802629999998,
+        "warmSwitches": 764.4037500000013,
+        "closeBoth": 131.05292499999996
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 2,
+        "samplerCallbackSubset": {
+          "samples": 2,
+          "totalMs": 2,
+          "maxMs": 1
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 2,
+      "mode": "paused",
+      "elapsedMs": 2049.981785,
+      "stages": {
+        "fileInjectionAndListing": 36.4130350000014,
+        "pdfOpen": 528.4711370000005,
+        "pdfDistantNavigation": 147.59343399999852,
+        "epubOpen": 604.3680940000013,
+        "warmSwitches": 594.1049820000007,
+        "closeBoth": 138.98449299999993
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 2,
+      "mode": "production",
+      "elapsedMs": 2076.274551999999,
+      "stages": {
+        "fileInjectionAndListing": 46.06710000000021,
+        "pdfOpen": 560.899304999999,
+        "pdfDistantNavigation": 236.21168199999738,
+        "epubOpen": 586.5371459999988,
+        "warmSwitches": 504.8367860000035,
+        "closeBoth": 141.67865600000005
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 3,
+      "mode": "sampling",
+      "elapsedMs": 2064.701758000003,
+      "stages": {
+        "fileInjectionAndListing": 34.15797900000325,
+        "pdfOpen": 495.16419999999925,
+        "pdfDistantNavigation": 257.44661100000303,
+        "epubOpen": 624.7025910000011,
+        "warmSwitches": 510.78266799999983,
+        "closeBoth": 142.40862999999808
+      },
+      "diagnostics": {
+        "running": true,
+        "retainedSamples": 2,
+        "samplerCallbackSubset": {
+          "samples": 2,
+          "totalMs": 6,
+          "maxMs": 5
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 3,
+      "mode": "paused",
+      "elapsedMs": 2027.1590099999958,
+      "stages": {
+        "fileInjectionAndListing": 44.48905399999785,
+        "pdfOpen": 461.83624599999894,
+        "pdfDistantNavigation": 228.16677300000447,
+        "epubOpen": 654.4564810000011,
+        "warmSwitches": 502.2917159999997,
+        "closeBoth": 135.88137500000448
+      },
+      "diagnostics": {
+        "running": false,
+        "retainedSamples": 0,
+        "samplerCallbackSubset": {
+          "samples": 0,
+          "totalMs": 0,
+          "maxMs": 0
+        }
+      },
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 3,
+      "mode": "production",
+      "elapsedMs": 2165.656839000003,
+      "stages": {
+        "fileInjectionAndListing": 46.69680100000551,
+        "pdfOpen": 491.0525179999968,
+        "pdfDistantNavigation": 244.0853599999973,
+        "epubOpen": 708.537516999997,
+        "warmSwitches": 549.6071200000006,
+        "closeBoth": 125.64537500000006
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    },
+    {
+      "engine": "webkit",
+      "browserVersion": "26.6",
+      "trial": 3,
+      "mode": "closed",
+      "elapsedMs": 1969.2231109999993,
+      "stages": {
+        "fileInjectionAndListing": 44.92357500000071,
+        "pdfOpen": 526.0291179999986,
+        "pdfDistantNavigation": 242.14468000000488,
+        "epubOpen": 509.89731200000097,
+        "warmSwitches": 510.0479489999998,
+        "closeBoth": 136.14498299999832
+      },
+      "diagnostics": null,
+      "fixture": {
+        "pdfPages": 12,
+        "pdfBytes": 3603,
+        "epubBytes": 4980
+      },
+      "viewport": {
+        "width": 1440,
+        "height": 900
+      },
+      "cache": "Fresh context; first open plus retained warm switches; OS cache uncontrolled",
+      "sensors": "Additional sensors off; base diagnostics only"
+    }
+  ],
+  "summary": [
+    {
+      "group": "chromium:production",
+      "count": 3,
+      "medianMs": 1219.3268329999992,
+      "worstMs": 1346.365898,
+      "p95Ms": null
+    },
+    {
+      "group": "chromium:closed",
+      "count": 3,
+      "medianMs": 1243.3653160000003,
+      "worstMs": 1266.435821000001,
+      "p95Ms": null
+    },
+    {
+      "group": "chromium:sampling",
+      "count": 3,
+      "medianMs": 1279.6913839999997,
+      "worstMs": 1360.9144830000005,
+      "p95Ms": null
+    },
+    {
+      "group": "chromium:paused",
+      "count": 3,
+      "medianMs": 1305.839203999998,
+      "worstMs": 1320.8067150000006,
+      "p95Ms": null
+    },
+    {
+      "group": "webkit:production",
+      "count": 3,
+      "medianMs": 2165.656839000003,
+      "worstMs": 2814.080770999999,
+      "p95Ms": null
+    },
+    {
+      "group": "webkit:closed",
+      "count": 3,
+      "medianMs": 2067.7607370000005,
+      "worstMs": 2306.271611,
+      "p95Ms": null
+    },
+    {
+      "group": "webkit:sampling",
+      "count": 3,
+      "medianMs": 2149.2641539999986,
+      "worstMs": 2367.1019670000023,
+      "p95Ms": null
+    },
+    {
+      "group": "webkit:paused",
+      "count": 3,
+      "medianMs": 2049.981785,
+      "worstMs": 2113.6585919999998,
+      "p95Ms": null
+    }
+  ],
+  "status": "passed",
+  "accepted": true,
+  "limitations": [
+    "Synthetic text PDF and formatted EPUB fixtures; not representative image-heavy/long-document or 100/1000-folder scanning acceptance.",
+    "Fresh browser contexts are application-cold; OS filesystem and browser process caches are not flushed. Repeat/warm steps run inside each trial.",
+    "Elapsed wall time includes browser rendering and automation. No CPU/GPU/process-memory measurement, causal attribution, accepted budget or speedup claim.",
+    "No forced GC, artificial clock advancement or callback-only total-overhead claim. Sampler subset and JS heap remain separately labelled in private export.",
+    "Expanded-panel rendering and optional additional-sensor overhead are not calibrated by the minimized base-sampling workload.",
+    "Other engines require installed Playwright browsers/dependencies. Missing engines fail rather than silently pass."
+  ],
+  "workloadFailures": [],
+  "caseOutcomes": [
+    {
+      "engine": "chromium",
+      "test": "diagnostic attribution distinguishes retained switching from five-minute reader recreation",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "diagnostic attribution distinguishes retained switching from five-minute reader recreation",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "missing observer APIs show unavailable evidence rather than fabricated zero readings",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "missing observer APIs show unavailable evidence rather than fabricated zero readings",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "library stays open until asynchronous document selection commits",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "failure snapshot retains numeric selection evidence without document labels or URLs",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "library stays open until asynchronous document selection commits",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "failure snapshot retains numeric selection evidence without document labels or URLs",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "compare identical mixed-reader workloads across production and diagnostic modes",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "compare identical mixed-reader workloads across production and diagnostic modes",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "default production cannot enable diagnostics through a query or keyboard flag",
+      "status": "skipped",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "opt-in local diagnostics record PDF/EPUB, export private bounded data and stop on close",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "chromium",
+      "test": "additional diagnostic sensors are opt-in and export private real browser observations",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "default production cannot enable diagnostics through a query or keyboard flag",
+      "status": "skipped",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "opt-in local diagnostics record PDF/EPUB, export private bounded data and stop on close",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode",
+      "status": "passed",
+      "retry": 0
+    },
+    {
+      "engine": "webkit",
+      "test": "additional diagnostic sensors are opt-in and export private real browser observations",
+      "status": "passed",
+      "retry": 0
+    }
+  ],
+  "coverage": {
+    "expectedTrials": 24,
+    "completedTrials": 24,
+    "complete": true,
+    "reason": null
+  },
+  "bundleDeltaBytes": 94218
+}
