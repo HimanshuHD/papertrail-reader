@@ -11,7 +11,7 @@ test('default production cannot enable diagnostics through a query or keyboard f
 }) => {
   test.skip(diagnostic, 'Run against a default production build')
   await page.goto('./?diagnostics=true#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   await page.keyboard.press('Control+Alt+KeyD')
   await expect(
     page.getByRole('button', { name: 'Developer diagnostics', exact: true }),
@@ -22,7 +22,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
 }, info) => {
   test.skip(!diagnostic, 'Explicit diagnostic build only')
   await page.goto('./#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   await toggle.click()
   await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
@@ -136,7 +136,7 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   test.skip(!diagnostic, 'Explicit diagnostic build only')
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto('./#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: 'Developer diagnostics', exact: true }).click()
