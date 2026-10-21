@@ -5,12 +5,8 @@ import { mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
-import {
-  acceptanceOptions,
-  bundleEvidence,
-  summarizeTrials,
-  verifyTrialCoverage,
-} from './diagnostics-acceptance-report.mjs'
+import { acceptanceOptions, bundleEvidence } from './diagnostics-acceptance-report.mjs'
+import { acceptanceResults } from './diagnostics-acceptance-results.mjs'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const options = acceptanceOptions()
 await mkdir(path.join(root, 'browser-evidence', 'diagnostics-acceptance'), { recursive: true })
@@ -50,6 +46,7 @@ const report = {
   trials: [],
   summary: [],
   status: 'incomplete',
+  accepted: false,
   limitations: [
     'Synthetic text PDF and formatted EPUB fixtures; not representative image-heavy/long-document or 100/1000-folder scanning acceptance.',
     'Fresh browser contexts are application-cold; OS filesystem and browser process caches are not flushed. Repeat/warm steps run inside each trial.',
@@ -90,30 +87,19 @@ try {
       E2E_DIAGNOSTICS: 'true',
       E2E_DEPLOY_CHANNEL: 'production',
     },
-  )
+  ).catch((error) => {
+    report.browserFailure = error.message
+  })
   const results = JSON.parse(await readFile(path.join(out, 'playwright.json'), 'utf8'))
-  const walk = async (suite) => {
-    for (const spec of suite.specs || [])
-      for (const test of spec.tests || [])
-        for (const result of test.results || [])
-          for (const attachment of result.attachments || []) {
-            if (attachment.name !== 'diagnostic-workload-trials') continue
-            const data = JSON.parse(
-              attachment.body
-                ? Buffer.from(attachment.body, 'base64').toString('utf8')
-                : await readFile(attachment.path, 'utf8'),
-            )
-            report.trials.push(...data)
-          }
-    for (const child of suite.suites || []) await walk(child)
-  }
-  await walk(results)
-  verifyTrialCoverage(report.trials, options.engines, options.trials)
+  const evidence = await acceptanceResults(results, options.engines, options.trials)
+  Object.assign(report, evidence)
   report.bundleDeltaBytes = report.builds.diagnostic.bytes - report.builds.production.bytes
-  report.summary = summarizeTrials(report.trials)
+  if (report.browserFailure || !evidence.accepted)
+    throw new Error(report.browserFailure || 'Browser cases or workload coverage incomplete')
   report.status = 'passed'
 } catch (error) {
   report.status = 'failed'
+  report.accepted = false
   report.failure = error.message
   process.exitCode = 1
 } finally {
