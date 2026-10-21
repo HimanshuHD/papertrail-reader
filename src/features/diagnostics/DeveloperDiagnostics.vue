@@ -290,6 +290,7 @@ footer small {
   gap: 2px;
 }
 .dashboard-content {
+  --diagnostic-content-inset: 14px;
   padding: 12px 14px;
   overflow: auto;
   min-height: 0;
@@ -377,6 +378,7 @@ dt {
     padding: 8px;
   }
   .dashboard-content {
+    --diagnostic-content-inset: 10px;
     padding: 10px;
   }
 }

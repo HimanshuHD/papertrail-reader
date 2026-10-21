@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import type { IndicatorResult, IndicatorEvent } from './indicators'
 import { computed, ref } from 'vue'
+import DiagnosticTimeline from './DiagnosticTimeline.vue'
 import DiagnosticTrend from './DiagnosticTrend.vue'
-import { measurement, metricNames, operationStats, type Snapshot } from './presentation'
+import { measurement, operationStats, type Snapshot } from './presentation'
 const props = defineProps<{
   snapshot: Snapshot
   capabilities: Record<string, string>
@@ -10,15 +11,6 @@ const props = defineProps<{
   indicatorHistory?: IndicatorEvent[]
 }>()
 const tabs = ['Overview', 'Operations', 'Resources', 'Timeline', 'Technical details'] as const
-const historyFilter = ref<'issues' | 'all'>('issues')
-const visibleHistory = computed(() =>
-  [...(props.indicatorHistory ?? [])]
-    .reverse()
-    .filter(
-      (event) =>
-        historyFilter.value === 'all' || event.state === 'attention' || event.state === 'critical',
-    ),
-)
 const active = ref<(typeof tabs)[number]>('Overview')
 const stats = computed(() => operationStats(props.snapshot.timings))
 const latest = computed(() => props.snapshot.samples.at(-1))
@@ -219,104 +211,7 @@ function selectTab(event: KeyboardEvent, index: number) {
       </p>
     </template>
     <template v-else-if="tab === 'Timeline'">
-      <h3>Performance history</h3>
-      <p>
-        Warnings remain here after recovery and pause/resume. Up to 120 transitions are retained in
-        this page session; Reset session or reload clears them. Export JSON to keep a diagnostic
-        record.
-      </p>
-      <div class="history-filters">
-        <button
-          type="button"
-          :aria-pressed="historyFilter === 'issues'"
-          @click="historyFilter = 'issues'"
-        >
-          Performance issues</button
-        ><button
-          type="button"
-          :aria-pressed="historyFilter === 'all'"
-          @click="historyFilter = 'all'"
-        >
-          All transitions
-        </button>
-      </div>
-      <p v-if="!visibleHistory.length">
-        No retained {{ historyFilter === 'issues' ? 'performance warnings' : 'transitions' }}.
-      </p>
-      <ol class="performance-history">
-        <li v-for="(event, index) in visibleHistory" :key="index">
-          <details>
-            <summary>
-              {{
-                event.state === 'critical'
-                  ? '⚠ Critical'
-                  : event.state === 'attention'
-                    ? '⚠ Needs attention'
-                    : event.state
-              }}
-              · {{ (event.atMs / 1000).toFixed(1) }}s since page start ·
-              {{ event.resolution ?? 'latest'
-              }}<span v-if="event.findings.length">
-                · {{ event.findings.map((f) => f.id).join(', ') }}</span
-              >
-            </summary>
-            <p>{{ event.explanation }}</p>
-            <p>
-              Observed through {{ (event.lastSeenAtMs / 1000).toFixed(1) }}s ·
-              {{ event.evaluations }} distinct evaluations<span
-                v-if="event.endedAtMs !== undefined"
-              >
-                · ended {{ (event.endedAtMs / 1000).toFixed(1) }}s</span
-              >.
-            </p>
-            <ul>
-              <li v-for="finding in event.findings" :key="finding.id">
-                <strong>{{ finding.reason }}</strong>
-                <p v-if="finding.observedMs !== undefined">
-                  Peak captured: {{ measurement(finding.observedMs) }} · threshold
-                  {{ measurement(finding.thresholdMs) }} · {{ finding.sampleCount }} observations.
-                </p>
-                <p>{{ finding.next }}</p>
-              </li>
-            </ul>
-            <h4>Nearby recorded work</h4>
-            <p>
-              Timing correlation only: these operations may overlap the warning; this does not
-              establish the root cause. Fast scroll/tab changes can request rendering, layout and
-              cleanup work. Use a browser trace to identify the exact code path.
-            </p>
-            <ul v-if="event.context.length">
-              <li v-for="(operation, operationIndex) in event.context" :key="operationIndex">
-                {{ metricNames[operation.metric] }} · {{ operation.outcome }} ·
-                {{ measurement(operation.durationMs) }}
-              </li>
-            </ul>
-            <p v-else>No nearby instrumented operation was captured.</p>
-            <details>
-              <summary>Captured provisional rules</summary>
-              <pre>{{ JSON.stringify(event.configuration, null, 2) }}</pre>
-            </details>
-          </details>
-        </li>
-      </ol>
-      <h3>Operation timeline</h3>
-      <p>
-        Most recent first, up to 120 retained outcomes. Ordinary cancellation is expected during
-        navigation; it is not automatically a critical condition. No per-reader attribution is
-        available.
-      </p>
-      <p>
-        Pending: {{ snapshot.pending.index }} indexing · {{ snapshot.pending.render }} rendering ·
-        {{ snapshot.pending.other }} other. Dropped timings: {{ snapshot.droppedTimings }}.
-      </p>
-      <ol v-if="snapshot.timings.length" class="timeline">
-        <li v-for="(item, index) in [...snapshot.timings].reverse()" :key="index">
-          <span
-            >{{ metricNames[item.metric] }}<small>{{ item.metric }}</small></span
-          ><span>{{ item.outcome }} · {{ measurement(item.durationMs) }}</span>
-        </li>
-      </ol>
-      <p v-else>No recorded operations. Open a document or browse your library while recording.</p>
+      <DiagnosticTimeline :history="indicatorHistory ?? []" :snapshot="snapshot" :health="health" />
     </template>
     <slot v-else name="technical" />
   </div>
@@ -335,22 +230,6 @@ function selectTab(event: KeyboardEvent, index: number) {
 .indicator-summary[data-state='critical'] {
   border-color: light-dark(#bb3737, #ff9393);
 }
-.history-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.performance-history > li {
-  padding: 12px 0;
-  border-bottom: 1px solid var(--pt-line);
-}
-.performance-history summary {
-  cursor: pointer;
-}
-.performance-history pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 .scope {
   color: var(--pt-muted);
 }
@@ -358,8 +237,11 @@ function selectTab(event: KeyboardEvent, index: number) {
   display: flex;
   flex-wrap: wrap;
   gap: 4px;
+  border-top: 1px solid var(--pt-line);
   border-bottom: 1px solid var(--pt-line);
-  padding-bottom: 8px;
+  background: var(--pt-panel);
+  margin: 0 calc(-1 * var(--diagnostic-content-inset, 14px));
+  padding: 10px var(--diagnostic-content-inset, 14px);
 }
 button {
   padding: 8px;
@@ -368,9 +250,12 @@ button {
   color: var(--pt-ink);
   border: 1px solid var(--pt-line);
 }
+.tabs button {
+  border-color: transparent;
+}
 button[aria-selected='true'] {
-  background: var(--pt-brand);
-  color: var(--pt-on-brand, var(--pt-panel));
+  background: light-dark(#23686b, #285a60);
+  color: #ffffff;
 }
 p {
   margin: 10px 0;
@@ -430,14 +315,6 @@ td {
 dd {
   text-align: right;
   font-variant-numeric: tabular-nums;
-}
-.timeline li {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px 0;
-  border-bottom: 1px solid var(--pt-line);
 }
 @media (max-width: 420px) {
   .metrics {

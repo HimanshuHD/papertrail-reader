@@ -175,7 +175,13 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await page.keyboard.press('End')
   await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
   await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
-  await expect(region).toContainText('No recorded operations')
+  await expect(region).toContainText('Session timeline')
+  for (const label of ['All events', 'Incidents only', 'Transitions only'])
+    await expect(region.getByRole('button', { name: label, exact: true })).toBeVisible()
+  await region.getByRole('button', { name: 'Incidents only', exact: true }).click()
+  await expect(region).toContainText('No retained performance incidents')
+  await region.getByRole('button', { name: 'Transitions only', exact: true }).click()
+  await expect(region.getByRole('list', { name: 'Chronological diagnostic events' })).toBeVisible()
   await region.getByRole('tab', { name: 'Resources', exact: true }).click()
   await expect(region.getByRole('tabpanel', { name: 'Resources', exact: true })).toContainText(
     'No registered owner',

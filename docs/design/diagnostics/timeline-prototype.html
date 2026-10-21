@@ -1,0 +1,759 @@
+<style>
+  #pt-event-prototype {
+    color-scheme: light dark;
+    --p-panel: light-dark(#ffffff, #1b2832);
+    --p-canvas: light-dark(#f1f5f6, #111b22);
+    --p-ink: light-dark(#173449, #e4edf3);
+    --p-muted: light-dark(#526473, #b4c3ce);
+    --p-line: light-dark(#c7d7db, #3b505d);
+    --p-brand: light-dark(#23686b, #80d5c3);
+    --p-good: light-dark(#247447, #8bddaa);
+    --p-warn: light-dark(#916000, #f5c56c);
+    --p-critical: light-dark(#b63b3b, #ffabab);
+    font: 14px/1.5 system-ui;
+    color: var(--p-ink);
+  }
+  #pt-event-prototype * {
+    box-sizing: border-box;
+  }
+  #pt-event-prototype .window {
+    max-width: 760px;
+    margin: auto;
+    background: var(--p-panel);
+    border: 1px solid var(--p-line);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  #pt-event-prototype header,
+  #pt-event-prototype footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    background: var(--p-canvas);
+    padding: 12px 16px;
+  }
+  #pt-event-prototype header {
+    border-bottom: 1px solid var(--p-line);
+  }
+  #pt-event-prototype footer {
+    border-top: 1px solid var(--p-line);
+  }
+  #pt-event-prototype h2 {
+    font-size: 15px;
+    font-weight: 500;
+    margin: 0;
+  }
+  #pt-event-prototype h3 {
+    font-size: 14px;
+    font-weight: 500;
+    margin: 0;
+  }
+  #pt-event-prototype p {
+    margin: 0;
+  }
+  #pt-event-prototype small,
+  #pt-event-prototype .muted {
+    font-size: 12px;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype .actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+  #pt-event-prototype button,
+  #pt-event-prototype select {
+    font: inherit;
+    color: var(--p-ink);
+    background: var(--p-panel);
+    border: 1px solid var(--p-line);
+    border-radius: 6px;
+    padding: 7px 10px;
+  }
+  #pt-event-prototype button {
+    cursor: pointer;
+  }
+  #pt-event-prototype button:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+  #pt-event-prototype .icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    background: transparent;
+    width: 36px;
+    height: 36px;
+    padding: 8px;
+  }
+  #pt-event-prototype .icon i {
+    font-style: normal;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+  }
+  #pt-event-prototype .tabs {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--p-line);
+  }
+  #pt-event-prototype .tabs button {
+    border-color: transparent;
+    padding: 6px 9px;
+  }
+  #pt-event-prototype .tabs button[aria-selected='true'] {
+    background: var(--p-brand);
+    color: var(--p-panel);
+  }
+  #pt-event-prototype .demo {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 8px 16px;
+    background: var(--p-canvas);
+    font-size: 12px;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype .content {
+    padding: 16px;
+  }
+  #pt-event-prototype .heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  #pt-event-prototype .current {
+    font-size: 12px;
+    color: var(--p-good);
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+  }
+  #pt-event-prototype .current::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    background: currentColor;
+    border-radius: 50%;
+  }
+  #pt-event-prototype .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 12px 0 16px;
+  }
+  #pt-event-prototype .filters {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+  }
+  #pt-event-prototype .filters button {
+    font-size: 12px;
+    padding: 6px 9px;
+  }
+  #pt-event-prototype .filters button[aria-pressed='true'] {
+    background: var(--p-canvas);
+    border-color: var(--p-brand);
+  }
+  #pt-event-prototype .timeline {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  #pt-event-prototype .entry {
+    display: grid;
+    grid-template-columns: 46px 14px minmax(0, 1fr);
+    column-gap: 12px;
+    position: relative;
+  }
+  #pt-event-prototype .time {
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+    color: var(--p-muted);
+    padding-top: 13px;
+  }
+  #pt-event-prototype .rail {
+    position: relative;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype .rail::before {
+    content: '';
+    position: absolute;
+    top: 17px;
+    left: 2px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--p-panel);
+    border: 2px solid currentColor;
+    z-index: 1;
+  }
+  #pt-event-prototype .rail::after {
+    content: '';
+    position: absolute;
+    top: 23px;
+    bottom: -23px;
+    left: 6px;
+    width: 1px;
+    background: var(--p-line);
+  }
+  #pt-event-prototype .entry:last-child .rail::after {
+    display: none;
+  }
+  #pt-event-prototype .entry[data-kind='critical'] .rail {
+    color: var(--p-critical);
+  }
+  #pt-event-prototype .entry[data-kind='attention'] .rail {
+    color: var(--p-warn);
+  }
+  #pt-event-prototype .entry[data-kind='good'] .rail {
+    color: var(--p-good);
+  }
+  #pt-event-prototype .event {
+    min-width: 0;
+    padding-bottom: 14px;
+  }
+  #pt-event-prototype .event-header {
+    padding: 10px 0;
+    min-height: 48px;
+  }
+  #pt-event-prototype button.event-header {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    text-align: left;
+  }
+  #pt-event-prototype .event-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  #pt-event-prototype .event-title strong {
+    font-weight: 500;
+  }
+  #pt-event-prototype .tags {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    font-size: 11px;
+  }
+  #pt-event-prototype .tag {
+    padding: 2px 7px;
+    border-radius: 4px;
+    background: var(--p-canvas);
+    white-space: nowrap;
+  }
+  #pt-event-prototype .tag.critical {
+    color: var(--p-critical);
+  }
+  #pt-event-prototype .tag.attention {
+    color: var(--p-warn);
+  }
+  #pt-event-prototype .chevron {
+    display: inline-block;
+    transition: transform 0.15s;
+    margin-left: 6px;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype [aria-expanded='true'] .chevron {
+    transform: rotate(90deg);
+  }
+  #pt-event-prototype .detail {
+    padding: 12px;
+    background: var(--p-canvas);
+    border-radius: 8px;
+    margin-bottom: 4px;
+  }
+  #pt-event-prototype .detail-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
+  #pt-event-prototype .detail-top strong {
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+  }
+  #pt-event-prototype .sequence {
+    list-style: none;
+    padding: 0 0 0 11px;
+    margin: 12px 0;
+    border-left: 1px solid var(--p-line);
+  }
+  #pt-event-prototype .sequence li {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    flex-wrap: wrap;
+    padding: 5px 0;
+    font-size: 12px;
+  }
+  #pt-event-prototype .sequence time {
+    color: var(--p-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  #pt-event-prototype .sequence .state {
+    font-weight: 500;
+  }
+  #pt-event-prototype .critical-text {
+    color: var(--p-critical);
+  }
+  #pt-event-prototype .attention-text {
+    color: var(--p-warn);
+  }
+  #pt-event-prototype .good-text {
+    color: var(--p-good);
+  }
+  #pt-event-prototype .detail h4 {
+    font-size: 12px;
+    font-weight: 500;
+    margin: 10px 0 3px;
+  }
+  #pt-event-prototype .detail p {
+    font-size: 12px;
+  }
+  #pt-event-prototype .correlation {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin: 6px 0;
+  }
+  #pt-event-prototype .correlation span {
+    font-size: 12px;
+    background: var(--p-panel);
+    padding: 3px 6px;
+    border-radius: 4px;
+  }
+  #pt-event-prototype details {
+    margin-top: 10px;
+    font-size: 12px;
+  }
+  #pt-event-prototype summary {
+    cursor: pointer;
+  }
+  #pt-event-prototype .rule {
+    padding-top: 5px;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype .tail {
+    margin-top: 6px;
+    padding-top: 12px;
+    border-top: 1px solid var(--p-line);
+    font-size: 12px;
+    color: var(--p-muted);
+  }
+  #pt-event-prototype .empty {
+    padding: 30px 0;
+    text-align: center;
+  }
+  #pt-event-prototype .minimized {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    gap: 12px;
+  }
+  #pt-event-prototype [hidden] {
+    display: none !important;
+  }
+  @media (max-width: 480px) {
+    #pt-event-prototype .content {
+      padding: 12px;
+    }
+    #pt-event-prototype .entry {
+      grid-template-columns: 38px 12px minmax(0, 1fr);
+      column-gap: 7px;
+    }
+    #pt-event-prototype .detail {
+      padding: 10px;
+    }
+    #pt-event-prototype header,
+    #pt-event-prototype footer {
+      padding: 10px 12px;
+    }
+    #pt-event-prototype .tags {
+      gap: 4px;
+    }
+    #pt-event-prototype .detail-top {
+      gap: 8px;
+    }
+  }
+  @media (pointer: coarse) {
+    #pt-event-prototype button {
+      min-height: 44px;
+      min-width: 44px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    #pt-event-prototype .chevron {
+      transition: none;
+    }
+  }
+</style>
+<div class="viz-dotted-background">
+  <div id="pt-event-prototype">
+    <div class="window">
+      <header>
+        <div>
+          <h2>Developer diagnostics</h2>
+          <small>PaperTrail · Local session · v2.2.0</small>
+        </div>
+        <div class="actions">
+          <button
+            class="icon"
+            type="button"
+            aria-label="Pause sampling"
+            data-tooltip="Pause sampling"
+            data-action="pause"
+          >
+            <i data-lucide="pause" aria-hidden="true">Ⅱ</i></button
+          ><button
+            class="icon"
+            type="button"
+            aria-label="Minimize diagnostics"
+            data-tooltip="Minimize diagnostics"
+            data-action="minimize"
+          >
+            <i data-lucide="minus" aria-hidden="true">−</i></button
+          ><button
+            class="icon"
+            type="button"
+            aria-label="Close diagnostics"
+            data-tooltip="Close diagnostics"
+            data-action="close"
+          >
+            <i data-lucide="x" aria-hidden="true">×</i>
+          </button>
+        </div>
+      </header>
+      <div class="expanded">
+        <nav class="tabs" aria-label="Diagnostic views" role="tablist">
+          <button type="button" role="tab" aria-selected="false" disabled>Overview</button
+          ><button type="button" role="tab" aria-selected="false" disabled>Operations</button
+          ><button type="button" role="tab" aria-selected="false" disabled>Resources</button
+          ><button
+            type="button"
+            role="tab"
+            id="pt-timeline-tab"
+            aria-controls="pt-timeline-panel"
+            aria-selected="true"
+          >
+            Timeline</button
+          ><button type="button" role="tab" aria-selected="false" disabled>
+            Technical details
+          </button>
+        </nav>
+        <div class="demo">
+          <span>DESIGN PROPOSAL · SIMULATED SESSION</span><span>00:00–04:12 · oldest first</span>
+        </div>
+        <main
+          class="content"
+          id="pt-timeline-panel"
+          role="tabpanel"
+          aria-labelledby="pt-timeline-tab"
+        >
+          <div class="heading">
+            <div>
+              <h3>Session timeline</h3>
+              <small>8 events grouped into 2 incidents</small>
+            </div>
+            <span class="current" data-current>Recording · recovered</span>
+          </div>
+          <div class="controls">
+            <div class="filters" aria-label="Timeline filter">
+              <button type="button" data-filter="all" aria-pressed="true">All events</button
+              ><button type="button" data-filter="issues" aria-pressed="false">
+                Incidents only</button
+              ><button type="button" data-filter="transitions" aria-pressed="false">
+                Transitions only
+              </button>
+            </div>
+            <small data-count aria-live="polite">6 groups</small>
+          </div>
+          <ol class="timeline" aria-label="Chronological diagnostic events"></ol>
+          <div class="empty" hidden>
+            <h3>Session cleared</h3>
+            <p class="muted">No events recorded.</p>
+            <button type="button" data-action="restore">Restore sample session</button>
+          </div>
+          <div class="tail">
+            Repeated samples stay inside one incident. Recovered incidents remain available until
+            reset or reload.
+          </div>
+        </main>
+        <footer>
+          <small>Local only · up to 120 retained transitions</small>
+          <div class="actions">
+            <button
+              class="icon"
+              type="button"
+              aria-label="Reset session"
+              data-tooltip="Reset session"
+              data-action="reset"
+            >
+              <i data-lucide="rotate-ccw" aria-hidden="true">↶</i></button
+            ><button
+              class="icon"
+              type="button"
+              aria-label="Export local JSON"
+              data-tooltip="Export local JSON"
+              data-action="export"
+            >
+              <i data-lucide="download" aria-hidden="true">↓</i>
+            </button>
+          </div>
+        </footer>
+      </div>
+      <div class="minimized" hidden>
+        <span class="current" data-mini>Diagnostics · recording</span
+        ><button type="button" data-action="expand">Expand</button>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  ;(() => {
+    const root = document.getElementById('pt-event-prototype')
+    const incidents = {
+      frames: {
+        title: 'Reader responsiveness dropped',
+        severity: 'critical',
+        label: 'Critical',
+        time: '00:14',
+        end: '00:27',
+        duration: '13 s',
+        peak: '182 ms',
+        metric: 'Peak frame interval',
+        threshold: '150 ms',
+        samples: '7 evaluations',
+        reason:
+          'Frame intervals crossed the provisional critical threshold in three consecutive samples.',
+        work: ['PDF page render · 154 ms', 'EPUB reflow · 96 ms'],
+        next: 'Record a browser Performance trace during the same scroll or tab-switch sequence. Inspect scripting, layout and paint.',
+        rule: 'Frame interval: attention ≥50 ms; critical ≥150 ms. Three consecutive samples; three healthy evaluations to recover. Provisional rule v1.',
+        steps: [
+          ['00:14', 'Needs attention', '76 ms frame interval', 'attention'],
+          ['00:18', 'Critical', '182 ms peak · 3-sample breach', 'critical'],
+          ['00:27', 'Recovered', '3 healthy evaluations', 'good'],
+        ],
+      },
+      tasks: {
+        title: 'Repeated long tasks',
+        severity: 'attention',
+        label: 'Needs attention',
+        time: '02:03',
+        end: '02:15',
+        duration: '12 s',
+        peak: '320 ms',
+        metric: 'Peak long-task sum / interval',
+        threshold: '200 ms',
+        samples: '6 evaluations',
+        reason:
+          'Long-task duration exceeded the provisional attention threshold for three consecutive sampling intervals.',
+        work: ['PDF page navigation · 206 ms', 'PDF page render · 188 ms'],
+        next: 'Inspect long tasks in a browser Performance trace. Check repeated rendering or layout work before changing the threshold.',
+        rule: 'Long-task sum per sample: attention ≥200 ms; critical ≥1000 ms. Three consecutive samples; three healthy evaluations to recover. Provisional rule v1.',
+        steps: [
+          ['02:03', 'Needs attention', '320 ms long-task sum / interval', 'attention'],
+          ['02:15', 'Recovered', '3 healthy evaluations', 'good'],
+        ],
+      },
+    }
+    const entries = [
+      {
+        id: 'start',
+        time: '00:00',
+        kind: 'neutral',
+        title: 'Sampling started',
+        description: 'Foreground observation window opened.',
+      },
+      { id: 'frames', incident: true },
+      {
+        id: 'cancel',
+        time: '01:10',
+        kind: 'neutral',
+        title: 'PDF render cancelled',
+        description: 'Replaced by newer navigation · expected cancellation.',
+      },
+      { id: 'tasks', incident: true },
+      {
+        id: 'now',
+        time: '04:12',
+        kind: 'good',
+        title: 'Good · observed responsiveness',
+        description: 'Current readings recovered. Earlier incidents remain retained.',
+      },
+    ]
+    let filter = 'all',
+      selected = 'frames',
+      paused = false,
+      cleared = false
+    const list = root.querySelector('.timeline')
+    const detail = (id) => {
+      const d = incidents[id]
+      return `<div class="detail" id="pt-incident-${id}"><div class="detail-top"><div><small>${d.metric}</small><br><strong>${d.peak}</strong></div><div><small>${d.label} target</small><br><strong>${d.threshold} · provisional</strong></div><div><small>Duration</small><br><strong>${d.duration}</strong></div></div><ol class="sequence" aria-label="Incident state changes">${d.steps.map((s) => `<li><time>${s[0]}</time><span class="state ${s[3]}-text">${s[1]}</span><span class="muted">${s[2]}</span></li>`).join('')}</ol><h4>Observed signal</h4><p>${d.reason}</p><h4>Nearby recorded work</h4><div class="correlation">${d.work.map((w) => `<span>${w}</span>`).join('')}</div><p class="muted">Correlated activity; the exact root cause is not yet attributed.</p><h4>Investigate next</h4><p>${d.next}</p><details><summary>Captured rules · ${d.samples}</summary><p class="rule">${d.rule}</p></details></div>`
+    }
+    function incident(id) {
+      const d = incidents[id],
+        open = selected === id
+      return `<li class="entry" data-kind="${d.severity}"><time class="time">${d.time}</time><div class="rail" aria-hidden="true"></div><div class="event"><button type="button" class="event-header" aria-expanded="${open}" aria-controls="pt-incident-${id}" data-incident="${id}"><span class="event-title"><strong>${d.title}</strong><span class="tags"><span class="tag ${d.severity}">${d.label}</span><span class="tag">Recovered</span><span class="chevron" aria-hidden="true">›</span></span></span><span class="muted">${d.time}–${d.end} · ${d.duration} · peak ${d.peak}</span></button>${open ? detail(id) : `<div id="pt-incident-${id}" hidden></div>`}</div></li>`
+    }
+    function simple(e) {
+      return `<li class="entry" data-kind="${e.kind}"><time class="time">${e.time}</time><div class="rail" aria-hidden="true"></div><div class="event"><div class="event-header"><h3>${e.title}</h3><p class="muted">${e.description}</p></div></div></li>`
+    }
+    function render() {
+      let html = '',
+        count = 0
+      if (!cleared) {
+        if (filter === 'transitions') {
+          const transitions = [
+            {
+              time: '00:00',
+              kind: 'neutral',
+              title: 'Sampling started',
+              description: 'Collecting supported observations.',
+            },
+            ...incidents.frames.steps.map((s) => ({
+              time: s[0],
+              kind: s[3],
+              title: s[1],
+              description: 'Reader responsiveness · ' + s[2],
+            })),
+            ...incidents.tasks.steps.map((s) => ({
+              time: s[0],
+              kind: s[3],
+              title: s[1],
+              description: 'Long tasks · ' + s[2],
+            })),
+            {
+              time: '04:12',
+              kind: 'good',
+              title: 'Good · current state',
+              description: 'Observed responsiveness recovered.',
+            },
+          ]
+          html = transitions.map(simple).join('')
+          count = transitions.length
+        } else {
+          const shown = filter === 'issues' ? entries.filter((e) => e.incident) : entries
+          html = shown.map((e) => (e.incident ? incident(e.id) : simple(e))).join('')
+          count = shown.length
+        }
+      }
+      list.innerHTML = html
+      root.querySelector('[data-count]').textContent = cleared
+        ? '0 events'
+        : count +
+          (filter === 'transitions'
+            ? ' transitions'
+            : filter === 'issues'
+              ? ' incidents'
+              : ' groups')
+      root.querySelector('.empty').hidden = !cleared
+      root.querySelector('.tail').hidden = cleared
+      root.querySelectorAll('[data-incident]').forEach((button) =>
+        button.addEventListener('click', () => {
+          const id = button.dataset.incident
+          selected = selected === id ? null : id
+          render()
+          root.querySelector('[data-incident="' + id + '"]').focus({ preventScroll: true })
+        }),
+      )
+    }
+    root.querySelectorAll('[data-filter]').forEach((b) =>
+      b.addEventListener('click', () => {
+        filter = b.dataset.filter
+        root
+          .querySelectorAll('[data-filter]')
+          .forEach((t) => t.setAttribute('aria-pressed', String(t === b)))
+        render()
+      }),
+    )
+    root.querySelector('[data-action=pause]').addEventListener('click', (e) => {
+      paused = !paused
+      const label = paused ? 'Resume sampling' : 'Pause sampling'
+      e.currentTarget.setAttribute('aria-label', label)
+      e.currentTarget.dataset.tooltip = label
+      e.currentTarget.innerHTML = paused
+        ? '<i data-lucide="play" aria-hidden="true">▷</i>'
+        : '<i data-lucide="pause" aria-hidden="true">Ⅱ</i>'
+      root.querySelector('[data-current]').textContent = paused
+        ? 'Paused · history retained'
+        : 'Recording · recovered'
+      root.querySelector('[data-mini]').textContent = paused
+        ? 'Diagnostics · paused'
+        : 'Diagnostics · recording'
+      if (typeof lucide !== 'undefined') lucide.createIcons({ attrs: { width: 16, height: 16 } })
+    })
+    const collapse = (closed) => {
+      root.querySelector('.expanded').hidden = true
+      root.querySelector('.minimized').hidden = false
+      root.querySelector('[data-mini]').textContent = closed
+        ? 'Diagnostics · closed'
+        : paused
+          ? 'Diagnostics · paused'
+          : 'Diagnostics · recording'
+      if (closed) {
+        paused = true
+        const button = root.querySelector('[data-action=pause]')
+        button.setAttribute('aria-label', 'Resume sampling')
+        button.dataset.tooltip = 'Resume sampling'
+        button.innerHTML = '<i data-lucide="play" aria-hidden="true">▷</i>'
+        root.querySelector('[data-current]').textContent = 'Paused · history retained'
+      }
+    }
+    root.querySelector('[data-action=minimize]').addEventListener('click', () => collapse(false))
+    root.querySelector('[data-action=close]').addEventListener('click', () => collapse(true))
+    root.querySelector('[data-action=expand]').addEventListener('click', () => {
+      root.querySelector('.expanded').hidden = false
+      root.querySelector('.minimized').hidden = true
+    })
+    root.querySelector('[data-action=reset]').addEventListener('click', () => {
+      cleared = true
+      render()
+    })
+    root.querySelector('[data-action=restore]').addEventListener('click', () => {
+      cleared = false
+      selected = 'frames'
+      render()
+    })
+    root.querySelector('[data-action=export]').addEventListener('click', () => {
+      const u = URL.createObjectURL(
+        new Blob(
+          [
+            JSON.stringify(
+              { simulated: true, designProposal: true, incidents: cleared ? {} : incidents },
+              null,
+              2,
+            ),
+          ],
+          { type: 'application/json' },
+        ),
+      )
+      const a = document.createElement('a')
+      a.href = u
+      a.download = 'papertrail-timeline-sample.json'
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(u), 1000)
+    })
+    render()
+  })()
+</script>
