@@ -6,7 +6,6 @@ if (!builds || !report) throw new Error('Use npm run test:diagnostics:acceptance
 const engines = (process.env.DIAGNOSTIC_ENGINES || 'chromium').split(',') as (
   'chromium' | 'firefox' | 'webkit'
 )[]
-const quote = (value: string) => `'${value.replaceAll("'", "'\"'\"'")}'`
 export default defineConfig({
   testDir: './tests',
   workers: 1,
@@ -34,7 +33,8 @@ export default defineConfig({
     ['production', 4176],
     ['diagnostic', 4177],
   ].map(([mode, port]) => ({
-    command: `node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port ${port} --outDir ${quote(path.join(builds, String(mode)))}`,
+    command: `node scripts/serve-diagnostics-preview.mjs ${mode}`,
+    env: { DIAGNOSTIC_BUILD_ROOT: builds },
     url: `http://127.0.0.1:${port}`,
     reuseExistingServer: false,
   })),

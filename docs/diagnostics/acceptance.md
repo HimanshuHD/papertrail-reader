@@ -4,6 +4,8 @@ Run `npm run test:diagnostics:acceptance` manually after installing the desired 
 
 The command builds two temporary artifacts from the current checkout: default production and the same production channel with diagnostics explicitly enabled. It checks diagnostic marker exclusion/inclusion across split bundles and records every output file's byte count and SHA-256. Temporary build directories are removed afterward. Reports stay under `browser-evidence/diagnostics-acceptance/run-*/`; nothing is uploaded.
 
+Preview servers receive the temporary build root through an environment variable and pass it directly to Vite’s JavaScript API. Filesystem paths are never shell-quoted, so Windows drive paths and paths containing spaces/apostrophes remain literal. No custom temporary-folder location is required.
+
 ## Workload and modes
 
 For each requested engine, three fresh-context trials per mode run sequentially, with mode order rotated between trials:
