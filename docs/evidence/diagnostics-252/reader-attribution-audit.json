@@ -1,0 +1,1371 @@
+{
+  "source": {
+    "sha": "cea424f6ee4b2e64127ec9c3b902dcda859c5aa6",
+    "tree": "a79c7b5b988cf2b6dcd2d511d2be841298110c76",
+    "dirty": false
+  },
+  "stats": {
+    "startTime": "2026-10-21T17:46:26.266Z",
+    "duration": 85078.901,
+    "expected": 16,
+    "skipped": 2,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "readerAttribution": [
+    {
+      "engine": "chromium",
+      "source": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "cea424f6ee4b2e64127ec9c3b902dcda859c5aa6",
+        "workingTree": "Clean"
+      },
+      "outcomes": [
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 918,
+          "endedAtMs": 929,
+          "waitMs": 4,
+          "processingMs": 7,
+          "durationMs": 11,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 918,
+          "endedAtMs": 929,
+          "waitMs": 5,
+          "processingMs": 6,
+          "durationMs": 11,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 918,
+          "endedAtMs": 938,
+          "waitMs": 5,
+          "processingMs": 15,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 929,
+          "endedAtMs": 939,
+          "waitMs": 10,
+          "processingMs": 0,
+          "durationMs": 10,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 944,
+          "endedAtMs": 978,
+          "waitMs": 0,
+          "processingMs": 34,
+          "durationMs": 34,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 978,
+          "endedAtMs": 998,
+          "waitMs": 1,
+          "processingMs": 19,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 998,
+          "endedAtMs": 1013,
+          "waitMs": 0,
+          "processingMs": 15,
+          "durationMs": 15,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1014,
+          "endedAtMs": 1029,
+          "waitMs": 0,
+          "processingMs": 15,
+          "durationMs": 15,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1030,
+          "endedAtMs": 1046,
+          "waitMs": 0,
+          "processingMs": 16,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1047,
+          "endedAtMs": 1063,
+          "waitMs": 0,
+          "processingMs": 16,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "workspace.write",
+          "queuedAtMs": 1068,
+          "endedAtMs": 1069,
+          "waitMs": 0,
+          "processingMs": 1,
+          "durationMs": 1,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1063,
+          "endedAtMs": 1074,
+          "waitMs": 0,
+          "processingMs": 11,
+          "durationMs": 11,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.cold-open",
+          "queuedAtMs": 748,
+          "endedAtMs": 1079,
+          "waitMs": 0,
+          "processingMs": 331,
+          "durationMs": 331,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1083,
+          "endedAtMs": 1113,
+          "waitMs": 11,
+          "processingMs": 19,
+          "durationMs": 30,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1083,
+          "endedAtMs": 1113,
+          "waitMs": 20,
+          "processingMs": 10,
+          "durationMs": 30,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1104,
+          "endedAtMs": 1130,
+          "waitMs": 1,
+          "processingMs": 25,
+          "durationMs": 26,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1234,
+          "endedAtMs": 1257,
+          "waitMs": 1,
+          "processingMs": 22,
+          "durationMs": 23,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1257,
+          "endedAtMs": 1269,
+          "waitMs": 0,
+          "processingMs": 12,
+          "durationMs": 12,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1270,
+          "endedAtMs": 1289,
+          "waitMs": 0,
+          "processingMs": 19,
+          "durationMs": 19,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1290,
+          "endedAtMs": 1311,
+          "waitMs": 0,
+          "processingMs": 21,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1311,
+          "endedAtMs": 1328,
+          "waitMs": 0,
+          "processingMs": 17,
+          "durationMs": 17,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1328,
+          "endedAtMs": 1349,
+          "waitMs": 0,
+          "processingMs": 21,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1350,
+          "endedAtMs": 1370,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1358,
+          "endedAtMs": 1376,
+          "waitMs": 1,
+          "processingMs": 17,
+          "durationMs": 18,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1395,
+          "endedAtMs": 1428,
+          "waitMs": 0,
+          "processingMs": 33,
+          "durationMs": 33,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1395,
+          "endedAtMs": 1430,
+          "waitMs": 0,
+          "processingMs": 35,
+          "durationMs": 35,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1429,
+          "endedAtMs": 1452,
+          "waitMs": 0,
+          "processingMs": 23,
+          "durationMs": 23,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1430,
+          "endedAtMs": 1453,
+          "waitMs": 0,
+          "processingMs": 23,
+          "durationMs": 23,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1452,
+          "endedAtMs": 1472,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1454,
+          "endedAtMs": 1479,
+          "waitMs": 0,
+          "processingMs": 25,
+          "durationMs": 25,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1496,
+          "endedAtMs": 1507,
+          "waitMs": 0,
+          "processingMs": 11,
+          "durationMs": 11,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1496,
+          "endedAtMs": 1516,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "workspace.write",
+          "queuedAtMs": 1565,
+          "endedAtMs": 1567,
+          "waitMs": 1,
+          "processingMs": 1,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 1608,
+          "endedAtMs": 1610,
+          "waitMs": 1,
+          "processingMs": 1,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1696,
+          "endedAtMs": 1700,
+          "waitMs": 2,
+          "processingMs": 2,
+          "durationMs": 4,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1693,
+          "endedAtMs": 1705,
+          "waitMs": 5,
+          "processingMs": 7,
+          "durationMs": 12,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 1696,
+          "endedAtMs": 1705,
+          "waitMs": 3,
+          "processingMs": 6,
+          "durationMs": 9,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1697,
+          "endedAtMs": 1709,
+          "waitMs": 2,
+          "processingMs": 10,
+          "durationMs": 12,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 1705,
+          "endedAtMs": 1710,
+          "waitMs": 3,
+          "processingMs": 2,
+          "durationMs": 5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1779,
+          "endedAtMs": 1812,
+          "waitMs": 1,
+          "processingMs": 32,
+          "durationMs": 33,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1780,
+          "endedAtMs": 1822,
+          "waitMs": 0,
+          "processingMs": 42,
+          "durationMs": 42,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1828,
+          "endedAtMs": 1847,
+          "waitMs": 0,
+          "processingMs": 19,
+          "durationMs": 19,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1861,
+          "endedAtMs": 1884,
+          "waitMs": 1,
+          "processingMs": 22,
+          "durationMs": 23,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.cold-open",
+          "queuedAtMs": 1683,
+          "endedAtMs": 1913,
+          "waitMs": 0,
+          "processingMs": 230,
+          "durationMs": 230,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1896,
+          "endedAtMs": 1932,
+          "waitMs": 1,
+          "processingMs": 35,
+          "durationMs": 36,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1918,
+          "endedAtMs": 1970,
+          "waitMs": 13,
+          "processingMs": 39,
+          "durationMs": 52,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1916,
+          "endedAtMs": 1972,
+          "waitMs": 12,
+          "processingMs": 44,
+          "durationMs": 56,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1952,
+          "endedAtMs": 1972,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1973,
+          "endedAtMs": 1988,
+          "waitMs": 0,
+          "processingMs": 15,
+          "durationMs": 15,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1988,
+          "endedAtMs": 2002,
+          "waitMs": 0,
+          "processingMs": 14,
+          "durationMs": 14,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 2017,
+          "endedAtMs": 2033,
+          "waitMs": 1,
+          "processingMs": 15,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2099,
+          "endedAtMs": 2100,
+          "waitMs": 0,
+          "processingMs": 1,
+          "durationMs": 1,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2103,
+          "endedAtMs": 2119,
+          "waitMs": 14,
+          "processingMs": 2,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2103,
+          "endedAtMs": 2120,
+          "waitMs": 14,
+          "processingMs": 3,
+          "durationMs": 17,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.warm-activate",
+          "queuedAtMs": 2195,
+          "endedAtMs": 2195,
+          "waitMs": 0,
+          "processingMs": 0,
+          "durationMs": 0,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2199,
+          "endedAtMs": 2215,
+          "waitMs": 13,
+          "processingMs": 3,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2199,
+          "endedAtMs": 2217,
+          "waitMs": 14,
+          "processingMs": 4,
+          "durationMs": 18,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2248,
+          "endedAtMs": 2248,
+          "waitMs": 0,
+          "processingMs": 0,
+          "durationMs": 0,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2251,
+          "endedAtMs": 242253,
+          "waitMs": 240000,
+          "processingMs": 2,
+          "durationMs": 240002,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 242251,
+          "endedAtMs": 242253,
+          "waitMs": 0,
+          "processingMs": 2,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 242251,
+          "endedAtMs": 242253,
+          "waitMs": 0,
+          "processingMs": 2,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "workspace.write",
+          "queuedAtMs": 242251,
+          "endedAtMs": 242253,
+          "waitMs": 0,
+          "processingMs": 2,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2251,
+          "endedAtMs": 242260,
+          "waitMs": 240000,
+          "processingMs": 9,
+          "durationMs": 240009,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 242253,
+          "endedAtMs": 242263,
+          "waitMs": 1,
+          "processingMs": 9,
+          "durationMs": 10,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 303264,
+          "endedAtMs": 303266,
+          "waitMs": 1,
+          "processingMs": 1,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303264,
+          "endedAtMs": 303266,
+          "waitMs": 2,
+          "processingMs": 0,
+          "durationMs": 2,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303331,
+          "endedAtMs": 303345,
+          "waitMs": 9,
+          "processingMs": 5,
+          "durationMs": 14,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 303331,
+          "endedAtMs": 303345,
+          "waitMs": 9,
+          "processingMs": 5,
+          "durationMs": 14,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303329,
+          "endedAtMs": 303352,
+          "waitMs": 10,
+          "processingMs": 13,
+          "durationMs": 23,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303331,
+          "endedAtMs": 303357,
+          "waitMs": 9,
+          "processingMs": 17,
+          "durationMs": 26,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 303346,
+          "endedAtMs": 303357,
+          "waitMs": 6,
+          "processingMs": 5,
+          "durationMs": 11,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.expired-open",
+          "queuedAtMs": 303324,
+          "endedAtMs": 303437,
+          "waitMs": 0,
+          "processingMs": 113,
+          "durationMs": 113,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303442,
+          "endedAtMs": 303448,
+          "waitMs": 5,
+          "processingMs": 1,
+          "durationMs": 6,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303441,
+          "endedAtMs": 303448,
+          "waitMs": 5,
+          "processingMs": 2,
+          "durationMs": 7,
+          "outcome": "completed",
+          "failure": null
+        }
+      ],
+      "clock": "Accelerated functional expiry; not overhead evidence"
+    },
+    {
+      "engine": "webkit",
+      "source": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "cea424f6ee4b2e64127ec9c3b902dcda859c5aa6",
+        "workingTree": "Clean"
+      },
+      "outcomes": [
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 997,
+          "endedAtMs": 1007,
+          "waitMs": 6,
+          "processingMs": 4,
+          "durationMs": 10,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 997,
+          "endedAtMs": 1007,
+          "waitMs": 6,
+          "processingMs": 4,
+          "durationMs": 10,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 997,
+          "endedAtMs": 1037,
+          "waitMs": 6,
+          "processingMs": 34,
+          "durationMs": 40,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 1007,
+          "endedAtMs": 1039,
+          "waitMs": 30,
+          "processingMs": 2,
+          "durationMs": 32,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1068,
+          "endedAtMs": 1084,
+          "waitMs": 1,
+          "processingMs": 15,
+          "durationMs": 16,
+          "outcome": "cancelled",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1029,
+          "endedAtMs": 1109,
+          "waitMs": 1,
+          "processingMs": 79,
+          "durationMs": 80,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1110,
+          "endedAtMs": 1125,
+          "waitMs": 0,
+          "processingMs": 15,
+          "durationMs": 15,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1126,
+          "endedAtMs": 1145,
+          "waitMs": 0,
+          "processingMs": 19,
+          "durationMs": 19,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1145,
+          "endedAtMs": 1165,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.cold-open",
+          "queuedAtMs": 786,
+          "endedAtMs": 1167,
+          "waitMs": 0,
+          "processingMs": 381,
+          "durationMs": 381,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1189,
+          "endedAtMs": 1218,
+          "waitMs": 22,
+          "processingMs": 7,
+          "durationMs": 29,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1189,
+          "endedAtMs": 1218,
+          "waitMs": 22,
+          "processingMs": 7,
+          "durationMs": 29,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1212,
+          "endedAtMs": 1236,
+          "waitMs": 0,
+          "processingMs": 24,
+          "durationMs": 24,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1322,
+          "endedAtMs": 1336,
+          "waitMs": 1,
+          "processingMs": 13,
+          "durationMs": 14,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1522,
+          "endedAtMs": 1543,
+          "waitMs": 1,
+          "processingMs": 20,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1592,
+          "endedAtMs": 1609,
+          "waitMs": 0,
+          "processingMs": 17,
+          "durationMs": 17,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1650,
+          "endedAtMs": 1670,
+          "waitMs": 1,
+          "processingMs": 19,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1664,
+          "endedAtMs": 1699,
+          "waitMs": 1,
+          "processingMs": 34,
+          "durationMs": 35,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1734,
+          "endedAtMs": 1750,
+          "waitMs": 1,
+          "processingMs": 15,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1735,
+          "endedAtMs": 1755,
+          "waitMs": 0,
+          "processingMs": 20,
+          "durationMs": 20,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1829,
+          "endedAtMs": 1850,
+          "waitMs": 2,
+          "processingMs": 19,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 1830,
+          "endedAtMs": 1855,
+          "waitMs": 1,
+          "processingMs": 24,
+          "durationMs": 25,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "workspace.write",
+          "queuedAtMs": 1905,
+          "endedAtMs": 1926,
+          "waitMs": 18,
+          "processingMs": 3,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1961,
+          "endedAtMs": 1969,
+          "waitMs": 6,
+          "processingMs": 2,
+          "durationMs": 8,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1950,
+          "endedAtMs": 1972,
+          "waitMs": 17,
+          "processingMs": 5,
+          "durationMs": 22,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 1961,
+          "endedAtMs": 1974,
+          "waitMs": 8,
+          "processingMs": 5,
+          "durationMs": 13,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 1961,
+          "endedAtMs": 1982,
+          "waitMs": 6,
+          "processingMs": 15,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 1974,
+          "endedAtMs": 1986,
+          "waitMs": 8,
+          "processingMs": 4,
+          "durationMs": 12,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 2131,
+          "endedAtMs": 2146,
+          "waitMs": 0,
+          "processingMs": 15,
+          "durationMs": 15,
+          "outcome": "cancelled",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 2130,
+          "endedAtMs": 2162,
+          "waitMs": 1,
+          "processingMs": 31,
+          "durationMs": 32,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.cold-open",
+          "queuedAtMs": 1935,
+          "endedAtMs": 2222,
+          "waitMs": 0,
+          "processingMs": 287,
+          "durationMs": 287,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2236,
+          "endedAtMs": 2257,
+          "waitMs": 18,
+          "processingMs": 3,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2232,
+          "endedAtMs": 2257,
+          "waitMs": 21,
+          "processingMs": 4,
+          "durationMs": 25,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 2262,
+          "endedAtMs": 2266,
+          "waitMs": 3,
+          "processingMs": 1,
+          "durationMs": 4,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 2277,
+          "endedAtMs": 2296,
+          "waitMs": 1,
+          "processingMs": 18,
+          "durationMs": 19,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.render-request",
+          "queuedAtMs": 2361,
+          "endedAtMs": 2373,
+          "waitMs": 1,
+          "processingMs": 11,
+          "durationMs": 12,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2515,
+          "endedAtMs": 2516,
+          "waitMs": 0,
+          "processingMs": 1,
+          "durationMs": 1,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2527,
+          "endedAtMs": 2540,
+          "waitMs": 7,
+          "processingMs": 6,
+          "durationMs": 13,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2527,
+          "endedAtMs": 2541,
+          "waitMs": 7,
+          "processingMs": 7,
+          "durationMs": 14,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.warm-activate",
+          "queuedAtMs": 2692,
+          "endedAtMs": 2692,
+          "waitMs": 0,
+          "processingMs": 0,
+          "durationMs": 0,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2701,
+          "endedAtMs": 2722,
+          "waitMs": 19,
+          "processingMs": 2,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2701,
+          "endedAtMs": 2722,
+          "waitMs": 19,
+          "processingMs": 2,
+          "durationMs": 21,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2810,
+          "endedAtMs": 2811,
+          "waitMs": 0,
+          "processingMs": 1,
+          "durationMs": 1,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2829,
+          "endedAtMs": 2844,
+          "waitMs": 13,
+          "processingMs": 2,
+          "durationMs": 15,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 2829,
+          "endedAtMs": 2845,
+          "waitMs": 13,
+          "processingMs": 3,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 242845,
+          "endedAtMs": 242850,
+          "waitMs": 0,
+          "processingMs": 5,
+          "durationMs": 5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 242845,
+          "endedAtMs": 242850,
+          "waitMs": 0,
+          "processingMs": 5,
+          "durationMs": 5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "workspace.write",
+          "queuedAtMs": 242845,
+          "endedAtMs": 242850,
+          "waitMs": 0,
+          "processingMs": 5,
+          "durationMs": 5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 242845,
+          "endedAtMs": 242864,
+          "waitMs": 0,
+          "processingMs": 19,
+          "durationMs": 19,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.write",
+          "queuedAtMs": 303866,
+          "endedAtMs": 303869,
+          "waitMs": 0,
+          "processingMs": 3,
+          "durationMs": 3,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 303866,
+          "endedAtMs": 303873,
+          "waitMs": 0,
+          "processingMs": 7,
+          "durationMs": 7,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 304024,
+          "endedAtMs": 304030,
+          "waitMs": 3,
+          "processingMs": 3,
+          "durationMs": 6,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.restore",
+          "queuedAtMs": 304024,
+          "endedAtMs": 304030,
+          "waitMs": 3,
+          "processingMs": 3,
+          "durationMs": 6,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 304015,
+          "endedAtMs": 304031,
+          "waitMs": 12,
+          "processingMs": 4,
+          "durationMs": 16,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 304025,
+          "endedAtMs": 304038,
+          "waitMs": 3,
+          "processingMs": 10,
+          "durationMs": 13,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.read",
+          "queuedAtMs": 304030,
+          "endedAtMs": 304040,
+          "waitMs": 5,
+          "processingMs": 5,
+          "durationMs": 10,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.expired-open",
+          "queuedAtMs": 304003,
+          "endedAtMs": 304134,
+          "waitMs": 0,
+          "processingMs": 131,
+          "durationMs": 131,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 304145,
+          "endedAtMs": 304150,
+          "waitMs": 2,
+          "processingMs": 3,
+          "durationMs": 5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "reading.transaction",
+          "queuedAtMs": 304143,
+          "endedAtMs": 304151,
+          "waitMs": 4,
+          "processingMs": 4,
+          "durationMs": 8,
+          "outcome": "completed",
+          "failure": null
+        }
+      ],
+      "clock": "Accelerated functional expiry; not overhead evidence"
+    }
+  ]
+}
