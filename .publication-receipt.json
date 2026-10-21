@@ -222,6 +222,16 @@
       "runId": "39021338753",
       "basePath": "/papertrail-reader/",
       "packageSha256": "220acfce7b02cc1f3abd6c97b46050a8a84ec78a746e1638194ba326599bbe33"
+    },
+    "v2.2.0": {
+      "schema": 1,
+      "tag": "v2.2.0",
+      "version": "2.2.0",
+      "sha": "dcac149b84f74eaf2fa0effb9225ae2da1f7e797",
+      "tree": "6e77ad7cbe6ee1098de5a587e1b0f1aa7f1e0389",
+      "runId": "39459183661",
+      "basePath": "/papertrail-reader/",
+      "packageSha256": "1fa65c217ff552d96613034a6455d033da250ef4dc037a31ed41e8b40f6546e0"
     }
   }
 }
