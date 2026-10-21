@@ -1,6 +1,12 @@
 /** Fixed-vocabulary, bounded investigation evidence. Never accepts keys, document IDs or arbitrary errors. */
 export type ResourceOperation =
-  'pdf.render-request' | 'pdf.release' | 'reading.transaction' | 'workspace.transaction'
+  | 'pdf.render-request'
+  | 'pdf.release'
+  | 'reading.transaction'
+  | 'workspace.transaction'
+  | `reading.${'read' | 'write' | 'restore'}`
+  | `workspace.${'restore' | 'write' | 'clear'}`
+  | `${'pdf' | 'epub'}.${'cold-open' | 'warm-activate' | 'expired-open' | 'restored-open'}`
 export type ResourceFailure = 'quota' | 'security' | 'cancelled' | 'blocked' | 'other'
 export type CacheKind = 'preview' | 'dimensions'
 export type ResourceOutcome = 'completed' | 'cancelled' | 'failed' | 'unavailable'
@@ -237,13 +243,13 @@ export class ResourceInvestigation {
         owned:
           'Instrumented application owners only; zero means no tracked ownership, never browser-wide zero. Canvas RGBA is a pixel estimate; Blob bytes are logical payload size. Do not sum these with heap/process memory.',
         timings:
-          'PDF wait covers previous-render cancellation/preparation; processing includes asynchronous PDF.js/render response. IndexedDB wait covers opening the connection; processing ends with transaction completion. Not worker CPU or engine-internal queue/response phases.',
+          'PDF wait covers previous-render cancellation/preparation; processing includes asynchronous PDF.js/render response. IndexedDB wait covers opening the connection; processing ends with transaction completion. Reading restore resolves saved identity/settings and may create or migrate metadata; read/write labels describe logical intent, not IDB transaction mode. Reader open runs from instance creation to its ready/error signal (including restoration); warm activation measures synchronous selection dispatch, not paint or first-readable latency. Not worker CPU or engine-internal queue/response phases.',
         caches:
           'Session-window hits/misses and capacity evictions at instrumented PDF preview/dimension lookups; no cache keys, files or document identities.',
         cleanup:
           'Mark before open/switch/close, then compare after disposal settles. Expected inactive readers can remain for five minutes. Positive deltas are investigation hints, not leak proof.',
         untracked:
-          'Reader-wide listener/observer/timer registrations, engine-internal worker stages and cold/warm/restore attribution are not instrumented in this increment.',
+          'Reader-wide listener/observer/timer registrations, engine-internal worker stages and browser paint after warm selection are not instrumented. Generic transactions from other metadata services remain unattributed.',
         pageMemory: optionalPageMemory(),
       },
     }

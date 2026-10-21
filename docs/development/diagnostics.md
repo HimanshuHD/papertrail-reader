@@ -153,3 +153,41 @@ Time labels use page-relative minutes/seconds. Exact timestamps, rule snapshots 
 ## Repeatable workload acceptance (#253)
 
 Use the manual [diagnostics acceptance runner](../diagnostics/acceptance.md) to build and checksum default/diagnostic artifacts and compare production, closed, sampling/minimized and paused reader workloads. It records real fixture timings with explicit provenance/limitations and runs capability/privacy/lifecycle browser checks. It does not run Visual QA, publish a deployment or certify #16 performance budgets.
+
+### Persistence intent and reader activation attribution (#252)
+
+Resources → Requests and local JSON distinguish `reading.read`, `reading.write`,
+`reading.restore`, `workspace.restore`, `workspace.write` and `workspace.clear`.
+PDF/EPUB position/settings restoration and bookmark reads/edits identify their
+logical intent. Restore/resolve may create a fresh record or migrate saved
+metadata; it is not a read-only transaction. Other metadata services retain the
+explicit generic `reading.transaction` label rather than guessing intent.
+Connection wait ends when IndexedDB opens; processing ends on transaction
+completion/commit, including validation and any read/modify/write work. It is
+not disk I/O or database-engine CPU time. Failed/aborted transactions retain
+only the existing fixed failure category.
+
+Reader instance creation is labelled `pdf.cold-open` / `epub.cold-open` on first
+creation, `*.restored-open` for a reconnected saved workspace shell, or
+`*.expired-open` when an inactive reader is recreated after the five-minute
+retention deadline. These span creation to the reader's ready/error signal,
+including its restoration, rather than isolating engine parsing. “Cold” refers
+to the application reader instance, not flushed browser, OS or filesystem caches.
+A `*.warm-activate` record covers synchronous selection dispatch for a retained,
+ready reader. It does **not** measure browser paint or first-readable latency;
+do not compare it as an equivalent open-duration measurement. Selecting the
+already active tab produces no activation record. Selecting a retained reader
+that is still loading does not fabricate a completed warm activation.
+
+Close/disconnect/expiry cancels unfinished creation evidence. Generation checks
+reject stale reader callbacks, and pause/reset/close discard recording tickets
+so old completions cannot enter a new diagnostic session. Opening diagnostics
+mid-operation does not backfill an invented start. Buffers remain bounded and
+no title, source path, fingerprint or session/document identifier is exported.
+The optional page-memory API, broader owned registrations and engine-internal
+stages remain follow-up work. These labels do not establish accepted budgets.
+
+`tests/diagnostics/attribution.spec.ts` exercises real PDF/EPUB warm reuse and
+reader recreation with an accelerated browser clock. That is functional
+retention evidence, **not** a real-time overhead measurement. The normal repeated
+workload keeps its real clock and separate performance limitations.

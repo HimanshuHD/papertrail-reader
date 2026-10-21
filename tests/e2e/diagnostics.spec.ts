@@ -119,9 +119,17 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   ).toBe(true)
   expect(
     summary.resourceInvestigation.timings.some(
-      (row: { operation: string }) => row.operation === 'reading.transaction',
+      (row: { operation: string }) => row.operation === 'reading.restore',
     ),
   ).toBe(true)
+  for (const operation of ['pdf.cold-open', 'epub.cold-open', 'pdf.warm-activate']) {
+    expect(
+      summary.resourceInvestigation.timings.some(
+        (row: { operation: string; outcome: string }) =>
+          row.operation === operation && row.outcome === 'completed',
+      ),
+    ).toBe(true)
+  }
   expect(
     summary.resourceInvestigation.caches.dimensions.hits +
       summary.resourceInvestigation.caches.dimensions.misses,

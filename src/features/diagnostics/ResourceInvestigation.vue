@@ -25,6 +25,20 @@ const operations: Record<ResourceOperation, string> = {
   'pdf.release': 'PDF teardown',
   'reading.transaction': 'Reading metadata transaction',
   'workspace.transaction': 'Workspace transaction',
+  'reading.read': 'Reading metadata read',
+  'reading.write': 'Reading metadata write',
+  'reading.restore': 'Reading metadata restore / resolve',
+  'workspace.restore': 'Workspace metadata restore',
+  'workspace.write': 'Workspace metadata write',
+  'workspace.clear': 'Workspace metadata clear',
+  'pdf.cold-open': 'PDF cold reader open',
+  'pdf.warm-activate': 'PDF warm selection dispatch',
+  'pdf.expired-open': 'PDF reader recreation after expiry',
+  'pdf.restored-open': 'PDF restored workspace reader open',
+  'epub.cold-open': 'EPUB cold reader open',
+  'epub.warm-activate': 'EPUB warm selection dispatch',
+  'epub.expired-open': 'EPUB reader recreation after expiry',
+  'epub.restored-open': 'EPUB restored workspace reader open',
 }
 const primary = computed(() =>
   props.snapshot.comparison.filter((row) =>
@@ -61,11 +75,16 @@ function delta(value: number | null, key: OwnedKey) {
     : `${value > 0 ? '+' : value < 0 ? '−' : ''}${display(Math.abs(value), key)}`
 }
 function stages(operation: ResourceOperation) {
-  return operation.endsWith('transaction')
+  return operation.startsWith('reading.') || operation.startsWith('workspace.')
     ? ['Connection', 'Transaction']
     : operation === 'pdf.release'
       ? ['Preparation', 'Teardown']
-      : ['Before processing', 'Processing']
+      : operation.endsWith('-open') || operation.endsWith('warm-activate')
+        ? [
+            'Before start',
+            operation.endsWith('warm-activate') ? 'Selection dispatch' : 'Until reader ready',
+          ]
+        : ['Before processing', 'Processing']
 }
 async function navigate(event: KeyboardEvent) {
   const index = categories.indexOf(selected.value)
