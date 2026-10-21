@@ -262,6 +262,9 @@ test('additional diagnostic sensors are opt-in and export private real browser o
   await expect(sensors).toContainText(/[1-9]\d* retained eligible interactions/)
   await expect(sensors).toContainText(/[1-9]\d* retained frames/)
   await expect(sensors).toContainText(/[1-9]\d* retained resources/)
+  await expect(sensors).toHaveCSS('max-height', 'none')
+  await expect(sensors).toHaveCSS('overflow', 'visible')
+  await expect(sensors.locator('article').first()).toHaveCSS('border-top-width', '1px')
   await expect(sensors).toContainText('not page INP')
   await info.attach('responsiveness-sensors', {
     body: await sensors.screenshot(),

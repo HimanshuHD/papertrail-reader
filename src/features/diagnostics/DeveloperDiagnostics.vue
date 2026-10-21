@@ -283,7 +283,7 @@ onBeforeUnmount(() => {
   font: 13px/1.5 system-ui;
   max-width: calc(100vw - 24px);
 }
-section {
+#developer-diagnostics-panel {
   width: min(650px, calc(100vw - 24px));
   max-height: min(760px, 85dvh);
   display: flex;

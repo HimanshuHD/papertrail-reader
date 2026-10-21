@@ -84,7 +84,7 @@ defineEmits<{ toggle: [] }>()
 <style scoped>
 .sensors {
   margin-top: 16px;
-  border-top: 1px solid var(--pt-border);
+  border-top: 1px solid var(--pt-line);
   padding-top: 12px;
 }
 .sensor-toggle {
@@ -102,12 +102,13 @@ defineEmits<{ toggle: [] }>()
   gap: 10px;
 }
 article {
-  border: 1px solid var(--pt-border);
+  border: 1px solid var(--pt-line);
   border-radius: 8px;
   padding: 10px;
   min-width: 0;
 }
 h4 {
+  font-weight: 600;
   margin: 0;
 }
 dl {
