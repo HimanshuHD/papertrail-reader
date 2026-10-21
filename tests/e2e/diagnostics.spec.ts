@@ -23,6 +23,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await waitForWorkspaceReady(page)
   const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   await toggle.click()
+  await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
   await page.locator('input[accept*=".pdf"]').setInputFiles([
     {
       name: 'private-name.pdf',
@@ -42,13 +43,28 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
       .getByRole('region', { name: 'Library documents', exact: true })
       .getByRole('button', { name: `${format}: private-name.${format.toLowerCase()}`, exact: true })
       .click()
-    if (format === 'PDF')
+    if (format === 'PDF') {
       await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
         'data-render-state',
         'ready',
       )
-    else await expect(page.locator('iframe')).toBeVisible()
+      await page.getByRole('button', { name: 'Next page', exact: true }).click()
+      await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute(
+        'data-render-state',
+        'ready',
+      )
+    } else {
+      await expect(page.locator('iframe')).toBeVisible()
+      await page.getByRole('button', { name: 'Next chapter', exact: true }).click()
+      await expect(
+        page.frameLocator('iframe').getByRole('heading', { name: 'Second chapter', exact: true }),
+      ).toBeVisible()
+      await page.getByRole('button', { name: 'Typography', exact: true }).click()
+      await page.getByRole('button', { name: 'Increase font size', exact: true }).click()
+      await page.getByRole('button', { name: 'Close typography', exact: true }).click()
+    }
   }
+  await toggle.click()
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'pdf.open-readable',
   )
@@ -56,8 +72,19 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
     'epub.open-readable',
   )
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
+    'epub.chapter',
+  )
+  await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
+    'epub.reflow',
+  )
+  await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'frameIntervalMs',
   )
+  await page.getByRole('tab', { name: /private-name.pdf/ }).click()
+  await expect(
+    page.locator('.session-panel:not(.session-inactive) [data-pdf-page="2"]'),
+  ).toHaveAttribute('data-render-state', 'ready')
+  await page.getByRole('tab', { name: /private-name.epub/ }).click()
   const pending = page.waitForEvent('download')
   await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
   const file = await pending
@@ -68,6 +95,18 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   expect(summary.identity.version).toBe('2.2.0')
   expect(summary.resources.viewers).toBeGreaterThanOrEqual(1)
   await info.attach('diagnostic-summary', { body: json, contentType: 'application/json' })
+  await page.getByRole('button', { name: 'Close private-name.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'Close private-name.epub', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Diagnostic measurements' }).locator('pre').first(),
+  ).toHaveText('{}')
+  const closedDownload = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
+  const closedFile = await closedDownload
+  const closed = JSON.parse(await readFile((await closedFile.path())!, 'utf8'))
+  expect(closed.resources.viewers ?? 0).toBe(0)
+  expect(closed.resources.pdfWorkerOwners ?? 0).toBe(0)
+  expect(closed.resources.blobURLs ?? 0).toBe(0)
   await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Reset session', exact: true }).click()

@@ -6,6 +6,7 @@ import { capabilities, startSampler } from './sampler'
 import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
 const open = ref(false)
+const minimized = ref(false)
 let lastOverhead: ReturnType<typeof startSampler>['overhead'] | null = null
 const snapshot = ref(diagnostics.snapshot())
 const available = ref(capabilities())
@@ -35,7 +36,16 @@ function resume() {
   available.value = sampler.available
   refresh()
 }
+function minimize() {
+  minimized.value = true
+  trigger.value?.focus()
+}
 function toggle() {
+  if (open.value && minimized.value) {
+    minimized.value = false
+    return
+  }
+  minimized.value = false
   open.value = !open.value
   if (open.value) resume()
   else {
@@ -91,14 +101,20 @@ onBeforeUnmount(() => {
     <button
       ref="trigger"
       type="button"
-      :aria-expanded="open"
+      :aria-expanded="open && !minimized"
       aria-controls="developer-diagnostics-panel"
       @click="toggle"
     >
       Developer diagnostics
     </button>
-    <section v-if="open" id="developer-diagnostics-panel" aria-label="Diagnostic measurements">
+    <span v-if="open && minimized"> · {{ snapshot.running ? 'Sampling' : 'Paused' }}</span>
+    <section
+      v-if="open && !minimized"
+      id="developer-diagnostics-panel"
+      aria-label="Diagnostic measurements"
+    >
       <h2>Developer diagnostics</h2>
+      <button type="button" @click="minimize">Minimize diagnostics</button>
       <p>Local measurements · Ctrl+Alt+D · Escape closes and stops sampling.</p>
       <dl>
         <template v-for="(value, key) in identity" :key="key"

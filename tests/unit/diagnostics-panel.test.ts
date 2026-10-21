@@ -21,9 +21,20 @@ it('keeps sampling off until opened, exports locally, resets session and cleans 
   const toggle = wrapper.get('button[aria-controls]')
   await toggle.trigger('click')
   expect(diagnostics.running).toBe(true)
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Minimize diagnostics')!
+    .trigger('click')
+  expect(wrapper.find('section').exists()).toBe(false)
+  expect(diagnostics.running).toBe(true)
+  expect(document.activeElement).toBe(toggle.element)
+  await toggle.trigger('click')
   diagnostics.start('pdf.render')?.()
   vi.advanceTimersByTime(1000)
-  await wrapper.get('section button').trigger('click') // Pause
+  await wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Pause')!
+    .trigger('click')
   expect(diagnostics.running).toBe(false)
   expect(vi.getTimerCount()).toBe(0)
   const exportButton = wrapper

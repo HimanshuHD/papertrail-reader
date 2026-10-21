@@ -16,7 +16,7 @@ performance budgets, total browser-process memory, or leak freedom.
   are included. A checkout SHA does not certify uncommitted bytes.
 
 The panel is a nonmodal developer region and does not replace reader controls.
-Sampling starts on opening, not on application startup. Pause retains history;
+Sampling starts on opening, not on application startup. Minimize hides the panel while keeping sampling active so reader controls remain accessible; the Developer diagnostics button expands it again. Pause retains history;
 Reset creates a new measurement session and drops late completions. Resource
 ownership remains current when paused. Unmount stops observers/timers/listeners.
 
@@ -91,3 +91,20 @@ Preserve exported summaries without adding source file names/content to reports.
   reader recording, private download, pause/reset and focus restoration.
 - Functional browser tests are distinct from manual-only Visual QA. No approved
   image baselines are changed by this feature.
+
+## Initial browser evidence — 21 October 2026
+
+Local isolated headless Chromium 153.0.8010.0 passed the matching production
+exclusion case and diagnostic mixed-reader case. The latter exercised a synthetic
+three-page PDF, page navigation, EPUB chapter navigation/typography reflow, warm
+tab switches, private JSON export, both tab closures and released viewer/worker/
+Blob counters, followed by pause/reset/close focus restoration. Minimize keeps
+sampling active while leaving reader controls accessible. The normal Playwright
+browser download failed; the isolated npm-distributed Chromium harness was used
+without changing repository dependencies or workflow configuration.
+
+During that mixed-reader run, two sampling/snapshot callbacks cost 1.70ms total,
+1.20ms maximum. This is an observed synchronous callback subset, not total
+instrumentation overhead or a process-memory measurement. Repeated representative
+warm/cold A/B workloads and other supported engines remain acceptance work;
+this initial fixture run does not complete #16 or certify a performance budget.
