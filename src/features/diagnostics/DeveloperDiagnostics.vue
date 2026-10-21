@@ -8,6 +8,8 @@ import IndicatorTargets from './IndicatorTargets.vue'
 import type { Metric } from './recorder'
 import DiagnosticDashboard from './DiagnosticDashboard.vue'
 import DiagnosticSensors from './DiagnosticSensors.vue'
+import type { DiagnosticView } from './presentation'
+import type { SensorKind } from './sensor-presentation'
 import { ResponsivenessSensors } from './responsiveness'
 import { capabilities, startSampler } from './sampler'
 import { downloadJson } from '../../services/file-download'
@@ -16,6 +18,8 @@ const open = ref(false)
 const minimized = ref(false)
 const sensors = new ResponsivenessSensors()
 const sensorsEnabled = ref(false)
+const activeDiagnosticTab = ref<DiagnosticView>('Overview')
+const activeSensorCategory = ref<SensorKind>('inputs')
 const sensorSnapshot = ref(sensors.snapshot())
 function toggleSensors() {
   sensorsEnabled.value = !sensorsEnabled.value
@@ -192,6 +196,7 @@ onBeforeUnmount(() => {
       </header>
       <div class="dashboard-content">
         <DiagnosticDashboard
+          v-model:active-tab="activeDiagnosticTab"
           :snapshot="snapshot"
           :capabilities="available"
           :health="health"
@@ -199,6 +204,7 @@ onBeforeUnmount(() => {
         >
           <template #sensors>
             <DiagnosticSensors
+              v-model:selected="activeSensorCategory"
               :snapshot="sensorSnapshot"
               :enabled="sensorsEnabled"
               @toggle="toggleSensors"

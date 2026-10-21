@@ -1,5 +1,7 @@
 import type { DiagnosticRecorder, Metric, Timing } from './recorder'
 
+export type DiagnosticView =
+  'Overview' | 'Sensors' | 'Operations' | 'Resources' | 'Timeline' | 'Technical details'
 export type Snapshot = ReturnType<DiagnosticRecorder['snapshot']>
 export const P95_MIN_SAMPLES = 20
 export const metricNames: Record<Metric, string> = {

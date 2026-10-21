@@ -1,6 +1,6 @@
 # Responsiveness and loading sensors (#251)
 
-Open Developer diagnostics → Overview → **Enable additional sensors (experimental)** in development, preview or staging. Ordinary production/release builds exclude the panel and sensor code. The additional observers remain **off by default**, independently of the existing frame/long-task sampler. Readings are informational and do not change the health evaluation or duplicate Long Tasks in a score.
+Open Developer diagnostics → Sensors → **Capture sensors** in development, preview or staging. Ordinary production/release builds exclude the panel and sensor code. The additional observers remain **off by default**, independently of the existing frame/long-task sampler. Readings are informational and do not change the health evaluation or duplicate Long Tasks in a score.
 
 ## Reading the cards
 
@@ -27,3 +27,9 @@ Reproduce with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium node scrip
 Callback timing excludes browser-native instrumentation, Vue rendering and total application overhead. Automation elapsed times are noisy and include rendering/scheduling. The observations validate capture and bounded callback work only; they do not justify default enablement or certify accepted performance budgets. Real PDF/EPUB workload calibration, other browsers and device classes remain under #253/#16. Optional navigation/paint/LCP/layout-shift startup sensors are deferred; they are not runtime reader health.
 
 Primary API references: [Event Timing](https://www.w3.org/TR/event-timing/), [Long Animation Frames](https://www.w3.org/TR/long-animation-frames/), [Resource Timing](https://www.w3.org/TR/resource-timing/).
+
+## Dedicated Sensors view
+
+Owner-approved [interactive prototype](../design/diagnostics/sensors-prototype.html) and [source fragment](../design/diagnostics/sensors-prototype-fragment.html) use simulated values only. The live app uses recorded readings. Sensors is a separate main tab after Overview; Inputs, Long frames and Loading are keyboard-accessible categories. Selected view/category persist through minimize/reopen. Each shows latest duration, zero-based duration trend, retained count, median/worst and p95 only after20 observations. These are retained-observation statistics, not page INP, a rolling time window or calibrated targets.
+
+“How to read this / captured evidence” explains the source, actual API status, threshold/rounding, retained count, coverage, privacy-safe loading size/category evidence and investigation hints. Unavailable attribution remains unavailable; overlapping long-frame phases are not stacked or added. Header/footer, evaluation status, icon tooltips, opt-in lifecycle and production exclusion remain intact.

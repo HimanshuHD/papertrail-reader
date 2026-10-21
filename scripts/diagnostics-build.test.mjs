@@ -42,7 +42,7 @@ test('production excludes diagnostics; preview/staging and explicit builds inclu
         'Developer diagnostics',
         'samplerOverhead',
         'long-animation-frame',
-        'Enable additional sensors',
+        'Capture sensors',
         'pdf.open-readable',
         'droppedTimings',
         'library.first-listing',

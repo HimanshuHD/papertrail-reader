@@ -178,8 +178,8 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   const overview = region.getByRole('tab', { name: 'Overview', exact: true })
   await overview.focus()
   await page.keyboard.press('ArrowRight')
-  await expect(region.getByRole('tab', { name: 'Operations', exact: true })).toBeFocused()
-  await expect(region.getByRole('tabpanel', { name: 'Operations', exact: true })).toBeVisible()
+  await expect(region.getByRole('tab', { name: 'Sensors', exact: true })).toBeFocused()
+  await expect(region.getByRole('tabpanel', { name: 'Sensors', exact: true })).toBeVisible()
   await page.keyboard.press('End')
   await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
   await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
@@ -228,8 +228,9 @@ test('additional diagnostic sensors are opt-in and export private real browser o
   await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   await toggle.click()
+  await page.getByRole('tab', { name: 'Sensors', exact: true }).click()
   const enabled = page.getByRole('checkbox', {
-    name: 'Enable additional sensors (experimental)',
+    name: 'Capture sensors',
     exact: true,
   })
   await expect(enabled).not.toBeChecked()
@@ -259,13 +260,25 @@ test('additional diagnostic sensors are opt-in and export private real browser o
     name: 'Responsiveness and loading sensors',
     exact: true,
   })
-  await expect(sensors).toContainText(/[1-9]\d* retained eligible interactions/)
-  await expect(sensors).toContainText(/[1-9]\d* retained frames/)
-  await expect(sensors).toContainText(/[1-9]\d* retained resources/)
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
   await expect(sensors).toHaveCSS('max-height', 'none')
   await expect(sensors).toHaveCSS('overflow', 'visible')
-  await expect(sensors.locator('article').first()).toHaveCSS('border-top-width', '1px')
-  await expect(sensors).toContainText('not page INP')
+  await expect(sensors).toContainText('Not page INP')
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Requested event duration ≥ 16 ms')
+  await sensors.getByRole('tab', { name: 'Long frames', exact: true }).click()
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  await expect(sensors).toContainText('Phases overlap')
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Event / callback / other')
+  await sensors.getByRole('tab', { name: 'Loading', exact: true }).click()
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Zero transfer can mean cache')
+  await sensors.getByRole('tab', { name: 'Inputs', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(sensors.getByRole('tab', { name: 'Loading', exact: true })).toBeFocused()
+  await sensors.getByRole('tab', { name: 'Inputs', exact: true }).click()
   await info.attach('responsiveness-sensors', {
     body: await sensors.screenshot(),
     contentType: 'image/png',
@@ -283,6 +296,6 @@ test('additional diagnostic sensors are opt-in and export private real browser o
   expect(text).not.toContain('PRIVATE_SENSOR_FIXTURE')
   expect(text).not.toMatch(/sourceURL|sourceFunctionName|interactionId|initiatorType/)
   await page.getByRole('button', { name: 'Reset session', exact: true }).click()
-  await expect(sensors).toContainText('0 retained eligible interactions')
+  await expect(sensors).toContainText('0 retained observations')
   await page.getByRole('button', { name: 'Close diagnostics', exact: true }).click()
 })
