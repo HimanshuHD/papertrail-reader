@@ -2,6 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { version } from '../../../package.json'
 import { diagnostics } from './recorder'
+import DiagnosticDashboard from './DiagnosticDashboard.vue'
 import { capabilities, startSampler } from './sampler'
 import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
@@ -116,47 +117,38 @@ onBeforeUnmount(() => {
       <h2>Developer diagnostics</h2>
       <button type="button" @click="minimize">Minimize diagnostics</button>
       <p>Local measurements · Ctrl+Alt+D · Escape closes and stops sampling.</p>
-      <dl>
-        <template v-for="(value, key) in identity" :key="key"
-          ><dt>{{ key }}</dt>
-          <dd>{{ value }}</dd></template
-        >
-      </dl>
-      <p>Session {{ snapshot.session }} · {{ snapshot.running ? 'Sampling' : 'Paused' }}</p>
       <div class="actions">
         <button v-if="snapshot.running" @click="pause">Pause</button
         ><button v-else @click="resume">Resume</button><button @click="reset">Reset session</button
         ><button @click="exportSummary">Export local JSON</button
         ><button @click="toggle">Close diagnostics</button>
       </div>
-      <h3>Capabilities</h3>
-      <ul>
-        <li v-for="(value, key) in available" :key="key">{{ key }}: {{ value }}</li>
-      </ul>
-      <h3>Owned resources</h3>
-      <p>
-        Tracked application resources only. Absent counters have no registered owner; they are not
-        browser-wide totals.
-      </p>
-      <pre>{{ JSON.stringify(snapshot.resources, null, 2) }}</pre>
-      <p>
-        Pending {{ JSON.stringify(snapshot.pending) }} · Cancelled {{ snapshot.cancellations }} ·
-        Dropped {{ snapshot.droppedTimings }}
-      </p>
-      <h3>Latest sample</h3>
-      <pre>{{
-        JSON.stringify(snapshot.samples.at(-1) ?? 'Unavailable: waiting for sample', null, 2)
-      }}</pre>
-      <h3>Recent lifecycle timings (ms)</h3>
-      <ol>
-        <li v-for="(timing, index) in snapshot.timings.slice(-20)" :key="index">
-          {{ timing.metric }} · {{ timing.durationMs.toFixed(2) }} · {{ timing.outcome }}
-        </li>
-      </ol>
-      <p>
-        At most 120 timings/samples retained. Frame intervals are estimates, not universal FPS. Use
-        browser Task Manager/process profiling and DevTools heap snapshots for full memory analysis.
-      </p>
+      <DiagnosticDashboard :snapshot="snapshot" :capabilities="available" />
+      <details>
+        <summary>Technical details</summary>
+        <h3>Build and session</h3>
+        <dl>
+          <template v-for="(value, key) in identity" :key="key"
+            ><dt>{{ key }}</dt>
+            <dd>{{ value }}</dd></template
+          >
+        </dl>
+        <p>Session {{ snapshot.session }}</p>
+        <h3>Capabilities</h3>
+        <ul>
+          <li v-for="(value, key) in available" :key="key">{{ key }}: {{ value }}</li>
+        </ul>
+        <h3>Owned resources (raw)</h3>
+        <pre>{{ JSON.stringify(snapshot.resources, null, 2) }}</pre>
+        <h3>Latest sample (raw)</h3>
+        <pre>{{
+          JSON.stringify(snapshot.samples.at(-1) ?? 'Unavailable: waiting for sample', null, 2)
+        }}</pre>
+        <p>
+          At most 120 timings/samples retained. Sampling callback timing in the export covers
+          synchronous sampler/snapshot work only, not all rendering or diagnostic overhead.
+        </p>
+      </details>
     </section>
   </aside>
 </template>
@@ -166,23 +158,33 @@ onBeforeUnmount(() => {
   right: 12px;
   bottom: 12px;
   z-index: 1000;
-  color: var(--color-ink, #202636);
-  background: var(--color-surface, #fff);
-  border: 1px solid #888;
+  color: var(--pt-ink);
+  background: var(--pt-panel);
+  border: 1px solid var(--pt-line);
   border-radius: 8px;
   font: 13px/1.5 system-ui;
 }
 button {
   padding: 6px 10px;
-  border: 1px solid currentColor;
+  border: 1px solid var(--pt-line);
+  background: var(--pt-panel);
+  color: var(--pt-ink);
   border-radius: 4px;
   cursor: pointer;
 }
 section {
-  width: min(470px, calc(100vw - 32px));
+  width: min(650px, calc(100vw - 32px));
   max-height: 70dvh;
   overflow: auto;
   padding: 12px;
+}
+details {
+  margin-top: 12px;
+  border-top: 1px solid var(--pt-line);
+  padding-top: 12px;
+}
+summary {
+  cursor: pointer;
 }
 h2,
 h3 {

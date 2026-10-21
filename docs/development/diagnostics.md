@@ -108,3 +108,11 @@ During that mixed-reader run, two sampling/snapshot callbacks cost 1.70ms total,
 instrumentation overhead or a process-memory measurement. Repeated representative
 warm/cold A/B workloads and other supported engines remain acceptance work;
 this initial fixture run does not complete #16 or certify a performance budget.
+
+## Readable dashboard (planned delivery #249)
+
+The default view now groups real readings into Overview, Operations, Resources and Timeline. Build/session/capabilities and raw resource/sample JSON remain under **Technical details**. Keyboard tabs support arrows/Home/End; pause/reset/export/minimize and Ctrl+Alt+D/Escape retain their existing lifecycle semantics.
+
+Operations report last, median, nearest-rank p95 (minimum 20 completed observations), worst and completed count over retained history. Cancelled/failed/unavailable work is excluded from duration statistics and shown separately. This is not a fixed time window. Frame and heap charts contain actual retained samples and preserve unavailable gaps. JS heap is not process RAM; preview pixel bytes are estimates; PDF task owners are not thread counts. A missing resource owner is not a measured browser-wide zero.
+
+Health targets are unconfigured in this increment; no green/red performance verdict is inferred from arbitrary totals. Additional metrics, indicators, baseline comparison and external profiling are sequenced in [the design plan](../design/diagnostics/README.md), linked issues #250–#253 and #16. Prototype values are simulated and never seeded into the application.

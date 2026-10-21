@@ -65,6 +65,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
     }
   }
   await toggle.click()
+  await page.getByRole('tab', { name: 'Operations', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'pdf.open-readable',
   )
@@ -77,6 +78,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'epub.reflow',
   )
+  await page.getByText('Technical details', { exact: true }).click()
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'frameIntervalMs',
   )
@@ -97,20 +99,67 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await info.attach('diagnostic-summary', { body: json, contentType: 'application/json' })
   await page.getByRole('button', { name: 'Close private-name.pdf', exact: true }).click()
   await page.getByRole('button', { name: 'Close private-name.epub', exact: true }).click()
-  await expect(
-    page.getByRole('region', { name: 'Diagnostic measurements' }).locator('pre').first(),
-  ).toHaveText('{}')
-  const closedDownload = page.waitForEvent('download')
-  await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
-  const closedFile = await closedDownload
-  const closed = JSON.parse(await readFile((await closedFile.path())!, 'utf8'))
-  expect(closed.resources.viewers ?? 0).toBe(0)
-  expect(closed.resources.pdfWorkerOwners ?? 0).toBe(0)
-  expect(closed.resources.blobURLs ?? 0).toBe(0)
+  // PDF metadata/preview workers can finish asynchronously after the reader closes.
+  // Poll the live exported recorder, rather than a one-second-old rendered snapshot.
+  await expect
+    .poll(
+      async () => {
+        const closedDownload = page.waitForEvent('download')
+        await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
+        const closedFile = await closedDownload
+        const closed = JSON.parse(await readFile((await closedFile.path())!, 'utf8'))
+        return {
+          viewers: closed.resources.viewers ?? 0,
+          workers: closed.resources.pdfWorkerOwners ?? 0,
+          blobs: closed.resources.blobURLs ?? 0,
+        }
+      },
+      { timeout: 15000 },
+    )
+    .toEqual({ viewers: 0, workers: 0, blobs: 0 })
   await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Reset session', exact: true }).click()
   await page.getByRole('button', { name: 'Close diagnostics', exact: true }).click()
   await expect(toggle).toBeFocused()
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toHaveCount(0)
+})
+
+test('diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode', async ({
+  page,
+}, info) => {
+  test.skip(!diagnostic, 'Explicit diagnostic build only')
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.emulateMedia({ colorScheme: 'dark' })
+  await page.goto('./#/app')
+  await waitForWorkspaceReady(page)
+  await page.getByRole('button', { name: 'Developer diagnostics', exact: true }).click()
+  const region = page.getByRole('region', { name: 'Diagnostic measurements' })
+  await expect(region).toContainText('Targets not configured')
+  const overview = region.getByRole('tab', { name: 'Overview', exact: true })
+  await overview.focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(region.getByRole('tab', { name: 'Operations', exact: true })).toBeFocused()
+  await expect(region.getByRole('tabpanel', { name: 'Operations', exact: true })).toBeVisible()
+  await page.keyboard.press('End')
+  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toBeFocused()
+  await expect(region).toContainText('No recorded operations')
+  await region.getByRole('tab', { name: 'Resources', exact: true }).click()
+  await expect(region.getByRole('tabpanel', { name: 'Resources', exact: true })).toContainText(
+    'No registered owner',
+  )
+  const bounds = await region.boundingBox()
+  expect(bounds!.x).toBeGreaterThanOrEqual(0)
+  expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320)
+  await region.getByRole('tab', { name: 'Overview', exact: true }).click()
+  await info.attach('dashboard-320-dark', {
+    body: await region.screenshot(),
+    contentType: 'image/png',
+  })
+  await page.keyboard.press('Escape')
+  await expect(region).toHaveCount(0)
+  await expect(
+    page.getByRole('button', { name: 'Developer diagnostics', exact: true }),
+  ).toBeFocused()
 })
