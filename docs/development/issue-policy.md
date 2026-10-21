@@ -25,7 +25,7 @@ Bugs use `severity:critical` for unusable core reading/data loss, `severity:high
 
 Assign planned issues to the actual owning milestone. Group related symptoms only when they share actionable scope. Link parent and children reciprocally, retain acceptance checklists, and record branch, commits, PR, test evidence and merge source. `Refs #N` keeps an issue open for outstanding acceptance; use `Closes #N` only when completion is justified. The owner merges PRs.
 
-PRs start in draft and become ready only after Frontend CI passes. Automatic Browser E2E runs at draft → ready for review for eligible non-docs PRs only. Updates to a ready PR get Frontend CI; deliberately dispatch Browser E2E when later changes require it. Publishing previews remains manual. Reconcile issue labels/acceptance and milestone grouping after merge; update Wiki scope/decisions when necessary. Do not write current status to repository tracker archives.
+PRs start in draft during implementation. The current Frontend CI workflow intentionally skips draft PRs: after local required checks pass, mark the PR ready to build and validate its candidate. Require green Frontend CI and Candidate validation before preview publication or merge. Staging PRs skip the PR browser job; staging integration performs browser acceptance on the exact candidate after merge. Eligible production/main candidates require their configured browser acceptance. Publishing previews and Visual QA remain manual. Reconcile issue labels/acceptance and milestone grouping after merge; update Wiki scope/decisions when necessary. Do not write current status to repository tracker archives.
 
 ---
 
