@@ -67,3 +67,72 @@ it('keeps sampling off until opened, exports locally, resets session and cleans 
   expect(clear).toHaveBeenCalledWith(interval.mock.results.at(-1)!.value)
   expect(cancel).toHaveBeenCalledWith(raf.mock.results.at(-1)!.value)
 })
+
+it('additional sensors remain opt-in, continue minimized, stop paused/closed and reset retained readings', async () => {
+  vi.useFakeTimers()
+  const instances: { disconnect: ReturnType<typeof vi.fn> }[] = []
+  vi.stubGlobal(
+    'PerformanceObserver',
+    class {
+      static supportedEntryTypes = ['event', 'long-animation-frame', 'resource']
+      disconnect = vi.fn()
+      constructor() {
+        instances.push(this)
+      }
+      observe() {}
+      takeRecords() {
+        return []
+      }
+    },
+  )
+  const wrapper = mount(DeveloperDiagnostics, { attachTo: document.body })
+  const button = (name: string) =>
+    wrapper.findAll('button').find((b) => b.attributes('aria-label') === name)!
+  const exportSensors = async () => {
+    await button('Export local JSON').trigger('click')
+    return JSON.parse(vi.mocked(downloadJson).mock.calls.at(-1)![0]).responsiveness
+  }
+  try {
+    await wrapper.get('button[aria-controls]').trigger('click')
+    expect(instances).toHaveLength(0)
+    await wrapper
+      .findAll('[role=tab]')
+      .find((b) => b.text() === 'Sensors')!
+      .trigger('click')
+    await wrapper.get('input[type="checkbox"]').setValue(true)
+    expect(instances).toHaveLength(3)
+    await wrapper
+      .findAll('[role=tab]')
+      .find((b) => b.text() === 'Long frames')!
+      .trigger('click')
+    expect((await exportSensors()).active).toBe(true)
+    await button('Minimize diagnostics').trigger('click')
+    expect(instances.every((o) => !o.disconnect.mock.calls.length)).toBe(true)
+    await wrapper.get('button[aria-controls]').trigger('click')
+    expect(
+      wrapper
+        .findAll('[role=tab]')
+        .find((b) => b.text() === 'Sensors')!
+        .attributes('aria-selected'),
+    ).toBe('true')
+    expect(
+      wrapper
+        .findAll('[role=tab]')
+        .find((b) => b.text() === 'Long frames')!
+        .attributes('aria-selected'),
+    ).toBe('true')
+    await button('Pause').trigger('click')
+    expect(instances.every((o) => o.disconnect.mock.calls.length === 1)).toBe(true)
+    expect((await exportSensors()).active).toBe(false)
+    await button('Resume').trigger('click')
+    expect(instances).toHaveLength(6)
+    await button('Reset session').trigger('click')
+    expect(instances).toHaveLength(9)
+    expect((await exportSensors()).inputs).toEqual([])
+    await button('Close diagnostics').trigger('click')
+    expect(instances.every((o) => o.disconnect.mock.calls.length === 1)).toBe(true)
+  } finally {
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+  }
+})

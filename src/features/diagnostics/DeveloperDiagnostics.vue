@@ -7,11 +7,26 @@ import { IndicatorMonitor, type Target } from './indicators'
 import IndicatorTargets from './IndicatorTargets.vue'
 import type { Metric } from './recorder'
 import DiagnosticDashboard from './DiagnosticDashboard.vue'
+import DiagnosticSensors from './DiagnosticSensors.vue'
+import type { DiagnosticView } from './presentation'
+import type { SensorKind } from './sensor-presentation'
+import { ResponsivenessSensors } from './responsiveness'
 import { capabilities, startSampler } from './sampler'
 import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
 const open = ref(false)
 const minimized = ref(false)
+const sensors = new ResponsivenessSensors()
+const sensorsEnabled = ref(false)
+const activeDiagnosticTab = ref<DiagnosticView>('Overview')
+const activeSensorCategory = ref<SensorKind>('inputs')
+const sensorSnapshot = ref(sensors.snapshot())
+function toggleSensors() {
+  sensorsEnabled.value = !sensorsEnabled.value
+  if (sensorsEnabled.value && diagnostics.running) sensors.start()
+  else sensors.stop()
+  refresh()
+}
 const lastOverhead = ref<ReturnType<typeof startSampler>['overhead'] | null>(null)
 const snapshot = ref(diagnostics.snapshot())
 const available = ref(capabilities())
@@ -34,12 +49,14 @@ function configureTarget(metric: Metric, kind: 'operations' | 'pending', target:
 }
 let sampler: ReturnType<typeof startSampler> | undefined
 function refresh() {
+  sensorSnapshot.value = sensors.snapshot()
   snapshot.value = diagnostics.snapshot()
   health.value = monitor.update(snapshot.value, performance.now(), !document.hidden)
   indicatorHistory.value = [...monitor.history]
   if (sampler) lastOverhead.value = { ...sampler.overhead }
 }
 function pause() {
+  sensors.stop()
   if (sampler) lastOverhead.value = { ...sampler.overhead }
   sampler?.stop()
   sampler = undefined
@@ -49,6 +66,7 @@ function pause() {
 function resume() {
   if (sampler) return
   diagnostics.resume()
+  if (sensorsEnabled.value) sensors.start()
   monitor.restart(performance.now())
   sampler = startSampler(refresh)
   available.value = sampler.available
@@ -76,6 +94,7 @@ function reset() {
   sampler?.stop()
   sampler = undefined
   diagnostics.reset()
+  sensors.reset()
   monitor.restart(performance.now(), true)
   lastOverhead.value = null
   if (running) resume()
@@ -88,6 +107,7 @@ function exportSummary() {
         ...diagnostics.snapshot(),
         identity,
         capabilities: available.value,
+        responsiveness: sensors.snapshot(),
         samplerOverhead: sampler?.overhead ?? lastOverhead.value,
         indicators: {
           configuration: monitor.config,
@@ -176,12 +196,39 @@ onBeforeUnmount(() => {
       </header>
       <div class="dashboard-content">
         <DiagnosticDashboard
+          v-model:active-tab="activeDiagnosticTab"
           :snapshot="snapshot"
           :capabilities="available"
           :health="health"
           :indicator-history="indicatorHistory"
         >
+          <template #sensors>
+            <DiagnosticSensors
+              v-model:selected="activeSensorCategory"
+              :snapshot="sensorSnapshot"
+              :enabled="sensorsEnabled"
+              @toggle="toggleSensors"
+            />
+          </template>
           <template #technical>
+            <h3>Additional sensor scope and overhead</h3>
+            <p>
+              Observer callback timing includes entry projection only; excludes browser
+              instrumentation, Vue rendering and total observer overhead. Sensors remain opt-in
+              pending workload calibration.
+            </p>
+            <pre>{{
+              JSON.stringify(
+                {
+                  active: sensorSnapshot.active,
+                  capabilities: sensorSnapshot.capabilities,
+                  scope: sensorSnapshot.scope,
+                  overhead: sensorSnapshot.overhead,
+                },
+                null,
+                2,
+              )
+            }}</pre>
             <h3>Build and session</h3>
 
             <dl>
@@ -242,7 +289,7 @@ onBeforeUnmount(() => {
   font: 13px/1.5 system-ui;
   max-width: calc(100vw - 24px);
 }
-section {
+#developer-diagnostics-panel {
   width: min(650px, calc(100vw - 24px));
   max-height: min(760px, 85dvh);
   display: flex;

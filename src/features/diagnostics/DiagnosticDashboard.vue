@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import type { IndicatorResult, IndicatorEvent } from './indicators'
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import DiagnosticTimeline from './DiagnosticTimeline.vue'
 import DiagnosticTrend from './DiagnosticTrend.vue'
-import { measurement, operationStats, type Snapshot } from './presentation'
+import { measurement, operationStats, type Snapshot, type DiagnosticView } from './presentation'
 const props = defineProps<{
   snapshot: Snapshot
   capabilities: Record<string, string>
   health?: IndicatorResult
   indicatorHistory?: IndicatorEvent[]
 }>()
-const tabs = ['Overview', 'Operations', 'Resources', 'Timeline', 'Technical details'] as const
-const active = ref<(typeof tabs)[number]>('Overview')
+const tabs = [
+  'Overview',
+  'Sensors',
+  'Operations',
+  'Resources',
+  'Timeline',
+  'Technical details',
+] as const
+const active = defineModel<DiagnosticView>('activeTab', { default: 'Overview' })
 const stats = computed(() => operationStats(props.snapshot.timings))
 const latest = computed(() => props.snapshot.samples.at(-1))
 const resources = [
@@ -143,6 +150,9 @@ function selectTab(event: KeyboardEvent, index: number) {
         Up to 120 timings and 120 samples retained, sampled approximately every second. This is
         retained history, not a fixed rolling time window. No document contents are recorded.
       </p>
+    </template>
+    <template v-else-if="tab === 'Sensors'">
+      <slot name="sensors" />
     </template>
     <template v-else-if="tab === 'Operations'">
       <p>

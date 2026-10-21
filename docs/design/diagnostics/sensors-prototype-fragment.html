@@ -1,0 +1,652 @@
+<style>
+  #pt-sensor-preview {
+    --pt-bg: light-dark(#fff, #1b2b35);
+    --pt-canvas: light-dark(#f3f7f8, #14232d);
+    --pt-ink: light-dark(#183c49, #e4edf3);
+    --pt-muted: light-dark(#536d78, #b4c6ce);
+    --pt-line: light-dark(#c7d7db, #3b505d);
+    --pt-active: light-dark(#23686b, #285a60);
+    --pt-on-active: #fff;
+    --pt-chart: light-dark(#217a7d, #78d2c3);
+    --pt-soft: light-dark(#eaf4f3, #223f44);
+    font:
+      13px/1.5 system-ui,
+      sans-serif;
+    color: var(--pt-ink);
+    padding: 18px 8px;
+  }
+  #pt-sensor-preview * {
+    box-sizing: border-box;
+  }
+  #pt-sensor-preview .window {
+    max-width: 650px;
+    margin: auto;
+    background: var(--pt-bg);
+    border: 1px solid var(--pt-line);
+    border-bottom: 0;
+    border-radius: 12px 12px 0 0;
+    overflow: hidden;
+  }
+  #pt-sensor-preview header,
+  #pt-sensor-preview footer {
+    padding: 12px 16px;
+    background: var(--pt-canvas);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  #pt-sensor-preview h2 {
+    font: 600 15px/1.4 system-ui;
+    margin: 0;
+  }
+  #pt-sensor-preview h3 {
+    font: 600 15px/1.4 system-ui;
+    margin: 0 0 4px;
+  }
+  #pt-sensor-preview p {
+    margin: 0;
+  }
+  #pt-sensor-preview .muted {
+    color: var(--pt-muted);
+    font-size: 12px;
+  }
+  #pt-sensor-preview .actions {
+    display: flex;
+    gap: 4px;
+  }
+  #pt-sensor-preview button {
+    font: inherit;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: 5px;
+    min-height: 32px;
+    padding: 6px 9px;
+  }
+  #pt-sensor-preview button:hover {
+    background: var(--pt-soft);
+  }
+  #pt-sensor-preview .icon {
+    width: 32px;
+    display: grid;
+    place-items: center;
+    padding: 6px;
+  }
+  #pt-sensor-preview .icon svg {
+    width: 17px;
+    height: 17px;
+  }
+  #pt-sensor-preview .evaluation {
+    padding: 12px 16px;
+    border-top: 1px solid var(--pt-line);
+  }
+  #pt-sensor-preview .evaluation strong {
+    font-weight: 600;
+  }
+  #pt-sensor-preview .scope {
+    padding: 0 16px 10px;
+    color: var(--pt-muted);
+    font-size: 12px;
+  }
+  #pt-sensor-preview .main-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 6px 10px;
+    gap: 3px;
+    border-block: 1px solid var(--pt-line);
+    background: var(--pt-bg);
+  }
+  #pt-sensor-preview .main-tabs button {
+    font-size: 12px;
+    padding: 6px 9px;
+  }
+  #pt-sensor-preview .main-tabs [aria-selected='true'] {
+    background: var(--pt-active);
+    color: var(--pt-on-active);
+  }
+  #pt-sensor-preview .content {
+    padding: 16px;
+  }
+  #pt-sensor-preview .sensor-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 14px;
+  }
+  #pt-sensor-preview .switch {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-weight: 500;
+  }
+  #pt-sensor-preview input {
+    accent-color: var(--pt-active);
+    width: 16px;
+    height: 16px;
+  }
+  #pt-sensor-preview .segments {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding: 3px;
+    gap: 3px;
+    background: var(--pt-canvas);
+    border-radius: 7px;
+    margin-bottom: 18px;
+  }
+  #pt-sensor-preview .segments button[aria-selected='true'] {
+    background: var(--pt-bg);
+    font-weight: 600;
+    box-shadow: 0 0 0 1px var(--pt-line);
+  }
+  #pt-sensor-preview .segment-summary {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    align-items: start;
+    margin: 16px 0;
+  }
+  #pt-sensor-preview .headline {
+    font: 600 30px/1.2 system-ui;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  #pt-sensor-preview .headline small {
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--pt-muted);
+  }
+  #pt-sensor-preview .scope-label {
+    font-size: 11px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--pt-muted);
+    margin-bottom: 4px;
+  }
+  #pt-sensor-preview .chart {
+    width: 100%;
+    display: block;
+    height: 100px;
+    margin: 4px 0;
+  }
+  #pt-sensor-preview .chart text {
+    fill: var(--pt-muted);
+    font: 11px system-ui;
+  }
+  #pt-sensor-preview .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    padding-block: 12px;
+    border-block: 1px solid var(--pt-line);
+    margin: 12px 0 18px;
+    gap: 10px;
+  }
+  #pt-sensor-preview .stats strong {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+  }
+  #pt-sensor-preview .rows {
+    display: grid;
+    gap: 12px;
+    margin-block: 14px;
+  }
+  #pt-sensor-preview .reading {
+    display: grid;
+    grid-template-columns: 140px 1fr 65px;
+    gap: 10px;
+    align-items: center;
+  }
+  #pt-sensor-preview .track {
+    height: 6px;
+    background: var(--pt-canvas);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  #pt-sensor-preview .fill {
+    display: block;
+    height: 100%;
+    background: var(--pt-chart);
+    border-radius: 4px;
+  }
+  #pt-sensor-preview .value {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  #pt-sensor-preview details {
+    border-top: 1px solid var(--pt-line);
+    padding-top: 12px;
+    margin-top: 14px;
+  }
+  #pt-sensor-preview summary {
+    font-weight: 500;
+    min-height: 32px;
+  }
+  #pt-sensor-preview .evidence {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 7px 12px;
+    margin: 10px 0;
+    font-size: 12px;
+  }
+  #pt-sensor-preview .notice {
+    background: var(--pt-canvas);
+    padding: 9px 12px;
+    border-radius: 5px;
+    color: var(--pt-muted);
+    font-size: 12px;
+    margin-top: 14px;
+  }
+  #pt-sensor-preview footer {
+    border-top: 1px solid var(--pt-line);
+  }
+  #pt-sensor-preview .draft {
+    max-width: 650px;
+    margin: 0 auto 9px;
+    font-size: 11px;
+    color: var(--pt-muted);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  #pt-sensor-preview .launcher {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin: 20px auto 0;
+    background: var(--pt-bg);
+    border: 1px solid var(--pt-line);
+    border-radius: 9px 9px 0 0;
+    padding: 10px 14px;
+  }
+  #pt-sensor-preview [hidden] {
+    display: none !important;
+  }
+  @media (max-width: 440px) {
+    #pt-sensor-preview .content {
+      padding: 12px;
+    }
+    #pt-sensor-preview .main-tabs button {
+      flex: 1 0 29%;
+      font-size: 12px;
+    }
+    #pt-sensor-preview .reading {
+      grid-template-columns: 118px 1fr 56px;
+      gap: 7px;
+    }
+    #pt-sensor-preview .headline {
+      font-size: 26px;
+    }
+    #pt-sensor-preview header,
+    #pt-sensor-preview footer {
+      padding: 10px 12px;
+    }
+    #pt-sensor-preview .stats strong {
+      font-size: 14px;
+    }
+  }
+</style>
+<div id="pt-sensor-preview" class="viz-dotted-background">
+  <div class="draft">Design preview · Simulated readings</div>
+  <div class="window">
+    <header>
+      <div>
+        <h2>Developer diagnostics</h2>
+        <p class="muted">PaperTrail · Local session · v2.2.0</p>
+      </div>
+      <div class="actions">
+        <button
+          type="button"
+          class="icon cursor-interaction"
+          aria-label="Pause sampling"
+          data-tooltip="Pause sampling"
+          data-action="pause"
+        >
+          <i data-lucide="pause" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="icon cursor-interaction"
+          aria-label="Minimize diagnostics"
+          data-tooltip="Minimize diagnostics"
+          data-action="minimize"
+        >
+          <i data-lucide="minimize" aria-hidden="true"></i>
+        </button>
+        <button
+          type="button"
+          class="icon cursor-interaction"
+          aria-label="Close diagnostics"
+          data-tooltip="Close diagnostics"
+          data-action="close"
+        >
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
+    <div class="evaluation">
+      <strong>✓ Good · observed responsiveness</strong>
+      <p class="muted">Recent foreground samples are within the configured provisional targets.</p>
+    </div>
+    <p class="scope">Recording · Targets not configured by default</p>
+    <nav class="main-tabs" role="tablist" aria-label="Diagnostic views">
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view="Overview"
+        aria-controls="pt-sensor-pane"
+      >
+        Overview
+      </button>
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="true"
+        data-view="Sensors"
+        aria-controls="pt-sensor-pane"
+      >
+        Sensors
+      </button>
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view="Operations"
+        aria-controls="pt-sensor-pane"
+      >
+        Operations
+      </button>
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view="Resources"
+        aria-controls="pt-sensor-pane"
+      >
+        Resources
+      </button>
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view="Timeline"
+        aria-controls="pt-sensor-pane"
+      >
+        Timeline
+      </button>
+      <button
+        class="cursor-interaction"
+        type="button"
+        role="tab"
+        aria-selected="false"
+        data-view="Technical details"
+        aria-controls="pt-sensor-pane"
+      >
+        Technical details
+      </button>
+    </nav>
+    <div class="content" id="pt-sensor-pane" role="tabpanel" aria-label="Sensors">
+      <div class="sensor-content">
+        <div class="sensor-head">
+          <div>
+            <h3>Browser sensors</h3>
+            <p class="muted" data-capture>Enabled · Foreground activity · Current frame</p>
+          </div>
+          <label class="switch"
+            ><input type="checkbox" checked data-enabled /> Capture sensors</label
+          >
+        </div>
+        <div class="segments" role="tablist" aria-label="Sensor categories">
+          <button
+            type="button"
+            class="cursor-interaction"
+            role="tab"
+            aria-selected="true"
+            data-sensor="inputs"
+            aria-controls="pt-sensor-detail"
+          >
+            Inputs
+          </button>
+          <button
+            type="button"
+            class="cursor-interaction"
+            role="tab"
+            aria-selected="false"
+            data-sensor="frames"
+            aria-controls="pt-sensor-detail"
+          >
+            Long frames
+          </button>
+          <button
+            type="button"
+            class="cursor-interaction"
+            role="tab"
+            aria-selected="false"
+            data-sensor="loading"
+            aria-controls="pt-sensor-detail"
+          >
+            Loading
+          </button>
+        </div>
+        <div id="pt-sensor-detail" role="tabpanel" aria-live="polite"></div>
+        <div class="notice">Informational · Not included in the overall health indicator</div>
+      </div>
+      <div class="other-content" hidden></div>
+    </div>
+    <footer>
+      <span class="muted" data-footer>Local only · Preview data</span>
+      <div class="actions">
+        <button
+          type="button"
+          class="icon cursor-interaction"
+          aria-label="Reset session"
+          data-tooltip="Reset session"
+          data-action="reset"
+        >
+          <i data-lucide="rotate-ccw" aria-hidden="true"></i></button
+        ><button
+          type="button"
+          class="icon cursor-interaction"
+          aria-label="Export local JSON"
+          data-tooltip="Export local JSON"
+          data-action="export"
+        >
+          <i data-lucide="download" aria-hidden="true"></i>
+        </button>
+      </div>
+    </footer>
+  </div>
+  <button type="button" class="launcher cursor-interaction" hidden data-action="restore">
+    ○ Developer diagnostics <span class="muted">Paused</span>
+  </button>
+</div>
+<script>
+  ;(() => {
+    const root = document.getElementById('pt-sensor-preview')
+    const detail = root.querySelector('#pt-sensor-detail')
+    const series = {
+      inputs: [
+        32, 48, 40, 24, 32, 56, 40, 64, 48, 32, 24, 40, 160, 88, 56, 40, 32, 48, 40, 32, 24, 56, 48,
+        64,
+      ],
+      frames: [58, 62, 75, 54, 110, 68, 83],
+      loading: [18, 34, 22, 110, 56, 42],
+    }
+    let selected = 'inputs',
+      paused = false,
+      cleared = false
+    const config = {
+      inputs: {
+        heading: 'How quickly did input respond?',
+        source: 'Event Timing',
+        label: 'Latest longest event',
+        unit: 'ms',
+        rows: [
+          ['Waiting to run', 12],
+          ['Handler processing', 18],
+        ],
+        names: ['Waiting for the main thread', 'Running the event handler'],
+        note: 'Eligible interactions only · Rounded durations · Not page INP',
+        evidence: [
+          ['Observed interactions', '24 of up to 120 retained'],
+          ['Collection threshold', 'Requested event duration ≥ 16 ms'],
+          ['Coverage', 'Current frame; EPUB iframe activity is partial'],
+          [
+            'Interpretation',
+            'High wait: inspect main-thread contention. High handler time: inspect interaction code.',
+          ],
+        ],
+      },
+      frames: {
+        heading: 'Where did the frame spend time?',
+        source: 'Long Animation Frames',
+        label: 'Latest long frame',
+        unit: 'ms',
+        rows: [
+          ['Blocking duration', 27],
+          ['Rendering phase', 6],
+          ['Style/layout phase', 2],
+          ['Forced layout', 1.2],
+        ],
+        note: 'Only frames over 50 ms · Phases overlap; do not add these rows',
+        evidence: [
+          ['Observed long frames', '7 of up to 120 retained'],
+          ['Attribution', 'Event / callback / other; no script URLs'],
+          ['Coverage', 'Supported browser attribution only'],
+          [
+            'Interpretation',
+            'Inspect rendering/style work and captured script categories. LoAF overlaps Long Tasks.',
+          ],
+        ],
+      },
+      loading: {
+        heading: 'How long did resources take to load?',
+        source: 'Resource Timing',
+        label: 'Latest resource load',
+        unit: 'ms',
+        rows: [],
+        note: 'Browser resources only · Does not measure local PDF/EPUB file reads',
+        evidence: [
+          ['Latest category', 'script'],
+          ['Transfer size', '0 bytes — cache or restricted timing possible'],
+          ['Encoded body', '18.4 KB'],
+          [
+            'Interpretation',
+            'Inspect network loading separately from local document-open timings. No URLs or filenames are stored.',
+          ],
+        ],
+      },
+    }
+    function chart(values) {
+      const width = Math.max(240, detail.clientWidth || 590),
+        height = 100,
+        left = 34,
+        right = 12,
+        top = 12,
+        bottom = 24,
+        max = Math.max(...values) * 1.15
+      const points = values
+        .map(
+          (v, i) =>
+            `${left + (i * (width - left - right)) / Math.max(1, values.length - 1)},${top + (height - top - bottom) * (1 - v / max)}`,
+        )
+        .join(' ')
+      return `<svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Simulated retained ${selected} durations in milliseconds"><line x1="${left}" y1="${height - bottom}" x2="${width - right}" y2="${height - bottom}" stroke="var(--pt-line)"/><text x="${left - 7}" y="${top + 4}" text-anchor="end">${Math.ceil(max)}</text><text x="${left - 7}" y="${height - bottom + 3}" text-anchor="end">0</text><polyline points="${points}" fill="none" stroke="var(--pt-chart)" stroke-width="2" stroke-linejoin="round"/><text x="${left}" y="${height - 3}">Earlier</text><text x="${width - right}" y="${height - 3}" text-anchor="end">Latest observation</text></svg>`
+    }
+    function render() {
+      const c = config[selected]
+      if (cleared) {
+        detail.innerHTML =
+          '<h3>No retained readings</h3><p class="muted">Reset cleared this simulated session.</p>'
+        return
+      }
+      const vals = series[selected],
+        sorted = [...vals].sort((a, b) => a - b),
+        median =
+          sorted.length % 2
+            ? sorted[(sorted.length - 1) / 2]
+            : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2
+      detail.innerHTML = `<h3>${c.heading}</h3><p class="muted">${c.source} · ${paused ? 'Retained readings' : 'Simulated browser readings'}</p><div class="segment-summary"><div><div class="scope-label">${c.label}</div><div class="headline">${vals.at(-1)} <small>${c.unit}</small></div></div><div class="muted" style="text-align:right">${vals.length} retained observations<br>No calibrated target</div></div>${chart(vals)}<div class="stats"><div><span class="muted">Median</span><strong>${median} ms</strong></div><div><span class="muted">Worst observed</span><strong>${Math.max(...vals)} ms</strong></div><div><span class="muted">p95</span><strong>${vals.length >= 20 ? sorted[Math.ceil(vals.length * 0.95) - 1] + ' ms' : 'Not enough data'}</strong></div></div>${c.rows.length ? '<p class="scope-label">Latest observation breakdown</p><div class="rows">' + c.rows.map(([label, value]) => `<div class="reading"><span>${label}</span><div class="track"><span class="fill" style="width:${(value / vals.at(-1)) * 100}%"></span></div><span class="value">${value} ms</span></div>`).join('') + '</div>' : ''}<p class="muted">${c.note}</p><details><summary class="cursor-interaction">How to read this / captured evidence</summary><div class="evidence">${c.evidence.map(([k, v]) => `<strong>${k}</strong><span>${v}</span>`).join('')}</div></details>`
+    }
+    function status() {
+      const enabled = root.querySelector('[data-enabled]').checked
+      root.querySelector('[data-capture]').textContent =
+        enabled && !paused
+          ? 'Enabled · Foreground activity · Current frame'
+          : (paused ? 'Sampling paused' : 'Sensors off') + ' · Retained readings'
+      root.querySelector('.scope').textContent =
+        (paused ? 'Paused · Retained readings' : 'Recording') +
+        ' · Targets not configured by default'
+      root
+        .querySelector('[data-action=pause]')
+        .setAttribute('aria-label', paused ? 'Resume sampling' : 'Pause sampling')
+      root.querySelector('[data-action=pause]').dataset.tooltip = paused
+        ? 'Resume sampling'
+        : 'Pause sampling'
+      root.querySelector('.launcher span').textContent = paused ? 'Paused' : 'Recording'
+    }
+    root.querySelectorAll('[data-sensor]').forEach((button) =>
+      button.addEventListener('click', () => {
+        selected = button.dataset.sensor
+        root
+          .querySelectorAll('[data-sensor]')
+          .forEach((b) => b.setAttribute('aria-selected', String(b === button)))
+        render()
+      }),
+    )
+    root.querySelectorAll('[data-view]').forEach((button) =>
+      button.addEventListener('click', () => {
+        root
+          .querySelectorAll('[data-view]')
+          .forEach((b) => b.setAttribute('aria-selected', String(b === button)))
+        const sensors = button.dataset.view === 'Sensors'
+        root.querySelector('.sensor-content').hidden = !sensors
+        const other = root.querySelector('.other-content')
+        other.hidden = sensors
+        other.innerHTML = `<h3>${button.dataset.view}</h3><p class="muted">${button.dataset.view === 'Overview' ? 'Overall health and core sampler summary. Detailed browser readings now live in Sensors.' : button.dataset.view === 'Technical details' ? 'API support, timing restrictions, observer callback overhead and raw export metadata remain here.' : 'Existing ' + button.dataset.view.toLowerCase() + ' view stays unchanged.'}</p>`
+      }),
+    )
+    root.querySelector('[data-enabled]').addEventListener('change', status)
+    root.querySelectorAll('[data-action]').forEach((button) =>
+      button.addEventListener('click', () => {
+        const action = button.dataset.action
+        if (action === 'pause') {
+          paused = !paused
+          status()
+          render()
+        }
+        if (action === 'close' || action === 'minimize') {
+          if (action === 'close') paused = true
+          root.querySelector('.window').hidden = true
+          root.querySelector('.launcher').hidden = false
+          status()
+        }
+        if (action === 'restore') {
+          root.querySelector('.window').hidden = false
+          root.querySelector('.launcher').hidden = true
+          status()
+          render()
+        }
+        if (action === 'reset') {
+          cleared = true
+          render()
+        }
+        if (action === 'export')
+          root.querySelector('[data-footer]').textContent =
+            'Prototype only · No live session exported'
+      }),
+    )
+    new ResizeObserver(() => {
+      if (!root.querySelector('.sensor-content').hidden) render()
+    }).observe(detail)
+    render()
+  })()
+</script>

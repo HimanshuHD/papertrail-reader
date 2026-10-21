@@ -178,8 +178,8 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   const overview = region.getByRole('tab', { name: 'Overview', exact: true })
   await overview.focus()
   await page.keyboard.press('ArrowRight')
-  await expect(region.getByRole('tab', { name: 'Operations', exact: true })).toBeFocused()
-  await expect(region.getByRole('tabpanel', { name: 'Operations', exact: true })).toBeVisible()
+  await expect(region.getByRole('tab', { name: 'Sensors', exact: true })).toBeFocused()
+  await expect(region.getByRole('tabpanel', { name: 'Sensors', exact: true })).toBeVisible()
   await page.keyboard.press('End')
   await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
   await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
@@ -218,4 +218,84 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await expect(
     page.getByRole('button', { name: 'Developer diagnostics', exact: true }),
   ).toBeFocused()
+})
+
+test('additional diagnostic sensors are opt-in and export private real browser observations', async ({
+  page,
+}, info) => {
+  test.skip(!diagnostic, 'Diagnostic build only')
+  await page.goto('./#/app')
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
+  const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
+  await toggle.click()
+  await page.getByRole('tab', { name: 'Sensors', exact: true }).click()
+  const enabled = page.getByRole('checkbox', {
+    name: 'Capture sensors',
+    exact: true,
+  })
+  await expect(enabled).not.toBeChecked()
+  await enabled.check()
+  await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
+  // Controlled slow input fixture; the application observes timing, never this text or DOM target.
+  await page.evaluate(() => {
+    const button = document.createElement('button')
+    button.id = 'sensor-work'
+    button.textContent = 'PRIVATE_SENSOR_FIXTURE'
+    button.style.cssText = 'position:fixed;top:4px;left:4px;z-index:9999'
+    button.onclick = () => {
+      const end = performance.now() + 75
+      while (performance.now() < end) {
+        /* Controlled main-thread load for observer coverage. */
+      }
+    }
+    document.body.append(button)
+  })
+  for (let i = 0; i < 3; i++) await page.locator('#sensor-work').click()
+  await page.evaluate(async () => {
+    await fetch(location.href, { cache: 'no-store' })
+    document.getElementById('sensor-work')?.remove()
+  })
+  await toggle.click()
+  const sensors = page.getByRole('region', {
+    name: 'Responsiveness and loading sensors',
+    exact: true,
+  })
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  await expect(sensors).toHaveCSS('max-height', 'none')
+  await expect(sensors).toHaveCSS('overflow', 'visible')
+  await expect(sensors).toContainText('Not page INP')
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Requested event duration ≥ 16 ms')
+  await sensors.getByRole('tab', { name: 'Long frames', exact: true }).click()
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  await expect(sensors).toContainText('Phases overlap')
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Event / callback / other')
+  await sensors.getByRole('tab', { name: 'Loading', exact: true }).click()
+  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
+  await expect(sensors).toContainText('Zero transfer can mean cache')
+  await sensors.getByRole('tab', { name: 'Inputs', exact: true }).focus()
+  await page.keyboard.press('End')
+  await expect(sensors.getByRole('tab', { name: 'Loading', exact: true })).toBeFocused()
+  await sensors.getByRole('tab', { name: 'Inputs', exact: true }).click()
+  await info.attach('responsiveness-sensors', {
+    body: await sensors.screenshot(),
+    contentType: 'image/png',
+  })
+  await page.getByRole('button', { name: 'Pause', exact: true }).click()
+  const downloading = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
+  const downloaded = await downloading
+  const text = await readFile((await downloaded.path())!, 'utf8')
+  const summary = JSON.parse(text)
+  expect(summary.responsiveness.active).toBe(false)
+  expect(summary.responsiveness.inputs.length).toBeGreaterThan(0)
+  expect(summary.responsiveness.frames.length).toBeGreaterThan(0)
+  expect(summary.responsiveness.resources.length).toBeGreaterThan(0)
+  expect(text).not.toContain('PRIVATE_SENSOR_FIXTURE')
+  expect(text).not.toMatch(/sourceURL|sourceFunctionName|interactionId|initiatorType/)
+  await page.getByRole('button', { name: 'Reset session', exact: true }).click()
+  await expect(sensors).toContainText('0 retained observations')
+  await page.getByRole('button', { name: 'Close diagnostics', exact: true }).click()
 })
