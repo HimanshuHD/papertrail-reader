@@ -25,6 +25,9 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   await toggle.click()
+  await page.getByRole('tab', { name: 'Resources', exact: true }).click()
+  await page.getByRole('button', { name: 'Mark baseline', exact: true }).click()
+  await page.getByRole('tab', { name: 'Overview', exact: true }).click()
   await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
   await page.locator('input[accept*=".pdf"]').setInputFiles([
     {
@@ -108,6 +111,21 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   expect(summary.timings.length).toBeLessThanOrEqual(120)
   expect(summary.identity.version).toBe('2.2.0')
   expect(summary.resources.viewers).toBeGreaterThanOrEqual(1)
+  expect(summary.resourceInvestigation.baseline.resources.viewers).toBe(0)
+  expect(
+    summary.resourceInvestigation.timings.some(
+      (row: { operation: string }) => row.operation === 'pdf.render-request',
+    ),
+  ).toBe(true)
+  expect(
+    summary.resourceInvestigation.timings.some(
+      (row: { operation: string }) => row.operation === 'reading.transaction',
+    ),
+  ).toBe(true)
+  expect(
+    summary.resourceInvestigation.caches.dimensions.hits +
+      summary.resourceInvestigation.caches.dimensions.misses,
+  ).toBeGreaterThan(0)
   await info.attach('diagnostic-summary', { body: json, contentType: 'application/json' })
   await page.getByRole('button', { name: 'Close private-name.pdf', exact: true }).click()
   await page.getByRole('button', { name: 'Close private-name.epub', exact: true }).click()
@@ -129,6 +147,20 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
       { timeout: 15000 },
     )
     .toEqual({ viewers: 0, workers: 0, blobs: 0 })
+  await page.getByRole('tab', { name: 'Resources', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Resource investigation', exact: true }),
+  ).toContainText('Comparing current owned resources')
+  await page.getByRole('button', { name: 'Refresh storage estimate', exact: true }).click()
+  await expect(
+    page.getByRole('region', { name: 'Resource investigation', exact: true }),
+  ).toContainText(/Origin storage estimate; disk usage|Unavailable: /)
+  await info.attach('resource-baseline', {
+    body: await page
+      .getByRole('region', { name: 'Diagnostic measurements', exact: true })
+      .screenshot(),
+    contentType: 'image/png',
+  })
   await page.getByRole('button', { name: 'Pause', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Resume', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Reset session', exact: true }).click()

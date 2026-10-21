@@ -196,30 +196,32 @@ function selectTab(event: KeyboardEvent, index: number) {
       </div>
     </template>
     <template v-else-if="tab === 'Resources'">
-      <p>
-        Application-owned resources only. A counter without a registered owner says “No registered
-        owner”; this does not establish a browser-wide zero.
-      </p>
-      <dl class="resources">
-        <template v-for="[key, name, explanation] in resources" :key="key"
-          ><dt>
-            {{ name }}<small>{{ explanation }}</small>
-          </dt>
-          <dd>
-            {{
-              snapshot.resources[key] === undefined
-                ? 'No registered owner'
-                : key === 'previewBytes'
-                  ? measurement(snapshot.resources[key]! / 1048576, 'MiB estimated')
-                  : snapshot.resources[key]
-            }}
-          </dd></template
-        >
-      </dl>
-      <p>
-        CPU, GPU and process RAM: external profiling in #16. Cache hit rates, storage usage and
-        cleanup baselines are planned separately; they are not measured here.
-      </p>
+      <slot name="resource-investigation">
+        <p>
+          Application-owned resources only. A counter without a registered owner says “No registered
+          owner”; this does not establish a browser-wide zero.
+        </p>
+        <dl class="resources">
+          <template v-for="[key, name, explanation] in resources" :key="key"
+            ><dt>
+              {{ name }}<small>{{ explanation }}</small>
+            </dt>
+            <dd>
+              {{
+                snapshot.resources[key] === undefined
+                  ? 'No registered owner'
+                  : key === 'previewBytes'
+                    ? measurement(snapshot.resources[key]! / 1048576, 'MiB estimated')
+                    : snapshot.resources[key]
+              }}
+            </dd></template
+          >
+        </dl>
+        <p>
+          CPU, GPU and process RAM require external profiling in #16. Owner totals are not
+          browser-wide measurements.
+        </p>
+      </slot>
     </template>
     <template v-else-if="tab === 'Timeline'">
       <DiagnosticTimeline :history="indicatorHistory ?? []" :snapshot="snapshot" :health="health" />

@@ -19,7 +19,7 @@ export function capabilities() {
       'Tracked PDF loading-task worker owners; shared/fake worker implementation is not a thread count',
   }
 }
-function heapBytes(): number | null {
+export function heapBytes(): number | null {
   try {
     const value = (performance as Performance & { memory?: { usedJSHeapSize?: number } }).memory
       ?.usedJSHeapSize

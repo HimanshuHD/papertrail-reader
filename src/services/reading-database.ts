@@ -1,3 +1,4 @@
+import { diagnostics } from '../features/diagnostics/recorder'
 import { environmentDatabaseName } from './environment-storage'
 
 /** Connections are short-lived so upgrades/deletion by another tab cannot leave stale handles. */
@@ -31,7 +32,18 @@ export class ReadingMetadataDatabase {
   async transaction<T>(
     run: (store: IDBObjectStore, result: (value: T) => void) => void,
   ): Promise<T> {
+    return __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.track('reading.transaction', (start) =>
+          this.runTransaction(run, start),
+        )
+      : this.runTransaction(run)
+  }
+  private async runTransaction<T>(
+    run: (store: IDBObjectStore, result: (value: T) => void) => void,
+    started?: () => void,
+  ): Promise<T> {
     const database = await this.open()
+    started?.()
     try {
       return await new Promise<T>((resolve, reject) => {
         const transaction = database.transaction('documents', 'readwrite')

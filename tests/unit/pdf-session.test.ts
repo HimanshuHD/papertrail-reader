@@ -335,6 +335,8 @@ describe('demand-driven PDF preparation', () => {
   })
 
   it('bounds reusable preview pixels with LRU eviction and releases them on close', async () => {
+    diagnostics.reset()
+    diagnostics.resume()
     const context = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
@@ -360,10 +362,19 @@ describe('demand-driven PDF preparation', () => {
     )
     expect(previews).toHaveLength(128)
     expect(
+      diagnostics.investigation.snapshot(diagnostics.snapshot().resources, null).caches.preview,
+    ).toMatchObject({ evictions: 1 })
+    expect(diagnostics.snapshot().resources.canvasBytes).toBeGreaterThan(0)
+    expect(
       previews.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0),
     ).toBeLessThan(18 * 1024 * 1024)
     await session.close()
     expect(previews.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true)
+    expect(diagnostics.owners.has(session)).toBe(false)
+    expect(diagnostics.investigation.snapshot({}, null).timings.at(-1)?.operation).toBe(
+      'pdf.release',
+    )
+    diagnostics.pause()
     context.mockRestore()
   })
 })
@@ -441,4 +452,20 @@ it('destroys the PDF worker even if document cleanup fails', async () => {
   )
   await expect(session.close()).rejects.toThrow('cleanup failed')
   expect(destroy).toHaveBeenCalledTimes(1)
+})
+
+it('late PDF dimensions cannot repopulate a closed session or resurrect its diagnostic owner', async () => {
+  let complete!: (page: unknown) => void
+  const page = new Promise((resolve) => (complete = resolve))
+  const session = new PdfDocumentSession(
+    {} as never,
+    { destroy: async () => {} } as never,
+    { numPages: 1, getPage: () => page, cleanup: async () => {} } as never,
+  )
+  const pending = session.getPageDimensions(1)
+  await session.close()
+  complete({ getViewport: () => ({ width: 600, height: 800 }) })
+  await expect(pending).rejects.toThrow('closed')
+  expect(diagnostics.owners.has(session)).toBe(false)
+  expect(session.defaultPageDimensions).toEqual({ width: 612, height: 792 })
 })

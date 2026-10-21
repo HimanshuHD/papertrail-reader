@@ -269,6 +269,7 @@ export async function preparePublication(
   textOnly = false,
 ): Promise<TextPublication> {
   const ownedURLs: string[] = []
+  let ownedBlobBytes = 0
   const dispose = () => {
     for (const url of ownedURLs.splice(0)) URL.revokeObjectURL(url)
     if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
@@ -376,7 +377,9 @@ export async function preparePublication(
       signal?.throwIfAborted()
       const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }))
       ownedURLs.push(url)
-      if (__READER_DIAGNOSTICS__) diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length })
+      ownedBlobBytes += bytes.byteLength
+      if (__READER_DIAGNOSTICS__)
+        diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length, blobBytes: ownedBlobBytes })
       imageCache.set(path, url)
       return url
     }

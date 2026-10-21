@@ -266,6 +266,11 @@ async function renderPage() {
     if (!context) throw new Error('Canvas rendering is unavailable in this browser.')
     currentCanvas.width = pendingCanvas.width
     currentCanvas.height = pendingCanvas.height
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(root, {
+        canvases: 1,
+        canvasBytes: currentCanvas.width * currentCanvas.height * 4,
+      })
     context.drawImage(pendingCanvas, 0, 0)
     currentTextLayer.style.cssText = pendingText.style.cssText
     currentTextLayer.dataset.mainRotation = pendingText.dataset.mainRotation ?? '0'
@@ -332,6 +337,11 @@ function showPreview() {
   if (preview && displayed) {
     displayed.width = preview.width
     displayed.height = preview.height
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(root, {
+        canvases: 1,
+        canvasBytes: displayed.width * displayed.height * 4,
+      })
     displayed.getContext('2d', { alpha: false })?.drawImage(preview, 0, 0)
     previewed.value = true
   }
@@ -342,6 +352,8 @@ function releaseBitmap() {
   if (!displayed) return
   displayed.width = 0
   displayed.height = 0
+  if (__READER_DIAGNOSTICS__ && !disposed)
+    diagnostics.resources(root, { canvases: 1, canvasBytes: 0 })
   highlightRects.value = []
   savedRects.value = []
   releaseTextSelection?.()
