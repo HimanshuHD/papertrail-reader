@@ -76,6 +76,7 @@ describe('capability fallback and sampler teardown', () => {
     vi.advanceTimersByTime(121000)
     expect(diagnostics.samples).toHaveLength(LIMIT)
     expect(diagnostics.samples[0]).toEqual({
+      observedAtMs: expect.any(Number),
       frameIntervalMs: null,
       longTaskMs: null,
       jsHeapBytes: null,

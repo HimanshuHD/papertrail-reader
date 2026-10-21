@@ -149,7 +149,10 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   const trigger = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   const triggerBounds = await trigger.boundingBox()
   expect(Math.round(triggerBounds!.y + triggerBounds!.height)).toBe(900)
-  await expect(trigger.locator('.pulse-loader')).toHaveAttribute('data-state', 'recording')
+  await expect(trigger.locator('.pulse-loader')).toHaveAttribute(
+    'data-state',
+    /recording|collecting/,
+  )
   await trigger.click()
   await region.getByRole('button', { name: 'Pause', exact: true }).click()
   await region.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()

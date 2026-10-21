@@ -1,8 +1,14 @@
 <script setup lang="ts">
+import type { IndicatorResult, IndicatorEvent } from './indicators'
 import { computed, ref } from 'vue'
 import DiagnosticTrend from './DiagnosticTrend.vue'
 import { measurement, metricNames, operationStats, type Snapshot } from './presentation'
-const props = defineProps<{ snapshot: Snapshot; capabilities: Record<string, string> }>()
+const props = defineProps<{
+  snapshot: Snapshot
+  capabilities: Record<string, string>
+  health?: IndicatorResult
+  indicatorHistory?: IndicatorEvent[]
+}>()
 const tabs = ['Overview', 'Operations', 'Resources', 'Timeline', 'Technical details'] as const
 const active = ref<(typeof tabs)[number]>('Overview')
 const stats = computed(() => operationStats(props.snapshot.timings))
@@ -43,8 +49,28 @@ function selectTab(event: KeyboardEvent, index: number) {
 }
 </script>
 <template>
+  <div v-if="health" class="indicator-summary" :data-state="health.state" role="status">
+    <strong
+      >{{
+        health.state === 'attention' || health.state === 'critical'
+          ? '⚠'
+          : health.state === 'recording'
+            ? '✓'
+            : '○'
+      }}
+      {{ health.label }}</strong
+    >
+    <p>{{ health.explanation }}</p>
+    <ul>
+      <li v-for="finding in health.findings" :key="finding.id">
+        <strong>{{ finding.reason }}</strong>
+        <p>{{ finding.next }}</p>
+      </li>
+    </ul>
+  </div>
   <p class="scope">
-    {{ snapshot.running ? 'Recording' : 'Paused · retained readings' }} · Targets not configured
+    {{ snapshot.running ? 'Recording' : 'Paused · retained readings' }} · Targets not configured by
+    default
   </p>
   <div role="tablist" aria-label="Diagnostic views" class="tabs">
     <button
@@ -73,7 +99,8 @@ function selectTab(event: KeyboardEvent, index: number) {
   >
     <template v-if="tab === 'Overview'">
       <p>
-        No health verdict yet. Targets and sustained warning rules will be calibrated separately.
+        Responsiveness indicators use provisional rules. Operation targets stay unconfigured until
+        explicitly set; calibrated workload budgets remain in #16.
       </p>
       <div class="metrics">
         <article>
@@ -183,6 +210,14 @@ function selectTab(event: KeyboardEvent, index: number) {
       </p>
     </template>
     <template v-else-if="tab === 'Timeline'">
+      <h3>Indicator transitions</h3>
+      <ol>
+        <li v-for="(event, index) in [...(indicatorHistory ?? [])].reverse()" :key="index">
+          {{ Math.round(event.atMs) }} ms since page start · {{ event.state
+          }}<span v-if="event.findingIds.length"> · {{ event.findingIds.join(', ') }}</span>
+        </li>
+      </ol>
+
       <p>
         Most recent first, up to 120 retained outcomes. Ordinary cancellation is expected during
         navigation; it is not automatically a critical condition. No per-reader attribution is
@@ -205,6 +240,19 @@ function selectTab(event: KeyboardEvent, index: number) {
   </div>
 </template>
 <style scoped>
+.indicator-summary {
+  border-left: 3px solid var(--pt-muted);
+  padding-left: 10px;
+}
+.indicator-summary[data-state='recording'] {
+  border-color: light-dark(#20824d, #71d69a);
+}
+.indicator-summary[data-state='attention'] {
+  border-color: light-dark(#966500, #f0bd58);
+}
+.indicator-summary[data-state='critical'] {
+  border-color: light-dark(#bb3737, #ff9393);
+}
 .scope {
   color: var(--pt-muted);
 }
