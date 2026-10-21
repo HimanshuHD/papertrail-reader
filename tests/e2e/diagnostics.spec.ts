@@ -317,19 +317,32 @@ test('additional diagnostic sensors are opt-in and export private real browser o
     await fetch(location.href, { cache: 'no-store' })
     document.getElementById('sensor-work')?.remove()
   })
+  const supported = await page.evaluate(() =>
+    typeof PerformanceObserver === 'undefined' ? [] : PerformanceObserver.supportedEntryTypes,
+  )
   await toggle.click()
   const sensors = page.getByRole('region', {
     name: 'Responsiveness and loading sensors',
     exact: true,
   })
-  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  if (supported.includes('event'))
+    await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  else {
+    await expect(sensors).toContainText('Unavailable:')
+    await expect(sensors).toContainText('0 retained observations')
+  }
   await expect(sensors).toHaveCSS('max-height', 'none')
   await expect(sensors).toHaveCSS('overflow', 'visible')
   await expect(sensors).toContainText('Not page INP')
   await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
   await expect(sensors).toContainText('Requested event duration ≥ 16 ms')
   await sensors.getByRole('tab', { name: 'Long frames', exact: true }).click()
-  await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  if (supported.includes('long-animation-frame'))
+    await expect(sensors).toContainText(/[1-9]\d* retained observations/)
+  else {
+    await expect(sensors).toContainText('Unavailable:')
+    await expect(sensors).toContainText('0 retained observations')
+  }
   await expect(sensors).toContainText('Phases overlap')
   await sensors.getByText('How to read this / captured evidence', { exact: true }).click()
   await expect(sensors).toContainText('Event / callback / other')
@@ -352,8 +365,17 @@ test('additional diagnostic sensors are opt-in and export private real browser o
   const text = await readFile((await downloaded.path())!, 'utf8')
   const summary = JSON.parse(text)
   expect(summary.responsiveness.active).toBe(false)
-  expect(summary.responsiveness.inputs.length).toBeGreaterThan(0)
-  expect(summary.responsiveness.frames.length).toBeGreaterThan(0)
+  if (supported.includes('event')) expect(summary.responsiveness.inputs.length).toBeGreaterThan(0)
+  else {
+    expect(summary.responsiveness.inputs).toEqual([])
+    expect(summary.responsiveness.capabilities.event).toMatch(/^Unavailable:/)
+  }
+  if (supported.includes('long-animation-frame'))
+    expect(summary.responsiveness.frames.length).toBeGreaterThan(0)
+  else {
+    expect(summary.responsiveness.frames).toEqual([])
+    expect(summary.responsiveness.capabilities['long-animation-frame']).toMatch(/^Unavailable:/)
+  }
   expect(summary.responsiveness.resources.length).toBeGreaterThan(0)
   expect(text).not.toContain('PRIVATE_SENSOR_FIXTURE')
   expect(text).not.toMatch(/sourceURL|sourceFunctionName|interactionId|initiatorType/)

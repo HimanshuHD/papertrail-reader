@@ -20,7 +20,8 @@
     "test": "npm run test:pipeline && npm run test:unit",
     "check": "npm run lint && npm run format:check && npm test && npm run type-check",
     "test:e2e": "playwright test",
-    "test:visual": "node scripts/run-visual-qa.mjs"
+    "test:visual": "node scripts/run-visual-qa.mjs",
+    "test:diagnostics:acceptance": "node scripts/run-diagnostics-acceptance.mjs"
   },
   "dependencies": {
     "css-tree": "3.2.1",

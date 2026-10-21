@@ -1,0 +1,436 @@
+{
+  "source": {
+    "sha": "e33a265d43be35af3b378c1c9e322767fd5e37a7",
+    "tree": "5aff8d645a671d232f7d6856dd21377e80291b80",
+    "dirty": false
+  },
+  "stats": {
+    "startTime": "2026-10-21T17:07:09.299Z",
+    "duration": 234711.27500000002,
+    "expected": 21,
+    "skipped": 3,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "playwrightVersion": "1.63.0",
+  "caseOutcomes": [
+    {
+      "engine": "chromium",
+      "test": "missing observer APIs show unavailable evidence rather than fabricated zero readings",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 1747,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "missing observer APIs show unavailable evidence rather than fabricated zero readings",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 3304,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "missing observer APIs show unavailable evidence rather than fabricated zero readings",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 2907,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "library stays open until asynchronous document selection commits",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 330,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "failure snapshot retains numeric selection evidence without document labels or URLs",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 115,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "library stays open until asynchronous document selection commits",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 606,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "failure snapshot retains numeric selection evidence without document labels or URLs",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 318,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "library stays open until asynchronous document selection commits",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 701,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "failure snapshot retains numeric selection evidence without document labels or URLs",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 317,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "compare identical mixed-reader workloads across production and diagnostic modes",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 26122,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "compare identical mixed-reader workloads across production and diagnostic modes",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 44133,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "compare identical mixed-reader workloads across production and diagnostic modes",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 91488,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "default production cannot enable diagnostics through a query or keyboard flag",
+      "status": "skipped",
+      "expectedStatus": "skipped",
+      "skipReasons": ["Run against a default production build"],
+      "attempts": [
+        {
+          "status": "skipped",
+          "retry": 0,
+          "durationMs": 84,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "opt-in local diagnostics record PDF/EPUB, export private bounded data and stop on close",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 5535,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 1932,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "chromium",
+      "test": "additional diagnostic sensors are opt-in and export private real browser observations",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 2555,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "default production cannot enable diagnostics through a query or keyboard flag",
+      "status": "skipped",
+      "expectedStatus": "skipped",
+      "skipReasons": ["Run against a default production build"],
+      "attempts": [
+        {
+          "status": "skipped",
+          "retry": 0,
+          "durationMs": 277,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "opt-in local diagnostics record PDF/EPUB, export private bounded data and stop on close",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 7836,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 2910,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "firefox",
+      "test": "additional diagnostic sensors are opt-in and export private real browser observations",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 3233,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "default production cannot enable diagnostics through a query or keyboard flag",
+      "status": "skipped",
+      "expectedStatus": "skipped",
+      "skipReasons": ["Run against a default production build"],
+      "attempts": [
+        {
+          "status": "skipped",
+          "retry": 0,
+          "durationMs": 212,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "opt-in local diagnostics record PDF/EPUB, export private bounded data and stop on close",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 18794,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "diagnostic dashboard remains readable and keyboard accessible at mobile width in dark mode",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 4666,
+          "errorCount": 0
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "test": "additional diagnostic sensors are opt-in and export private real browser observations",
+      "status": "expected",
+      "expectedStatus": "passed",
+      "skipReasons": [],
+      "attempts": [
+        {
+          "status": "passed",
+          "retry": 0,
+          "durationMs": 7972,
+          "errorCount": 0
+        }
+      ]
+    }
+  ],
+  "diagnosticExportAudit": [
+    {
+      "engine": "chromium",
+      "identity": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "e33a265d43be35af3b378c1c9e322767fd5e37a7",
+        "workingTree": "Clean"
+      },
+      "fixtureTextAbsent": true,
+      "rawAttributionFieldsAbsent": true,
+      "retainedCounts": {
+        "timings": 46,
+        "samples": 3,
+        "resourceTimings": 62,
+        "pending": 0
+      }
+    },
+    {
+      "engine": "firefox",
+      "identity": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "e33a265d43be35af3b378c1c9e322767fd5e37a7",
+        "workingTree": "Clean"
+      },
+      "fixtureTextAbsent": true,
+      "rawAttributionFieldsAbsent": true,
+      "retainedCounts": {
+        "timings": 30,
+        "samples": 3,
+        "resourceTimings": 47,
+        "pending": 0
+      }
+    },
+    {
+      "engine": "webkit",
+      "identity": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "e33a265d43be35af3b378c1c9e322767fd5e37a7",
+        "workingTree": "Clean"
+      },
+      "fixtureTextAbsent": true,
+      "rawAttributionFieldsAbsent": true,
+      "retainedCounts": {
+        "timings": 25,
+        "samples": 11,
+        "resourceTimings": 57,
+        "pending": 1
+      }
+    }
+  ],
+  "workloadAttachmentsMatchSummary": true,
+  "notes": [
+    "Derived from owner-uploaded playwright(2).json; local paths, raw attachments, screenshots and report configuration paths omitted.",
+    "36 workload rows match the uploaded summary exactly; all engine/mode/trial identities and summary statistics checked."
+  ]
+}
