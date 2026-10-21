@@ -8,10 +8,11 @@ import IndicatorTargets from './IndicatorTargets.vue'
 import type { Metric } from './recorder'
 import DiagnosticDashboard from './DiagnosticDashboard.vue'
 import DiagnosticSensors from './DiagnosticSensors.vue'
+import ResourceInvestigation from './ResourceInvestigation.vue'
 import type { DiagnosticView } from './presentation'
 import type { SensorKind } from './sensor-presentation'
 import { ResponsivenessSensors } from './responsiveness'
-import { capabilities, startSampler } from './sampler'
+import { capabilities, startSampler, heapBytes } from './sampler'
 import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
 const open = ref(false)
@@ -19,6 +20,7 @@ const minimized = ref(false)
 const sensors = new ResponsivenessSensors()
 const sensorsEnabled = ref(false)
 const activeDiagnosticTab = ref<DiagnosticView>('Overview')
+const activeResourceCategory = ref<'Cleanup' | 'Caches' | 'Requests' | 'Storage'>('Cleanup')
 const activeSensorCategory = ref<SensorKind>('inputs')
 const sensorSnapshot = ref(sensors.snapshot())
 function toggleSensors() {
@@ -29,6 +31,21 @@ function toggleSensors() {
 }
 const lastOverhead = ref<ReturnType<typeof startSampler>['overhead'] | null>(null)
 const snapshot = ref(diagnostics.snapshot())
+const investigation = ref(diagnostics.investigation.snapshot(snapshot.value.resources, heapBytes()))
+function markBaseline() {
+  diagnostics.investigation.markBaseline(diagnostics.snapshot().resources, heapBytes())
+  refresh()
+}
+function clearBaseline() {
+  diagnostics.investigation.clearBaseline()
+  refresh()
+}
+async function refreshStorage() {
+  const pending = diagnostics.investigation.refreshStorage()
+  refresh()
+  await pending
+  refresh()
+}
 const available = ref(capabilities())
 const identity = {
   environment: import.meta.env.VITE_DEPLOY_CHANNEL || 'development',
@@ -51,6 +68,7 @@ let sampler: ReturnType<typeof startSampler> | undefined
 function refresh() {
   sensorSnapshot.value = sensors.snapshot()
   snapshot.value = diagnostics.snapshot()
+  investigation.value = diagnostics.investigation.snapshot(snapshot.value.resources, heapBytes())
   health.value = monitor.update(snapshot.value, performance.now(), !document.hidden)
   indicatorHistory.value = [...monitor.history]
   if (sampler) lastOverhead.value = { ...sampler.overhead }
@@ -108,6 +126,10 @@ function exportSummary() {
         identity,
         capabilities: available.value,
         responsiveness: sensors.snapshot(),
+        resourceInvestigation: diagnostics.investigation.snapshot(
+          diagnostics.snapshot().resources,
+          heapBytes(),
+        ),
         samplerOverhead: sampler?.overhead ?? lastOverhead.value,
         indicators: {
           configuration: monitor.config,
@@ -202,6 +224,15 @@ onBeforeUnmount(() => {
           :health="health"
           :indicator-history="indicatorHistory"
         >
+          <template #resource-investigation>
+            <ResourceInvestigation
+              v-model:selected="activeResourceCategory"
+              :snapshot="investigation"
+              @mark="markBaseline"
+              @clear="clearBaseline"
+              @storage="refreshStorage"
+            />
+          </template>
           <template #sensors>
             <DiagnosticSensors
               v-model:selected="activeSensorCategory"

@@ -1,3 +1,4 @@
+import { diagnostics } from '../features/diagnostics/recorder'
 import {
   assertWorkspaceSchemaSupported,
   normalizeWorkspaceTabs,
@@ -138,6 +139,20 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
       fail: (error: unknown) => void,
     ) => void,
   ): Promise<T> {
+    return __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.track('workspace.transaction', (start) =>
+          this.runTransaction(run, start),
+        )
+      : this.runTransaction(run)
+  }
+  private async runTransaction<T>(
+    run: (
+      store: IDBObjectStore,
+      result: (value: T) => void,
+      fail: (error: unknown) => void,
+    ) => void,
+    started?: () => void,
+  ): Promise<T> {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       if (!globalThis.indexedDB) return reject(new Error('Workspace storage unavailable.'))
       const request = indexedDB.open(this.databaseName, 1)
@@ -153,6 +168,7 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
         else resolve(request.result)
       }
     })
+    started?.()
     try {
       return await new Promise<T>((resolve, reject) => {
         const transaction = database.transaction('workspace', 'readwrite')

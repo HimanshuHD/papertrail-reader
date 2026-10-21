@@ -1,3 +1,4 @@
+import { ResourceInvestigation } from './resource-investigation'
 declare global {
   const __READER_DIAGNOSTICS__: boolean
   const __DIAGNOSTIC_SOURCE__: { sha: string; dirty: boolean }
@@ -21,7 +22,9 @@ export type Resources = Partial<
     | 'previewEntries'
     | 'previewBytes'
     | 'dimensionEntries'
-    | 'blobURLs',
+    | 'blobURLs'
+    | 'blobBytes'
+    | 'canvasBytes',
     number
   >
 >
@@ -34,6 +37,7 @@ export interface Timing {
 }
 export const LIMIT = 120
 export class DiagnosticRecorder {
+  readonly investigation = new ResourceInvestigation()
   readonly owners = new Map<object, Resources>()
   private cleanups = new Set<() => void>()
   private pending = new Map<object, { metric: Metric; startedAtMs: number }>()
@@ -86,13 +90,16 @@ export class DiagnosticRecorder {
     this.pending.clear()
   }
   pause() {
+    this.investigation.pause()
     this.running = false
     this.stopWork()
   }
   resume() {
+    this.investigation.resume()
     this.running = true
   }
   reset() {
+    this.investigation.reset()
     this.stopWork()
     this.timings = []
     this.samples = []

@@ -136,6 +136,8 @@ export class PdfDocumentSession {
 
   getPagePreview(pageNumber: number): HTMLCanvasElement | undefined {
     const preview = this.previews.get(pageNumber)
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.investigation.cache('preview', preview ? 'hits' : 'misses')
     if (preview) {
       this.previews.delete(pageNumber)
       this.previews.set(pageNumber, preview)
@@ -170,6 +172,7 @@ export class PdfDocumentSession {
       evicted.width = 0
       evicted.height = 0
       this.previews.delete(oldest)
+      if (__READER_DIAGNOSTICS__) diagnostics.investigation.cache('preview', 'evictions')
     }
     if (__READER_DIAGNOSTICS__) this.reportResources()
   }
@@ -192,6 +195,10 @@ export class PdfDocumentSession {
           (sum, canvas) => sum + canvas.width * canvas.height * 4,
           0,
         ),
+        canvasBytes: [...this.previews.values()].reduce(
+          (sum, canvas) => sum + canvas.width * canvas.height * 4,
+          0,
+        ),
         dimensionEntries: this.dimensions.size,
       })
   }
@@ -202,10 +209,13 @@ export class PdfDocumentSession {
 
   async getPageDimensions(pageNumber: number): Promise<{ width: number; height: number }> {
     const cached = this.dimensions.get(pageNumber)
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.investigation.cache('dimensions', cached ? 'hits' : 'misses')
     if (cached) return cached
     const page = await this.getPage(pageNumber)
     const viewport = page.getViewport({ scale: 1 })
     const size = { width: viewport.width, height: viewport.height }
+    if (this.closed) throw new Error('PDF session is closed.')
     this.dimensions.set(pageNumber, size)
     if (__READER_DIAGNOSTICS__) this.reportResources()
     return size
@@ -332,17 +342,30 @@ export class PdfDocumentSession {
 
   async render(request: PdfRenderRequest): Promise<PdfRenderResult> {
     const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.render') : undefined
+    const pixelOwner = __READER_DIAGNOSTICS__ ? {} : undefined
+    const requestTiming = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.begin('pdf.render-request')
+      : undefined
     try {
-      const result = await this.renderPage(request)
+      const result = await this.renderPage(request, requestTiming, pixelOwner)
+      requestTiming?.finish()
       finish?.()
       return result
     } catch (error) {
+      requestTiming?.finish(diagnosticOutcome(error))
       finish?.(diagnosticOutcome(error))
       throw error
+    } finally {
+      if (pixelOwner) diagnostics.release(pixelOwner)
     }
   }
-  private async renderPage(request: PdfRenderRequest): Promise<PdfRenderResult> {
+  private async renderPage(
+    request: PdfRenderRequest,
+    requestTiming?: ReturnType<typeof diagnostics.investigation.begin>,
+    pixelOwner?: object,
+  ): Promise<PdfRenderResult> {
     await this.cancelRender(request.canvas)
+    requestTiming?.start()
     const page = await this.getPage(request.pageNumber)
     const baseViewport = page.getViewport({ scale: 1 })
 
@@ -361,6 +384,10 @@ export class PdfDocumentSession {
 
     request.canvas.width = Math.floor(viewport.width * outputScale)
     request.canvas.height = Math.floor(viewport.height * outputScale)
+    if (__READER_DIAGNOSTICS__ && pixelOwner)
+      diagnostics.resources(pixelOwner, {
+        canvasBytes: request.canvas.width * request.canvas.height * 4,
+      })
     request.canvas.style.width = `${Math.floor(viewport.width)}px`
     request.canvas.style.height = `${Math.floor(viewport.height)}px`
 
@@ -421,7 +448,12 @@ export class PdfDocumentSession {
     if (this.closing) return this.closing
     this.closed = true
     if (__READER_DIAGNOSTICS__) diagnostics.release(this)
-    this.closing = this.releaseResources()
+    this.closing = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.track('pdf.release', async (start) => {
+          start()
+          return this.releaseResources()
+        })
+      : this.releaseResources()
     return this.closing
   }
 
