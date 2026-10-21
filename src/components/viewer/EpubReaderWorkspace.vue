@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { OwnedRegistrations } from '../../features/diagnostics/owned-registrations'
 import type { SessionState, UtilityPanel } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
@@ -34,6 +35,11 @@ import {
   readingWidthOptions,
   type EpubTypography,
 } from '../../features/epub/typography'
+
+const shellRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+const frameRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+const loaderRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+let readerDisposed = false
 
 const props = withDefaults(
   defineProps<{
@@ -79,6 +85,7 @@ let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
 const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
 function paintHighlights() {
+  if (readerDisposed) return
   const context = reader.session.value?.annotationContext?.()
   paintedHighlights?.dispose()
   paintedHighlights = undefined
@@ -98,6 +105,7 @@ function paintHighlights() {
   scheduleNoteIndicators()
 }
 function updateNoteIndicators() {
+  if (readerDisposed) return
   noteIndicators.value = []
   const context = reader.session.value?.annotationContext?.()
   const stage = host.value?.parentElement
@@ -128,6 +136,7 @@ function updateNoteIndicators() {
   }
 }
 function scheduleNoteIndicators() {
+  if (readerDisposed) return
   cancelAnimationFrame(noteFrame)
   noteFrame = requestAnimationFrame(updateNoteIndicators)
 }
@@ -140,6 +149,7 @@ async function openNote(id: string) {
     annotationsPanel.value?.revealAnnotation(id)
 }
 function scheduleHighlights() {
+  if (readerDisposed) return
   cancelAnimationFrame(highlightFrame)
   highlightFrame = requestAnimationFrame(paintHighlights)
 }
@@ -386,7 +396,8 @@ function clearFrameListeners() {
   pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
   noteResizeObserver?.disconnect()
-  if (host.value) noteResizeObserver?.observe(host.value)
+  if (host.value && !readerDisposed) noteResizeObserver?.observe(host.value)
+  shellRegistrations?.set('ownedObservers', noteResizeObserver && !readerDisposed ? 1 : 0)
   highlightObservers.splice(0).forEach((observer) => observer.disconnect())
   cancelAnimationFrame(highlightFrame)
   paintedHighlights?.dispose()
@@ -403,8 +414,11 @@ function clearFrameListeners() {
     doc.removeEventListener('keyup', captureHighlight)
   }
   frameDocuments.clear()
+  frameRegistrations?.set('ownedListeners', 0)
+  frameRegistrations?.set('ownedObservers', 0)
 }
 function bindFrameListeners() {
+  if (readerDisposed) return
   clearFrameListeners()
   readingContainer = host.value?.querySelector<HTMLElement>('.epub-container') ?? null
   readingContainer?.addEventListener('scroll', saveReading, { passive: true })
@@ -453,22 +467,28 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
+  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 9)
+  frameRegistrations?.set('ownedObservers', highlightObservers.length)
   paintHighlights()
 }
 watch(
   () => reader.busy.value || continuity.preparing.value,
   async (busy) => {
     clearTimeout(loaderTimer)
+    loaderRegistrations?.set('ownedTimers', 0)
+    if (readerDisposed) return
     showLoader.value = false
     if (busy) {
       pendingHighlight.value = null
       clearFrameListeners()
     }
-    if (busy)
+    if (busy) {
+      loaderRegistrations?.set('ownedTimers', 1)
       loaderTimer = setTimeout(() => {
+        loaderRegistrations?.set('ownedTimers', 0)
         showLoader.value = true
       }, 150)
-    else {
+    } else {
       await nextTick()
       bindFrameListeners()
       bookFontSize.value = reader.session.value?.defaultFontSize?.() ?? 18
@@ -562,6 +582,9 @@ function capture(): SessionState {
 }
 function dispose(): Promise<void> {
   if (disposed) return disposed
+  readerDisposed = true
+  clearTimeout(loaderTimer)
+  loaderRegistrations?.dispose()
   // Capture persistence before destroying the rendition/iframe.
   const writes = continuity.reset()
   ++openGeneration
@@ -590,11 +613,13 @@ onMounted(() => {
   if (host.value && typeof ResizeObserver !== 'undefined') {
     noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
     noteResizeObserver.observe(host.value)
+    shellRegistrations?.set('ownedObservers', 1)
   }
   globalThis.addEventListener('blur', onWindowBlur)
   globalThis.addEventListener('keydown', onKey)
   globalThis.addEventListener('pointerdown', onPointer, true)
   globalThis.addEventListener('resize', updateWindowWidth)
+  shellRegistrations?.set('ownedListeners', 4)
 })
 onBeforeUnmount(() => {
   void dispose()
@@ -607,6 +632,9 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('resize', updateWindowWidth)
   clearTimeout(loaderTimer)
   clearFrameListeners()
+  shellRegistrations?.dispose()
+  frameRegistrations?.dispose()
+  loaderRegistrations?.dispose()
 })
 function changeFont(delta: number) {
   typography.value.fontSize =

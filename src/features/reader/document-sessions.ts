@@ -82,7 +82,7 @@ export class DocumentSessions {
 
   attach(id: string, generation: number, runtime: SessionRuntime) {
     if (this.retainedOwns(id, generation)) this.runtimes.set(id, runtime)
-    else this.disposeRuntime(runtime)
+    else this.disposeRuntime(runtime, this.sessions.get(id)?.format)
   }
 
   private capture(id: string) {
@@ -98,11 +98,26 @@ export class DocumentSessions {
     }
   }
 
-  private disposeRuntime(runtime: SessionRuntime) {
+  private disposeRuntime(runtime: SessionRuntime, format?: 'PDF' | 'EPUB') {
+    const ticket = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.begin(
+          format === 'PDF'
+            ? 'pdf.reader-release'
+            : format === 'EPUB'
+              ? 'epub.reader-release'
+              : 'reader.release',
+        )
+      : undefined
     // A failed or unfinished reader must never block unrelated activation/reset.
     void Promise.resolve()
-      .then(() => runtime.dispose())
-      .catch(() => {})
+      .then(() => {
+        ticket?.start()
+        return runtime.dispose()
+      })
+      .then(
+        () => ticket?.finish(),
+        () => ticket?.finish('failed', 'other'),
+      )
   }
 
   private release(id: string) {
@@ -112,6 +127,7 @@ export class DocumentSessions {
     }
     clearTimeout(this.timers.get(id))
     this.timers.delete(id)
+    this.recordTimers()
     this.capture(id)
     const runtime = this.runtimes.get(id)
     this.runtimes.delete(id)
@@ -120,7 +136,7 @@ export class DocumentSessions {
     const session = this.sessions.get(id)
     if (session && session.phase !== 'closed' && session.phase !== 'error')
       session.phase = 'suspended'
-    if (runtime) this.disposeRuntime(runtime)
+    if (runtime) this.disposeRuntime(runtime, session?.format)
   }
 
   get visibleIds(): string[] {
@@ -165,6 +181,13 @@ export class DocumentSessions {
     this.retained.set(id, { session, document, generation: ++this.generation })
   }
 
+  private recordTimers() {
+    if (__READER_DIAGNOSTICS__) {
+      if (this.timers.size) diagnostics.resources(this, { ownedTimers: this.timers.size })
+      else diagnostics.release(this)
+    }
+  }
+
   private syncVisibility() {
     const visible = new Set(this.visibleIds)
     for (const id of visible) this.ensureReader(id)
@@ -189,6 +212,7 @@ export class DocumentSessions {
         )
       }
     }
+    this.recordTimers()
   }
 
   compareWith(id: string): boolean {

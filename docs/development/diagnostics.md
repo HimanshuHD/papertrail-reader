@@ -184,10 +184,53 @@ reject stale reader callbacks, and pause/reset/close discard recording tickets
 so old completions cannot enter a new diagnostic session. Opening diagnostics
 mid-operation does not backfill an invented start. Buffers remain bounded and
 no title, source path, fingerprint or session/document identifier is exported.
-The optional page-memory API, broader owned registrations and engine-internal
-stages remain follow-up work. These labels do not establish accepted budgets.
+Explicit owned registrations, release timing and optional manual page memory are
+described below. Engine-internal stages remain untracked where no API exposes them. These labels do not establish accepted budgets.
 
 `tests/diagnostics/attribution.spec.ts` exercises real PDF/EPUB warm reuse and
 reader recreation with an accelerated browser clock. That is functional
 retention evidence, **not** a real-time overhead measurement. The normal repeated
 workload keeps its real clock and separate performance limitations.
+
+### Explicit ownership, release settling and optional page memory (#252)
+
+Cleanup → Byte estimates and remaining owned counts includes tracked listeners,
+observers and timers. Coverage is explicit: PDF shell listeners/viewport observer,
+shared PDF text-selection guard, EPUB shell listeners/note observer, EPUB direct
+frame bindings/highlight observers, EPUB loader timeout and document-session
+retention timeouts. ResizeObserver counts refer to active observer instances,
+not observed element totals. Multiple PDF page layers share one selection guard.
+Framework, browser engine, animation frame callbacks and other helpers are not
+claimed as tracked registrations. Live ownership counts continue reflecting
+registrations while recording is paused; reset clears history/baselines without
+pretending existing owners were released. Disposed owners reject late updates.
+
+`pdf.reader-release` / `epub.reader-release` run from release scheduling until the
+runtime disposal promise settles, including persistence. `reader.release` labels
+a detached runtime with unknown format. A failed cleanup records a fixed failure
+category and does not block later opening/reset. These are application release
+boundaries, not garbage-collection, process-memory or native-thread evidence.
+
+The manual **Measure page memory** control retains only numeric total bytes,
+observation time and elapsed request duration from the optional
+`performance.measureUserAgentSpecificMemory()` API. It never reads or exports
+breakdown URLs, worker URLs, attribution IDs or DOM container information. The
+[API specification](https://wicg.github.io/performance-measure-memory/) defines
+this browser-specific page estimate; it is not total OS process/GPU allocation.
+Secure context, cross-origin isolation and API availability are checked without
+changing hosting headers. Unsupported, restricted and malformed results show
+Unavailable and null, not fabricated zeros. This estimate overlaps other memory
+readings and must not be summed with them.
+
+Measurement is manual and may wait for browser collection. Native requests
+cannot be aborted: pause/close/reset invalidate results; a pending native request
+prevents another measurement until it settles. It does not enable new automatic
+polling or participate in health scores/accepted budgets.
+
+An EPUB cleanup regression is fixed: disposing/unmounting never re-observes the
+host and queued frame rebinding cannot re-register resources after disposal.
+`tests/diagnostics/cleanup.spec.ts` runs three PDF/EPUB open/close cycles and polls
+released readers/task owners/Blob URLs/listeners/observers/timers against a marked
+baseline. Retention expiry uses the separate accelerated functional case;
+performance workloads retain real clocks. Larger/native-device and total expanded
+panel/optional-sensor overhead acceptance remain #253/#16.

@@ -6,7 +6,7 @@ const props = defineProps<{ snapshot: InvestigationSnapshot }>()
 const selected = defineModel<'Cleanup' | 'Caches' | 'Requests' | 'Storage'>('selected', {
   default: 'Cleanup',
 })
-defineEmits<{ mark: []; clear: []; storage: [] }>()
+defineEmits<{ mark: []; clear: []; storage: []; memory: [] }>()
 const categories = ['Cleanup', 'Caches', 'Requests', 'Storage'] as const
 const navigation = ref<HTMLElement>()
 const names: Record<OwnedKey, string> = {
@@ -19,10 +19,16 @@ const names: Record<OwnedKey, string> = {
   blobURLs: 'Blob URLs',
   blobBytes: 'Blob payload',
   canvasBytes: 'Canvas RGBA',
+  ownedListeners: 'Tracked listeners',
+  ownedObservers: 'Tracked observers',
+  ownedTimers: 'Tracked timers',
 }
 const operations: Record<ResourceOperation, string> = {
   'pdf.render-request': 'PDF render request',
   'pdf.release': 'PDF teardown',
+  'pdf.reader-release': 'PDF reader release',
+  'epub.reader-release': 'EPUB reader release',
+  'reader.release': 'Detached reader release',
   'reading.transaction': 'Reading metadata transaction',
   'workspace.transaction': 'Workspace transaction',
   'reading.read': 'Reading metadata read',
@@ -77,7 +83,9 @@ function delta(value: number | null, key: OwnedKey) {
 function stages(operation: ResourceOperation) {
   return operation.startsWith('reading.') || operation.startsWith('workspace.')
     ? ['Connection', 'Transaction']
-    : operation === 'pdf.release'
+    : operation === 'pdf.release' ||
+        operation.endsWith('reader-release') ||
+        operation === 'reader.release'
       ? ['Preparation', 'Teardown']
       : operation.endsWith('-open') || operation.endsWith('warm-activate')
         ? [
@@ -261,6 +269,26 @@ async function navigate(event: KeyboardEvent) {
             </table>
           </div>
         </details>
+        <div class="explanation">
+          <div class="heading">
+            <strong>Optional page memory</strong>
+            <button
+              class="pt-plain-control"
+              type="button"
+              :disabled="!snapshot.active || snapshot.pageMemory.pending"
+              @click="$emit('memory')"
+            >
+              Measure page memory
+            </button>
+          </div>
+          <p>{{ bytes(snapshot.pageMemory.bytes) }} · browser page estimate</p>
+          <p role="status">{{ snapshot.pageMemory.status }}</p>
+          <p class="muted">
+            {{ snapshot.scope.pageMemory }} Manual measurement may be expensive and wait for browser
+            collection. No automatic polling. Pending browser work cannot be cancelled; pause/reset
+            discards its result. Do not add this estimate to heap or owned bytes.
+          </p>
+        </div>
         <details>
           <summary>How to read this / captured evidence</summary>
           <p>
@@ -270,6 +298,7 @@ async function navigate(event: KeyboardEvent) {
           </p>
           <p>{{ snapshot.scope.owned }}</p>
           <p>{{ snapshot.scope.cleanup }}</p>
+          <p>{{ snapshot.scope.untracked }}</p>
           <p>
             PDF task owners are not actual worker-thread counts. Registered zero and no registered
             owner describe different coverage. JS heap comes from nonstandard performance.memory

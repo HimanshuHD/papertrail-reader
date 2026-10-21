@@ -24,7 +24,10 @@ export type Resources = Partial<
     | 'dimensionEntries'
     | 'blobURLs'
     | 'blobBytes'
-    | 'canvasBytes',
+    | 'canvasBytes'
+    | 'ownedListeners'
+    | 'ownedObservers'
+    | 'ownedTimers',
     number
   >
 >

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { OwnedRegistrations } from '../../features/diagnostics/owned-registrations'
 import { diagnostics, diagnosticOutcome } from '../../features/diagnostics/recorder'
 import type { SessionState } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
@@ -30,6 +31,8 @@ import {
   type PdfSearchMatch,
 } from '../../features/pdf/pdf-session'
 import type { DiscoveredDocument } from '../../features/library/discovery'
+
+const registrationOwner = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
 
 const props = withDefaults(
   defineProps<{
@@ -1147,6 +1150,7 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && viewport.value) {
     resizeObserver = new ResizeObserver(scheduleViewportMeasure)
     resizeObserver.observe(viewport.value)
+    registrationOwner?.set('ownedObservers', 1)
   }
   void openDocument()
   globalThis.addEventListener('resize', scheduleViewportMeasure)
@@ -1158,6 +1162,7 @@ onMounted(() => {
   globalThis.addEventListener('pointerup', finishHighlightSelection)
   globalThis.addEventListener('pointercancel', cancelHighlightSelection)
   globalThis.addEventListener('blur', cancelHighlightSelection)
+  registrationOwner?.set('ownedListeners', 9)
 })
 
 watch(
@@ -1170,6 +1175,7 @@ onBeforeUnmount(() => {
   cancelAnimationFrame(resizeFrame)
   cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
+  registrationOwner?.dispose()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
   globalThis.removeEventListener('pointerdown', handlePopoverPointer)
