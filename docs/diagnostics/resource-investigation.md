@@ -7,9 +7,20 @@ Open Developer diagnostics → Resources in development, preview or staging. Pro
 1. Open diagnostics before the workload. Select Resources and **Mark baseline**.
 2. Minimize diagnostics, open PDF/EPUB fixtures, scroll/navigate, switch tabs, then close them.
 3. Reopen Resources and wait for asynchronous cleanup to settle. Compare owned counts/estimates and JS heap against the marked baseline. Export JSON to preserve the evidence.
-4. Clear baseline to remove the comparison only. Reset clears baseline, request history, cache counters and storage estimates; current live ownership remains tracked. Pause/resume preserves completed evidence and the baseline but interrupts pending diagnostic work.
+4. Select **Clear** in Cleanup to remove the comparison only. Reset clears baseline, request history, cache counters and storage estimates; current live ownership remains tracked. Pause/resume preserves completed evidence and the baseline but interrupts pending diagnostic work.
 
 A retained inactive reader can remain for five minutes by design. Positive deltas are prompts to investigate, not automatic leak findings. The health indicator is unchanged.
+
+## Resources views
+
+Resources is organized into four keyboard-accessible categories. Selection survives minimizing and reopening the panel; the main diagnostic views, health evaluation, collection and export stay unchanged.
+
+- **Cleanup:** mark/clear a baseline, compare readers, PDF task owners, canvas buffers and Blob URLs in Before/Now/Change columns, then expand byte estimates and remaining owned counts. Matching selected owner counts is not a memory-leak verdict. The three summary values show readers, canvas RGBA estimate and JS heap; unavailable values remain explicit.
+- **Caches:** preview hits, misses and capacity evictions, plus separate preview/dimension lookup rows and current occupancy in captured evidence. A first-visit miss is expected; capacity eviction is not a request failure.
+- **Requests:** pending count, retained history and the 120-record limit, latest PDF render application-stage bars, and the latest 12 requests with readable operation names, stage timings, outcomes and fixed failure categories. Missing stages remain unavailable. Captured evidence retains raw operation names and recording-limit explanations.
+- **Storage:** manual **Refresh estimate**, usage/quota/source summary, actual sampling status and origin-scope guidance. Zero is valid; unavailable is not zero. This is disk usage, not RAM or per-document memory.
+
+Each category includes **How to read this / captured evidence**. Category controls wrap to two columns on narrow screens. Arrow keys and Home/End move between categories. No new qualitative thresholds or collection sources are introduced.
 
 ## Measurement contract
 

@@ -20,6 +20,7 @@ const minimized = ref(false)
 const sensors = new ResponsivenessSensors()
 const sensorsEnabled = ref(false)
 const activeDiagnosticTab = ref<DiagnosticView>('Overview')
+const activeResourceCategory = ref<'Cleanup' | 'Caches' | 'Requests' | 'Storage'>('Cleanup')
 const activeSensorCategory = ref<SensorKind>('inputs')
 const sensorSnapshot = ref(sensors.snapshot())
 function toggleSensors() {
@@ -225,6 +226,7 @@ onBeforeUnmount(() => {
         >
           <template #resource-investigation>
             <ResourceInvestigation
+              v-model:selected="activeResourceCategory"
               :snapshot="investigation"
               @mark="markBaseline"
               @clear="clearBaseline"

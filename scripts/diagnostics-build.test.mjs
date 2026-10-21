@@ -46,7 +46,7 @@ test('production excludes diagnostics; preview/staging and explicit builds inclu
         'resourceInvestigation',
         'pdf.render-request',
         'workspace.transaction',
-        'Cleanup baseline',
+        'What remains after closing?',
         'pdf.open-readable',
         'droppedTimings',
         'library.first-listing',

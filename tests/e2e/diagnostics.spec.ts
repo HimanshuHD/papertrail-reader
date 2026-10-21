@@ -150,8 +150,34 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await page.getByRole('tab', { name: 'Resources', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Resource investigation', exact: true }),
-  ).toContainText('Comparing current owned resources')
-  await page.getByRole('button', { name: 'Refresh storage estimate', exact: true }).click()
+  ).toContainText('Selected owner counts match the baseline')
+  const resourceRegion = page.getByRole('region', { name: 'Resource investigation', exact: true })
+  await info.attach('resources-cleanup', {
+    body: await resourceRegion.screenshot(),
+    contentType: 'image/png',
+  })
+  await page.getByRole('tab', { name: 'Cleanup', exact: true }).focus()
+  await page.keyboard.press('ArrowRight')
+  await expect(page.getByRole('tab', { name: 'Caches', exact: true })).toBeFocused()
+  await expect(resourceRegion).toContainText('Is cached PDF work being reused?')
+  await info.attach('resources-caches', {
+    body: await resourceRegion.screenshot(),
+    contentType: 'image/png',
+  })
+  await page.keyboard.press('ArrowRight')
+  await expect(resourceRegion).toContainText('Where is the request taking time?')
+  await info.attach('resources-requests', {
+    body: await resourceRegion.screenshot(),
+    contentType: 'image/png',
+  })
+  await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
+  await toggle.click()
+  await expect(page.getByRole('tab', { name: 'Requests', exact: true })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
+  await page.getByRole('tab', { name: 'Storage', exact: true }).click()
+  await page.getByRole('button', { name: 'Refresh estimate', exact: true }).click()
   await expect(
     page.getByRole('region', { name: 'Resource investigation', exact: true }),
   ).toContainText(/Origin storage estimate; disk usage|Unavailable: /)
@@ -236,6 +262,10 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await expect(region.getByRole('tabpanel', { name: 'Resources', exact: true })).toContainText(
     'No registered owner',
   )
+  await info.attach('resources-320-dark', {
+    body: await region.screenshot(),
+    contentType: 'image/png',
+  })
   const bounds = await region.boundingBox()
   expect(bounds!.x).toBeGreaterThanOrEqual(0)
   expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(320)

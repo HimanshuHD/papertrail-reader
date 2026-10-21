@@ -181,13 +181,78 @@ it('explains estimate scope and emits baseline/storage controls without leak or 
   expect(
     wrapper
       .findAll('button')
-      .find((b) => b.text() === 'Clear baseline')!
+      .find((b) => b.text() === 'Clear')!
       .attributes('disabled'),
   ).toBeDefined()
   await wrapper
+    .findAll('[role=tab]')
+    .find((b) => b.text() === 'Storage')!
+    .trigger('click')
+  await wrapper
     .findAll('button')
-    .find((b) => b.text() === 'Refresh storage estimate')!
+    .find((b) => b.text() === 'Refresh estimate')!
     .trigger('click')
   expect(wrapper.emitted('storage')).toHaveLength(1)
+  wrapper.unmount()
+})
+it('organizes Resources with keyboard tabs and keeps baseline interpretation limited to selected owners', async () => {
+  const r = new ResourceInvestigation()
+  r.resume()
+  r.markBaseline({}, 100)
+  const wrapper = mount(ResourcePanel, {
+    props: { snapshot: r.snapshot({ previewEntries: 3 }, 200) },
+  })
+  expect(wrapper.text()).toContain('Selected owner counts match the baseline')
+  expect(wrapper.text()).toContain('Heap estimates can remain higher')
+  expect(wrapper.findAll('tbody').at(0)!.findAll('tr')).toHaveLength(4)
+  await wrapper.setProps({ snapshot: r.snapshot({ viewers: 1 }, 200) })
+  expect(wrapper.text()).toContain('Tracked owner counts differ from the baseline')
+  await wrapper.find('[role=tablist]').trigger('keydown', { key: 'ArrowRight' })
+  expect(wrapper.find('[aria-selected=true]').text()).toBe('Caches')
+  expect(wrapper.find('[role=tabpanel]').attributes('aria-labelledby')).toBe('resource-tab-Caches')
+  expect(wrapper.text()).toContain('A miss can be normal on a first visit')
+  await wrapper.find('[role=tablist]').trigger('keydown', { key: 'End' })
+  expect(wrapper.find('[aria-selected=true]').text()).toBe('Storage')
+  await wrapper.find('[role=tablist]').trigger('keydown', { key: 'Home' })
+  expect(wrapper.find('[aria-selected=true]').text()).toBe('Cleanup')
+  expect(wrapper.findAll('[title]')).toHaveLength(0)
+  wrapper.unmount()
+})
+it('shows actual request outcomes and unavailable stages, without inventing timing or storage values', async () => {
+  const r = new ResourceInvestigation()
+  r.resume()
+  r.begin('pdf.render-request')!.finish('cancelled', 'cancelled')
+  r.begin('reading.transaction')!.finish('failed', 'quota')
+  const snapshot = r.snapshot({}, null)
+  const wrapper = mount(ResourcePanel, { props: { snapshot, selected: 'Requests' } })
+  expect(wrapper.text()).toContain('PDF render request')
+  expect(wrapper.text()).toContain('cancelled · cancelled')
+  expect(wrapper.text()).toContain('failed · quota')
+  expect(wrapper.text()).toContain('Processing Unavailable')
+  expect(wrapper.text()).toContain('Connection')
+  expect(wrapper.findAll('.stage')).toHaveLength(2)
+  await wrapper.setProps({ selected: 'Storage' })
+  expect(wrapper.text()).toContain('Not sampled')
+  await wrapper.setProps({
+    snapshot: {
+      ...snapshot,
+      storage: {
+        usageBytes: 0,
+        quotaBytes: null,
+        observedAtMs: 0,
+        status: 'Origin storage estimate; disk usage, not RAM or per-document allocation',
+      },
+    },
+  })
+  expect(wrapper.text()).toContain('Estimate captured')
+  expect(wrapper.find('.metrics').text()).toContain('0 MiB')
+  expect(wrapper.find('.metrics').text()).toContain('Unavailable')
+  await wrapper.setProps({ snapshot: { ...snapshot, active: false } })
+  expect(
+    wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Refresh estimate')!
+      .attributes('disabled'),
+  ).toBeDefined()
   wrapper.unmount()
 })
