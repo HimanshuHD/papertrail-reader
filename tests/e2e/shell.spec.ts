@@ -290,7 +290,8 @@ for (const kind of ['nav', 'ncx'] as const) {
         .poll(() => frame.locator('body').evaluate((el) => el.getBoundingClientRect().width))
         .toBeLessThanOrEqual(481)
     const area = await reader.locator('.epub-container').boundingBox()
-    await page.mouse.click(area!.x + area!.width / 2, area!.y + area!.height - 20)
+    // Click the reader edge, clear of the bottom-docked diagnostics launcher.
+    await page.mouse.click(area!.x + 8, area!.y + area!.height - 20)
     await expect(reader.getByRole('heading', { name: 'Typography', exact: true })).toHaveCount(0)
     await reader.getByRole('switch', { name: 'Text-only view' }).click()
     await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
@@ -816,7 +817,9 @@ test('home and app respond in both themes without overflow', async ({ page }, in
     await expect(page).toHaveURL(/#\/app$/)
     await expect(page.locator('[id$="reader-title"]:visible')).toBeVisible()
     await noOverflow(page)
-    const sidebar = await page.getByRole('complementary').boundingBox()
+    const sidebar = await page
+      .getByRole('complementary', { name: 'Document library', exact: true })
+      .boundingBox()
     const title = await page.locator('[id$="reader-title"]:visible').boundingBox()
     expect(sidebar).not.toBeNull()
     expect(title).not.toBeNull()
@@ -850,7 +853,9 @@ test('empty reader survives sidebar collapse and source actions remain available
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.getByRole('complementary')).toHaveCount(0)
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toHaveCount(0)
   await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
   await noOverflow(page)
 
@@ -872,9 +877,13 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await page.keyboard.press('Escape')
   const libraryToggle = page.getByRole('button', { name: 'Show library' })
   await expect(libraryToggle).toBeFocused()
-  await expect(page.getByRole('complementary')).toHaveCount(0)
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toHaveCount(0)
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('complementary')).toBeVisible()
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toBeVisible()
 
   const toggle = page.getByRole('button', { name: 'Dark mode' })
   await toggle.focus()

@@ -41,6 +41,8 @@ test('production excludes diagnostics; preview/staging and explicit builds inclu
       for (const marker of [
         'Developer diagnostics',
         'samplerOverhead',
+        'long-animation-frame',
+        'Enable additional sensors',
         'pdf.open-readable',
         'droppedTimings',
         'library.first-listing',

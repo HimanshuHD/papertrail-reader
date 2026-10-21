@@ -143,6 +143,7 @@ function selectTab(event: KeyboardEvent, index: number) {
         Up to 120 timings and 120 samples retained, sampled approximately every second. This is
         retained history, not a fixed rolling time window. No document contents are recorded.
       </p>
+      <slot name="sensors" />
     </template>
     <template v-else-if="tab === 'Operations'">
       <p>
