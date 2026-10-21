@@ -52,9 +52,12 @@ function heading(row: TimelineRow) {
   return stateLabels[row.event.state]
 }
 function peak(incident: Incident) {
-  return incident.findings.reduce(
-    (best, f) => ((f.observedMs ?? -1) > (best?.observedMs ?? -1) ? f : best),
-    incident.findings[0],
+  const candidates = incident.findings.some((f) => f.state === 'critical')
+    ? incident.findings.filter((f) => f.state === 'critical')
+    : incident.findings
+  return candidates.reduce(
+    (best, finding) => ((finding.observedMs ?? -1) > (best?.observedMs ?? -1) ? finding : best),
+    candidates[0],
   )
 }
 function duration(incident: Incident) {
@@ -83,6 +86,7 @@ function detailId(id: string) {
         v-for="option in filters"
         :key="option.key"
         type="button"
+        class="pt-plain-control"
         :aria-pressed="filter === option.key"
         @click="filter = option.key"
       >
@@ -107,7 +111,7 @@ function detailId(id: string) {
         <template v-if="row.kind === 'incident'">
           <button
             type="button"
-            class="event-header"
+            class="event-header pt-plain-control"
             :aria-expanded="expanded(row.id)"
             :aria-controls="detailId(row.id)"
             @click="toggle(row.id)"
@@ -189,7 +193,7 @@ function detailId(id: string) {
             <h4>Investigate next</h4>
             <p v-for="finding in row.incident.findings" :key="finding.id">{{ finding.next }}</p>
             <details v-if="row.incident.operations.length">
-              <summary>
+              <summary class="pt-text-action">
                 Recorded work during incident · {{ row.incident.operations.length }} operations
               </summary>
               <ul>
@@ -200,7 +204,9 @@ function detailId(id: string) {
               </ul>
             </details>
             <details>
-              <summary>Captured rules · {{ row.incident.evaluations }} evaluations</summary>
+              <summary class="pt-text-action">
+                Captured rules · {{ row.incident.evaluations }} evaluations
+              </summary>
               <div
                 v-for="(event, index) in row.incident.transitions.filter((e) => isWarning(e.state))"
                 :key="index"
@@ -224,7 +230,7 @@ function detailId(id: string) {
           <template v-else
             ><p class="secondary">{{ row.event.explanation }}</p>
             <details v-if="row.event.findings.length">
-              <summary>Observed signal and captured rules</summary>
+              <summary class="pt-text-action">Observed signal and captured rules</summary>
               <div v-for="finding in row.event.findings" :key="finding.id">
                 <p>{{ finding.reason }}</p>
                 <p>{{ finding.next }}</p>

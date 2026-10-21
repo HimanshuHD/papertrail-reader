@@ -48,6 +48,7 @@ it('groups escalation and recovery into incidents, retains causes and orders ope
     { metric: 'pdf.render', outcome: 'cancelled', durationMs: 30, endedAtMs: 20000 },
   ])
   expect(m.incidents).toHaveLength(2)
+  expect(buildTimeline(history.slice(1), []).incidents[0]?.id).toBe(m.incidents[0]?.id)
   expect(m.incidents[0]).toMatchObject({
     state: 'critical',
     status: 'Recovered',
@@ -108,4 +109,12 @@ it('matches the approved three-filter timeline, incident labels, expandable evid
   expect(wrapper.findAll('.entry')).toHaveLength(6)
   expect(wrapper.text()).not.toContain('PDF page render · cancelled')
   wrapper.unmount()
+})
+it('keeps critical evidence ahead of a numerically larger attention reading from another signal', () => {
+  const attention = event(1000, 'attention', 500)
+  attention.findings[0]!.id = 'long-tasks'
+  const critical = event(2000, 'critical', 182)
+  const model = buildTimeline([attention, critical, event(5000, 'recording')], [])
+  expect(model.incidents[0]?.evidence.state).toBe('critical')
+  expect(model.incidents[0]?.findings).toHaveLength(2)
 })

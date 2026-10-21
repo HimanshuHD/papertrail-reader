@@ -51,9 +51,13 @@ export function buildTimeline(history: IndicatorEvent[], timings: Timing[]) {
   const events = [...history].sort((a, b) => a.atMs - b.atMs)
   const rows: TimelineRow[] = []
   const incidents: Incident[] = []
+  const identities = new Map<string, number>()
   let current: Incident | undefined
-  for (const [index, event] of events.entries()) {
-    const id = `${event.atMs}:${event.state}:${index}`
+  for (const event of events) {
+    const identity = `${event.atMs}:${event.state}`
+    const duplicate = identities.get(identity) ?? 0
+    identities.set(identity, duplicate + 1)
+    const id = `${identity}:${duplicate}`
     if (isWarning(event.state)) {
       if (!current) {
         current = {
@@ -84,7 +88,11 @@ export function buildTimeline(history: IndicatorEvent[], timings: Timing[]) {
       }
       const peak = (item: IndicatorEvent) =>
         Math.max(0, ...item.findings.map((f) => f.observedMs ?? 0))
-      if (peak(event) > peak(current.evidence)) current.evidence = event
+      if (
+        (event.state === 'critical' && current.evidence.state !== 'critical') ||
+        (event.state === current.evidence.state && peak(event) > peak(current.evidence))
+      )
+        current.evidence = event
       current.title = title(current.findings)
       // A retained closed warning can outlive its following transition in imported evidence.
       if (event.endedAtMs !== undefined && event.resolution !== 'changed') {

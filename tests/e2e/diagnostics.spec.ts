@@ -70,6 +70,14 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   }
   await toggle.click()
   await page.getByRole('tab', { name: 'Operations', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Operations', exact: true })).toHaveCSS(
+    'background-color',
+    'rgb(35, 104, 107)',
+  )
+  await expect(page.getByRole('tablist', { name: 'Diagnostic views' })).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  )
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'pdf.open-readable',
   )
@@ -175,6 +183,16 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await page.keyboard.press('End')
   await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
   await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
+  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toHaveCSS(
+    'background-color',
+    'rgb(40, 90, 96)',
+  )
+  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toHaveCSS(
+    'box-shadow',
+    'none',
+  )
+  await expect(region.getByRole('tablist')).toHaveCSS('border-top-width', '1px')
+  await expect(region.getByRole('tablist')).toHaveCSS('border-bottom-width', '1px')
   await expect(region).toContainText('Session timeline')
   for (const label of ['All events', 'Incidents only', 'Transitions only'])
     await expect(region.getByRole('button', { name: label, exact: true })).toBeVisible()

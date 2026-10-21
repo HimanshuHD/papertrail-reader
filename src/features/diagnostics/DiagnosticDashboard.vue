@@ -80,6 +80,7 @@ function selectTab(event: KeyboardEvent, index: number) {
       :key="tab"
       type="button"
       role="tab"
+      class="pt-plain-control"
       :aria-selected="active === tab"
       :aria-controls="`diagnostic-view-${tab}`"
       :tabindex="active === tab ? 0 : -1"
