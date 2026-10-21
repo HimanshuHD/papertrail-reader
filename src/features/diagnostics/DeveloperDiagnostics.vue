@@ -8,7 +8,7 @@ import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
 const open = ref(false)
 const minimized = ref(false)
-let lastOverhead: ReturnType<typeof startSampler>['overhead'] | null = null
+const lastOverhead = ref<ReturnType<typeof startSampler>['overhead'] | null>(null)
 const snapshot = ref(diagnostics.snapshot())
 const available = ref(capabilities())
 const identity = {
@@ -22,9 +22,10 @@ const identity = {
 let sampler: ReturnType<typeof startSampler> | undefined
 function refresh() {
   snapshot.value = diagnostics.snapshot()
+  if (sampler) lastOverhead.value = { ...sampler.overhead }
 }
 function pause() {
-  if (sampler) lastOverhead = { ...sampler.overhead }
+  if (sampler) lastOverhead.value = { ...sampler.overhead }
   sampler?.stop()
   sampler = undefined
   diagnostics.pause()
@@ -59,7 +60,7 @@ function reset() {
   sampler?.stop()
   sampler = undefined
   diagnostics.reset()
-  lastOverhead = null
+  lastOverhead.value = null
   if (running) resume()
   else refresh()
 }
@@ -70,7 +71,7 @@ function exportSummary() {
         ...diagnostics.snapshot(),
         identity,
         capabilities: available.value,
-        samplerOverhead: sampler?.overhead ?? lastOverhead,
+        samplerOverhead: sampler?.overhead ?? lastOverhead.value,
         limits: { retainedTimings: 120, retainedSamples: 120, intervalMs: 1000 },
       },
       null,
@@ -114,8 +115,10 @@ onBeforeUnmount(() => {
       id="developer-diagnostics-panel"
       aria-label="Diagnostic measurements"
     >
-      <h2>Developer diagnostics</h2>
-      <button type="button" @click="minimize">Minimize diagnostics</button>
+      <div class="heading">
+        <h2>Developer diagnostics</h2>
+        <button type="button" aria-label="Minimize diagnostics" @click="minimize">Minimize</button>
+      </div>
       <p>Local measurements · Ctrl+Alt+D · Escape closes and stops sampling.</p>
       <div class="actions">
         <button v-if="snapshot.running" @click="pause">Pause</button
@@ -138,6 +141,12 @@ onBeforeUnmount(() => {
         <ul>
           <li v-for="(value, key) in available" :key="key">{{ key }}: {{ value }}</li>
         </ul>
+        <h3>Sampler callback overhead</h3>
+        <p v-if="lastOverhead?.samples">
+          {{ lastOverhead.samples }} completed callbacks · {{ lastOverhead.totalMs.toFixed(2) }} ms
+          total · {{ lastOverhead.maxMs.toFixed(2) }} ms maximum
+        </p>
+        <p v-else>No completed sampling callbacks yet.</p>
         <h3>Owned resources (raw)</h3>
         <pre>{{ JSON.stringify(snapshot.resources, null, 2) }}</pre>
         <h3>Latest sample (raw)</h3>
@@ -177,6 +186,16 @@ section {
   max-height: 70dvh;
   overflow: auto;
   padding: 12px;
+}
+.heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+h2 {
+  font-size: 15px;
 }
 details {
   margin-top: 12px;

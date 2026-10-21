@@ -130,9 +130,10 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
 }, info) => {
   test.skip(!diagnostic, 'Explicit diagnostic build only')
   await page.setViewportSize({ width: 320, height: 900 })
-  await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('./#/app')
   await waitForWorkspaceReady(page)
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: 'Developer diagnostics', exact: true }).click()
   const region = page.getByRole('region', { name: 'Diagnostic measurements' })
   await expect(region).toContainText('Targets not configured')

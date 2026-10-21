@@ -23,7 +23,7 @@ it('keeps sampling off until opened, exports locally, resets session and cleans 
   expect(diagnostics.running).toBe(true)
   await wrapper
     .findAll('button')
-    .find((button) => button.text() === 'Minimize diagnostics')!
+    .find((button) => button.attributes('aria-label') === 'Minimize diagnostics')!
     .trigger('click')
   expect(wrapper.find('section').exists()).toBe(false)
   expect(diagnostics.running).toBe(true)
