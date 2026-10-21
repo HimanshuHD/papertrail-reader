@@ -194,6 +194,7 @@ function selectTab(event: KeyboardEvent, index: number) {
           </tbody>
         </table>
       </div>
+      <slot name="operation-profiles" />
     </template>
     <template v-else-if="tab === 'Resources'">
       <slot name="resource-investigation">

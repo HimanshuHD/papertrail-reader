@@ -304,10 +304,32 @@ export class ResourceInvestigation {
         deltaBytes:
           this.baseline?.heapBytes != null && heap !== null ? heap - this.baseline.heapBytes : null,
       },
+      observations: [
+        ...(
+          [
+            'viewers',
+            'pdfWorkerOwners',
+            'canvases',
+            'blobURLs',
+            'ownedListeners',
+            'ownedObservers',
+            'ownedTimers',
+          ] as const
+        ).flatMap((key) => {
+          const baseline = this.baseline?.resources[key]
+          return baseline !== undefined && owned[key] !== baseline
+            ? [{ key: key as OwnedKey | 'jsHeapBytes', delta: owned[key] - baseline }]
+            : []
+        }),
+        ...(this.baseline?.heapBytes != null && heap !== null && heap !== this.baseline.heapBytes
+          ? [{ key: 'jsHeapBytes' as const, delta: heap - this.baseline.heapBytes }]
+          : []),
+      ],
       caches: { preview: { ...this.caches.preview }, dimensions: { ...this.caches.dimensions } },
       timings: this.timings.map((row) => ({ ...row })),
       pending: [...this.pending.values()].map((row) => ({
         operation: row.operation,
+        queuedAtMs: row.queuedAtMs,
         phase: row.startedAtMs === null ? 'waiting' : 'processing',
         ageMs: Math.max(0, now - row.queuedAtMs),
       })),

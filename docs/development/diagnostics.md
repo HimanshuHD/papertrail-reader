@@ -130,7 +130,7 @@ A separate `IndicatorMonitor` now replaces the initial three-sample launcher hel
 
 The versioned local configuration uses a 30s foreground observation window, three consecutive supported samples, three fresh healthy evaluations for recovery and a 5s freshness limit. Duplicate UI refreshes do not advance recovery. Background/pause/resume/reset starts a fresh evaluation window; background operation durations are excluded. Responsiveness defaults remain provisional (50/150ms frame intervals, 200/1000ms long-task duration per sample), pending #16 calibration. Missing readings break sustained series and are not zeros.
 
-In the final Technical details tab, select an instrumented operation and explicitly apply/remove duration or pending-age targets. Inputs require positive finite milliseconds with critical greater than attention, capped at one hour. Operation/pending targets default unconfigured; no arbitrary PDF/EPUB/library workload budget is inferred. Resources request evidence now distinguishes reader cold/warm/restored/expired instances and persistence intent (see #252 attribution below); the operation target selector still uses aggregate metrics. Separate validated target profiles remain #250 work. Completed duration statistics exclude cancelled/failed/unavailable records; p95 still requires 20 completions.
+In the final Technical details tab, select an instrumented operation and explicitly apply/remove duration or pending-age targets. Inputs require positive finite milliseconds with critical greater than attention, capped at one hour. Operation/pending targets default unconfigured; no arbitrary PDF/EPUB/library workload budget is inferred. Resources request evidence distinguishes reader cold/warm/restored/expired instances and persistence intent. Version 2 target configuration supports independent reader lifecycle profiles as described below; accepted workload budgets remain #16 work. Completed duration statistics exclude cancelled/failed/unavailable records; p95 still requires 20 completions.
 
 Export schema 2 adds monotonic page-relative `observedAtMs`, `startedAtMs`, `endedAtMs`, anonymous pending operation details and indicator configuration/current finding/history. No wall-clock/document identifiers or contents are added. Transition history is limited to 120 entries. Timestamps permit truthful recency; the operation table still describes retained history rather than a fixed time window.
 
@@ -234,3 +234,47 @@ released readers/task owners/Blob URLs/listeners/observers/timers against a mark
 baseline. Retention expiry uses the separate accelerated functional case;
 performance workloads retain real clocks. Larger/native-device and total expanded
 panel/optional-sensor overhead acceptance remain #253/#16.
+
+### Independent operation profiles (#250)
+
+Operations retains the existing aggregate timings and adds an accessible,
+horizontally scrollable **Reader lifecycle profiles** table. PDF and EPUB each
+have separate cold-reader, saved-workspace restoration, expiry recreation and
+warm selection-dispatch rows. Last/median/worst and completed counts never mix
+profiles; p95 requires 20 completions in that exact profile. Failed/cancelled
+records remain separate. Table statistics describe retained evidence, not a
+recent-window health pass.
+
+Technical details → Local provisional operation targets selects any existing
+PDF render/navigation, EPUB chapter/reflow, library scan/first-listing or aggregate
+open metric, plus each reader lifecycle profile. Completed-duration and pending-age
+rules are independently configured per profile. The editor loads the selected
+saved rule, leaves unconfigured inputs blank and removes only the selected rule.
+Changing a target restarts the evaluation window. Configuration is local to the
+current panel instance/session; export retains it, but no persistence/import or
+accepted budget is implied. Version 2 exports the profile definitions, boundaries
+and units along with active rules, window, sample minimum, sustained breaches,
+recovery and history.
+
+Reader profiles use existing instance-creation→ready/error evidence. Warm records
+measure synchronous retained-ready selection dispatch, not browser paint or
+first-readable latency. Cold means a new reader instance, not flushed OS/browser
+caches. Aggregate open timings can overlap reader lifecycle timings: configure
+both only intentionally. Saved-workspace restoration and five-minute expiry
+recreation have distinct profiles rather than one generic restore budget.
+
+Only recent completed timings beginning within the active evaluation epoch enter
+duration rules. Cancellations, failures, pre-configuration/background-boundary
+work and old recordings do not become breaches. Pending-age rules use the
+matching profile's recorded start, not inactivity retention timers. Pause,
+background visibility and reset/configuration boundaries retain their neutral
+states and discard old windows. History includes fixed profile names and nearby
+numeric timings; no document identity/content is added.
+
+Resources → Cleanup also exports bounded **informational** baseline observations
+for tracked ownership and supported JS heap changes. These notes never influence
+health severity. Active readers, expected five-minute retention and allocation
+changes require lifecycle investigation, not universal memory ceilings or leak
+verdicts. Unsupported heap readings produce no numeric observation. Reset clears
+the comparison baseline. #16 owns accepted targets; #253 owns representative
+native/device/large-workload and total instrumentation/UI overhead acceptance.

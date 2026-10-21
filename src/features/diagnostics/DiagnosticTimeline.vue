@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import type { IndicatorEvent, IndicatorResult } from './indicators'
 import type { Snapshot } from './presentation'
 import { measurement, metricNames } from './presentation'
+import { profileNames } from './operation-profiles'
 import UiIcon from '../../components/UiIcon.vue'
 import {
   buildTimeline,
@@ -181,7 +182,7 @@ function detailId(id: string) {
             <h4>Nearby recorded work</h4>
             <div v-if="row.incident.evidence.context.length" class="correlation">
               <span v-for="(operation, index) in row.incident.evidence.context" :key="index"
-                >{{ metricNames[operation.metric] }} · {{ operation.outcome }} ·
+                >{{ profileNames[operation.metric] }} · {{ operation.outcome }} ·
                 {{ measurement(operation.durationMs) }}</span
               >
             </div>

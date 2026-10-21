@@ -1,42 +1,67 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { Metric } from './recorder'
-import { metricNames } from './presentation'
-import { validTarget, type Target } from './indicators'
+import { computed, ref, watch } from 'vue'
+import { profileNames, profileDescription, type OperationProfile } from './operation-profiles'
+import { validTarget, type Target, type IndicatorConfig } from './indicators'
+const props = defineProps<{ config?: IndicatorConfig }>()
 const emit = defineEmits<{
-  apply: [metric: Metric, kind: 'operations' | 'pending', target: Target | null]
+  apply: [metric: OperationProfile, kind: 'operations' | 'pending', target: Target | null]
 }>()
-const metric = ref<Metric>('pdf.render')
+const metric = ref<OperationProfile>('pdf.render')
 const kind = ref<'operations' | 'pending'>('operations')
-const attention = ref(200)
-const critical = ref(1000)
+const attention = ref<number | ''>('')
+const critical = ref<number | ''>('')
 const error = ref('')
+const selectedTarget = computed(() => props.config?.[kind.value][metric.value])
+watch(
+  [metric, kind, () => props.config],
+  () => {
+    attention.value = selectedTarget.value?.attentionMs ?? ''
+    critical.value = selectedTarget.value?.criticalMs ?? ''
+    error.value = ''
+  },
+  { immediate: true },
+)
 function apply() {
   const target = { attentionMs: attention.value, criticalMs: critical.value }
-  if (!validTarget(target)) {
+  if (
+    typeof target.attentionMs !== 'number' ||
+    typeof target.criticalMs !== 'number' ||
+    !validTarget({ attentionMs: Number(target.attentionMs), criticalMs: Number(target.criticalMs) })
+  ) {
     error.value =
       'Enter positive millisecond targets with critical greater than attention, up to 3,600,000 ms.'
     return
   }
   error.value = ''
-  emit('apply', metric.value, kind.value, target)
+  emit('apply', metric.value, kind.value, {
+    attentionMs: Number(target.attentionMs),
+    criticalMs: Number(target.criticalMs),
+  })
 }
 </script>
 <template>
   <form @submit.prevent="apply">
     <h3>Local provisional operation targets</h3>
     <p>
-      Unconfigured by default; these are not accepted #16 budgets. Cold/warm/restore attribution is
-      not yet recorded separately. Configure only a representative workload; changes restart the
-      evaluation window.
+      Unconfigured by default; these are not accepted #16 budgets. Configure each workload
+      separately; changes restart the evaluation window. Version 2 keeps cold, saved-workspace,
+      expiry and warm selection targets independent.
     </p>
     <label
-      >Operation<select v-model="metric">
-        <option v-for="(name, key) in metricNames" :key="key" :value="key">{{ name }}</option>
+      >Operation<select v-model="metric" aria-label="Operation">
+        <option v-for="(name, key) in profileNames" :key="key" :value="key">{{ name }}</option>
       </select></label
     >
+    <p>{{ profileDescription(metric) }}</p>
+    <p role="status">
+      {{
+        selectedTarget
+          ? `Configured: attention ${selectedTarget.attentionMs} ms · critical ${selectedTarget.criticalMs} ms`
+          : 'Selected target is unconfigured'
+      }}
+    </p>
     <label
-      >Rule<select v-model="kind">
+      >Rule<select v-model="kind" aria-label="Rule">
         <option value="operations">Completed duration</option>
         <option value="pending">Pending age</option>
       </select></label
