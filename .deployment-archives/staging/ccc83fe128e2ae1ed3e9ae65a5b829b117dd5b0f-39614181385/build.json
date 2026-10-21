@@ -1,0 +1,32 @@
+{
+  "schema": 2,
+  "sha": "0e9f9442fdf9f81bc339c2b707e4611132fdccd0",
+  "tree": "ccc83fe128e2ae1ed3e9ae65a5b829b117dd5b0f",
+  "headSha": "d436c68f0a2d2ba5b63acdf7a5d9e848e1f2662b",
+  "baseSha": "129393a3bd2facd16c712fecef10edde073a8434",
+  "runId": "39614181385",
+  "pr": "256",
+  "channel": "staging",
+  "basePath": "/papertrail-reader/staging/",
+  "version": "2.2.0",
+  "sourceBranch": "feature/252-resource-investigation",
+  "publish": true,
+  "files": {
+    "assets/bootstrap-CCa9o1hg.css": "f255044bcaff66680272915dfb35135cc02529a6c72fad91a80972d76f5fb51c",
+    "assets/bootstrap-Dbk3B9_t.js": "e083388ac59d47c21a5c869f38d56e8c07e81d4e8e84c3c46396d5c4507d1a58",
+    "assets/DeveloperDiagnostics-B8OnO5rl.css": "13a50c02b1cb0162407bdcc04b68036ac5d57dfa2e3d95b53411176dc6e631cc",
+    "assets/DeveloperDiagnostics-maePepc5.js": "e50b18d6f4d96f059b25d465a123fbb75fd5a585c64af5cb6911c39026e9c62d",
+    "assets/index-BPtYUtcL.js": "e26bda07569dc9ca548c4da7c4b489674d5714446532c2b8573636c44d50043c",
+    "assets/index-DJfj4Y2Z.css": "ac7c99bcb38d320f81e03c0d5aff290edec580dc2cc4dd80738020e36571479b",
+    "assets/pdf-CgRXlfm5.js": "c8dac628f122b9d113cfc4d698d88b8e9ef9ce93d844a06c3899946c3cc7c758",
+    "assets/pdf.worker.min-CfFUUJQW.js": "709193014b6a1e6a6d9098e54ca8a617bd8fb13a10db2c9f0efaf5bacd0dccfd",
+    "assets/pdf.worker.min-Dswkl-cV.mjs": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386",
+    "assets/src-BCqo1MEg.js": "39c464d43972eee442a450f5cc65ca90343a0710491716e62d244cd3fc86d0f8",
+    "channel.json": "5ac57db00efde8354e5593bc8e37d616e5279ec4f687b25532bda9a029733c7c",
+    "index.html": "81a47c314daf48def856708305a5f8e42c4a9631f39a41135f082e3640b43708",
+    "papertrail.svg": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c",
+    "startup/book-sprite.webp": "c9a5fb6ae8fe7ac2bb4130dea4b8c61cbbccfedb13221772f02e11a4d0ee4f05",
+    "startup/brand.webp": "3188afc4cc8cf6f0a5882b0e8b43432cc604e4bd19c12f7ae82c95ac32197ff2",
+    "startup/README.md": "1aa46901b68eb0c61336a4d7d6db2a3c7d159f2860cb5dfe54d8835e06c67317"
+  }
+}
