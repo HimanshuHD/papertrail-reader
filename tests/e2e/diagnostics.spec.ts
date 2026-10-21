@@ -78,7 +78,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'epub.reflow',
   )
-  await page.getByText('Technical details', { exact: true }).click()
+  await page.getByRole('tab', { name: 'Technical details', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'frameIntervalMs',
   )
@@ -137,13 +137,37 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await page.getByRole('button', { name: 'Developer diagnostics', exact: true }).click()
   const region = page.getByRole('region', { name: 'Diagnostic measurements' })
   await expect(region).toContainText('Targets not configured')
+  const header = region.locator('header')
+  await expect(header.getByRole('button')).toHaveCount(3)
+  await expect(region.locator('footer').getByRole('button')).toHaveCount(2)
+  await expect(region.locator('button[title]')).toHaveCount(0)
+  const pause = header.getByRole('button', { name: 'Pause', exact: true })
+  await pause.focus()
+  await expect(page.getByRole('tooltip', { name: 'Pause', exact: true })).toBeVisible()
+  await expect(page.getByRole('tooltip')).toHaveCount(1)
+  await header.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
+  const trigger = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
+  const triggerBounds = await trigger.boundingBox()
+  expect(Math.round(triggerBounds!.y + triggerBounds!.height)).toBe(900)
+  await expect(trigger.locator('.pulse-loader')).toHaveAttribute('data-state', 'recording')
+  await trigger.click()
+  await region.getByRole('button', { name: 'Pause', exact: true }).click()
+  await region.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
+  await expect(trigger.locator('.pulse-loader')).toHaveAttribute('data-state', 'inactive')
+  await expect(trigger.locator('.pulse-ring').first()).toHaveCSS('animation-name', 'none')
+  await info.attach('diagnostics-minimized-paused', {
+    body: await trigger.screenshot(),
+    contentType: 'image/png',
+  })
+  await trigger.click()
   const overview = region.getByRole('tab', { name: 'Overview', exact: true })
   await overview.focus()
   await page.keyboard.press('ArrowRight')
   await expect(region.getByRole('tab', { name: 'Operations', exact: true })).toBeFocused()
   await expect(region.getByRole('tabpanel', { name: 'Operations', exact: true })).toBeVisible()
   await page.keyboard.press('End')
-  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toBeFocused()
+  await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
+  await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
   await expect(region).toContainText('No recorded operations')
   await region.getByRole('tab', { name: 'Resources', exact: true }).click()
   await expect(region.getByRole('tabpanel', { name: 'Resources', exact: true })).toContainText(

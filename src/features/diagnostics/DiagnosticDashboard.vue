@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import DiagnosticTrend from './DiagnosticTrend.vue'
 import { measurement, metricNames, operationStats, type Snapshot } from './presentation'
 const props = defineProps<{ snapshot: Snapshot; capabilities: Record<string, string> }>()
-const tabs = ['Overview', 'Operations', 'Resources', 'Timeline'] as const
+const tabs = ['Overview', 'Operations', 'Resources', 'Timeline', 'Technical details'] as const
 const active = ref<(typeof tabs)[number]>('Overview')
 const stats = computed(() => operationStats(props.snapshot.timings))
 const latest = computed(() => props.snapshot.samples.at(-1))
@@ -182,7 +182,7 @@ function selectTab(event: KeyboardEvent, index: number) {
         cleanup baselines are planned separately; they are not measured here.
       </p>
     </template>
-    <template v-else>
+    <template v-else-if="tab === 'Timeline'">
       <p>
         Most recent first, up to 120 retained outcomes. Ordinary cancellation is expected during
         navigation; it is not automatically a critical condition. No per-reader attribution is
@@ -201,6 +201,7 @@ function selectTab(event: KeyboardEvent, index: number) {
       </ol>
       <p v-else>No recorded operations. Open a document or browse your library while recording.</p>
     </template>
+    <slot v-else name="technical" />
   </div>
 </template>
 <style scoped>

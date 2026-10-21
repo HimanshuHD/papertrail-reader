@@ -53,3 +53,15 @@ Development or explicit diagnostic builds only. Default production/hosted previe
 ## Acceptance plan
 
 Use identical representative PDF/EPUB/library scenarios and compare production, diagnostics closed, minimized sampling and paused. Measure full diagnostic/UI overhead, not just the synchronous sampling callback. Cover 100/1,000 files, text/image/1,001-page PDFs, CSS/image and long-chapter EPUB, cold/repeat, restore, rapid cancellation, scroll/zoom/reflow, five-minute retention expiry and repeated teardown. Check light/dark, 320px/desktop, keyboard/accessible alternatives and Chrome/Firefox/WebKit capability fallbacks. Native browser/OS targets and owner preview/merge/staging acceptance remain explicit; manual Visual QA remains manual. Retain exact source/tree/flags and safe aggregates. Existing #248 CI/initial small-fixture measurements are historical evidence for their exact source, not proof for this UI revision or universal budgets.
+
+## Implemented panel chrome update
+
+Owner follow-up: move Pause/Resume, Minimize and Close to an icon-only header; Reset/Export to an icon-only footer; Technical details to the final tab. Use one shared custom tooltip per focused/hovered action, without native titles. Header/footer stay outside the scrolling content.
+
+The bottom-edge minimized launcher has top rounding only and no bottom border. Its 24px, four-ring pulse adapts the owner-supplied `loader.html` (2.4s period, 0.6s offsets, bounded scale 3.2 around a 7px core). Closed/paused is gray and static; reduced motion disables animation. Recording defaults green; three sustained foreground responsiveness samples can produce yellow/red using explicitly provisional rules documented in the developer guide and JSON export. This does not complete #250's calibrated workload indicators.
+
+Local browser captures of this implementation (not simulated prototype values):
+
+![Dark mobile panel with header and footer](panel-ui-dark-mobile.png)
+
+![Paused minimized bottom-edge launcher](panel-ui-minimized-paused.png)
