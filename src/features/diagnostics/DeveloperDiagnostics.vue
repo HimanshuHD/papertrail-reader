@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { version } from '../../../package.json'
 import { diagnostics } from './recorder'
 import IconButton from '../../components/IconButton.vue'
-import { triggerHealth, triggerRules } from './health'
-import type { Snapshot } from './presentation'
+import { IndicatorMonitor, type Target } from './indicators'
+import IndicatorTargets from './IndicatorTargets.vue'
+import type { Metric } from './recorder'
 import DiagnosticDashboard from './DiagnosticDashboard.vue'
 import { capabilities, startSampler } from './sampler'
 import { downloadJson } from '../../services/file-download'
@@ -22,18 +23,20 @@ const identity = {
     ? 'Modified working tree; SHA identifies base revision'
     : 'Clean',
 }
-const recentSamples = ref<Snapshot['samples']>([])
-const health = computed(() =>
-  triggerHealth(open.value && snapshot.value.running, recentSamples.value),
-)
+const monitor = new IndicatorMonitor()
+const health = ref(monitor.update(snapshot.value, performance.now(), !document.hidden))
+const indicatorHistory = ref([...monitor.history])
+function configureTarget(metric: Metric, kind: 'operations' | 'pending', target: Target | null) {
+  if (target) monitor.config[kind][metric] = target
+  else delete monitor.config[kind][metric]
+  monitor.restart(performance.now())
+  refresh()
+}
 let sampler: ReturnType<typeof startSampler> | undefined
-function refresh(recordSample = false) {
+function refresh() {
   snapshot.value = diagnostics.snapshot()
-  if (recordSample) {
-    if (document.hidden) recentSamples.value = []
-    else if (snapshot.value.samples.length)
-      recentSamples.value = [...recentSamples.value, snapshot.value.samples.at(-1)!].slice(-3)
-  }
+  health.value = monitor.update(snapshot.value, performance.now(), !document.hidden)
+  indicatorHistory.value = [...monitor.history]
   if (sampler) lastOverhead.value = { ...sampler.overhead }
 }
 function pause() {
@@ -46,8 +49,8 @@ function pause() {
 function resume() {
   if (sampler) return
   diagnostics.resume()
-  recentSamples.value = []
-  sampler = startSampler(() => refresh(true))
+  monitor.restart(performance.now())
+  sampler = startSampler(refresh)
   available.value = sampler.available
   refresh()
 }
@@ -73,6 +76,7 @@ function reset() {
   sampler?.stop()
   sampler = undefined
   diagnostics.reset()
+  monitor.restart(performance.now(), true)
   lastOverhead.value = null
   if (running) resume()
   else refresh()
@@ -85,7 +89,11 @@ function exportSummary() {
         identity,
         capabilities: available.value,
         samplerOverhead: sampler?.overhead ?? lastOverhead.value,
-        triggerRules,
+        indicators: {
+          configuration: monitor.config,
+          current: health.value,
+          history: indicatorHistory.value,
+        },
         limits: { retainedTimings: 120, retainedSamples: 120, intervalMs: 1000 },
       },
       null,
@@ -106,10 +114,14 @@ function keyboard(event: KeyboardEvent) {
     void nextTick(() => trigger.value?.focus())
   }
 }
-onMounted(() => window.addEventListener('keydown', keyboard))
+onMounted(() => {
+  window.addEventListener('keydown', keyboard)
+  document.addEventListener('visibilitychange', refresh)
+})
 onBeforeUnmount(() => {
   pause()
   window.removeEventListener('keydown', keyboard)
+  document.removeEventListener('visibilitychange', refresh)
 })
 </script>
 <template>
@@ -163,7 +175,12 @@ onBeforeUnmount(() => {
         </div>
       </header>
       <div class="dashboard-content">
-        <DiagnosticDashboard :snapshot="snapshot" :capabilities="available">
+        <DiagnosticDashboard
+          :snapshot="snapshot"
+          :capabilities="available"
+          :health="health"
+          :indicator-history="indicatorHistory"
+        >
           <template #technical>
             <h3>Build and session</h3>
 
@@ -195,14 +212,13 @@ onBeforeUnmount(() => {
               At most 120 timings/samples retained. Sampling callback timing in the export covers
               synchronous sampler/snapshot work only, not all rendering or diagnostic overhead.
             </p>
-            <h3>Minimized indicator rules (provisional)</h3>
+            <IndicatorTargets @apply="configureTarget" />
+            <h3>Active indicator configuration</h3>
+            <pre>{{ JSON.stringify(monitor.config, null, 2) }}</pre>
             <p>
-              {{ health.label }}. Green means recording without a detected sustained signal, not a
-              calibrated performance pass. Yellow/red require three consecutive recent samples above
-              the configured frame-interval or long-task thresholds. Paused/closed is gray; resuming
-              starts a fresh signal window.
+              No CPU/GPU/process-memory score or leak verdict is inferred. #16 calibration and
+              broader #250 workload profiles remain open.
             </p>
-            <pre>{{ JSON.stringify(triggerRules, null, 2) }}</pre>
           </template>
         </DiagnosticDashboard>
       </div>
@@ -274,6 +290,7 @@ footer small {
   gap: 2px;
 }
 .dashboard-content {
+  --diagnostic-content-inset: 14px;
   padding: 12px 14px;
   overflow: auto;
   min-height: 0;
@@ -361,6 +378,7 @@ dt {
     padding: 8px;
   }
   .dashboard-content {
+    --diagnostic-content-inset: 10px;
     padding: 10px;
   }
 }

@@ -3,13 +3,15 @@ import { readFile } from 'node:fs/promises'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
-const diagnostic = process.env.E2E_DIAGNOSTICS === 'true'
+const diagnostic =
+  process.env.E2E_DIAGNOSTICS === 'true' ||
+  ['preview', 'staging'].includes(process.env.E2E_DEPLOY_CHANNEL ?? '')
 test('default production cannot enable diagnostics through a query or keyboard flag', async ({
   page,
 }) => {
   test.skip(diagnostic, 'Run against a default production build')
   await page.goto('./?diagnostics=true#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   await page.keyboard.press('Control+Alt+KeyD')
   await expect(
     page.getByRole('button', { name: 'Developer diagnostics', exact: true }),
@@ -20,7 +22,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
 }, info) => {
   test.skip(!diagnostic, 'Explicit diagnostic build only')
   await page.goto('./#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   await toggle.click()
   await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
@@ -43,6 +45,8 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
       .getByRole('region', { name: 'Library documents', exact: true })
       .getByRole('button', { name: `${format}: private-name.${format.toLowerCase()}`, exact: true })
       .click()
+    const hideLibrary = page.getByRole('button', { name: 'Hide library', exact: true })
+    if (await hideLibrary.isVisible()) await hideLibrary.click()
     if (format === 'PDF') {
       await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
         'data-render-state',
@@ -66,6 +70,14 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
   }
   await toggle.click()
   await page.getByRole('tab', { name: 'Operations', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Operations', exact: true })).toHaveCSS(
+    'background-color',
+    'rgb(35, 104, 107)',
+  )
+  await expect(page.getByRole('tablist', { name: 'Diagnostic views' })).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  )
   await expect(page.getByRole('region', { name: 'Diagnostic measurements' })).toContainText(
     'pdf.open-readable',
   )
@@ -131,7 +143,7 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   test.skip(!diagnostic, 'Explicit diagnostic build only')
   await page.setViewportSize({ width: 320, height: 900 })
   await page.goto('./#/app')
-  await waitForWorkspaceReady(page)
+  await waitForWorkspaceReady(page, process.env.E2E_DEPLOY_CHANNEL === 'preview' ? 15000 : 5000)
   await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
   await page.getByRole('button', { name: 'Developer diagnostics', exact: true }).click()
@@ -149,7 +161,10 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   const trigger = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   const triggerBounds = await trigger.boundingBox()
   expect(Math.round(triggerBounds!.y + triggerBounds!.height)).toBe(900)
-  await expect(trigger.locator('.pulse-loader')).toHaveAttribute('data-state', 'recording')
+  await expect(trigger.locator('.pulse-loader')).toHaveAttribute(
+    'data-state',
+    /recording|collecting/,
+  )
   await trigger.click()
   await region.getByRole('button', { name: 'Pause', exact: true }).click()
   await region.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
@@ -168,7 +183,23 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await page.keyboard.press('End')
   await expect(region.getByRole('tab', { name: 'Technical details', exact: true })).toBeFocused()
   await region.getByRole('tab', { name: 'Timeline', exact: true }).click()
-  await expect(region).toContainText('No recorded operations')
+  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toHaveCSS(
+    'background-color',
+    'rgb(40, 90, 96)',
+  )
+  await expect(region.getByRole('tab', { name: 'Timeline', exact: true })).toHaveCSS(
+    'box-shadow',
+    'none',
+  )
+  await expect(region.getByRole('tablist')).toHaveCSS('border-top-width', '1px')
+  await expect(region.getByRole('tablist')).toHaveCSS('border-bottom-width', '1px')
+  await expect(region).toContainText('Session timeline')
+  for (const label of ['All events', 'Incidents only', 'Transitions only'])
+    await expect(region.getByRole('button', { name: label, exact: true })).toBeVisible()
+  await region.getByRole('button', { name: 'Incidents only', exact: true }).click()
+  await expect(region).toContainText('No retained performance incidents')
+  await region.getByRole('button', { name: 'Transitions only', exact: true }).click()
+  await expect(region.getByRole('list', { name: 'Chronological diagnostic events' })).toBeVisible()
   await region.getByRole('tab', { name: 'Resources', exact: true }).click()
   await expect(region.getByRole('tabpanel', { name: 'Resources', exact: true })).toContainText(
     'No registered owner',

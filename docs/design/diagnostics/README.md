@@ -48,7 +48,7 @@ Good (green), Needs attention (yellow), Critical (red), and Unavailable/Collecti
 
 ## Privacy, lifecycle and build boundary
 
-Development or explicit diagnostic builds only. Default production/hosted previews exclude panel, recorder and diagnostic strings; query flags cannot enable them. Local bounded collection/export only; no titles, paths, text, annotation data, DOM selectors, raw URLs, binary documents or unreviewed attribution strings. Unsupported readings use null/reasons, not fake zeros. Pause/close/reset/unmount release observers, timers, pending work and keyboard handlers appropriately. Minimize may continue sampling without obscuring reader controls; expand/close restores sensible focus.
+Development, preview/staging channel builds or explicit diagnostic builds. Default production/release builds exclude panel, recorder and diagnostic strings; query flags cannot enable them. Local bounded collection/export only; no titles, paths, text, annotation data, DOM selectors, raw URLs, binary documents or unreviewed attribution strings. Unsupported readings use null/reasons, not fake zeros. Pause/close/reset/unmount release observers, timers, pending work and keyboard handlers appropriately. Minimize may continue sampling without obscuring reader controls; expand/close restores sensible focus.
 
 ## Acceptance plan
 
@@ -65,3 +65,13 @@ Local browser captures of this implementation (not simulated prototype values):
 ![Dark mobile panel with header and footer](panel-ui-dark-mobile.png)
 
 ![Paused minimized bottom-edge launcher](panel-ui-minimized-paused.png)
+
+## Approved chronological timeline layout
+
+Owner approved the [interactive timeline prototype](timeline-prototype.html) before implementation. Its [reference image](timeline-prototype.jpg) uses simulated data; none is seeded into the application.
+
+![Approved timeline layout — simulated session](timeline-prototype.jpg)
+
+The real-data implementation uses a time gutter, continuous rail and severity markers, oldest first. All events / Incidents only / Transitions only filters replace separate unstructured history lists. Contiguous warning escalation and recovery become one incident with highest observed severity and Active/Recovered/Interrupted/Changed labels. An expanded incident shows duration, peaks/targets, state changes, observed signals, nearby work, investigation hints, recorded operations and the captured rules for every warning transition. Cancels remain neutral. Missing timestamps are reported, never invented. Retained events and operations remain bounded by the recorder; JSON export is unchanged.
+
+The tab strip uses the panel surface (white in light theme), a dark active tab and gray rules above/below. Existing evaluation status content is unchanged, with the top tab rule separating status from navigation. Other three data views retain their existing content. Incident grouping/presentation is a separate read model/component, without changing the indicator rules or evaluating performance from mock data.

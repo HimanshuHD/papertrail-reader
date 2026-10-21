@@ -5,16 +5,26 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 
-test('production excludes diagnostics; explicit build includes the opt-in panel and recorder', async () => {
+test('production excludes diagnostics; preview/staging and explicit builds include diagnostics', async () => {
   const root = await mkdtemp(path.join(tmpdir(), 'papertrail-diagnostics-'))
   try {
-    for (const enabled of [false, true]) {
-      const out = path.join(root, enabled ? 'diagnostic' : 'production')
+    for (const { channel, optIn, enabled } of [
+      { channel: 'production', optIn: false, enabled: false },
+      { channel: 'release', optIn: false, enabled: false },
+      { channel: 'preview', optIn: false, enabled: true },
+      { channel: 'staging', optIn: false, enabled: true },
+      { channel: 'production', optIn: true, enabled: true },
+    ]) {
+      const out = path.join(root, `${channel}-${optIn}`)
       const build = spawnSync(
         process.execPath,
         ['node_modules/vite/bin/vite.js', 'build', '--outDir', out],
         {
-          env: { ...process.env, VITE_READER_DIAGNOSTICS: String(enabled) },
+          env: {
+            ...process.env,
+            VITE_READER_DIAGNOSTICS: String(optIn),
+            VITE_DEPLOY_CHANNEL: channel,
+          },
           encoding: 'utf8',
           timeout: 120000,
         },

@@ -9,7 +9,8 @@ performance budgets, total browser-process memory, or leak freedom.
   **Ctrl+Alt+D**. Escape/Close stops sampling and restores focus to the toggle.
 - Explicit diagnostic build: `VITE_READER_DIAGNOSTICS=true npm run build`, then
   `npm run preview`. Never use this opt-in flag for a normal published release.
-- `npm run build` excludes the panel, recorder and sampler. Query parameters and
+- Preview and staging channel builds include diagnostics automatically; sampling starts only when the panel is opened.
+- Plain `npm run build` and production/release channels exclude the panel, recorder and sampler. Query parameters and
   keyboard shortcuts cannot load them. The pipeline build test checks both forms.
 - Source SHA is provided build metadata or the checkout HEAD; modified working
   trees are labelled. Environment, package version and random session identity
@@ -121,4 +122,30 @@ Health targets are unconfigured in this increment; no green/red performance verd
 
 Header actions are icon-only Pause/Resume, Minimize and Close; footer actions are Reset and Export. Each uses the shared single-owner accessible custom tooltip, without a native `title`. Technical details is the final keyboard-accessible tab. The header/footer remain visible while panel content scrolls.
 
-The minimized launcher docks flush to the window bottom with rounded top corners only. Its 24px pulse adapts the supplied four staggered 2.4s rings, limiting expansion to the available space. Paused/closed sampling is gray and static; reduced-motion preferences disable the rings too. Green means recording with no sustained detected signal (including initial collection), not a calibrated performance pass. Three consecutive foreground samples at frame interval ≥50ms or long-task sum ≥200ms produce yellow; ≥150ms or ≥1000ms produce red. These are provisional UI signal thresholds, exported with rule version 1, not #16 accepted budgets. A fresh sampling window starts on resume/reset; #250 retains broader operation-specific calibration, hysteresis, pending-age and findings scope.
+The minimized launcher docks flush to the window bottom with rounded top corners only. Its 24px pulse adapts the supplied four staggered 2.4s rings, limiting expansion to the available space. Paused/closed sampling is gray and static; reduced-motion preferences disable the rings too. Green means sufficient supported observed responsiveness without a sustained detected signal, not a calibrated performance pass. Initial collection, insufficient samples and unsupported readings are neutral. Three consecutive foreground samples at frame interval ≥50ms or long-task sum ≥200ms produce yellow; ≥150ms or ≥1000ms produce red. These are provisional UI signal thresholds, exported with rule version 1, not #16 accepted budgets. A fresh sampling window starts on resume/reset; #250 retains broader operation-specific calibration, hysteresis, pending-age and findings scope.
+
+## Indicator engine (#250, first increment)
+
+A separate `IndicatorMonitor` now replaces the initial three-sample launcher helper. The overall banner and minimized launcher share its state and explanations. Good applies only to supported observed responsiveness; it does not certify unconfigured operations or overall CPU/GPU/memory health. Collecting, unsupported, paused/background and stale observations are neutral. Warning/critical states list causes, provisional thresholds, counts/window and a suggested investigation. Normal cancellation, raw heap totals, expected caches and retained readers do not create findings.
+
+The versioned local configuration uses a 30s foreground observation window, three consecutive supported samples, three fresh healthy evaluations for recovery and a 5s freshness limit. Duplicate UI refreshes do not advance recovery. Background/pause/resume/reset starts a fresh evaluation window; background operation durations are excluded. Responsiveness defaults remain provisional (50/150ms frame intervals, 200/1000ms long-task duration per sample), pending #16 calibration. Missing readings break sustained series and are not zeros.
+
+In the final Technical details tab, select an instrumented operation and explicitly apply/remove duration or pending-age targets. Inputs require positive finite milliseconds with critical greater than attention, capped at one hour. Operation/pending targets default unconfigured; no arbitrary PDF/EPUB/library workload budget is inferred. Cold/warm/restore attribution is not yet captured separately; this first increment must not claim separate validated profiles. Completed duration statistics exclude cancelled/failed/unavailable records; p95 still requires 20 completions.
+
+Export schema 2 adds monotonic page-relative `observedAtMs`, `startedAtMs`, `endedAtMs`, anonymous pending operation details and indicator configuration/current finding/history. No wall-clock/document identifiers or contents are added. Transition history is limited to 120 entries. Timestamps permit truthful recency; the operation table still describes retained history rather than a fixed time window.
+
+Remaining #250 acceptance: accepted workload-specific cold/warm/restore profiles, deeper capability/recovery and configuration UX evidence, and workload/cross-browser validation under #253. No general performance or memory budget is certified by functional tests.
+
+## Retained performance history and hosted testing
+
+Open **Timeline → Performance history** after fast scroll/tab switching. Brief render/layout/main-thread load may legitimately cross provisional responsiveness thresholds; a warning is a measured signal to investigate, not proof of a defect. When current status recovers, the warning entry remains. Expand it for start/last-observed/end times, recovered/interrupted/changed status, distinct evaluations, retained worst observed value, threshold/count, original explanation, investigation hint, captured rules and up to ten nearby recorded operations. Nearby operations are correlation, never an asserted root cause. Exact function/stack attribution requires a browser trace or future supported LoAF instrumentation.
+
+History is in-memory for this page session, bounded to 120 transitions. It survives recovery, minimize, pause/resume and tab changes. Reset/reload clears it; JSON export preserves it locally for later investigation. Changes to configured targets never rewrite previously captured rules/evidence. Performance issues is the default history filter; All transitions includes neutral/recovery states.
+
+`VITE_DEPLOY_CHANNEL=preview` and `staging` include diagnostics automatically without an opt-in flag. Published preview/staging artifacts will expose the launcher once rebuilt/deployed from this source; existing deployments cannot change retroactively. Sampling remains off until opened. Default production/release artifacts still exclude diagnostics; manual preview deployment and manual-only Visual QA behavior are unchanged. Browser acceptance receives the artifact channel so staging verifies inclusion while production verifies exclusion.
+
+### Chronological timeline presentation
+
+The approved chronological layout groups contiguous warning transitions and recovery into incidents. All events shows neutral transitions and timestamped operations alongside incident groups; operations inside an incident's time interval are available in its expandable evidence rather than duplicated as outer rows. Incidents only hides unrelated activity while retaining escalation/recovery inside each incident. Transitions only lists every retained indicator transition in time order. Recovered/interrupted boundaries always split incidents. Severity labels reflect the highest retained severity, while current evaluation remains in the existing status UI. The first incident is initially expanded, and users can open/collapse another incident.
+
+Time labels use page-relative minutes/seconds. Exact timestamps, rule snapshots and measurements remain in export; the UI never invents timestamps for older records. Reference: [approved timeline prototype and image](../design/diagnostics/README.md#approved-chronological-timeline-layout).

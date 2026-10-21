@@ -5,7 +5,10 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig(({ command }) => ({
   define: {
-    __READER_DIAGNOSTICS__: command === 'serve' || process.env.VITE_READER_DIAGNOSTICS === 'true',
+    __READER_DIAGNOSTICS__:
+      command === 'serve' ||
+      ['preview', 'staging'].includes(process.env.VITE_DEPLOY_CHANNEL ?? '') ||
+      process.env.VITE_READER_DIAGNOSTICS === 'true',
     __DIAGNOSTIC_SOURCE__: JSON.stringify({
       sha:
         process.env.VITE_BUILD_SHA ||

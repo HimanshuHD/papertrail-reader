@@ -29,14 +29,17 @@ export interface Timing {
   metric: Metric
   durationMs: number
   outcome: Outcome
+  startedAtMs?: number
+  endedAtMs?: number
 }
 export const LIMIT = 120
 export class DiagnosticRecorder {
   readonly owners = new Map<object, Resources>()
   private cleanups = new Set<() => void>()
-  private pending = new Map<object, Metric>()
+  private pending = new Map<object, { metric: Metric; startedAtMs: number }>()
   timings: Timing[] = []
   samples: {
+    observedAtMs?: number
     frameIntervalMs: number | null
     longTaskMs: number | null
     jsHeapBytes: number | null
@@ -53,11 +56,17 @@ export class DiagnosticRecorder {
     }
     const key = {}
     const start = performance.now()
-    this.pending.set(key, metric)
+    this.pending.set(key, { metric, startedAtMs: start })
     return (outcome = 'completed') => {
       if (!this.pending.delete(key)) return
       if (outcome === 'cancelled') this.cancelled++
-      this.timings.push({ metric, durationMs: Math.max(0, performance.now() - start), outcome })
+      this.timings.push({
+        metric,
+        durationMs: Math.max(0, performance.now() - start),
+        outcome,
+        startedAtMs: start,
+        endedAtMs: performance.now(),
+      })
       if (this.timings.length > LIMIT) this.timings.shift()
     }
   }
@@ -93,7 +102,7 @@ export class DiagnosticRecorder {
   }
   sample(value: DiagnosticRecorder['samples'][number]) {
     if (!this.running) return
-    this.samples.push(value)
+    this.samples.push({ ...value, observedAtMs: performance.now() })
     if (this.samples.length > LIMIT) this.samples.shift()
   }
   snapshot() {
@@ -104,13 +113,15 @@ export class DiagnosticRecorder {
         resources[name] = (resources[name] ?? 0) + value
       }
     const pending = { index: 0, render: 0, other: 0 }
-    for (const metric of this.pending.values()) {
+    for (const { metric } of this.pending.values()) {
       if (metric === 'library.scan') pending.index++
       else if (metric === 'pdf.render') pending.render++
       else pending.other++
     }
     return {
-      schema: 1,
+      schema: 2,
+      clock: 'performance.now milliseconds, relative to this page',
+      pendingDetails: [...this.pending.values()].map((value) => ({ ...value })),
       session: this.session,
       running: this.running,
       resources,
