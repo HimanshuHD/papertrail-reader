@@ -46,8 +46,7 @@ test('opt-in local diagnostics record PDF/EPUB, export private bounded data and 
       .getByRole('button', { name: `${format}: private-name.${format.toLowerCase()}`, exact: true })
       .click()
     const hideLibrary = page.getByRole('button', { name: 'Hide library', exact: true })
-    if ((page.viewportSize()?.width ?? 1440) < 768 && (await hideLibrary.isVisible()))
-      await hideLibrary.click()
+    if (await hideLibrary.isVisible()) await hideLibrary.click()
     if (format === 'PDF') {
       await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute(
         'data-render-state',
