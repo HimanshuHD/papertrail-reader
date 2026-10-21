@@ -1,3 +1,4 @@
+import { diagnostics } from '../diagnostics/recorder'
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
 import { verifyBookImage } from './book-images'
@@ -270,6 +271,7 @@ export async function preparePublication(
   const ownedURLs: string[] = []
   const dispose = () => {
     for (const url of ownedURLs.splice(0)) URL.revokeObjectURL(url)
+    if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
   }
   try {
     const entries = await preflightEpubArchive(file, signal)
@@ -374,6 +376,7 @@ export async function preparePublication(
       signal?.throwIfAborted()
       const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }))
       ownedURLs.push(url)
+      if (__READER_DIAGNOSTICS__) diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length })
       imageCache.set(path, url)
       return url
     }

@@ -1,3 +1,4 @@
+import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import { findTextMatches, indexPdfText, type SearchContext } from './search-text'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
@@ -170,13 +171,30 @@ export class PdfDocumentSession {
       evicted.height = 0
       this.previews.delete(oldest)
     }
+    if (__READER_DIAGNOSTICS__) this.reportResources()
   }
 
   constructor(
     private readonly pdfjs: PdfJsModule,
     private readonly loadingTask: PDFDocumentLoadingTask,
     private readonly document: PDFDocumentProxy,
-  ) {}
+  ) {
+    if (__READER_DIAGNOSTICS__) this.reportResources()
+  }
+  private reportResources() {
+    if (this.closed) return
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(this, {
+        viewers: 1,
+        previewEntries: this.previews.size,
+        canvases: this.previews.size,
+        previewBytes: [...this.previews.values()].reduce(
+          (sum, canvas) => sum + canvas.width * canvas.height * 4,
+          0,
+        ),
+        dimensionEntries: this.dimensions.size,
+      })
+  }
 
   get totalPages(): number {
     return this.document.numPages
@@ -189,6 +207,7 @@ export class PdfDocumentSession {
     const viewport = page.getViewport({ scale: 1 })
     const size = { width: viewport.width, height: viewport.height }
     this.dimensions.set(pageNumber, size)
+    if (__READER_DIAGNOSTICS__) this.reportResources()
     return size
   }
 
@@ -312,6 +331,17 @@ export class PdfDocumentSession {
   }
 
   async render(request: PdfRenderRequest): Promise<PdfRenderResult> {
+    const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.render') : undefined
+    try {
+      const result = await this.renderPage(request)
+      finish?.()
+      return result
+    } catch (error) {
+      finish?.(diagnosticOutcome(error))
+      throw error
+    }
+  }
+  private async renderPage(request: PdfRenderRequest): Promise<PdfRenderResult> {
     await this.cancelRender(request.canvas)
     const page = await this.getPage(request.pageNumber)
     const baseViewport = page.getViewport({ scale: 1 })
@@ -390,6 +420,7 @@ export class PdfDocumentSession {
   close(): Promise<void> {
     if (this.closing) return this.closing
     this.closed = true
+    if (__READER_DIAGNOSTICS__) diagnostics.release(this)
     this.closing = this.releaseResources()
     return this.closing
   }
@@ -405,7 +436,11 @@ export class PdfDocumentSession {
     try {
       await this.document.cleanup()
     } finally {
-      await this.loadingTask.destroy()
+      try {
+        await this.loadingTask.destroy()
+      } finally {
+        if (__READER_DIAGNOSTICS__) diagnostics.release(this.loadingTask)
+      }
     }
   }
 }
@@ -421,8 +456,12 @@ export async function openPdfDocument(
   const data = new Uint8Array(await file.arrayBuffer())
   signal?.throwIfAborted()
   const loadingTask = pdfjs.getDocument({ data })
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(loadingTask, { pdfWorkerOwners: 1 })
   let destruction: Promise<void> | undefined
-  const destroyLoading = () => (destruction ??= loadingTask.destroy())
+  const destroyLoading = () =>
+    (destruction ??= loadingTask.destroy().finally(() => {
+      if (__READER_DIAGNOSTICS__) diagnostics.release(loadingTask)
+    }))
   let rejectAbort!: (reason: DOMException) => void
   const cancelled = new Promise<never>((_resolve, reject) => {
     rejectAbort = reject
@@ -489,6 +528,7 @@ export async function readPdfTitle(
     const data = new Uint8Array(await file.arrayBuffer())
     if (signal?.aborted) return null
     task = pdfjs.getDocument({ data })
+    if (__READER_DIAGNOSTICS__) diagnostics.resources(task, { pdfWorkerOwners: 1 })
     task.onPassword = abort
     signal?.addEventListener('abort', abort, { once: true })
     const document = await task.promise
@@ -509,5 +549,6 @@ export async function readPdfTitle(
   } finally {
     signal?.removeEventListener('abort', abort)
     await task?.destroy().catch(() => undefined)
+    if (__READER_DIAGNOSTICS__ && task) diagnostics.release(task)
   }
 }

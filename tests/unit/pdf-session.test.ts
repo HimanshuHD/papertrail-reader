@@ -1,3 +1,4 @@
+import { diagnostics } from '../../src/features/diagnostics/recorder'
 import { describe, expect, it, vi } from 'vitest'
 import {
   classifyPdfOpenError,
@@ -278,6 +279,8 @@ describe('PDF render and session lifecycle', () => {
   })
 
   it('cancels pending canvas work before document teardown', async () => {
+    diagnostics.reset()
+    diagnostics.resume()
     const { session, request, tasks, documentProxy, loadingTask } = makeRenderer()
     const rendering = session.render(request)
     const cancelled = expect(rendering).rejects.toMatchObject({
@@ -286,6 +289,12 @@ describe('PDF render and session lifecycle', () => {
     await vi.waitFor(() => expect(tasks).toHaveLength(1))
     await session.close()
     await cancelled
+    expect(diagnostics.snapshot().timings).toContainEqual(
+      expect.objectContaining({ metric: 'pdf.render', outcome: 'cancelled' }),
+    )
+    expect(diagnostics.snapshot().pending.render).toBe(0)
+    expect(diagnostics.owners.has(session)).toBe(false)
+    diagnostics.pause()
     expect(tasks[0]!.cancel).toHaveBeenCalledOnce()
     expect(documentProxy.cleanup).toHaveBeenCalledOnce()
     expect(loadingTask.destroy).toHaveBeenCalledOnce()

@@ -6,6 +6,10 @@ defineProps<{
     | 'check'
     | 'note'
     | 'clock'
+    | 'pause'
+    | 'play'
+    | 'minimize'
+    | 'download'
     | 'refresh'
     | 'plus'
     | 'close'
@@ -31,6 +35,10 @@ defineProps<{
     | 'info'
 }>()
 const paths = {
+  pause: 'M8 5v14M16 5v14',
+  play: 'm8 5 11 7-11 7V5Z',
+  minimize: 'M5 16h14',
+  download: 'M12 3v12m-5-5 5 5 5-5M5 16v5h14v-5',
   compare: 'M3 5h7v14H3zM14 5h7v14h-7zM10 9l4 3-4 3',
   'two-page': 'M3 4h8v16H3zM13 4h8v16h-8z',
   edit: 'm16 3 5 5-13 13H3v-5L16 3ZM14 5l5 5',
