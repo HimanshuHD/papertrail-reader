@@ -50,6 +50,9 @@ export interface Finding {
   state: 'attention' | 'critical'
   reason: string
   next: string
+  observedMs?: number
+  thresholdMs?: number
+  sampleCount?: number
 }
 export interface IndicatorResult {
   state: IndicatorState
@@ -62,6 +65,14 @@ export interface IndicatorEvent {
   atMs: number
   state: IndicatorState
   findingIds: string[]
+  lastSeenAtMs: number
+  endedAtMs?: number
+  resolution?: 'recovered' | 'interrupted' | 'changed'
+  evaluations: number
+  findings: Finding[]
+  explanation: string
+  configuration: IndicatorConfig
+  context: { metric: Metric; durationMs: number; outcome: string }[]
 }
 const validReading = (value: number | null) =>
   value !== null && Number.isFinite(value) && value >= 0
@@ -83,6 +94,7 @@ export class IndicatorMonitor {
   private recovery = 0
   private held: Finding[] = []
   private signature = ''
+  private lastHistoryObservation = ''
   constructor(config = defaultIndicatorConfig()) {
     this.config = structuredClone(config)
   }
@@ -107,11 +119,50 @@ export class IndicatorMonitor {
           .map((f) => f.id)
           .sort()
           .join('|')
+      const observation = `${snapshot.samples.at(-1)?.observedAtMs ?? ''}:${snapshot.timings.at(-1)?.endedAtMs ?? ''}:${state}`
+      const previous = this.history.at(-1)
       if (signature !== this.signature) {
-        this.history.push({ atMs: now, state, findingIds: findings.map((f) => f.id) })
+        if (previous && previous.endedAtMs === undefined) {
+          previous.endedAtMs = now
+          previous.resolution =
+            state === 'recording'
+              ? 'recovered'
+              : ['inactive', 'unavailable', 'stale'].includes(state)
+                ? 'interrupted'
+                : 'changed'
+        }
+        this.history.push({
+          atMs: now,
+          lastSeenAtMs: now,
+          state,
+          findingIds: findings.map((f) => f.id),
+          evaluations: 1,
+          findings: structuredClone(findings),
+          explanation,
+          configuration: structuredClone(this.config),
+          context: snapshot.timings
+            .filter(
+              (t) =>
+                t.endedAtMs !== undefined &&
+                t.endedAtMs >= Math.max(this.epoch, now - this.config.windowMs) &&
+                t.endedAtMs <= now,
+            )
+            .slice(-10)
+            .map((t) => ({ metric: t.metric, durationMs: t.durationMs, outcome: t.outcome })),
+        })
         if (this.history.length > 120) this.history.shift()
         this.signature = signature
+      } else if (previous && observation !== this.lastHistoryObservation) {
+        previous.lastSeenAtMs = now
+        previous.evaluations++
+        // Retain the worst observed evidence for each cause, not only the final lower reading.
+        for (const finding of findings) {
+          const retained = previous.findings.find((f) => f.id === finding.id)
+          if (retained && (finding.observedMs ?? 0) > (retained.observedMs ?? 0))
+            Object.assign(retained, structuredClone(finding))
+        }
       }
+      this.lastHistoryObservation = observation
       return { state, label: labels[state], findings, explanation, supportedSamples }
     }
     if (!snapshot.running || !foreground) {
@@ -157,6 +208,9 @@ export class IndicatorMonitor {
         state: critical ? 'critical' : 'attention',
         reason: `${name}: ${tail.length} consecutive observations ≥ ${threshold} ms in the last ${this.config.windowMs / 1000}s; latest ${Math.round(tail.at(-1)!)} ms. Provisional target.`,
         next,
+        observedMs: Math.max(...tail),
+        thresholdMs: threshold,
+        sampleCount: tail.length,
       })
     }
     // A missing measurement breaks a sustained series; unsupported data never counts as zero.
@@ -207,6 +261,9 @@ export class IndicatorMonitor {
             id: `pending:${metric}`,
             state: oldest >= target.criticalMs ? 'critical' : 'attention',
             reason: `${metricNames[metric]} pending ${Math.round(oldest)} ms; provisional ${oldest >= target.criticalMs ? target.criticalMs : target.attentionMs} ms target.`,
+            observedMs: oldest,
+            thresholdMs: oldest >= target.criticalMs ? target.criticalMs : target.attentionMs,
+            sampleCount: 1,
             next: 'Inspect pending work/cancellation. A long operation is not automatically stuck; adjust the workload-specific target.',
           })
       }

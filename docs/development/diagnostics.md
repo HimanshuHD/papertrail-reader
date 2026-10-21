@@ -9,7 +9,8 @@ performance budgets, total browser-process memory, or leak freedom.
   **Ctrl+Alt+D**. Escape/Close stops sampling and restores focus to the toggle.
 - Explicit diagnostic build: `VITE_READER_DIAGNOSTICS=true npm run build`, then
   `npm run preview`. Never use this opt-in flag for a normal published release.
-- `npm run build` excludes the panel, recorder and sampler. Query parameters and
+- Preview and staging channel builds include diagnostics automatically; sampling starts only when the panel is opened.
+- Plain `npm run build` and production/release channels exclude the panel, recorder and sampler. Query parameters and
   keyboard shortcuts cannot load them. The pipeline build test checks both forms.
 - Source SHA is provided build metadata or the checkout HEAD; modified working
   trees are labelled. Environment, package version and random session identity
@@ -134,3 +135,11 @@ In the final Technical details tab, select an instrumented operation and explici
 Export schema 2 adds monotonic page-relative `observedAtMs`, `startedAtMs`, `endedAtMs`, anonymous pending operation details and indicator configuration/current finding/history. No wall-clock/document identifiers or contents are added. Transition history is limited to 120 entries. Timestamps permit truthful recency; the operation table still describes retained history rather than a fixed time window.
 
 Remaining #250 acceptance: accepted workload-specific cold/warm/restore profiles, deeper capability/recovery and configuration UX evidence, and workload/cross-browser validation under #253. No general performance or memory budget is certified by functional tests.
+
+## Retained performance history and hosted testing
+
+Open **Timeline → Performance history** after fast scroll/tab switching. Brief render/layout/main-thread load may legitimately cross provisional responsiveness thresholds; a warning is a measured signal to investigate, not proof of a defect. When current status recovers, the warning entry remains. Expand it for start/last-observed/end times, recovered/interrupted/changed status, distinct evaluations, retained worst observed value, threshold/count, original explanation, investigation hint, captured rules and up to ten nearby recorded operations. Nearby operations are correlation, never an asserted root cause. Exact function/stack attribution requires a browser trace or future supported LoAF instrumentation.
+
+History is in-memory for this page session, bounded to 120 transitions. It survives recovery, minimize, pause/resume and tab changes. Reset/reload clears it; JSON export preserves it locally for later investigation. Changes to configured targets never rewrite previously captured rules/evidence. Performance issues is the default history filter; All transitions includes neutral/recovery states.
+
+`VITE_DEPLOY_CHANNEL=preview` and `staging` include diagnostics automatically without an opt-in flag. Published preview/staging artifacts will expose the launcher once rebuilt/deployed from this source; existing deployments cannot change retroactively. Sampling remains off until opened. Default production/release artifacts still exclude diagnostics; manual preview deployment and manual-only Visual QA behavior are unchanged. Browser acceptance receives the artifact channel so staging verifies inclusion while production verifies exclusion.

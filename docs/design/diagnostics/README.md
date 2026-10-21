@@ -48,7 +48,7 @@ Good (green), Needs attention (yellow), Critical (red), and Unavailable/Collecti
 
 ## Privacy, lifecycle and build boundary
 
-Development or explicit diagnostic builds only. Default production/hosted previews exclude panel, recorder and diagnostic strings; query flags cannot enable them. Local bounded collection/export only; no titles, paths, text, annotation data, DOM selectors, raw URLs, binary documents or unreviewed attribution strings. Unsupported readings use null/reasons, not fake zeros. Pause/close/reset/unmount release observers, timers, pending work and keyboard handlers appropriately. Minimize may continue sampling without obscuring reader controls; expand/close restores sensible focus.
+Development, preview/staging channel builds or explicit diagnostic builds. Default production/release builds exclude panel, recorder and diagnostic strings; query flags cannot enable them. Local bounded collection/export only; no titles, paths, text, annotation data, DOM selectors, raw URLs, binary documents or unreviewed attribution strings. Unsupported readings use null/reasons, not fake zeros. Pause/close/reset/unmount release observers, timers, pending work and keyboard handlers appropriately. Minimize may continue sampling without obscuring reader controls; expand/close restores sensible focus.
 
 ## Acceptance plan
 

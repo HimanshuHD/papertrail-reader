@@ -33,6 +33,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
+      E2E_DEPLOY_CHANNEL: ${{ inputs.channel }}
       E2E_SOURCE_SHA: ${{ inputs.source_sha }}
       E2E_SHARD: ${{ matrix.shard }}/2
       E2E_BASE_PATH: ${{ inputs.channel == 'staging' && format('{0}staging/', vars.PAGES_BASE_PATH || '/papertrail-reader/') || vars.PAGES_BASE_PATH || '/papertrail-reader/' }}

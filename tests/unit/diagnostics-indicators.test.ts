@@ -107,3 +107,33 @@ it('holds critical during partial recovery before downgrading to attention', () 
   expect(m.update(snapshot([60, 60, 60], 5000), 7000).state).toBe('critical')
   expect(m.update(snapshot([60, 60, 60], 6000), 8000).state).toBe('attention')
 })
+it('retains warning evidence, worst value, rules and nearby work after recovery and pause', () => {
+  const m = new IndicatorMonitor()
+  const slow = snapshot([60, 60, 60])
+  slow.timings = [
+    {
+      metric: 'pdf.render',
+      outcome: 'completed',
+      durationMs: 180,
+      startedAtMs: 500,
+      endedAtMs: 2900,
+    },
+  ]
+  m.update(slow, 3000)
+  m.update(snapshot([80, 80, 80], 2000), 4000)
+  const warning = m.history[0]!
+  expect(warning.findings[0]?.observedMs).toBe(80)
+  expect(warning.context[0]?.metric).toBe('pdf.render')
+  expect(warning.evaluations).toBe(2)
+  m.update(snapshot([16, 16, 16], 5000), 7000)
+  m.update(snapshot([16, 16, 16], 6000), 8000)
+  m.update(snapshot([16, 16, 16], 7000), 9000)
+  expect(warning.resolution).toBe('recovered')
+  expect(warning.findings[0]?.reason).toContain('Foreground frame interval')
+  m.config.frames!.attentionMs = 100
+  expect(warning.configuration.frames?.attentionMs).toBe(50)
+  m.restart(10000)
+  expect(m.history).toContain(warning)
+  m.restart(11000, true)
+  expect(m.history).toEqual([])
+})
