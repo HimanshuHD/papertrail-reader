@@ -28,7 +28,12 @@ export default defineConfig([
       ...vue.configs['flat/recommended'],
     ],
     languageOptions: {
-      globals: { ...globals.browser, ...globals.node },
+      globals: {
+        ...globals.browser,
+        ...globals.node,
+        __READER_DIAGNOSTICS__: 'readonly',
+        __DIAGNOSTIC_SOURCE__: 'readonly',
+      },
       parserOptions: { parser: ts.parser },
     },
   },

@@ -1,3 +1,4 @@
+import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
 import type Contents from 'epubjs/types/contents'
@@ -50,7 +51,7 @@ export interface EpubSession {
 }
 
 /** One engine book per component; active content is removed before engine open. */
-export async function openEpubSession(
+async function createEpubSession(
   file: Blob,
   target: HTMLElement,
   signal: AbortSignal,
@@ -84,11 +85,40 @@ export async function openEpubSession(
     overflow: 'hidden',
   })
   target.append(root)
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { viewers: 1 })
   let rendition: Rendition | null = null
   let destroyed = false
   let disposed = false
   let opening = true
   let observer: ResizeObserver | null = null
+  let diagnosticFrame = 0
+  let finishReflow: ReturnType<typeof diagnostics.start>
+  let unregisterReflow: (() => void) | undefined
+  function cancelReflow() {
+    cancelAnimationFrame(diagnosticFrame)
+    diagnosticFrame = 0
+    unregisterReflow?.()
+    unregisterReflow = undefined
+    finishReflow?.('cancelled')
+    finishReflow = undefined
+  }
+  function measureReflow() {
+    cancelReflow()
+    finishReflow = diagnostics.start('epub.reflow')
+    if (!finishReflow) return
+    unregisterReflow = diagnostics.onStop(cancelReflow)
+    return () => {
+      diagnosticFrame = requestAnimationFrame(() => {
+        diagnosticFrame = requestAnimationFrame(() => {
+          finishReflow?.()
+          finishReflow = undefined
+          unregisterReflow?.()
+          unregisterReflow = undefined
+          diagnosticFrame = 0
+        })
+      })
+    }
+  }
   let resizeTimer: ReturnType<typeof setTimeout> | null = null
   let width = 0
   let height = 0
@@ -220,7 +250,17 @@ export async function openEpubSession(
     const saved = lastLocation ?? currentLocation()
     width = nextWidth
     height = nextHeight
-    rendition.resize(width, height)
+    const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
+    try {
+      rendition.resize(width, height)
+      settled?.()
+    } catch (error) {
+      if (__READER_DIAGNOSTICS__) {
+        finishReflow?.(diagnosticOutcome(error))
+        cancelReflow()
+      }
+      throw error
+    }
     if (saved) keepLocation(saved)
   }
   function scheduleResize() {
@@ -247,6 +287,10 @@ export async function openEpubSession(
   function destroy() {
     if (destroyed) return
     destroyed = true
+    if (__READER_DIAGNOSTICS__) {
+      cancelReflow()
+    }
+    if (__READER_DIAGNOSTICS__) diagnostics.release(root)
     ++navigationEpoch
     cancelRestoration()
     scrollContainer?.removeEventListener('scroll', rememberScroll)
@@ -358,6 +402,7 @@ export async function openEpubSession(
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
         if (fragment && !publication.fragments[index]?.has(fragment))
           throw new Error('EPUB contents target is unavailable.')
+        const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('epub.chapter') : undefined
         const owner = ++navigationEpoch
         cancelRestoration()
         lastLocation = undefined
@@ -382,6 +427,7 @@ export async function openEpubSession(
             else container.scrollTop = 0
           }
         } catch (error) {
+          finish?.(diagnosticOutcome(error))
           if (owner === navigationEpoch) chapterIndex = previousChapter
           throw error
         } finally {
@@ -391,22 +437,33 @@ export async function openEpubSession(
             scheduleResize()
           }
         }
+        finish?.()
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
       typography(settings) {
         if (destroyed || !rendition || navigating) return
-        const savedLocation = lastLocation ?? currentLocation()
-        const saved = capturePosition()
-        rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
-        // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
-        const contents = rendition.getContents() as unknown as Contents[]
-        contents.forEach((content) => rendition?.themes.add('papertrail-typography', content))
-        // Recalculate the existing view even when the viewport dimensions are unchanged.
-        if (root.clientWidth && root.clientHeight)
-          rendition.resize(root.clientWidth, root.clientHeight)
-        if (savedLocation) keepLocation(savedLocation)
-        else restorePosition(saved)
+        const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
+        try {
+          const savedLocation = lastLocation ?? currentLocation()
+          const saved = capturePosition()
+          rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
+          // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
+          const contents = rendition.getContents() as unknown as Contents[]
+          contents.forEach((content) => rendition?.themes.add('papertrail-typography', content))
+          // Recalculate the existing view even when the viewport dimensions are unchanged.
+          if (root.clientWidth && root.clientHeight)
+            rendition.resize(root.clientWidth, root.clientHeight)
+          if (savedLocation) keepLocation(savedLocation)
+          else restorePosition(saved)
+          settled?.()
+        } catch (error) {
+          if (__READER_DIAGNOSTICS__) {
+            finishReflow?.(diagnosticOutcome(error))
+            cancelReflow()
+          }
+          throw error
+        }
       },
       annotationContext() {
         if (destroyed || navigating) return
@@ -464,5 +521,22 @@ export async function openEpubSession(
   } finally {
     opening = false
     cleanup()
+  }
+}
+
+export async function openEpubSession(
+  file: Blob,
+  target: HTMLElement,
+  signal: AbortSignal,
+  options: EpubOpenOptions = {},
+): Promise<EpubSession> {
+  const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('epub.open-readable') : undefined
+  try {
+    const session = await createEpubSession(file, target, signal, options)
+    finish?.()
+    return session
+  } catch (error) {
+    finish?.(diagnosticOutcome(error))
+    throw error
   }
 }

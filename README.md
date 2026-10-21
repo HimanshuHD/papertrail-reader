@@ -42,3 +42,5 @@ Production: [himanshuhd.github.io/papertrail-reader](https://himanshuhd.github.i
 ## License
 
 No license has been selected. Do not assume open-source licensing or redistribution permission.
+
+Developer tooling: [Opt-in reader diagnostics](docs/development/diagnostics.md) (development/explicit diagnostic builds only; excluded from normal production builds).

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { diagnostics, diagnosticOutcome } from '../../features/diagnostics/recorder'
 import type { SessionState } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
@@ -483,12 +484,16 @@ async function closeCurrentSession() {
   if (current) await current.close()
 }
 
+let finishOpen: ReturnType<typeof diagnostics.start>
+let finishNavigation: ReturnType<typeof diagnostics.start>
 let opening: Promise<void> = Promise.resolve()
 function openDocument() {
   opening = loadDocument()
   return opening
 }
 async function loadDocument() {
+  finishOpen?.('cancelled')
+  finishOpen = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.open-readable') : undefined
   pendingBookmark = null
   continuity.reset()
   documentController?.abort()
@@ -544,6 +549,8 @@ async function loadDocument() {
     if (target !== 1) await goToPage(target)
   } catch (error) {
     if (sequence !== openSequence) return
+    finishOpen?.(diagnosticOutcome(error))
+    finishOpen = undefined
     phase.value = 'error'
     emit('phaseChange', 'error')
     errorMessage.value =
@@ -558,6 +565,8 @@ async function loadDocument() {
 
 async function goToPage(page: number, bookmarkNavigation = false) {
   if (!bookmarkNavigation) pendingBookmark = null
+  finishNavigation?.('cancelled')
+  finishNavigation = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.navigation') : undefined
   layoutOperation += 1
   const next = clampPage(page)
   currentPage.value = next
@@ -570,6 +579,10 @@ async function goToPage(page: number, bookmarkNavigation = false) {
       scrollElement.getBoundingClientRect().top +
       scrollElement.scrollTop
     scrollElement.scrollTo?.({ top, behavior: 'instant' })
+  }
+  if (pageElement?.dataset.renderState === 'ready') {
+    finishNavigation?.()
+    finishNavigation = undefined
   }
   emit('status', `Page ${next} of ${totalPages.value}.`)
 }
@@ -632,6 +645,8 @@ async function handleRendered(pageNumber: number, scale: number) {
     (phase.value === 'restoring' ? (restoredAnchor?.page ?? currentPage.value) : currentPage.value)
   )
     return
+  finishNavigation?.()
+  finishNavigation = undefined
   renderedScale.value = scale
   if (phase.value !== 'restoring' || completingRestore) return
   completingRestore = true
@@ -656,6 +671,8 @@ async function handleRendered(pageNumber: number, scale: number) {
     // The viewport center can lie on a neighboring fully visible page. Keep the
     // saved page indicator as well as the independently restored viewport anchor.
     if (restoredPage !== undefined) currentPage.value = clampPage(restoredPage)
+    finishOpen?.()
+    finishOpen = undefined
     phase.value = 'ready'
     emit('phaseChange', 'ready')
     if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
@@ -1093,6 +1110,10 @@ function capture(): SessionState {
   }
 }
 function dispose(): Promise<void> {
+  finishOpen?.('cancelled')
+  finishNavigation?.('cancelled')
+  finishOpen = undefined
+  finishNavigation = undefined
   if (disposed) return disposed
   saveReadingPoint()
   const writes = continuity.reset()

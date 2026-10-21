@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { diagnostics } from '../../features/diagnostics/recorder'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
 import NoteIndicator from './NoteIndicator.vue'
@@ -240,6 +241,7 @@ async function renderPage() {
   if (!currentCanvas || !currentTextLayer) return
 
   const pendingCanvas = document.createElement('canvas')
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(pendingCanvas, { canvases: 1 })
   const pendingText = document.createElement('div')
   pendingBitmap = pendingCanvas
   const sequence = ++renderSequence
@@ -310,6 +312,7 @@ async function renderPage() {
         : `PaperTrail could not render page ${props.pageNumber}.`,
     )
   } finally {
+    if (__READER_DIAGNOSTICS__) diagnostics.release(pendingCanvas)
     pendingCanvas.width = 0
     pendingCanvas.height = 0
     pendingBitmap = null
@@ -433,12 +436,14 @@ watch(
   },
 )
 onMounted(() => {
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { canvases: 1 })
   props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
   observePage()
   if (nearViewport) showPreview()
 })
 
 onBeforeUnmount(() => {
+  if (__READER_DIAGNOSTICS__) diagnostics.release(root)
   disposed = true
   if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
   releaseBitmap()

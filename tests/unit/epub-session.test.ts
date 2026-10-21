@@ -5,6 +5,7 @@ import {
   createFormattedEpubFixture,
   createContentsEpubFixture,
 } from '../fixtures/epub'
+import { diagnostics } from '../../src/features/diagnostics/recorder'
 import { openEpubSession } from '../../src/features/epub/epub-session'
 
 const mocks = vi.hoisted(() => ({
@@ -52,6 +53,8 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   const sibling = document.createElement('span')
   target.append(sibling)
   const controller = new AbortController()
+  diagnostics.reset()
+  diagnostics.resume()
   const session = await openEpubSession(file(), target, controller.signal, { textOnly: true })
   expect(mocks.open).toHaveBeenCalledWith(expect.any(ArrayBuffer), 'binary')
   expect(mocks.render).toHaveBeenCalledWith(
@@ -62,9 +65,19 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
   session.appearance(true)
   expect(mocks.override).toHaveBeenCalledWith('color', '#e7e9ee', true)
+  const ownedRoot = target.lastElementChild!
+  expect(diagnostics.owners.has(ownedRoot)).toBe(true)
   session.destroy()
   session.destroy()
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
+  expect(diagnostics.snapshot().timings).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ metric: 'epub.open-readable', outcome: 'completed' }),
+      expect.objectContaining({ metric: 'epub.chapter', outcome: 'completed' }),
+    ]),
+  )
+  expect(diagnostics.owners.has(ownedRoot)).toBe(false)
+  diagnostics.pause()
   expect(target.children).toHaveLength(1)
   expect(target.firstChild).toBe(sibling)
   await expect(session.display(0)).rejects.toThrow('unavailable')
