@@ -91,3 +91,49 @@ test('old failed reports without partial attachments still preserve other browse
   assert.equal(evidence.summary.length, 4)
   assert.equal(evidence.accepted, false)
 })
+
+test('representative coverage is independently required and projects only reviewed fields', async () => {
+  const cases = [
+    ['library-100', 100, 2, 0],
+    ['library-1000', 1000, 2, 0],
+    ['pdf-1001', 1, 1001, 0],
+    ['epub-long', 1, 0, 1000],
+  ].map(([scenario, files, pdfPages, paragraphs]) => ({
+    engine: 'chromium',
+    scenario,
+    files,
+    pdfPages,
+    paragraphs,
+    fixtureBytes: 1000,
+    elapsedMs: 100,
+    privateFilename: 'never-copy.pdf',
+  }))
+  const report = (values) => ({
+    specs: [
+      spec('chromium', 'passed', [attachment('diagnostic-workload-trials', rows('chromium'))]),
+      ...values.map((value) =>
+        spec('chromium', 'passed', [attachment('representative-functional-evidence', value)]),
+      ),
+    ],
+  })
+  const complete = await acceptanceResults(report(cases), ['chromium'], 3, true)
+  assert.equal(complete.accepted, true)
+  assert.equal(complete.representative.length, 4)
+  assert.equal(JSON.stringify(complete).includes('never-copy'), false)
+  for (const values of [[], cases.slice(0, 3), [...cases.slice(0, 3), cases[0]]]) {
+    const result = await acceptanceResults(report(values), ['chromium'], 3, true)
+    assert.equal(result.coverage.complete, true)
+    assert.equal(result.accepted, false)
+  }
+  for (const patch of [
+    { engine: 'firefox' },
+    { scenario: 'unknown' },
+    { files: 200 },
+    { elapsedMs: -1 },
+    { fixtureBytes: 0 },
+  ])
+    await assert.rejects(
+      acceptanceResults(report([{ ...cases[0], ...patch }]), ['chromium'], 3, true),
+      /Invalid representative attachment/,
+    )
+})
