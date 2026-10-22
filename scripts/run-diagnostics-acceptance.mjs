@@ -48,7 +48,7 @@ const report = {
   status: 'incomplete',
   accepted: false,
   limitations: [
-    'Synthetic text PDF and formatted EPUB fixtures; not representative image-heavy/long-document or 100/1000-folder scanning acceptance.',
+    'Generated 100/1000-file input libraries, 1001-page text PDF and long styled/image EPUB functional cases supplement the small four-mode benchmark; not native-folder, image-heavy PDF or real-document acceptance.',
     'Fresh browser contexts are application-cold; OS filesystem and browser process caches are not flushed. Repeat/warm steps run inside each trial.',
     'Elapsed wall time includes browser rendering and automation. No CPU/GPU/process-memory measurement, causal attribution, accepted budget or speedup claim.',
     'No forced GC, artificial clock advancement or callback-only total-overhead claim. Sampler subset and JS heap remain separately labelled in private export.',
@@ -91,7 +91,7 @@ try {
     report.browserFailure = error.message
   })
   const results = JSON.parse(await readFile(path.join(out, 'playwright.json'), 'utf8'))
-  const evidence = await acceptanceResults(results, options.engines, options.trials)
+  const evidence = await acceptanceResults(results, options.engines, options.trials, true)
   Object.assign(report, evidence)
   report.bundleDeltaBytes = report.builds.diagnostic.bytes - report.builds.production.bytes
   if (report.browserFailure || !evidence.accepted)

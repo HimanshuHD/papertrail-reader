@@ -2,10 +2,11 @@ import { readFile } from 'node:fs/promises'
 import { summarizeTrials, verifyTrialCoverage } from './diagnostics-acceptance-report.mjs'
 
 /** Preserve every completed workload even when a different functional case/browser failed. */
-export async function acceptanceResults(results, engines, count) {
+export async function acceptanceResults(results, engines, count, requireRepresentative = false) {
   const trials = [],
     workloadFailures = [],
-    caseOutcomes = []
+    caseOutcomes = [],
+    representative = []
   async function walk(suite) {
     for (const spec of suite.specs || [])
       for (const test of spec.tests || []) {
@@ -18,9 +19,11 @@ export async function acceptanceResults(results, engines, count) {
           })
           for (const attachment of result.attachments || []) {
             if (
-              !['diagnostic-workload-trials', 'diagnostic-workload-failure'].includes(
-                attachment.name,
-              )
+              ![
+                'diagnostic-workload-trials',
+                'diagnostic-workload-failure',
+                'representative-functional-evidence',
+              ].includes(attachment.name)
             )
               continue
             const value = JSON.parse(
@@ -28,7 +31,38 @@ export async function acceptanceResults(results, engines, count) {
                 ? Buffer.from(attachment.body, 'base64').toString('utf8')
                 : await readFile(attachment.path, 'utf8'),
             )
-            if (attachment.name === 'diagnostic-workload-trials') {
+            if (attachment.name === 'representative-functional-evidence') {
+              const expected = {
+                'library-100': [100, 2, 0],
+                'library-1000': [1000, 2, 0],
+                'pdf-1001': [1, 1001, 0],
+                'epub-long': [1, 0, 1000],
+              }[value.scenario]
+              if (
+                !expected ||
+                value.engine !== test.projectName ||
+                !engines.includes(value.engine) ||
+                [value.files, value.pdfPages, value.paragraphs].some((v, i) => v !== expected[i]) ||
+                !Number.isSafeInteger(value.fixtureBytes) ||
+                value.fixtureBytes <= 0 ||
+                !Number.isFinite(value.elapsedMs) ||
+                value.elapsedMs < 0 ||
+                (value.listingMs !== undefined &&
+                  (!Number.isFinite(value.listingMs) || value.listingMs < 0))
+              )
+                throw new Error('Invalid representative attachment')
+              // Project only the reviewed fixed/numeric schema; never retain arbitrary attachment fields.
+              representative.push({
+                engine: value.engine,
+                scenario: value.scenario,
+                files: value.files,
+                pdfPages: value.pdfPages,
+                paragraphs: value.paragraphs,
+                fixtureBytes: value.fixtureBytes,
+                elapsedMs: value.elapsedMs,
+                ...(value.listingMs === undefined ? {} : { listingMs: value.listingMs }),
+              })
+            } else if (attachment.name === 'diagnostic-workload-trials') {
               if (!Array.isArray(value) || value.some((row) => row.engine !== test.projectName))
                 throw new Error('Invalid workload attachment')
               trials.push(...value)
@@ -54,6 +88,15 @@ export async function acceptanceResults(results, engines, count) {
   } catch (error) {
     coverage.reason = error.message
   }
+  const representativeKeys = representative.map((row) => `${row.engine}:${row.scenario}`)
+  const representativeCoverage = {
+    required: requireRepresentative,
+    expectedCases: engines.length * 4,
+    completedCases: representative.length,
+    complete:
+      representative.length === engines.length * 4 &&
+      new Set(representativeKeys).size === representative.length,
+  }
   const failed = Boolean(
     results.errors?.length ||
     results.stats?.unexpected ||
@@ -62,11 +105,14 @@ export async function acceptanceResults(results, engines, count) {
     caseOutcomes.some((row) => !['passed', 'skipped'].includes(row.status) || row.retry > 0),
   )
   return {
+    representative,
+    representativeCoverage,
     trials,
     summary: summarizeTrials(trials),
     workloadFailures,
     caseOutcomes,
     coverage,
-    accepted: coverage.complete && !failed,
+    accepted:
+      coverage.complete && !failed && (!requireRepresentative || representativeCoverage.complete),
   }
 }
