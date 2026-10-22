@@ -23,15 +23,16 @@ The dedicated browser suite also runs existing mixed-reader export/lifecycle che
 
 ## Generated scale and long-document cases
 
-Four additional functional cases per requested engine run with sampling enabled and diagnostics minimized:
+Five additional functional cases per requested engine run with sampling enabled and diagnostics minimized:
 
-| Case                            | Assertions                                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 100 / 1000 file-input libraries | Exact listed document count; search selects only the final entry; that PDF renders and closes.                            |
-| 1001-page text PDF              | First/last-page render readiness, maximum page count, zoom and return to page1.                                           |
-| 1000-paragraph EPUB             | Embedded CSS and image remain readable, final paragraph can be reached, typography reflow and next/previous chapter work. |
+| Case                            | Assertions                                                                                                                                |
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| 100 / 1000 file-input libraries | Exact listed document count; search selects only the final entry; that PDF renders and closes.                                            |
+| 12-page raster PDF              | Distinct painted images on first/last pages, zoom, return and private export; twelve independent 512×512 RGB rasters, over9MB compressed. |
+| 1001-page text PDF              | First/last-page render readiness, maximum page count, zoom and return to page1.                                                           |
+| 1000-paragraph EPUB             | Embedded CSS and image remain readable, final paragraph can be reached, typography reflow and next/previous chapter work.                 |
 
-Every case audits a current-source diagnostic export for fixture-name/content exclusions. Successful cases attach only fixed scenario/engine identifiers, numeric fixture sizes/counts and real elapsed time. `representative` retains a projected safe schema and `representativeCoverage` requires all four unique cases for every requested engine. Missing, duplicate or invalid evidence cannot pass the runner even if the small benchmark completed. Completed functional evidence survives a later case failure. These one-pass functional durations include assertions, export and automation; they have no median/p95 or overhead interpretation and stay outside the repeated four-mode benchmark.
+Every case audits a current-source diagnostic export for fixture-name/content exclusions. Successful cases attach only fixed scenario/engine identifiers, numeric fixture sizes/counts and real elapsed time. `representative` retains a projected safe schema and `representativeCoverage` requires all five unique cases for every requested engine. Missing, duplicate or invalid evidence cannot pass the runner even if the small benchmark completed. Completed functional evidence survives a later case failure. These one-pass functional durations include assertions, export and automation; they have no median/p95 or overhead interpretation and stay outside the repeated four-mode benchmark.
 
 These are generated scale fixtures. File-input injection does not measure native-folder discovery; the text PDF is not image-heavy; the EPUB uses one local vector illustration and does not represent arbitrary publisher content. No additional automated workflow is added.
 
@@ -56,3 +57,25 @@ Before publishing evidence, retain only reviewed fixture-only aggregates and bui
 #253 stays open for native-folder discovery and real/image-heavy document acceptance beyond the generated scale cases; restore/cancellation/real five-minute expiry and repeated teardown; broader sampling/optional-sensor/panel-render comparisons; native Firefox/WebKit and installed device/browser evidence; and exact merged-source staging acceptance/publication. Existing focused tests are not substituted for these measurements. #252 ownership/attribution is complete after #258. Provisional #250 profiles were implemented in #259; accepted target calibration remains open. Accepted budgets and external CPU/GPU/process-memory profiling belong to #16.
 
 The later reviewed owner Windows checkpoint on source `e33a265` passed Chromium/Firefox/WebKit (21 browser cases and36 workload trials). That historical checkpoint predates these generated scale cases and does not certify them. Fresh source-specific evidence must identify the candidate and engines actually executed.
+
+## Manual native-folder validation
+
+Generate disposable local fixture folders from the repository root (Node24, dependencies installed):
+
+```sh
+node scripts/create-diagnostics-library.mjs 100
+node scripts/create-diagnostics-library.mjs 1000
+```
+
+Each command prints a fresh `documents` folder under ignored `browser-evidence/manual-libraries/library-*/`. It never overwrites an existing run, reads personal files, opens a browser or uploads data. A manifest sits beside the documents folder and records file/group counts and bytes. The library contains nested groups of50, mixed PDF/EPUB files, a12-page image PDF (`fixture-0000.pdf`), a1001-page text PDF (`fixture-0001.pdf`) and a1000-paragraph styled EPUB (`fixture-0002.epub`). Exactly100 or1000 supported files are inside the selected folder. Generation can take several seconds; it is not scan timing.
+
+Use a fresh PR preview and record its source from Technical details. Repeat the following on installed browsers/OS you intend to support. Native handle support and the fallback vary by browser; record the actual path used.
+
+1. Open diagnostics before selection, leave additional sensors off and minimize it. From Library → + → Choose folder, select the printed **documents** folder. Record browser/version,OS,count,native handle versus fallback and any observed issue. Do not use Choose files for native-folder acceptance.
+2. Confirm the library shows exactly100/1000 local documents and2/20 nested groups. Expand a group; search `fixture-0999` for the1000-file case (or0099 for100). Only the final document should match and open successfully. Clear search; groups/list remain usable.
+3. Open fixture0000 and navigate to its last page; actual colored raster content should render through zoom and return. Open0001 and navigate to1001. Open0002, scroll to the end of its long chapter, change typography and navigate chapters. Switch retained tabs and confirm state remains.
+4. Close all tabs, allow disposal to settle and inspect Resources cleanup against a pre-open baseline. Tracked ownership should settle; a high JS heap alone is not a leak verdict. Repeat open/close three times if investigating retention.
+5. For a true native handle, refresh/reconnect and verify its permission/restore path. For fallback selection, record that reconnect/reselection is required rather than treating fallback as persisted permission. Exercise picker cancellation: the existing library remains usable. Native permission denial/revocation requires a manual OS/browser check; no automation here claims it.
+6. Pause/export if needed. Review local exports before sharing; do not publish personal document names,paths,contents or raw browser artifacts. Report the fixture count/source/platform/path and pass/fail of each step. Generated functional timings do not certify a workload budget.
+
+These manual steps remain unaccepted until an actual user/native-browser run is supplied. The headless raster case exercises decoding and painted output; it does not prove native picker/permission behavior or arbitrary scanned-book performance. External CPU/GPU/process-memory and accepted budgets remain #16.

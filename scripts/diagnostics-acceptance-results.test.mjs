@@ -97,6 +97,7 @@ test('representative coverage is independently required and projects only review
     ['library-100', 100, 2, 0],
     ['library-1000', 1000, 2, 0],
     ['pdf-1001', 1, 1001, 0],
+    ['pdf-images', 1, 12, 0],
     ['epub-long', 1, 0, 1000],
   ].map(([scenario, files, pdfPages, paragraphs]) => ({
     engine: 'chromium',
@@ -118,9 +119,9 @@ test('representative coverage is independently required and projects only review
   })
   const complete = await acceptanceResults(report(cases), ['chromium'], 3, true)
   assert.equal(complete.accepted, true)
-  assert.equal(complete.representative.length, 4)
+  assert.equal(complete.representative.length, 5)
   assert.equal(JSON.stringify(complete).includes('never-copy'), false)
-  for (const values of [[], cases.slice(0, 3), [...cases.slice(0, 3), cases[0]]]) {
+  for (const values of [[], cases.slice(0, 4), [...cases.slice(0, 4), cases[0]]]) {
     const result = await acceptanceResults(report(values), ['chromium'], 3, true)
     assert.equal(result.coverage.complete, true)
     assert.equal(result.accepted, false)

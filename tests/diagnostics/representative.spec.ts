@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { performance } from 'node:perf_hooks'
 import { readFile } from 'node:fs/promises'
-import { createPdfFixture } from '../fixtures/pdf'
+import { createPdfFixture, createImagePdfFixture } from '../fixtures/pdf'
 import { createFormattedEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
@@ -156,6 +156,60 @@ test('representative long styled EPUB remains readable through reflow and chapte
       files: 1,
       pdfPages: 0,
       paragraphs: 1000,
+      fixtureBytes: buffer.length,
+      elapsedMs: performance.now() - started,
+    }),
+    contentType: 'application/json',
+  })
+})
+
+test('representative image-heavy PDF decodes distinct rasters through navigation and zoom', async ({
+  page,
+  browserName,
+}, info) => {
+  await start(page)
+  const buffer = createImagePdfFixture()
+  expect(buffer.length).toBeGreaterThan(9_000_000)
+  const started = performance.now()
+  await page
+    .locator('input[accept*=".pdf"]')
+    .setInputFiles({ name: 'scale-private-image.pdf', mimeType: 'application/pdf', buffer })
+  await open(page, 'PDF: scale-private-image.pdf')
+  const input = page.getByRole('spinbutton', { name: 'Current page', exact: true })
+  const raster = async (number: number) => {
+    const view = page.locator(`[data-pdf-page="${number}"]`)
+    await expect(view).toHaveAttribute('data-render-state', 'ready')
+    // A ready blank canvas is insufficient: inspect the painted image center.
+    const color = await view.locator('canvas').evaluate((canvas: HTMLCanvasElement) => {
+      const pixel = canvas
+        .getContext('2d')!
+        .getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data
+      return Array.from(pixel)
+    })
+    expect(color[3]).toBe(255)
+    expect(color.slice(0, 3).some((value) => value < 240)).toBe(true)
+    return color
+  }
+  const first = await raster(1)
+  await input.fill('12')
+  await input.press('Tab')
+  const last = await raster(12)
+  expect(last).not.toEqual(first)
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  await raster(12)
+  await input.fill('1')
+  await input.press('Tab')
+  await raster(1)
+  await page.getByRole('button', { name: 'Close scale-private-image.pdf', exact: true }).click()
+  await expect(page.locator('.pdf-reader')).toHaveCount(0)
+  await privateExport(page)
+  await info.attach('representative-functional-evidence', {
+    body: JSON.stringify({
+      engine: browserName,
+      scenario: 'pdf-images',
+      files: 1,
+      pdfPages: 12,
+      paragraphs: 0,
       fixtureBytes: buffer.length,
       elapsedMs: performance.now() - started,
     }),

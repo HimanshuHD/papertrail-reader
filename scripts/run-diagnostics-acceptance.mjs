@@ -48,7 +48,7 @@ const report = {
   status: 'incomplete',
   accepted: false,
   limitations: [
-    'Generated 100/1000-file input libraries, 1001-page text PDF and long styled/image EPUB functional cases supplement the small four-mode benchmark; not native-folder, image-heavy PDF or real-document acceptance.',
+    'Generated 100/1000-file input libraries, 1001-page text PDF, twelve-page embedded-raster PDF and long styled/image EPUB functional cases supplement the small four-mode benchmark; not native-folder or arbitrary real-document acceptance.',
     'Fresh browser contexts are application-cold; OS filesystem and browser process caches are not flushed. Repeat/warm steps run inside each trial.',
     'Elapsed wall time includes browser rendering and automation. No CPU/GPU/process-memory measurement, causal attribution, accepted budget or speedup claim.',
     'No forced GC, artificial clock advancement or callback-only total-overhead claim. Sampler subset and JS heap remain separately labelled in private export.',
