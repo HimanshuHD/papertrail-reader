@@ -1,6 +1,11 @@
-import type { Metric } from './recorder'
 import type { Snapshot } from './presentation'
-import { metricNames } from './presentation'
+import {
+  profileNames,
+  profileTimings,
+  isReaderProfile,
+  type OperationProfile,
+} from './operation-profiles'
+import type { InvestigationSnapshot } from './resource-investigation'
 
 export type IndicatorState =
   'recording' | 'attention' | 'critical' | 'inactive' | 'collecting' | 'unavailable' | 'stale'
@@ -9,7 +14,7 @@ export interface Target {
   criticalMs: number
 }
 export interface IndicatorConfig {
-  version: 1
+  version: 2
   source: 'provisional local configuration; not accepted #16 budgets'
   windowMs: number
   minSamples: number
@@ -18,12 +23,12 @@ export interface IndicatorConfig {
   staleAfterMs: number
   frames: Target | null
   longTasks: Target | null
-  operations: Partial<Record<Metric, Target>>
-  pending: Partial<Record<Metric, Target>>
+  operations: Partial<Record<OperationProfile, Target>>
+  pending: Partial<Record<OperationProfile, Target>>
 }
 export function defaultIndicatorConfig(): IndicatorConfig {
   return {
-    version: 1,
+    version: 2,
     source: 'provisional local configuration; not accepted #16 budgets',
     windowMs: 30000,
     minSamples: 3,
@@ -72,7 +77,7 @@ export interface IndicatorEvent {
   findings: Finding[]
   explanation: string
   configuration: IndicatorConfig
-  context: { metric: Metric; durationMs: number; outcome: string }[]
+  context: { metric: OperationProfile; durationMs: number; outcome: string }[]
 }
 const validReading = (value: number | null) =>
   value !== null && Number.isFinite(value) && value >= 0
@@ -90,6 +95,7 @@ export class IndicatorMonitor {
   readonly config: IndicatorConfig
   readonly history: IndicatorEvent[] = []
   private epoch = 0
+  private suspended = false
   private lastSample = -1
   private recovery = 0
   private held: Finding[] = []
@@ -100,13 +106,20 @@ export class IndicatorMonitor {
   }
   restart(now: number, clearHistory = false) {
     this.epoch = now
+    this.suspended = false
     this.lastSample = -1
     this.recovery = 0
     this.held = []
     this.signature = ''
     if (clearHistory) this.history.length = 0
   }
-  update(snapshot: Snapshot, now: number, foreground = true): IndicatorResult {
+  update(
+    snapshot: Snapshot,
+    now: number,
+    foreground = true,
+    investigation?: InvestigationSnapshot,
+  ): IndicatorResult {
+    const observedTimings = profileTimings(snapshot, investigation)
     const finish = (
       state: IndicatorState,
       findings: Finding[],
@@ -119,7 +132,7 @@ export class IndicatorMonitor {
           .map((f) => f.id)
           .sort()
           .join('|')
-      const observation = `${snapshot.samples.at(-1)?.observedAtMs ?? ''}:${snapshot.timings.at(-1)?.endedAtMs ?? ''}:${state}`
+      const observation = `${snapshot.samples.at(-1)?.observedAtMs ?? ''}:${observedTimings.at(-1)?.endedAtMs ?? ''}:${state}`
       const previous = this.history.at(-1)
       if (signature !== this.signature) {
         if (previous && previous.endedAtMs === undefined) {
@@ -140,7 +153,7 @@ export class IndicatorMonitor {
           findings: structuredClone(findings),
           explanation,
           configuration: structuredClone(this.config),
-          context: snapshot.timings
+          context: observedTimings
             .filter(
               (t) =>
                 t.endedAtMs !== undefined &&
@@ -166,6 +179,7 @@ export class IndicatorMonitor {
       return { state, label: labels[state], findings, explanation, supportedSamples }
     }
     if (!snapshot.running || !foreground) {
+      this.suspended = true
       this.epoch = now
       this.held = []
       this.recovery = 0
@@ -177,6 +191,11 @@ export class IndicatorMonitor {
           ? 'Sampling paused; retained readings are not current.'
           : 'Background tab: evaluation suspended and foreground window reset.',
       )
+    }
+    if (this.suspended) {
+      this.epoch = now
+      this.suspended = false
+      this.lastSample = -1
     }
     const start = Math.max(this.epoch, now - this.config.windowMs)
     const samples = snapshot.samples.filter(
@@ -231,8 +250,8 @@ export class IndicatorMonitor {
         this.config.longTasks,
         'Inspect repeated long tasks in a browser trace; avoid counting LoAF and Long Tasks twice.',
       )
-    for (const metric of Object.keys(metricNames) as Metric[]) {
-      const timings = snapshot.timings.filter(
+    for (const metric of Object.keys(profileNames) as OperationProfile[]) {
+      const timings = observedTimings.filter(
         (t) =>
           t.metric === metric &&
           t.endedAtMs !== undefined &&
@@ -243,7 +262,7 @@ export class IndicatorMonitor {
       )
       evaluate(
         metric,
-        metricNames[metric],
+        profileNames[metric],
         timings.filter((t) => t.outcome === 'completed').map((t) => t.durationMs),
         this.config.operations[metric] ?? null,
         'Inspect this operation separately from cold opens, restore and warm activation; targets are local and provisional.',
@@ -252,15 +271,22 @@ export class IndicatorMonitor {
       if (target && validTarget(target)) {
         const oldest = Math.max(
           0,
-          ...snapshot.pendingDetails
-            .filter((p) => p.metric === metric)
-            .map((p) => now - Math.max(p.startedAtMs, this.epoch)),
+          ...(isReaderProfile(metric)
+            ? (investigation?.pending ?? [])
+                .filter(
+                  (p) =>
+                    p.operation === metric && p.queuedAtMs >= this.epoch && p.queuedAtMs <= now,
+                )
+                .map((p) => now - p.queuedAtMs)
+            : snapshot.pendingDetails
+                .filter((p) => p.metric === metric && p.startedAtMs <= now)
+                .map((p) => now - Math.max(p.startedAtMs, this.epoch))),
         )
         if (oldest >= target.attentionMs)
           findings.push({
             id: `pending:${metric}`,
             state: oldest >= target.criticalMs ? 'critical' : 'attention',
-            reason: `${metricNames[metric]} pending ${Math.round(oldest)} ms; provisional ${oldest >= target.criticalMs ? target.criticalMs : target.attentionMs} ms target.`,
+            reason: `${profileNames[metric]} pending ${Math.round(oldest)} ms; provisional ${oldest >= target.criticalMs ? target.criticalMs : target.attentionMs} ms target.`,
             observedMs: oldest,
             thresholdMs: oldest >= target.criticalMs ? target.criticalMs : target.attentionMs,
             sampleCount: 1,

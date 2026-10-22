@@ -50,6 +50,8 @@ test('production excludes diagnostics; preview/staging and explicit builds inclu
         'pdf.expired-open',
         'epub.warm-activate',
         'ownedListeners',
+        'Reader lifecycle profiles',
+        'Changes to investigate',
         'Measure page memory',
         'epub.reader-release',
         'What remains after closing?',

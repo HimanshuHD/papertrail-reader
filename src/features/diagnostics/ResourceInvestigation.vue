@@ -186,6 +186,28 @@ async function navigate(event: KeyboardEvent) {
             }}
           </p>
         </div>
+        <div
+          v-if="snapshot.observations.length"
+          class="explanation"
+          aria-label="Resource investigation notes"
+        >
+          <strong>Changes to investigate · informational</strong>
+          <ul>
+            <li v-for="note in snapshot.observations" :key="note.key">
+              {{ note.key === 'jsHeapBytes' ? 'JS heap' : names[note.key] }}:
+              {{ note.delta > 0 ? '+' : '−'
+              }}{{
+                note.key === 'jsHeapBytes' ? bytes(Math.abs(note.delta)) : Math.abs(note.delta)
+              }}
+              since baseline.
+            </li>
+          </ul>
+          <p>
+            These observations do not change health severity. Active readers, five-minute retention
+            and normal allocation/cache changes can explain differences. Close documents and compare
+            after settling; growth alone does not prove a leak.
+          </p>
+        </div>
         <div class="metrics">
           <div>
             <span>Tracked readers</span><strong>{{ current('viewers') }}</strong

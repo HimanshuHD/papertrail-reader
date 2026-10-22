@@ -3,6 +3,8 @@ import { expect, it } from 'vitest'
 import IndicatorTargets from '../../src/features/diagnostics/IndicatorTargets.vue'
 it('applies explicit provisional operation targets and removes only the selected target', async () => {
   const wrapper = mount(IndicatorTargets)
+  await wrapper.findAll('input')[0]!.setValue('200')
+  await wrapper.findAll('input')[1]!.setValue('1000')
   await wrapper.get('form').trigger('submit')
   expect(wrapper.emitted('apply')?.[0]).toEqual([
     'pdf.render',

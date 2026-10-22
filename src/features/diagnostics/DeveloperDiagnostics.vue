@@ -5,7 +5,8 @@ import { diagnostics } from './recorder'
 import IconButton from '../../components/IconButton.vue'
 import { IndicatorMonitor, type Target } from './indicators'
 import IndicatorTargets from './IndicatorTargets.vue'
-import type { Metric } from './recorder'
+import { profileDefinitions, type OperationProfile } from './operation-profiles'
+import ReaderProfiles from './ReaderProfiles.vue'
 import DiagnosticDashboard from './DiagnosticDashboard.vue'
 import DiagnosticSensors from './DiagnosticSensors.vue'
 import ResourceInvestigation from './ResourceInvestigation.vue'
@@ -62,11 +63,19 @@ const identity = {
     : 'Clean',
 }
 const monitor = new IndicatorMonitor()
-const health = ref(monitor.update(snapshot.value, performance.now(), !document.hidden))
+const targetConfiguration = ref(structuredClone(monitor.config))
+const health = ref(
+  monitor.update(snapshot.value, performance.now(), !document.hidden, investigation.value),
+)
 const indicatorHistory = ref([...monitor.history])
-function configureTarget(metric: Metric, kind: 'operations' | 'pending', target: Target | null) {
+function configureTarget(
+  metric: OperationProfile,
+  kind: 'operations' | 'pending',
+  target: Target | null,
+) {
   if (target) monitor.config[kind][metric] = target
   else delete monitor.config[kind][metric]
+  targetConfiguration.value = structuredClone(monitor.config)
   monitor.restart(performance.now())
   refresh()
 }
@@ -75,7 +84,12 @@ function refresh() {
   sensorSnapshot.value = sensors.snapshot()
   snapshot.value = diagnostics.snapshot()
   investigation.value = diagnostics.investigation.snapshot(snapshot.value.resources, heapBytes())
-  health.value = monitor.update(snapshot.value, performance.now(), !document.hidden)
+  health.value = monitor.update(
+    snapshot.value,
+    performance.now(),
+    !document.hidden,
+    investigation.value,
+  )
   indicatorHistory.value = [...monitor.history]
   if (sampler) lastOverhead.value = { ...sampler.overhead }
 }
@@ -139,6 +153,7 @@ function exportSummary() {
         samplerOverhead: sampler?.overhead ?? lastOverhead.value,
         indicators: {
           configuration: monitor.config,
+          profileDefinitions: profileDefinitions(),
           current: health.value,
           history: indicatorHistory.value,
         },
@@ -230,6 +245,9 @@ onBeforeUnmount(() => {
           :health="health"
           :indicator-history="indicatorHistory"
         >
+          <template #operation-profiles>
+            <ReaderProfiles :snapshot="investigation" :config="targetConfiguration" />
+          </template>
           <template #resource-investigation>
             <ResourceInvestigation
               v-model:selected="activeResourceCategory"
@@ -297,7 +315,7 @@ onBeforeUnmount(() => {
               At most 120 timings/samples retained. Sampling callback timing in the export covers
               synchronous sampler/snapshot work only, not all rendering or diagnostic overhead.
             </p>
-            <IndicatorTargets @apply="configureTarget" />
+            <IndicatorTargets :config="targetConfiguration" @apply="configureTarget" />
             <h3>Active indicator configuration</h3>
             <pre>{{ JSON.stringify(monitor.config, null, 2) }}</pre>
             <p>

@@ -15,33 +15,35 @@ export const metricNames: Record<Metric, string> = {
   'epub.reflow': 'EPUB layout reflow',
 }
 /** Statistics cover retained completed work only, not cancelled/failed durations. */
+export function durationStats(matching: Pick<Timing, 'durationMs' | 'outcome'>[]) {
+  const completed = matching.filter(
+    (item) =>
+      item.outcome === 'completed' && Number.isFinite(item.durationMs) && item.durationMs >= 0,
+  )
+  const sorted = completed.map((item) => item.durationMs).sort((a, b) => a - b)
+  const count = sorted.length,
+    middle = Math.floor(count / 2)
+  return {
+    count,
+    last: completed.at(-1)?.durationMs ?? null,
+    median: count
+      ? count % 2
+        ? sorted[middle]!
+        : (sorted[middle - 1]! + sorted[middle]!) / 2
+      : null,
+    p95: count >= P95_MIN_SAMPLES ? sorted[Math.ceil(count * 0.95) - 1]! : null,
+    worst: sorted.at(-1) ?? null,
+    cancelled: matching.filter((item) => item.outcome === 'cancelled').length,
+    failed: matching.filter((item) => item.outcome === 'failed').length,
+    unavailable: matching.filter((item) => item.outcome === 'unavailable').length,
+  }
+}
 export function operationStats(timings: Timing[]) {
-  return (Object.keys(metricNames) as Metric[]).map((metric) => {
-    const matching = timings.filter((item) => item.metric === metric)
-    const completed = matching.filter(
-      (item) =>
-        item.outcome === 'completed' && Number.isFinite(item.durationMs) && item.durationMs >= 0,
-    )
-    const sorted = completed.map((item) => item.durationMs).sort((a, b) => a - b)
-    const count = sorted.length
-    const middle = Math.floor(count / 2)
-    return {
-      metric,
-      name: metricNames[metric],
-      count,
-      last: completed.at(-1)?.durationMs ?? null,
-      median: count
-        ? count % 2
-          ? sorted[middle]!
-          : (sorted[middle - 1]! + sorted[middle]!) / 2
-        : null,
-      p95: count >= P95_MIN_SAMPLES ? sorted[Math.ceil(count * 0.95) - 1]! : null,
-      worst: sorted.at(-1) ?? null,
-      cancelled: matching.filter((item) => item.outcome === 'cancelled').length,
-      failed: matching.filter((item) => item.outcome === 'failed').length,
-      unavailable: matching.filter((item) => item.outcome === 'unavailable').length,
-    }
-  })
+  return (Object.keys(metricNames) as Metric[]).map((metric) => ({
+    metric,
+    name: metricNames[metric],
+    ...durationStats(timings.filter((item) => item.metric === metric)),
+  }))
 }
 export function measurement(value: number | null | undefined, unit = 'ms') {
   return value == null || !Number.isFinite(value) || value < 0
