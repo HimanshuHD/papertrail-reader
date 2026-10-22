@@ -1,0 +1,126 @@
+{
+  "schema": 1,
+  "source": {
+    "sha": "f175a08ec1ea9016afd0280b48303c2ba171e3bc",
+    "tree": "d3ad5c2d00c660a71827604a51214c77042e12f8",
+    "dirty": false
+  },
+  "options": {
+    "engines": ["chromium", "firefox", "webkit"],
+    "trials": 3
+  },
+  "status": "passed",
+  "accepted": true,
+  "coverage": {
+    "expectedTrials": 36,
+    "completedTrials": 36,
+    "complete": true,
+    "reason": null
+  },
+  "representativeCoverage": {
+    "required": true,
+    "expectedCases": 12,
+    "completedCases": 12,
+    "complete": true
+  },
+  "outcomes": {
+    "passed": 42,
+    "failed": 0,
+    "flaky": 0,
+    "retries": 0,
+    "expectedSkips": 3,
+    "cleanupCyclesAtBaseline": 9
+  },
+  "scenarios": [
+    {
+      "engine": "chromium",
+      "scenario": "library-100",
+      "files": 100,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "chromium",
+      "scenario": "library-1000",
+      "files": 1000,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "chromium",
+      "scenario": "pdf-1001",
+      "files": 1,
+      "pdfPages": 1001,
+      "paragraphs": 0
+    },
+    {
+      "engine": "chromium",
+      "scenario": "epub-long",
+      "files": 1,
+      "pdfPages": 0,
+      "paragraphs": 1000
+    },
+    {
+      "engine": "firefox",
+      "scenario": "library-100",
+      "files": 100,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "firefox",
+      "scenario": "library-1000",
+      "files": 1000,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "firefox",
+      "scenario": "pdf-1001",
+      "files": 1,
+      "pdfPages": 1001,
+      "paragraphs": 0
+    },
+    {
+      "engine": "firefox",
+      "scenario": "epub-long",
+      "files": 1,
+      "pdfPages": 0,
+      "paragraphs": 1000
+    },
+    {
+      "engine": "webkit",
+      "scenario": "library-100",
+      "files": 100,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "webkit",
+      "scenario": "library-1000",
+      "files": 1000,
+      "pdfPages": 2,
+      "paragraphs": 0
+    },
+    {
+      "engine": "webkit",
+      "scenario": "pdf-1001",
+      "files": 1,
+      "pdfPages": 1001,
+      "paragraphs": 0
+    },
+    {
+      "engine": "webkit",
+      "scenario": "epub-long",
+      "files": 1,
+      "pdfPages": 0,
+      "paragraphs": 1000
+    }
+  ],
+  "browserVersions": {
+    "chromium": "153.0.8010.12",
+    "firefox": "155.0",
+    "webkit": "26.6"
+  },
+  "omitted": "Machine specifications, timing measurements, local paths, screenshots and raw exports are omitted."
+}
