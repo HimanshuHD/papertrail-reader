@@ -39,14 +39,14 @@ export function createEpubFixture(
 }
 
 /** Local author styling and a self-contained vector illustration, without network dependencies. */
-export function createFormattedEpubFixture() {
+export function createFormattedEpubFixture(paragraphCount = 40) {
   return createEpubFixture({
     manifest:
       '<item id="css" href="styles/book.css" media-type="text/css"/><item id="image" href="images/illustration.svg" media-type="image/svg+xml"/>',
     chapter:
       '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Formatted chapter</title><link rel="stylesheet" href="styles/book.css"/><style>.intro{padding:12px}</style></head><body><h1>Formatted chapter</h1><p class="intro" style="letter-spacing:1px">Author formatting.</p><img src="images/illustration.svg" alt="Local illustration"/>' +
       Array.from(
-        { length: 40 },
+        { length: paragraphCount },
         (_, i) => '<p>Reading paragraph ' + i + '. Local text flows across the reader.</p>',
       ).join('') +
       '</body></html>',
