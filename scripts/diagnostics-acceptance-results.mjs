@@ -36,6 +36,7 @@ export async function acceptanceResults(results, engines, count, requireRepresen
                 'library-100': [100, 2, 0],
                 'library-1000': [1000, 2, 0],
                 'pdf-1001': [1, 1001, 0],
+                'pdf-images': [1, 12, 0],
                 'epub-long': [1, 0, 1000],
               }[value.scenario]
               if (
@@ -91,10 +92,10 @@ export async function acceptanceResults(results, engines, count, requireRepresen
   const representativeKeys = representative.map((row) => `${row.engine}:${row.scenario}`)
   const representativeCoverage = {
     required: requireRepresentative,
-    expectedCases: engines.length * 4,
+    expectedCases: engines.length * 5,
     completedCases: representative.length,
     complete:
-      representative.length === engines.length * 4 &&
+      representative.length === engines.length * 5 &&
       new Set(representativeKeys).size === representative.length,
   }
   const failed = Boolean(
