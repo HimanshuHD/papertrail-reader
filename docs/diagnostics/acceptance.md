@@ -21,6 +21,20 @@ Each trial injects the same generated 12-page text PDF and CSS/image EPUB, waits
 
 The dedicated browser suite also runs existing mixed-reader export/lifecycle checks, mobile dark keyboard/focus checks, real supported sensor observations and a controlled missing-PerformanceObserver fallback. Unsupported sensor inputs/long frames must remain empty with an explicit unavailable reason, rather than a fabricated zero measurement. This fallback fixture is simulated capability loss, not evidence of a native browser's support matrix.
 
+## Generated scale and long-document cases
+
+Four additional functional cases per requested engine run with sampling enabled and diagnostics minimized:
+
+| Case                            | Assertions                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 100 / 1000 file-input libraries | Exact listed document count; search selects only the final entry; that PDF renders and closes.                            |
+| 1001-page text PDF              | First/last-page render readiness, maximum page count, zoom and return to page1.                                           |
+| 1000-paragraph EPUB             | Embedded CSS and image remain readable, final paragraph can be reached, typography reflow and next/previous chapter work. |
+
+Every case audits a current-source diagnostic export for fixture-name/content exclusions. Successful cases attach only fixed scenario/engine identifiers, numeric fixture sizes/counts and real elapsed time. `representative` retains a projected safe schema and `representativeCoverage` requires all four unique cases for every requested engine. Missing, duplicate or invalid evidence cannot pass the runner even if the small benchmark completed. Completed functional evidence survives a later case failure. These one-pass functional durations include assertions, export and automation; they have no median/p95 or overhead interpretation and stay outside the repeated four-mode benchmark.
+
+These are generated scale fixtures. File-input injection does not measure native-folder discovery; the text PDF is not image-heavy; the EPUB uses one local vector illustration and does not represent arbitrary publisher content. No additional automated workflow is added.
+
 ## Configuration
 
 - `DIAGNOSTIC_ENGINES`: comma-separated `chromium,firefox,webkit`; default `chromium`. Unknown/duplicate engines fail. Requested engines must be installed; unavailable engines do not silently skip acceptance.
@@ -39,6 +53,6 @@ Before publishing evidence, retain only reviewed fixture-only aggregates and bui
 
 ## Remaining acceptance
 
-#253 stays open for representative 100/1000 native-folder scans; image-heavy and 1001-page PDF; long-chapter EPUB; restore/cancellation/real five-minute expiry and repeated teardown; broader sampling/optional-sensor/panel-render comparisons; native Firefox/WebKit and installed device/browser evidence; and exact merged-source staging acceptance/publication. Existing focused tests are not substituted for these measurements. #252 deeper ownership/attribution and #250 workload profiles remain open. Accepted budgets and external CPU/GPU/process-memory profiling belong to #16.
+#253 stays open for native-folder discovery and real/image-heavy document acceptance beyond the generated scale cases; restore/cancellation/real five-minute expiry and repeated teardown; broader sampling/optional-sensor/panel-render comparisons; native Firefox/WebKit and installed device/browser evidence; and exact merged-source staging acceptance/publication. Existing focused tests are not substituted for these measurements. #252 ownership/attribution is complete after #258. Provisional #250 profiles were implemented in #259; accepted target calibration remains open. Accepted budgets and external CPU/GPU/process-memory profiling belong to #16.
 
-The Windows owner run on source `dc152e8` passed Chromium and Firefox checkpoints but failed one WebKit formatted-EPUB workload before an EPUB tab appeared. The revised selection barrier and failure/partial-reporting checks address the harness gaps; a successful fresh Windows WebKit rerun is still required before accepting that engine. No EPUB rendering fix or browser acceptance is inferred from a readiness assertion alone.
+The later reviewed owner Windows checkpoint on source `e33a265` passed Chromium/Firefox/WebKit (21 browser cases and36 workload trials). That historical checkpoint predates these generated scale cases and does not certify them. Fresh source-specific evidence must identify the candidate and engines actually executed.
