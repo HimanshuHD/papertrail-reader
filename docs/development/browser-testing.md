@@ -6,6 +6,16 @@ Draft PRs do not run application checks. Ready staging-targeted PRs run frontend
 
 browser-e2e.yml is now reusable workflow_call, not an independently dispatched PR workflow. It downloads candidate-build, verifies the tested tree/channel/run/head/base-path/checksums, and serves those bytes without rebuilding. CI/main manual recovery includes production acceptance; staging manual recovery includes integration acceptance. See [delivery operations](../deployment/publishing.md) for dispatch, bootstrap and owner settings.
 
+## Bounded CI browser environment
+
+Browser E2E uses the official Playwright 1.63.0 Noble container, pinned by image digest and matching the exact `@playwright/test` dependency. Chromium, Firefox, WebKit, their Linux dependencies and Xvfb are preinstalled. The workflow no longer runs `playwright install --with-deps`. Update the image version, digest and `PLAYWRIGHT_IMAGE_VERSION` together when upgrading Playwright. Pipeline checks compare the package and lockfile versions, and a runtime check rejects an installed-package mismatch.
+
+The container runs setup as root, so Openbox installation uses `apt-get` directly. It installs only Openbox and required dependencies, excluding recommended packages. Apt HTTP/HTTPS waits are limited to 30 seconds with one retry; the entire Openbox step is limited to five minutes. Slow setup therefore fails within its own allowance. The job's 45-minute ceiling leaves room for bounded setup, the full 20-minute browser-test step and two three-minute evidence uploads. Npm installation has its own five-minute limit. GitHub manages container pulls and runner provisioning; a registry outage can still block setup.
+
+Both shards, exact-artifact verification, headed native-focus checks under Xvfb/Openbox, existing Playwright assertions/retries and evidence upload on failure are retained. Visual QA remains independently manual. Switching the CI image requires a real hosted acceptance run; static/local checks do not prove container startup, native focus or all browser engines on GitHub.
+
+Run 39792454994 exposed the setup bottleneck: shard 1 first spent over 18 minutes installing dependencies and the window manager; its second attempt exhausted the 20-minute job while apt was still downloading. Shard 2 passed. Publication correctly stayed blocked. Rerunning that historical workflow uses its original definition and cannot pick up this fix. After merging this PR, verify the new staging delivery. Use the documented manual recovery from current staging if needed, rather than repeatedly rerunning the old attempt.
+
 ## Local browser checks
 
 For a local root build, run npm run build, install engines with npx playwright install --with-deps chromium firefox webkit, then npm run test:e2e. CI also installs openbox and uses Xvfb for native window activation. Local browser binaries and OS dependencies are separate from npm ci. For a prefixed candidate, use its compiled base path as E2E_BASE_PATH and copy that channel artifact into dist; do not rebuild another candidate while claiming the same artifact acceptance. Staging database fixture hooks use the staging namespace; production retains legacy names.
