@@ -48,6 +48,10 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.source_sha }}
+      - name: Trust checked-out workspace in container
+        timeout-minutes: 1
+        # Checkout's temporary HOME may differ from later shell steps in the container.
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
