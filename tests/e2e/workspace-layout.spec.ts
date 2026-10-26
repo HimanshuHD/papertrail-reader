@@ -89,12 +89,26 @@ test('compact workspace preserves reading state while resizing and closing the l
   await expect(rail).toHaveAttribute('aria-valuenow', narrow!)
   await rail.focus()
   await rail.press('End')
-  if (info.project.use.viewport!.width >= 375) {
-    await expect(
-      library.getByRole('button', { name: 'Add local documents', exact: true }),
-    ).toBeVisible()
+  await settleReaderLayout(page.locator('.reader-layout'))
+  // Font metrics can put 320px on either side of overflow. Validate the rendered
+  // layout instead of assuming the viewport width determines the menu state.
+  const addDocuments = library.getByRole('button', { name: 'Add local documents', exact: true })
+  if (await actions.count()) {
+    await expect(actions).toBeVisible()
+    await expect(addDocuments).toHaveCount(0)
+  } else {
+    await expect(addDocuments).toBeVisible()
     await expect(actions).toHaveCount(0)
-  } else await expect(actions).toBeVisible()
+  }
+  const header = library.locator('.library-panel > header')
+  const titleBounds = (await header.getByRole('heading').boundingBox())!
+  const headerBounds = (await header.boundingBox())!
+  for (const button of await header.getByRole('button').all()) {
+    const bounds = (await button.boundingBox())!
+    expect(bounds.x).toBeGreaterThanOrEqual(titleBounds.x + titleBounds.width)
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(headerBounds.x + headerBounds.width)
+    if (await button.isEnabled()) await button.click({ trial: true })
+  }
   await settleReaderLayout(page.locator('.reader-layout'))
   if (info.project.use.viewport!.width >= 1024)
     expect((await page.locator('.reader-column').boundingBox())!.width).toBeLessThan(closedWidth)
