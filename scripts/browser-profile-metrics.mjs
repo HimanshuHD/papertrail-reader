@@ -1,18 +1,52 @@
 // External profiler helpers. No imports from the production application.
-import { readFile, readlink } from 'node:fs/promises'
+import { readFile, readlink, readdir, stat } from 'node:fs/promises'
 
 export function rssBytesFromStatus(text) {
   const match = /^VmRSS:\s+(\d+) kB$/m.exec(text)
   return match ? Number(match[1]) * 1024 : null
 }
+export function namespacePIDFromStatus(text) {
+  const value = /^NSpid:\s+([\d \t]+)$/m.exec(text)?.[1].trim().split(/\s+/).at(-1)
+  return value ? Number(value) : null
+}
 export async function processRSS(pid, platform = process.platform, executable) {
-  if (platform !== 'linux' || !Number.isSafeInteger(pid) || pid <= 0) return null
+  if (platform !== 'linux' || !Number.isSafeInteger(pid) || pid <= 0 || !executable) return null
   try {
-    if (!executable || (await readlink(`/proc/${pid}/exe`)) !== executable) return null
+    const [actual, expected] = await Promise.all([stat(`/proc/${pid}/exe`), stat(executable)])
+    if (actual.dev !== expected.dev || actual.ino !== expected.ino) return null
     return rssBytesFromStatus(await readFile(`/proc/${pid}/status`, 'utf8'))
   } catch {
     return null // Exited/inaccessible process; never report it as measured zero.
   }
+}
+export async function processRSSBatch(ids, executable) {
+  const values = new Map(ids.map((id) => [id, null]))
+  if (process.platform !== 'linux') return values
+  try {
+    // A container can expose host /proc while CDP returns inner-namespace PIDs.
+    // Match only the same PID namespace and verified browser executable inode.
+    const namespace = await readlink('/proc/self/ns/pid')
+    const wanted = new Set(ids)
+    for (const name of await readdir('/proc')) {
+      if (!/^\d+$/.test(name)) continue
+      try {
+        const text = await readFile(`/proc/${name}/status`, 'utf8')
+        const inner = namespacePIDFromStatus(text)
+        if (!wanted.has(inner) || (await readlink(`/proc/${name}/ns/pid`)) !== namespace) continue
+        const rss = await processRSS(Number(name), 'linux', executable)
+        if (rss !== null) {
+          values.set(inner, rss)
+          wanted.delete(inner)
+        }
+        if (!wanted.size) break
+      } catch {
+        /* Process exited or is inaccessible; leave it unavailable. */
+      }
+    }
+  } catch {
+    /* OS process data is unavailable. */
+  }
+  return values
 }
 export function processInterval(before, after, elapsedMs) {
   const previous = new Map(before.map((row) => [row.id, row]))
