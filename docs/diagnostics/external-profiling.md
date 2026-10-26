@@ -100,7 +100,7 @@ heap increase alone neither proves a leak nor exonerates the application.
 ## Calibrate #250
 
 `calibration` is a versioned review worksheet grouped by mode and fixed operation
-profile. Only completed application observations are included; automation timings
+profile. Only completed application observations from passed, untraced, non-GC repetitions are included; automation timings
 for listing/open/readiness remain separate. Paused/closed/production modes do not
 invent missing application timings. Cold reader creation, restoration after a
 saved workspace/expiry and warm selection dispatch must not share thresholds.
