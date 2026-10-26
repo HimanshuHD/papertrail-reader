@@ -38,6 +38,8 @@ jobs:
       image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
       options: --ipc=host
     env:
+      # The container runs as root; Firefox requires a root-owned HOME.
+      HOME: /root
       PLAYWRIGHT_IMAGE_VERSION: '1.63.0'
       E2E_DEPLOY_CHANNEL: ${{ inputs.channel }}
       E2E_SOURCE_SHA: ${{ inputs.source_sha }}
@@ -51,7 +53,7 @@ jobs:
       - name: Trust checked-out workspace in container
         timeout-minutes: 1
         # Checkout's temporary HOME may differ from later shell steps in the container.
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        run: HOME=/root git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
@@ -77,6 +79,7 @@ jobs:
           BUILD_RUN: ${{ inputs.build_run }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
+          export HOME=/root
           node --input-type=module -e "import fs from 'node:fs'; import {execFileSync} from 'node:child_process'; import {verifyCandidate} from './scripts/candidate-artifact.mjs'; const b=JSON.parse(fs.readFileSync('incoming/'+process.env.CHANNEL+'/build.json')); await verifyCandidate('incoming/'+process.env.CHANNEL,{...b,channel:process.env.CHANNEL,runId:process.env.BUILD_RUN,headSha:process.env.SOURCE_SHA,tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),basePath:process.env.E2E_BASE_PATH})"
           cp -a "incoming/$CHANNEL" dist
       - name: Install native focus window manager
@@ -91,11 +94,11 @@ jobs:
           command -v xvfb-run
       - name: Record exact browser and candidate identity
         timeout-minutes: 2
-        run: node scripts/browser-evidence.mjs
+        run: HOME=/root node scripts/browser-evidence.mjs
       - name: Run browser acceptance with native window activation
         timeout-minutes: 20
         run: >-
-          xvfb-run --auto-servernum sh -c
+          HOME=/root xvfb-run --auto-servernum sh -c
           'openbox >/tmp/papertrail-window-manager.log 2>&1 &
           npm run test:e2e -- --shard=${{ matrix.shard }}/2'
       - name: Upload browser evidence
