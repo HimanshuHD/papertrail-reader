@@ -163,6 +163,7 @@ function menuKeydown(event: KeyboardEvent) {
 function outsidePointer(event: PointerEvent) {
   if (event.target instanceof Node && !controls.value?.contains(event.target)) dismissMenu()
 }
+// Menu mouse presses retain focus until click; keyboard/outside focus still dismisses.
 function focusLeaves(event: FocusEvent) {
   if (event.relatedTarget instanceof Node && !controls.value?.contains(event.relatedTarget))
     dismissMenu()
@@ -224,6 +225,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', outsidePointer
         :aria-label="compact ? 'Library actions' : 'Add local documents'"
         class="library-action-surface absolute top-full right-0 z-40 mt-2 w-60 rounded-lg border border-line bg-panel p-1 shadow-lg"
         @keydown="menuKeydown"
+        @mousedown.left.prevent
       >
         <p v-if="compact" class="px-3 py-2 text-xs font-semibold text-muted">Add local documents</p>
         <button
