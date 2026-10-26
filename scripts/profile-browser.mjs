@@ -251,7 +251,7 @@ async function profile(mode, trial) {
     await checkpoint(0)
     if (row.traced) {
       await browserCDP.send('Tracing.start', {
-        categories: 'devtools.timeline,v8,blink.user_timing',
+        categories: 'toplevel,devtools.timeline,v8,blink.user_timing',
         transferMode: 'ReturnAsStream',
       })
       tracing = true
