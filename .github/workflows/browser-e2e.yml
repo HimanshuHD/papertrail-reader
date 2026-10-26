@@ -84,14 +84,9 @@ jobs:
           cp -a "incoming/$CHANNEL" dist
       - name: Install native focus window manager
         timeout-minutes: 5
-        # Image already contains all browser engines, their OS dependencies and Xvfb.
-        # Omit recommended packages (fonts/editors/etc.) and bound slow apt traffic.
-        run: |
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 update
-          apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30 install -y --no-install-recommends openbox
-          command -v openbox
-          command -v xvfb-run
+        # Signed Ubuntu HTTPS repositories; ignore the image's slow Azure package mirror.
+        # Keep total apt time bounded independently of browser execution.
+        run: HOME=/root timeout 240 sh scripts/install-browser-window-manager.sh
       - name: Record exact browser and candidate identity
         timeout-minutes: 2
         run: HOME=/root node scripts/browser-evidence.mjs

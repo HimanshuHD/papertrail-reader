@@ -31,11 +31,8 @@ test('slow setup cannot consume the dedicated browser execution allowance or rem
   assert.equal(minutes(step('Install native focus window manager')), 5)
   assert.equal(minutes(step('Run browser acceptance')), 20)
   const windowManager = step('Install native focus window manager')
-  assert.match(windowManager, /--no-install-recommends openbox/)
-  assert.match(windowManager, /Acquire::Retries=1/)
-  assert.match(windowManager, /Acquire::http::Timeout=30/)
-  assert.match(windowManager, /Acquire::https::Timeout=30/)
-  assert.doesNotMatch(windowManager, /sudo/)
+  assert.match(windowManager, /timeout 240 sh scripts\/install-browser-window-manager.sh/)
+  assert.doesNotMatch(windowManager, /apt-get|sudo/)
   assert.match(
     step('Run browser acceptance'),
     /xvfb-run[\s\S]*openbox[\s\S]*npm run test:e2e -- --shard=/,

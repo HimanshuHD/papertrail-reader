@@ -11,6 +11,8 @@ export function needsBrowserPreflight(paths) {
       '.github/workflows/browser-e2e.yml',
       '.github/workflows/ci.yml',
       'scripts/browser-evidence.mjs',
+      'scripts/install-browser-window-manager.sh',
+      'scripts/browser-native-focus-probe.mjs',
       'scripts/browser-container-preflight.mjs',
     ].includes(value),
   )
@@ -30,7 +32,9 @@ export function browserContainerArgs(workflow, workspace) {
   const probe = [
     trust,
     `node -e "const fs=require('node:fs'),os=require('node:os');if(fs.statSync(os.homedir()).uid!==process.getuid())throw Error('Browser HOME owner mismatch')"`,
+    'timeout 240 sh scripts/install-browser-window-manager.sh',
     'node scripts/browser-evidence.mjs',
+    `timeout 40 xvfb-run --auto-servernum sh -ec 'openbox >/tmp/papertrail-focus-probe.log 2>&1 & manager=$!; trap "kill $manager 2>/dev/null || true" EXIT; node scripts/browser-native-focus-probe.mjs'`,
     `node -e "console.log('Browser environment preflight passed:',JSON.stringify(require('./browser-evidence/environment.json').engines))"`,
   ].join('\n')
   return [

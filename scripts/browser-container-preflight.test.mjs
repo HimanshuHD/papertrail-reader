@@ -14,6 +14,8 @@ test('container preflight is limited to browser environment changes on ready sta
     '.github/workflows/browser-e2e.yml',
     '.github/workflows/ci.yml',
     'scripts/browser-evidence.mjs',
+    'scripts/install-browser-window-manager.sh',
+    'scripts/browser-native-focus-probe.mjs',
     'scripts/browser-container-preflight.mjs',
   ])
     assert.equal(needsBrowserPreflight([path]), true)
@@ -41,6 +43,8 @@ test('preflight runs actual three-engine evidence with an owned HOME and scoped 
   assert.match(workflow, /HOME=\/root xvfb-run/)
   assert.match(workflow, /export HOME=\/root/)
   assert.match(command, /node scripts\/browser-evidence.mjs/)
+  assert.match(command, /timeout 240 sh scripts\/install-browser-window-manager.sh/)
+  assert.match(command, /timeout 40 xvfb-run[\s\S]*openbox[\s\S]*browser-native-focus-probe.mjs/)
   assert.doesNotMatch(command, /test:e2e|deploy|visual|safe.directory \*/)
   assert.throws(
     () => browserContainerArgs(workflow.replace('HOME: /root', 'HOME: /github/home'), '/workspace'),
