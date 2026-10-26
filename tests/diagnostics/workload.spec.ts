@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { createPdfFixture } from '../fixtures/pdf'
 import { createFormattedEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
+import { overheadWorkloadModes } from '../../scripts/diagnostics-acceptance-report.mjs'
 import { selectWorkloadDocument, workloadFailureEvidence } from '../fixtures/diagnostic-workload'
 
 test('compare identical mixed-reader workloads across production and diagnostic modes', async ({
@@ -11,11 +12,11 @@ test('compare identical mixed-reader workloads across production and diagnostic 
   browserName,
 }, info) => {
   const trials = Number(process.env.DIAGNOSTIC_TRIALS || 3)
-  test.setTimeout(Math.max(180000, trials * 4 * 20000))
+  test.setTimeout(Math.max(180000, trials * overheadWorkloadModes.length * 20000))
   const results: object[] = []
   const pdf = createPdfFixture(12),
     epub = Buffer.from(createFormattedEpubFixture())
-  const modes = ['production', 'closed', 'sampling', 'paused'] as const
+  const modes = overheadWorkloadModes
   try {
     for (let trial = 0; trial < trials; trial++) {
       // Rotate the order to reduce systematic warm-up/thermal ordering bias.
@@ -58,11 +59,21 @@ test('compare identical mixed-reader workloads across production and diagnostic 
             await expect(toggle).toHaveCount(0)
           } else {
             await expect(toggle).toBeVisible()
-            if (mode === 'sampling' || mode === 'paused') {
+            if (mode !== 'closed') {
               await toggle.click()
-              if (mode === 'paused')
+              if (mode.endsWith('-sensors')) {
+                await page.getByRole('tab', { name: 'Sensors', exact: true }).click()
+                const capture = page.getByRole('checkbox', { name: 'Capture sensors', exact: true })
+                await capture.check()
+                await expect(capture).toBeChecked()
+                await page.getByRole('tab', { name: 'Overview', exact: true }).click()
+              }
+              if (mode.startsWith('paused'))
                 await page.getByRole('button', { name: 'Pause', exact: true }).click()
-              await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
+              if (!mode.startsWith('expanded'))
+                await page
+                  .getByRole('button', { name: 'Minimize diagnostics', exact: true })
+                  .click()
             }
           }
           const timed = async (name: string, action: () => Promise<void>) => {
@@ -133,25 +144,51 @@ test('compare identical mixed-reader workloads across production and diagnostic 
             await page.getByRole('button', { name: 'Close acceptance.epub', exact: true }).click()
             await expect(page.locator('.pdf-reader, .epub-reader')).toHaveCount(0)
           })
+          const readerWorkMs = performance.now() - started
+          // A fixed real foreground window is part of every workload, including production.
+          // It exercises periodic sampling/render updates without fake clocks or readiness sleeps.
+          await timed('foregroundObservation', async () => {
+            await expect(page.locator('html')).toBeVisible()
+            expect(await page.evaluate(() => document.visibilityState)).toBe('visible')
+            await page.waitForTimeout(2200)
+          })
           const elapsedMs = performance.now() - started
           expect(errors).toEqual([])
           stage = 'exportValidation'
           stageStarted = performance.now()
           let diagnostics = null
-          if (mode === 'sampling' || mode === 'paused') {
-            await toggle.click()
+          if (!['production', 'closed'].includes(mode)) {
+            if (!mode.startsWith('expanded')) await toggle.click()
             const pending = page.waitForEvent('download')
             await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
             const download = await pending
             const text = await readFile((await download.path())!, 'utf8')
             expect(text).not.toMatch(/acceptance\.(pdf|epub)|Formatted chapter|Author formatting/)
             const evidence = JSON.parse(text)
-            expect(evidence.running).toBe(mode === 'sampling')
+            expect(evidence.running).toBe(!mode.startsWith('paused'))
+            expect(evidence.responsiveness.active).toBe(
+              mode.endsWith('-sensors') && !mode.startsWith('paused'),
+            )
+            if (!mode.startsWith('paused')) expect(evidence.samples.length).toBeGreaterThan(0)
+            expect(evidence.samples.length).toBeLessThanOrEqual(120)
+            for (const entries of [
+              evidence.responsiveness.inputs,
+              evidence.responsiveness.frames,
+              evidence.responsiveness.resources,
+            ])
+              expect(entries.length).toBeLessThanOrEqual(120)
             expect(evidence.identity.sourceSha).toBe(process.env.DIAGNOSTIC_EXPECTED_SHA)
             diagnostics = {
               running: evidence.running,
               retainedSamples: evidence.samples.length,
               samplerCallbackSubset: evidence.samplerOverhead,
+              sensorCallbackSubset: evidence.responsiveness.overhead,
+              sensorCapabilities: evidence.responsiveness.capabilities,
+              retainedSensorEntries: {
+                inputs: evidence.responsiveness.inputs.length,
+                frames: evidence.responsiveness.frames.length,
+                resources: evidence.responsiveness.resources.length,
+              },
             }
           }
           results.push({
@@ -160,12 +197,23 @@ test('compare identical mixed-reader workloads across production and diagnostic 
             trial: trial + 1,
             mode,
             elapsedMs,
+            readerWorkMs,
             stages,
             diagnostics,
             fixture: { pdfPages: 12, pdfBytes: pdf.length, epubBytes: epub.length },
             viewport: { width: 1440, height: 900 },
             cache: 'Fresh context; first open plus retained warm switches; OS cache uncontrolled',
-            sensors: 'Additional sensors off; base diagnostics only',
+            sensors: mode.endsWith('-sensors')
+              ? 'Additional sensors enabled before workload; paused mode stops collection'
+              : 'Additional sensors off',
+            panel: mode.startsWith('expanded')
+              ? 'Expanded Overview'
+              : mode === 'closed'
+                ? 'Never opened'
+                : mode === 'production'
+                  ? 'Excluded from bundle'
+                  : 'Minimized',
+            observationWindowMs: 2200,
           })
         } catch (error) {
           const failure = await workloadFailureEvidence(page, {
