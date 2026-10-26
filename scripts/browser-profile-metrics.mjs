@@ -255,3 +255,12 @@ export function reportMarkdown(report) {
     '',
   ].join('\n')
 }
+
+/** Calibration observations must share ordinary, non-GC metrics instrumentation. */
+export function calibrationForRuns(runs) {
+  return calibrationCandidates(
+    runs
+      .filter((run) => run.status === 'passed' && run.traced === false && run.heaps === false)
+      .flatMap((run) => run.operations),
+  )
+}
