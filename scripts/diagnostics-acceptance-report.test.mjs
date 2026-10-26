@@ -8,6 +8,7 @@ import {
   summarizeTrials,
   bundleEvidence,
   verifyTrialCoverage,
+  overheadWorkloadModes,
 } from './diagnostics-acceptance-report.mjs'
 test('manual acceptance rejects unknown/duplicate engines and invalid repeat counts', () => {
   assert.deepEqual(acceptanceOptions({}), { engines: ['chromium'], trials: 3 })
@@ -95,4 +96,29 @@ test('coverage rejects duplicated, missing and foreign trial identities', () => 
   assert.throws(() =>
     verifyTrialCoverage([{ ...rows[0], engine: 'webkit' }, ...rows.slice(1)], ['chromium'], 3),
   )
+})
+
+test('expanded overhead coverage requires every mode and keeps sensor/panel groups independent', () => {
+  const rows = overheadWorkloadModes.flatMap((mode) =>
+    [1, 2, 3].map((trial) => ({ engine: 'chromium', mode, trial, elapsedMs: trial * 10 })),
+  )
+  assert.equal(rows.length, 24)
+  assert.doesNotThrow(() => verifyTrialCoverage(rows, ['chromium'], 3, overheadWorkloadModes))
+  assert.throws(
+    () =>
+      verifyTrialCoverage(
+        rows.filter((row) => row.mode !== 'expanded-sensors'),
+        ['chromium'],
+        3,
+        overheadWorkloadModes,
+      ),
+    /Missing/,
+  )
+  assert.throws(
+    () => verifyTrialCoverage([...rows, rows[0]], ['chromium'], 3, overheadWorkloadModes),
+    /Duplicate/,
+  )
+  const groups = summarizeTrials(rows)
+  assert.equal(groups.length, 8)
+  assert.ok(groups.every((group) => group.count === 3 && group.p95Ms === null))
 })

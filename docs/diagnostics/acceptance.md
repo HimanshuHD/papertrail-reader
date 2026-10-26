@@ -10,14 +10,20 @@ Preview servers receive the temporary build root through an environment variable
 
 For each requested engine, three fresh-context trials per mode run sequentially, with mode order rotated between trials:
 
-| Mode       | Build                          | State during timed reader work                                      |
-| ---------- | ------------------------------ | ------------------------------------------------------------------- |
-| production | Default production             | No diagnostic entry point, including after query/keyboard attempts  |
-| closed     | Explicit diagnostic production | Panel never opened; base recording remains inactive                 |
-| sampling   | Explicit diagnostic production | Base diagnostics recording, panel minimized, additional sensors off |
-| paused     | Explicit diagnostic production | Opened, paused, then minimized                                      |
+| Mode             | Build                          | State during timed reader work                                                   |
+| ---------------- | ------------------------------ | -------------------------------------------------------------------------------- |
+| production       | Default production             | No diagnostic entry point, including after query/keyboard attempts               |
+| closed           | Explicit diagnostic production | Panel never opened; base recording remains inactive                              |
+| sampling         | Explicit diagnostic production | Base diagnostics recording, panel minimized, additional sensors off              |
+| paused           | Explicit diagnostic production | Opened, paused, then minimized                                                   |
+| expanded         | Explicit diagnostic production | Base recording; Overview visible throughout reader work                          |
+| sampling-sensors | Explicit diagnostic production | Additional sensors enabled; panel minimized                                      |
+| expanded-sensors | Explicit diagnostic production | Additional sensors enabled; Overview visible                                     |
+| paused-sensors   | Explicit diagnostic production | Sensors enabled, then recording paused and panel minimized; collection must stop |
 
-Each trial injects the same generated 12-page text PDF and CSS/image EPUB, waits for the library listing, opens PDF, navigates to its last page, opens readable EPUB content, switches the retained readers three times and closes both. Per-stage and whole-workload elapsed times include automation and browser rendering. File injection is not a native-folder scan benchmark. Library selection and the selected document tab must commit before the test hides the library. PDF readiness and retained reader content are asserted; elapsed timing stops before exporting evidence or closing the browser context. Sampling/paused exports verify recording state and the compiled source SHA outside the timed interval, and audit fixture names/content exclusions.
+The schema-2 runner requires all eight modes (24 trials per engine at the default repeat count). Legacy four-mode report helpers remain readable, but cannot satisfy the new runner’s explicit eight-mode coverage.
+
+Each trial injects the same generated 12-page text PDF and CSS/image EPUB, waits for the library listing, opens PDF, navigates to its last page, opens readable EPUB content, switches the retained readers three times and closes both. After closing both readers, every mode observes the foreground for a fixed 2,200ms real-clock interval, exercising periodic sampling and expanded-panel updates. This is a deliberate equal-duration measurement window, not a readiness sleep. `readerWorkMs` stops before this window; `elapsedMs` includes it. `readerWorkSummary`, whole-workload `summary` and `stageSummary` keep these distributions separate. Per-stage and whole-workload elapsed times include automation and browser rendering. File injection is not a native-folder scan benchmark. Library selection and the selected document tab must commit before the test hides the library. PDF readiness and retained reader content are asserted; elapsed timing stops before exporting evidence or closing the browser context. Recording/paused exports verify recording state, sensor collection state, bounded retention and nonempty base samples in running modes and the compiled source SHA outside the timed interval, and audit fixture names/content exclusions.
 
 The dedicated browser suite also runs existing mixed-reader export/lifecycle checks, mobile dark keyboard/focus checks, real supported sensor observations and a controlled missing-PerformanceObserver fallback. Unsupported sensor inputs/long frames must remain empty with an explicit unavailable reason, rather than a fabricated zero measurement. This fallback fixture is simulated capability loss, not evidence of a native browser's support matrix.
 
@@ -32,7 +38,7 @@ Five additional functional cases per requested engine run with sampling enabled 
 | 1001-page text PDF              | First/last-page render readiness, maximum page count, zoom and return to page1.                                                           |
 | 1000-paragraph EPUB             | Embedded CSS and image remain readable, final paragraph can be reached, typography reflow and next/previous chapter work.                 |
 
-Every case audits a current-source diagnostic export for fixture-name/content exclusions. Successful cases attach only fixed scenario/engine identifiers, numeric fixture sizes/counts and real elapsed time. `representative` retains a projected safe schema and `representativeCoverage` requires all five unique cases for every requested engine. Missing, duplicate or invalid evidence cannot pass the runner even if the small benchmark completed. Completed functional evidence survives a later case failure. These one-pass functional durations include assertions, export and automation; they have no median/p95 or overhead interpretation and stay outside the repeated four-mode benchmark.
+Every case audits a current-source diagnostic export for fixture-name/content exclusions. Successful cases attach only fixed scenario/engine identifiers, numeric fixture sizes/counts and real elapsed time. `representative` retains a projected safe schema and `representativeCoverage` requires all five unique cases for every requested engine. Missing, duplicate or invalid evidence cannot pass the runner even if the small benchmark completed. Completed functional evidence survives a later case failure. These one-pass functional durations include assertions, export and automation; they have no median/p95 or overhead interpretation and stay outside the repeated eight-mode benchmark.
 
 These are generated scale fixtures. File-input injection does not measure native-folder discovery; the text PDF is not image-heavy; the EPUB uses one local vector illustration and does not represent arbitrary publisher content. No additional automated workflow is added.
 
@@ -79,3 +85,9 @@ Use a fresh PR preview and record its source from Technical details. Repeat the 
 6. Pause/export if needed. Review local exports before sharing; do not publish personal document names,paths,contents or raw browser artifacts. Report the fixture count/source/platform/path and pass/fail of each step. Generated functional timings do not certify a workload budget.
 
 These manual steps remain unaccepted until an actual user/native-browser run is supplied. The headless raster case exercises decoding and painted output; it does not prove native picker/permission behavior or arbitrary scanned-book performance. External CPU/GPU/process-memory and accepted budgets remain #16.
+
+## Interpretation of overhead comparisons
+
+Compare the same engine, fixture, viewport and per-stage/reader-work distribution across modes. Expanded mode keeps Overview visible; its panel overlays part of the reader without changing the viewport. It exercises live dashboard updates, not every Resources/Sensors/Timeline subview. Sensor-enabled modes collect optional observations while Overview is selected; unsupported APIs retain their explicit reasons and are not treated as observed zeros. The sampler and sensor callback fields are subsets only: they exclude some observer/frame work, Vue rendering, layout and paint. Do not sum them into total overhead.
+
+Wall-time differences can include OS caching, scheduling, browser processes, warm-up and automation noise. The equal observation interval dominates short total times, so inspect reader-work and stage summaries separately. No automatic pass/fail performance budget, causal CPU/GPU attribution or speedup claim is produced. Default three-trial groups withhold p95; use 20 trials per mode to populate it. Repeat and inspect traces separately under #16 before accepting versioned #250 targets.

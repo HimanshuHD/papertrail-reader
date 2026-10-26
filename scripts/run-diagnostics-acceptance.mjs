@@ -5,7 +5,11 @@ import { mkdir, mkdtemp, readFile, writeFile, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { acceptanceOptions, bundleEvidence } from './diagnostics-acceptance-report.mjs'
+import {
+  acceptanceOptions,
+  bundleEvidence,
+  overheadWorkloadModes,
+} from './diagnostics-acceptance-report.mjs'
 import { acceptanceResults } from './diagnostics-acceptance-results.mjs'
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const options = acceptanceOptions()
@@ -31,7 +35,8 @@ const run = (args, env = {}) =>
     )
   })
 const report = {
-  schema: 1,
+  schema: 2,
+  workloadModes: overheadWorkloadModes,
   source,
   options,
   environment: {
@@ -48,11 +53,11 @@ const report = {
   status: 'incomplete',
   accepted: false,
   limitations: [
-    'Generated 100/1000-file input libraries, 1001-page text PDF, twelve-page embedded-raster PDF and long styled/image EPUB functional cases supplement the small four-mode benchmark; not native-folder or arbitrary real-document acceptance.',
+    'Generated 100/1000-file input libraries, 1001-page text PDF, twelve-page embedded-raster PDF and long styled/image EPUB functional cases supplement the repeated eight-mode benchmark; not native-folder or arbitrary real-document acceptance.',
     'Fresh browser contexts are application-cold; OS filesystem and browser process caches are not flushed. Repeat/warm steps run inside each trial.',
     'Elapsed wall time includes browser rendering and automation. No CPU/GPU/process-memory measurement, causal attribution, accepted budget or speedup claim.',
     'No forced GC, artificial clock advancement or callback-only total-overhead claim. Sampler subset and JS heap remain separately labelled in private export.',
-    'Expanded-panel rendering and optional additional-sensor overhead are not calibrated by the minimized base-sampling workload.',
+    'Expanded Overview rendering and optional sensor collection are exercised separately. No accepted budget or causal CPU/render attribution follows from wall-time comparisons.',
     'Other engines require installed Playwright browsers/dependencies. Missing engines fail rather than silently pass.',
   ],
 }
@@ -91,7 +96,13 @@ try {
     report.browserFailure = error.message
   })
   const results = JSON.parse(await readFile(path.join(out, 'playwright.json'), 'utf8'))
-  const evidence = await acceptanceResults(results, options.engines, options.trials, true)
+  const evidence = await acceptanceResults(
+    results,
+    options.engines,
+    options.trials,
+    true,
+    overheadWorkloadModes,
+  )
   Object.assign(report, evidence)
   report.bundleDeltaBytes = report.builds.diagnostic.bytes - report.builds.production.bytes
   if (report.browserFailure || !evidence.accepted)

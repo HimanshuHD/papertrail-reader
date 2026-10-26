@@ -1,8 +1,18 @@
 import { readFile } from 'node:fs/promises'
-import { summarizeTrials, verifyTrialCoverage } from './diagnostics-acceptance-report.mjs'
+import {
+  summarizeTrials,
+  verifyTrialCoverage,
+  legacyWorkloadModes,
+} from './diagnostics-acceptance-report.mjs'
 
 /** Preserve every completed workload even when a different functional case/browser failed. */
-export async function acceptanceResults(results, engines, count, requireRepresentative = false) {
+export async function acceptanceResults(
+  results,
+  engines,
+  count,
+  requireRepresentative = false,
+  modes = legacyWorkloadModes,
+) {
   const trials = [],
     workloadFailures = [],
     caseOutcomes = [],
@@ -78,13 +88,13 @@ export async function acceptanceResults(results, engines, count, requireRepresen
   }
   await walk(results)
   const coverage = {
-    expectedTrials: engines.length * count * 4,
+    expectedTrials: engines.length * count * modes.length,
     completedTrials: trials.length,
     complete: false,
     reason: null,
   }
   try {
-    verifyTrialCoverage(trials, engines, count)
+    verifyTrialCoverage(trials, engines, count, modes)
     coverage.complete = true
   } catch (error) {
     coverage.reason = error.message
@@ -110,6 +120,20 @@ export async function acceptanceResults(results, engines, count, requireRepresen
     representativeCoverage,
     trials,
     summary: summarizeTrials(trials),
+    readerWorkSummary: summarizeTrials(
+      trials
+        .filter((row) => row.readerWorkMs !== undefined)
+        .map((row) => ({ ...row, elapsedMs: row.readerWorkMs })),
+    ),
+    stageSummary: summarizeTrials(
+      trials.flatMap((row) =>
+        Object.entries(row.stages ?? {}).map(([stage, elapsedMs]) => ({
+          engine: `${row.engine}/${stage}`,
+          mode: row.mode,
+          elapsedMs,
+        })),
+      ),
+    ),
     workloadFailures,
     caseOutcomes,
     coverage,
