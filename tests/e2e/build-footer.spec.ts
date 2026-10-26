@@ -31,6 +31,17 @@ for (const theme of ['Light mode', 'Dark mode']) {
         true,
       )
       await expect(button).toBeInViewport()
+      const diagnostics = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
+      if (await diagnostics.isVisible()) {
+        const buildBounds = (await button.boundingBox())!
+        const triggerBounds = (await diagnostics.boundingBox())!
+        expect(
+          buildBounds.x + buildBounds.width <= triggerBounds.x ||
+            triggerBounds.x + triggerBounds.width <= buildBounds.x ||
+            buildBounds.y + buildBounds.height <= triggerBounds.y ||
+            triggerBounds.y + triggerBounds.height <= buildBounds.y,
+        ).toBe(true)
+      }
       await button.hover()
       await expect(details).toHaveCount(0)
       await expect(button).toHaveCSS('box-shadow', 'none')
