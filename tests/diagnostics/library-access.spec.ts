@@ -16,15 +16,27 @@ for (const [scenario, errorName] of [
   }, info) => {
     // Deliberate capability simulation, not an OS permission/revocation test.
     await page.addInitScript((name) => {
+      Reflect.set(window, 'controlledPickerCalls', 0)
       Object.defineProperty(window, 'showDirectoryPicker', {
         configurable: true,
         value: async () => {
+          Reflect.set(
+            window,
+            'controlledPickerCalls',
+            Reflect.get(window, 'controlledPickerCalls') + 1,
+          )
           throw new DOMException('Controlled rejection', name)
         },
       })
     }, errorName)
     await page.goto('./#/app')
     await waitForWorkspaceReady(page)
+    expect(
+      await page.evaluate(() => ({
+        secure: isSecureContext,
+        picker: typeof Reflect.get(window, 'showDirectoryPicker'),
+      })),
+    ).toEqual({ secure: true, picker: 'function' })
     const toggle = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
     await toggle.click()
     await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
@@ -60,7 +72,22 @@ for (const [scenario, errorName] of [
       await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
       await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
     }
+    // Reproduce platforms that move focus out on mouse press before click. The
+    // command must survive this default action without bypassing real pointer input.
+    await page.evaluate(() => {
+      document.addEventListener('mousedown', (event) => {
+        if (
+          !event.defaultPrevented &&
+          event.target instanceof Element &&
+          event.target.closest('[role="menuitem"]')
+        )
+          document.querySelector<HTMLInputElement>('#library-filter')?.focus()
+      })
+    })
     await chooseFolder()
+    await expect
+      .poll(() => page.evaluate(() => Reflect.get(window, 'controlledPickerCalls')))
+      .toBe(1)
     await expect(page.locator('#library-source-status')).toContainText(
       scenario === 'picker-unavailable'
         ? 'Native folder access is unavailable'
