@@ -82,3 +82,16 @@ test('PID namespace parsing uses innermost ID and preserves unsupported status',
   assert.equal(namespacePIDFromStatus('NSpid:\t23\n'), 23)
   assert.equal(namespacePIDFromStatus('Pid:\t23\n'), null)
 })
+
+test('calibration excludes traced, GC, failed and unknown-instrumentation repetitions', async () => {
+  const { calibrationForRuns } = await import('./browser-profile-metrics.mjs')
+  const operations = [{ mode: 'sampling', profile: 'pdf.cold-open', durationMs: 12 }]
+  const rows = [
+    { status: 'passed', traced: false, heaps: false, operations },
+    { status: 'passed', traced: true, heaps: false, operations },
+    { status: 'passed', traced: false, heaps: true, operations },
+    { status: 'failed', traced: false, heaps: false, operations },
+    { status: 'passed', operations },
+  ]
+  assert.equal(calibrationForRuns(rows)[0].count, 1)
+})
