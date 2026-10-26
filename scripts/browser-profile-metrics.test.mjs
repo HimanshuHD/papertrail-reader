@@ -73,3 +73,10 @@ test('memory peak requires full process coverage and does not turn absent heap i
   assert.equal(result.sampledPeakPageHeapBytes, null)
   assert.equal(result.afterTen, null)
 })
+
+test('PID namespace parsing uses innermost ID and preserves unsupported status', async () => {
+  const { namespacePIDFromStatus } = await import('./browser-profile-metrics.mjs')
+  assert.equal(namespacePIDFromStatus('Name: chromium\nNSpid:\t4242\t23\n'), 23)
+  assert.equal(namespacePIDFromStatus('NSpid:\t23\n'), 23)
+  assert.equal(namespacePIDFromStatus('Pid:\t23\n'), null)
+})
