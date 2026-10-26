@@ -2,6 +2,15 @@ import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+export const legacyWorkloadModes = ['production', 'closed', 'sampling', 'paused']
+export const overheadWorkloadModes = [
+  ...legacyWorkloadModes,
+  'expanded',
+  'sampling-sensors',
+  'expanded-sensors',
+  'paused-sensors',
+]
+
 export function acceptanceOptions(env = process.env) {
   const engines = (env.DIAGNOSTIC_ENGINES || 'chromium').split(',')
   const trials = Number(env.DIAGNOSTIC_TRIALS || 3)
@@ -19,7 +28,7 @@ export function summarizeTrials(trials) {
   const groups = new Map()
   for (const trial of trials) {
     if (
-      !['production', 'closed', 'sampling', 'paused'].includes(trial.mode) ||
+      !overheadWorkloadModes.includes(trial.mode) ||
       !Number.isFinite(trial.elapsedMs) ||
       trial.elapsedMs < 0
     )
@@ -80,12 +89,12 @@ export async function bundleEvidence(directory) {
   }
 }
 
-export function verifyTrialCoverage(rows, engines, count) {
+export function verifyTrialCoverage(rows, engines, count, modes = legacyWorkloadModes) {
   const keys = new Set()
   for (const row of rows) {
     if (
       !engines.includes(row.engine) ||
-      !['production', 'closed', 'sampling', 'paused'].includes(row.mode) ||
+      !modes.includes(row.mode) ||
       !Number.isInteger(row.trial) ||
       row.trial < 1 ||
       row.trial > count
@@ -95,5 +104,6 @@ export function verifyTrialCoverage(rows, engines, count) {
     if (keys.has(key)) throw new Error('Duplicate workload trial')
     keys.add(key)
   }
-  if (keys.size !== engines.length * count * 4) throw new Error('Missing workload trials')
+  if (keys.size !== engines.length * count * modes.length)
+    throw new Error('Missing workload trials')
 }
