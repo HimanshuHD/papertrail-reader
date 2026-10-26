@@ -19,6 +19,7 @@ test('browser image and runtime guard match the exact locked Playwright dependen
   assert.equal(image[1], lock.packages['node_modules/@playwright/test'].version)
   assert.equal(workflow.match(/PLAYWRIGHT_IMAGE_VERSION: '([^']+)'/)[1], image[1])
   assert.match(workflow, /actual!==process\.env\.PLAYWRIGHT_IMAGE_VERSION/)
+  assert.match(workflow, /^ {6}HOME: \/root$/m)
   assert.doesNotMatch(workflow, /playwright install/)
 })
 
@@ -74,7 +75,7 @@ test('container shell trusts only its checked-out workspace before Git artifact 
   const trust = workflow.match(
     /name: Trust checked-out workspace in container[\s\S]*?run: ([^\n]+)/,
   )[1]
-  assert.equal(trust, 'git config --global --add safe.directory "$GITHUB_WORKSPACE"')
+  assert.equal(trust, 'HOME=/root git config --global --add safe.directory "$GITHUB_WORKSPACE"')
   assert.ok(
     workflow.indexOf('name: Trust checked-out workspace') >
       workflow.indexOf('ref: ${{ inputs.source_sha }}'),
