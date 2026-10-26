@@ -43,11 +43,13 @@ test('statistics preserve even median/worst, withhold sparse p95 and reject malf
 test('trace aggregation ignores document strings and unknown events, keeps inclusive categories separate', () => {
   const result = traceSummary([
     { ph: 'X', name: 'RunTask', dur: 60000, args: { url: 'secret' } },
-    { ph: 'X', name: 'Layout', dur: 2000 },
+    { ph: 'X', name: 'Layout', dur: 2000, pid: 1, tid: 2 },
+    { ph: 'M', name: 'thread_name', pid: 1, tid: 2, args: { name: 'CrRendererMain' } },
     { ph: 'X', name: 'secret', dur: 1000 },
   ])
   assert.equal(result.RunTask.over50ms, 1)
   assert.equal(result.Layout.inclusiveMs, 2)
+  assert.equal(result.Layout.threadRoles['renderer-main'].inclusiveMs, 2)
   assert.doesNotMatch(JSON.stringify(result), /secret|url/)
 })
 test('calibration keeps modes/profiles distinct and never invents accepted thresholds', () => {
