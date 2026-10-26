@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="PaperTrail local-first document reader." />
+    <link rel="icon" type="image/svg+xml" href="/papertrail-reader/staging/papertrail.svg" />
+    <title>PaperTrail</title>
+    <script type="module" crossorigin src="/papertrail-reader/staging/assets/index-DmC80E30.js"></script>
+    <link rel="stylesheet" crossorigin href="/papertrail-reader/staging/assets/index-DJfj4Y2Z.css">
+  </head>
+  <body>
+    <section
+      id="startup-loading"
+      class="startup-screen"
+      data-stage="library"
+      data-state="loading"
+      aria-labelledby="startup-title"
+      aria-busy="true"
+    >
+      <header class="startup-brand">
+        <img src="/papertrail-reader/staging/startup/brand.webp" width="40" height="40" alt="" />
+        <span>PAPERTRAIL</span>
+      </header>
+      <div class="startup-book" aria-hidden="true"></div>
+      <div class="startup-copy">
+        <h1 id="startup-title">Your next chapter is loading</h1>
+        <p>Opening your reading space</p>
+      </div>
+      <div class="startup-progress">
+        <div class="startup-progress-heading">
+          <p data-startup-status role="status" aria-live="polite">Loading your reading space</p>
+          <span data-startup-percent aria-hidden="true">0%</span>
+        </div>
+        <div
+          class="startup-track"
+          role="progressbar"
+          aria-label="Opening PaperTrail"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow="0"
+          aria-valuetext="0 of 4 startup steps complete"
+        >
+          <span></span>
+        </div>
+        <p class="startup-progress-caption" data-progress-caption>Startup steps</p>
+        <ol class="startup-steps" aria-label="Startup stages">
+          <li data-step="library" data-state="current" aria-current="step"><span></span>Library</li>
+          <li data-step="reader" data-state="pending"><span></span>Reader</li>
+          <li data-step="ready" data-state="pending"><span></span>Ready</li>
+        </ol>
+        <button class="startup-retry" data-startup-retry hidden type="button">Try again</button>
+      </div>
+      <p class="startup-privacy">Your files stay on your device</p>
+    </section>
+    <div id="app" inert></div>
+    <noscript
+      ><p class="startup-noscript">
+        PaperTrail needs JavaScript to open your reading space. Enable JavaScript and reload this
+        page.
+      </p></noscript
+    >
+    <script>
+      // Failure feedback works even if the main module cannot download or execute.
+      ;(() => {
+        const root = document.getElementById('startup-loading')
+        const fail = () => {
+          if (!root.isConnected || root.dataset.state === 'ready') return
+          root.dataset.state = 'error'
+          root.setAttribute('aria-busy', 'false')
+          root.querySelector('[data-startup-status]').textContent =
+            'Your reading space could not finish opening. Please try again.'
+          root.querySelector('[data-startup-retry]').hidden = false
+        }
+        root
+          .querySelector('[data-startup-retry]')
+          .addEventListener('click', () => location.reload())
+        const timer = setTimeout(fail, 20000)
+        const scriptError = (event) => {
+          if (event.target instanceof HTMLScriptElement) fail()
+        }
+        window.addEventListener('error', scriptError, true)
+        window.addEventListener(
+          'papertrail-startup-initialized',
+          () => {
+            clearTimeout(timer)
+            window.removeEventListener('error', scriptError, true)
+          },
+          { once: true },
+        )
+      })()
+    </script>
+  </body>
+</html>
