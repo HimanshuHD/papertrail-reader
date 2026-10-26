@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { version } from '../../../package.json'
 import { diagnostics } from './recorder'
 import IconButton from '../../components/IconButton.vue'
+import AccessibleTooltip from '../../components/AccessibleTooltip.vue'
 import { IndicatorMonitor, type Target } from './indicators'
 import IndicatorTargets from './IndicatorTargets.vue'
 import { profileDefinitions, type OperationProfile } from './operation-profiles'
@@ -16,6 +17,7 @@ import { ResponsivenessSensors } from './responsiveness'
 import { capabilities, startSampler, heapBytes } from './sampler'
 import { downloadJson } from '../../services/file-download'
 const trigger = ref<HTMLButtonElement | null>(null)
+const triggerTooltip = ref(false)
 const open = ref(false)
 const minimized = ref(false)
 const sensors = new ResponsivenessSensors()
@@ -197,12 +199,21 @@ onBeforeUnmount(() => {
       v-show="!open || minimized"
       ref="trigger"
       aria-label="Developer diagnostics"
-      aria-describedby="diagnostics-trigger-status"
+      :aria-describedby="
+        triggerTooltip && (!open || minimized)
+          ? 'diagnostics-trigger-status diagnostics-trigger-tooltip'
+          : 'diagnostics-trigger-status'
+      "
       class="diagnostics-trigger"
       type="button"
       :aria-expanded="open && !minimized"
       aria-controls="developer-diagnostics-panel"
       @click="toggle"
+      @pointerenter="triggerTooltip = true"
+      @pointerleave="triggerTooltip = false"
+      @focus="triggerTooltip = true"
+      @blur="triggerTooltip = false"
+      @pointerdown="triggerTooltip = false"
     >
       <span class="pulse-loader" :data-state="health.state" aria-hidden="true">
         <span class="pulse-core" /><span
@@ -212,11 +223,18 @@ onBeforeUnmount(() => {
           :style="{ animationDelay: `${(ring - 1) * 0.6}s` }"
         />
       </span>
-      <span>Developer diagnostics</span
+      <span class="trigger-label">Developer diagnostics</span
       ><span id="diagnostics-trigger-status" role="status" class="sr-only">
         · {{ health.label }}</span
       >
     </button>
+    <AccessibleTooltip
+      id="diagnostics-trigger-tooltip"
+      :anchor="trigger"
+      text="Developer diagnostics"
+      :open="triggerTooltip && (!open || minimized)"
+      @dismiss="triggerTooltip = false"
+    />
     <section
       v-if="open && !minimized"
       id="developer-diagnostics-panel"
@@ -473,6 +491,18 @@ dt {
   .pulse-ring {
     display: none;
     animation: none;
+  }
+}
+@media (max-width: 640px) {
+  /* Keep the bottom-docked entry clear of the library's build details. */
+  .diagnostics-trigger {
+    width: 48px;
+    justify-content: center;
+    padding: 8px 0;
+    gap: 0;
+  }
+  .trigger-label {
+    display: none;
   }
 }
 @media (max-width: 420px) {
