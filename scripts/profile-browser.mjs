@@ -16,7 +16,7 @@ import {
   processRSSBatch,
   processInterval,
   traceSummary,
-  calibrationCandidates,
+  calibrationForRuns,
   statistics,
   memorySummary,
   reportMarkdown,
@@ -428,7 +428,7 @@ try {
     for (let offset = 0; offset < modes.length; offset++)
       await profile(modes[(offset + trial - 1) % modes.length], trial)
   }
-  report.calibration = calibrationCandidates(report.runs.flatMap((row) => row.operations))
+  report.calibration = calibrationForRuns(report.runs)
   report.wallTime = modes.map((mode) => ({
     mode,
     untracedOnly: true,
