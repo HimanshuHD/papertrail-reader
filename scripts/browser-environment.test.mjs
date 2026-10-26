@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
 const read = (path) => fs.readFileSync(new URL('../' + path, import.meta.url), 'utf8')
@@ -66,4 +68,57 @@ test('the actual runtime version guard passes matching installs and rejects imag
     (error) =>
       error.status === 1 && error.stderr.toString().includes('Playwright/image version mismatch'),
   )
+})
+
+test('container shell trusts only its checked-out workspace before Git artifact verification', () => {
+  const trust = workflow.match(
+    /name: Trust checked-out workspace in container[\s\S]*?run: ([^\n]+)/,
+  )[1]
+  assert.equal(trust, 'git config --global --add safe.directory "$GITHUB_WORKSPACE"')
+  assert.ok(
+    workflow.indexOf('name: Trust checked-out workspace') >
+      workflow.indexOf('ref: ${{ inputs.source_sha }}'),
+  )
+  assert.ok(
+    workflow.indexOf('name: Trust checked-out workspace') <
+      workflow.indexOf('name: Verify and serve'),
+  )
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'papertrail-owner-'))
+  const repo = path.join(root, "workspace with spaces and 'quotes'")
+  const other = path.join(root, 'untrusted-repository')
+  const home = path.join(root, 'shell-home')
+  for (const directory of [repo, other, home]) fs.mkdirSync(directory)
+  const cleanEnv = {
+    ...process.env,
+    HOME: home,
+    USERPROFILE: home,
+    XDG_CONFIG_HOME: home,
+    GIT_CONFIG_GLOBAL: path.join(home, '.gitconfig'),
+    GIT_CONFIG_NOSYSTEM: '1',
+  }
+  const git = (cwd, args, assumed = false) =>
+    execFileSync('git', args, {
+      cwd,
+      env: { ...cleanEnv, GIT_TEST_ASSUME_DIFFERENT_OWNER: assumed ? '1' : '0' },
+      stdio: 'pipe',
+      encoding: 'utf8',
+    }).trim()
+  try {
+    for (const directory of [repo, other]) git(directory, ['init', '-q'])
+    const rejected = (directory) =>
+      assert.throws(
+        () => git(directory, ['rev-parse', '--show-toplevel'], true),
+        (error) => error.status !== 0 && error.stderr.toString().includes('dubious ownership'),
+      )
+    rejected(repo)
+    git(home, ['config', '--global', '--add', 'safe.directory', repo])
+    assert.equal(
+      fs.realpathSync(git(repo, ['rev-parse', '--show-toplevel'], true)),
+      fs.realpathSync(repo),
+    )
+    rejected(other)
+    assert.equal(git(home, ['config', '--global', '--get-all', 'safe.directory']), repo)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
 })
