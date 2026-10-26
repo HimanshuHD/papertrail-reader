@@ -13,7 +13,7 @@ import { createFormattedEpubFixture } from '../tests/fixtures/epub.ts'
 import { startDiagnosticPreview } from './diagnostics-preview.mjs'
 import { bundleEvidence } from './diagnostics-acceptance-report.mjs'
 import {
-  processRSS,
+  processRSSBatch,
   processInterval,
   traceSummary,
   calibrationCandidates,
@@ -201,12 +201,11 @@ async function profile(mode, trial) {
     const sample = async (checkpoint) => {
       const started = performance.now()
       const { processInfo } = await browserCDP.send('SystemInfo.getProcessInfo')
-      const processes = await Promise.all(
-        processInfo.map(async (item) => ({
-          ...item,
-          rssBytes: await processRSS(item.id, process.platform, browserExecutable),
-        })),
+      const rss = await processRSSBatch(
+        processInfo.map((item) => item.id),
+        browserExecutable,
       )
+      const processes = processInfo.map((item) => ({ ...item, rssBytes: rss.get(item.id) ?? null }))
       const metrics = Object.fromEntries(
         (await pageCDP.send('Performance.getMetrics')).metrics
           .filter((item) =>
