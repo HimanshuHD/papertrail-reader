@@ -176,3 +176,52 @@ test('eight-mode runner cannot accept legacy-only coverage and reports work/stag
   assert.equal(complete.summary[0].medianMs, 2302)
   assert.equal(complete.stageSummary.length, 16)
 })
+
+test('controlled library access coverage is independent, rejects duplicates and projects only reviewed fields', async () => {
+  const values = ['picker-cancel', 'picker-denied', 'picker-unavailable'].map((scenario) => ({
+    engine: 'chromium',
+    scenario,
+    mechanism: 'controlled-picker-rejection',
+    preserved: true,
+    resourceDelta: [0, 0, 0],
+    recovery: scenario === 'picker-unavailable' ? 'directory-input' : 'continued-reading',
+    privatePath: 'never-retain',
+  }))
+  const report = (entries) => ({
+    specs: [
+      spec('chromium', 'passed', [
+        attachment('diagnostic-workload-trials', rows('chromium')),
+        ...entries.map((value) => attachment('library-access-functional-evidence', value)),
+      ]),
+    ],
+  })
+  const evaluate = (entries) =>
+    acceptanceResults(
+      report(entries),
+      ['chromium'],
+      3,
+      false,
+      ['production', 'closed', 'sampling', 'paused'],
+      true,
+    )
+  const valid = await evaluate(values)
+  assert.equal(valid.accepted, true)
+  assert.equal(valid.libraryAccessCoverage.completedCases, 3)
+  assert.equal(JSON.stringify(valid.libraryAccess).includes('never-retain'), false)
+  for (const entries of [[], values.slice(1), [values[0], values[0], values[2]]]) {
+    const missing = await evaluate(entries)
+    assert.equal(missing.coverage.complete, true)
+    assert.equal(missing.accepted, false)
+  }
+  for (const patch of [
+    { engine: 'webkit' },
+    { scenario: 'unknown' },
+    { preserved: false },
+    { resourceDelta: [0, 1, 0] },
+    { recovery: 'permission-granted' },
+  ])
+    await assert.rejects(
+      evaluate([{ ...values[0], ...patch }]),
+      /Invalid library access attachment/,
+    )
+})

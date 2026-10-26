@@ -58,6 +58,7 @@ const report = {
     'Elapsed wall time includes browser rendering and automation. No CPU/GPU/process-memory measurement, causal attribution, accepted budget or speedup claim.',
     'No forced GC, artificial clock advancement or callback-only total-overhead claim. Sampler subset and JS heap remain separately labelled in private export.',
     'Expanded Overview rendering and optional sensor collection are exercised separately. No accepted budget or causal CPU/render attribution follows from wall-time comparisons.',
+    'Controlled picker rejection and directory-input recovery are functional evidence only; native OS picker permission grants/revocation/reconnect remain manual.',
     'Other engines require installed Playwright browsers/dependencies. Missing engines fail rather than silently pass.',
   ],
 }
@@ -102,6 +103,7 @@ try {
     options.trials,
     true,
     overheadWorkloadModes,
+    true,
   )
   Object.assign(report, evidence)
   report.bundleDeltaBytes = report.builds.diagnostic.bytes - report.builds.production.bytes
