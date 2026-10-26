@@ -93,6 +93,8 @@ export function statistics(values) {
 export function traceSummary(events) {
   const allowed = new Set([
     'RunTask',
+    'ThreadControllerImpl::RunTask',
+    'ThreadPool_RunTask',
     'FunctionCall',
     'EvaluateScript',
     'Layout',
@@ -101,6 +103,24 @@ export function traceSummary(events) {
     'RasterTask',
     'CompositeLayers',
   ])
+  const roles = new Map(
+    events
+      .filter((event) => event.ph === 'M' && event.name === 'thread_name')
+      .map((event) => {
+        const name = event.args?.name ?? ''
+        const role =
+          name === 'CrRendererMain'
+            ? 'renderer-main'
+            : /DedicatedWorker|WorkerThread/.test(name)
+              ? 'worker'
+              : /Compositor/.test(name)
+                ? 'compositor'
+                : /ThreadPool/.test(name)
+                  ? 'thread-pool'
+                  : 'other'
+        return [`${event.pid}/${event.tid}`, role]
+      }),
+  )
   const groups = {}
   for (const event of events) {
     if (
@@ -111,8 +131,18 @@ export function traceSummary(events) {
     )
       continue
     // Nested trace durations overlap: never sum categories into total CPU time.
-    const group = (groups[event.name] ??= { count: 0, inclusiveMs: 0, worstMs: 0, over50ms: 0 })
+    const group = (groups[event.name] ??= {
+      count: 0,
+      inclusiveMs: 0,
+      worstMs: 0,
+      over50ms: 0,
+      threadRoles: {},
+    })
     const ms = event.dur / 1000
+    const role = roles.get(`${event.pid}/${event.tid}`) ?? 'other'
+    const lane = (group.threadRoles[role] ??= { count: 0, inclusiveMs: 0 })
+    lane.count++
+    lane.inclusiveMs += ms
     group.count++
     group.inclusiveMs += ms
     group.worstMs = Math.max(group.worstMs, ms)
