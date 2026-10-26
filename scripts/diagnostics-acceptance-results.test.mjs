@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { overheadWorkloadModes } from './diagnostics-acceptance-report.mjs'
 import { acceptanceResults } from './diagnostics-acceptance-results.mjs'
 const attachment = (name, value) => ({
   name,
@@ -137,4 +138,41 @@ test('representative coverage is independently required and projects only review
       acceptanceResults(report([{ ...cases[0], ...patch }]), ['chromium'], 3, true),
       /Invalid representative attachment/,
     )
+})
+
+test('eight-mode runner cannot accept legacy-only coverage and reports work/stages separately', async () => {
+  const report = (values) => ({
+    specs: [spec('chromium', 'passed', [attachment('diagnostic-workload-trials', values)])],
+  })
+  const legacy = await acceptanceResults(
+    report(rows('chromium')),
+    ['chromium'],
+    3,
+    false,
+    overheadWorkloadModes,
+  )
+  assert.equal(legacy.accepted, false)
+  assert.equal(legacy.coverage.expectedTrials, 24)
+  const expanded = overheadWorkloadModes.flatMap((mode) =>
+    [1, 2, 3].map((trial) => ({
+      engine: 'chromium',
+      mode,
+      trial,
+      elapsedMs: 2300 + trial,
+      readerWorkMs: 100 + trial,
+      stages: { pdfOpen: 20 + trial, foregroundObservation: 2200 },
+    })),
+  )
+  const complete = await acceptanceResults(
+    report(expanded),
+    ['chromium'],
+    3,
+    false,
+    overheadWorkloadModes,
+  )
+  assert.equal(complete.accepted, true)
+  assert.equal(complete.summary.length, 8)
+  assert.equal(complete.readerWorkSummary[0].medianMs, 102)
+  assert.equal(complete.summary[0].medianMs, 2302)
+  assert.equal(complete.stageSummary.length, 16)
 })
