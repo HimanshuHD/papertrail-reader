@@ -12,11 +12,13 @@ export async function acceptanceResults(
   count,
   requireRepresentative = false,
   modes = legacyWorkloadModes,
+  requireLibraryAccess = false,
 ) {
   const trials = [],
     workloadFailures = [],
     caseOutcomes = [],
-    representative = []
+    representative = [],
+    libraryAccess = []
   async function walk(suite) {
     for (const spec of suite.specs || [])
       for (const test of spec.tests || []) {
@@ -33,6 +35,7 @@ export async function acceptanceResults(
                 'diagnostic-workload-trials',
                 'diagnostic-workload-failure',
                 'representative-functional-evidence',
+                'library-access-functional-evidence',
               ].includes(attachment.name)
             )
               continue
@@ -41,7 +44,33 @@ export async function acceptanceResults(
                 ? Buffer.from(attachment.body, 'base64').toString('utf8')
                 : await readFile(attachment.path, 'utf8'),
             )
-            if (attachment.name === 'representative-functional-evidence') {
+            if (attachment.name === 'library-access-functional-evidence') {
+              if (
+                value.engine !== test.projectName ||
+                !engines.includes(value.engine) ||
+                !['picker-cancel', 'picker-denied', 'picker-unavailable'].includes(
+                  value.scenario,
+                ) ||
+                value.mechanism !== 'controlled-picker-rejection' ||
+                value.preserved !== true ||
+                !Array.isArray(value.resourceDelta) ||
+                value.resourceDelta.length !== 3 ||
+                value.resourceDelta.some((delta) => delta !== 0) ||
+                value.recovery !==
+                  (value.scenario === 'picker-unavailable'
+                    ? 'directory-input'
+                    : 'continued-reading')
+              )
+                throw new Error('Invalid library access attachment')
+              libraryAccess.push({
+                engine: value.engine,
+                scenario: value.scenario,
+                mechanism: value.mechanism,
+                preserved: true,
+                resourceDelta: [0, 0, 0],
+                recovery: value.recovery,
+              })
+            } else if (attachment.name === 'representative-functional-evidence') {
               const expected = {
                 'library-100': [100, 2, 0],
                 'library-1000': [1000, 2, 0],
@@ -108,6 +137,15 @@ export async function acceptanceResults(
       representative.length === engines.length * 5 &&
       new Set(representativeKeys).size === representative.length,
   }
+  const libraryAccessCoverage = {
+    required: requireLibraryAccess,
+    expectedCases: engines.length * 3,
+    completedCases: libraryAccess.length,
+    complete:
+      libraryAccess.length === engines.length * 3 &&
+      new Set(libraryAccess.map((row) => `${row.engine}:${row.scenario}`)).size ===
+        libraryAccess.length,
+  }
   const failed = Boolean(
     results.errors?.length ||
     results.stats?.unexpected ||
@@ -118,6 +156,8 @@ export async function acceptanceResults(
   return {
     representative,
     representativeCoverage,
+    libraryAccess,
+    libraryAccessCoverage,
     trials,
     summary: summarizeTrials(trials),
     readerWorkSummary: summarizeTrials(
@@ -138,6 +178,9 @@ export async function acceptanceResults(
     caseOutcomes,
     coverage,
     accepted:
-      coverage.complete && !failed && (!requireRepresentative || representativeCoverage.complete),
+      coverage.complete &&
+      !failed &&
+      (!requireRepresentative || representativeCoverage.complete) &&
+      (!requireLibraryAccess || libraryAccessCoverage.complete),
   }
 }
