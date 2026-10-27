@@ -1,5 +1,8 @@
 # Repeatable diagnostics acceptance — #253
 
+For non-performance expiry, restoration, cancellation and keyboard/theme checks,
+use the separate [reader functional acceptance suite](reader-acceptance.md).
+
 Run `npm run test:diagnostics:acceptance` manually after installing the desired Playwright browsers (`npx playwright install chromium firefox webkit`, plus platform dependencies where required). It does not run from deployment, preview or Visual QA workflows. Standard CI runs only the report helper's unit checks; this workload command is deliberately separate.
 
 The command builds two temporary artifacts from the current checkout: default production and the same production channel with diagnostics explicitly enabled. It checks diagnostic marker exclusion/inclusion across split bundles and records every output file's byte count and SHA-256. Temporary build directories are removed afterward. Reports stay under `browser-evidence/diagnostics-acceptance/run-*/`; nothing is uploaded.
