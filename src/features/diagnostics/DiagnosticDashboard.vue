@@ -161,7 +161,7 @@ function selectTab(event: KeyboardEvent, index: number) {
         Durations in milliseconds; completed work only. p95 requires at least 20 completed
         observations per operation. Failed/cancelled work is listed separately.
       </p>
-      <div class="table-wrap">
+      <div class="table-wrap" role="region" aria-label="Retained operation durations" tabindex="0">
         <table>
           <caption>
             Retained operation durations (ms)

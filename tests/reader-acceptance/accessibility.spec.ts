@@ -32,6 +32,31 @@ for (const scheme of ['light', 'dark'] as const) {
         await expect(tab).toBeFocused()
         await expect(tab).toHaveAttribute('aria-selected', 'true')
         await expect(panel.getByRole('tabpanel', { name, exact: true })).toBeVisible()
+        if (name === 'Operations') {
+          const scrollArea = panel.getByRole('region', {
+            name: 'Retained operation durations',
+            exact: true,
+          })
+          await tab.press('Tab')
+          await expect(scrollArea).toBeFocused()
+          if (width === 320) {
+            await scrollArea.press('ArrowRight')
+            await expect
+              .poll(() => scrollArea.evaluate((node) => node.scrollLeft))
+              .toBeGreaterThan(0)
+          }
+          await scrollArea.press('Shift+Tab')
+          await expect(tab).toBeFocused()
+        }
+        if (name === 'Timeline') {
+          await expect(
+            panel.getByRole('group', { name: 'Timeline filter', exact: true }),
+          ).toBeVisible()
+          await expect(panel.locator('.session-timeline > li .time').first()).toContainText(
+            'since page start',
+          )
+          await expect(panel.locator('.session-timeline > li time[aria-label]')).toHaveCount(0)
+        }
         const controlled = await tab.getAttribute('aria-controls')
         expect(controlled).toBeTruthy()
         expect(controlled).not.toMatch(/\s/u)

@@ -55,6 +55,22 @@ identical-source release acceptance. Review reports before sharing.
 This does not certify screen-reader speech, contrast, all interactions or all
 devices. Visual comparison remains separately and manually invoked.
 
+### Keyboard and semantic follow-up
+
+The Operations table has a named, focusable scroll region. Tab from Operations to
+the table and use arrow keys when it overflows; Shift+Tab returns to its tab.
+Timeline filters form a named group, and each timestamp exposes “since page start”
+as readable text instead of relying on an unsupported ARIA label on `time`.
+
+A scoped local axe-core 4.11 audit covered six top-level views at 320/1440 in both
+themes after finite animations settled. It found no remaining violations in those
+states after the scroll-region and Timeline fixes. Narrow-layout heading/caption
+contrast checks remained incomplete and require manual review, not a pass. The
+audit used initial panel states; it does not certify every populated chart,
+interaction, contrast combination or screen reader. No audit dependency or
+automatic workflow was added. The six existing manual keyboard cases now cover
+the scroll region and Timeline semantics as functional regressions.
+
 ## Remaining installed-browser checklist
 
 Use the disposable generated native folders in [diagnostics acceptance](acceptance.md).

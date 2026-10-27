@@ -82,7 +82,7 @@ function detailId(id: string) {
     <span v-if="health" class="current-state" :data-state="health.state">{{ health.label }}</span>
   </div>
   <div class="controls">
-    <div class="filters" aria-label="Timeline filter">
+    <div class="filters" role="group" aria-label="Timeline filter">
       <button
         v-for="option in filters"
         :key="option.key"
@@ -104,9 +104,10 @@ function detailId(id: string) {
   </div>
   <ol class="session-timeline" aria-label="Chronological diagnostic events">
     <li v-for="row in rows" :key="row.id" class="entry" :data-kind="severity(row)">
-      <time class="time" :aria-label="`${timelineTime(row.atMs)} since page start`">{{
-        timelineTime(row.atMs)
-      }}</time>
+      <span class="time"
+        ><time>{{ timelineTime(row.atMs) }}</time
+        ><span class="sr-only"> since page start</span></span
+      >
       <div class="rail" aria-hidden="true" />
       <div class="event">
         <template v-if="row.kind === 'incident'">
