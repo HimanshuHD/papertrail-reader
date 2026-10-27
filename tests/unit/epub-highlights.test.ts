@@ -127,3 +127,36 @@ it('rejects external ranges and safely falls back to text when CFI construction 
   ctx.document.getSelection()!.addRange(range)
   expect(captureEpubHighlight(ctx)).toBeUndefined()
 })
+
+it('skips chapter text indexing when no saved highlight applies to this chapter', () => {
+  const first = context(),
+    annotation = saved(first)
+  const other = context('<p>A different chapter.</p>')
+  other.chapter = 1
+  const walk = vi.spyOn(other.document, 'createTreeWalker')
+  const empty = paintEpubHighlights(other, fingerprint, [])
+  const unrelated = paintEpubHighlights(other, fingerprint, [annotation])
+  expect(empty.resolvedRanges.size).toBe(0)
+  expect(unrelated.unresolved.size).toBe(0)
+  expect(walk).not.toHaveBeenCalled()
+  empty.dispose()
+  unrelated.dispose()
+})
+it('keeps UTF-16 character anchors and whitespace normalization across a long chapter', () => {
+  const repeated = 'Local words with spaces. '.repeat(24000)
+  const ctx = context(
+    '<p>' + repeated + '</p><p id="tail">Tail <em>🌿 quotation</em>\u00a0 kept.</p>',
+  )
+  const index = epubHighlightIndex(ctx.document)
+  expect(index.text).toBe(repeated.trimEnd() + ' Tail 🌿 quotation kept.')
+  expect(index.positions).toHaveLength(index.text.length)
+  const tail = ctx.document.querySelector('#tail')!
+  select(ctx, tail)
+  const selector = captureEpubHighlight(ctx)!
+  expect(selector).toMatchObject({ text: { exact: 'Tail 🌿 quotation kept.' } })
+  const result = paintEpubHighlights(ctx, fingerprint, [
+    { version: 2, id: 'tail', selector, color: 'yellow', note: '', createdAt: 1, updatedAt: 1 },
+  ])
+  expect(result.resolvedRanges.get('tail')?.toString()).toBe('Tail 🌿 quotation\u00a0 kept.')
+  result.dispose()
+})
