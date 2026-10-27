@@ -13,6 +13,7 @@ import {
   type CfiBridge,
 } from './location'
 import { keepScrolledChapterMounted } from './scroll-layout'
+import { managedEpubViewManager, type EpubManagerConstructor } from './view-manager'
 import { scrollHighlightRange } from '../annotations/highlight-navigation'
 
 export interface EpubPosition {
@@ -316,6 +317,9 @@ async function createEpubSession(
     cleanup()
     signal.throwIfAborted()
     rendition = book.renderTo(root, {
+      manager: managedEpubViewManager(
+        engine.Rendition.prototype.requireManager('default') as EpubManagerConstructor,
+      ),
       width: root.clientWidth || 1,
       height: root.clientHeight || 1,
       resizeOnOrientationChange: false,

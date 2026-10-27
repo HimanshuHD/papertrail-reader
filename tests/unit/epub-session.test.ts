@@ -23,6 +23,11 @@ vi.mock('../../src/features/epub/scroll-layout', () => ({
   keepScrolledChapterMounted: () => vi.fn(),
 }))
 vi.mock('epubjs', () => ({
+  Rendition: class {
+    requireManager() {
+      return class {}
+    }
+  },
   default: () => ({
     open: mocks.open,
     destroy: mocks.destroy,
@@ -59,7 +64,7 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   expect(mocks.open).toHaveBeenCalledWith(expect.any(ArrayBuffer), 'binary')
   expect(mocks.render).toHaveBeenCalledWith(
     expect.any(HTMLElement),
-    expect.objectContaining({ allowScriptedContent: false }),
+    expect.objectContaining({ allowScriptedContent: false, manager: expect.any(Function) }),
   )
   await session.display(1)
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
@@ -113,6 +118,26 @@ it('cleans up a rejected engine open', async () => {
     'engine rejected',
   )
   expect(target.children).toHaveLength(0)
+  expect(mocks.destroy).toHaveBeenCalledTimes(1)
+})
+
+it('cleans up once when aborted during the first chapter display', async () => {
+  let finish!: () => void
+  mocks.display.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  const target = document.createElement('div')
+  const controller = new AbortController()
+  const opening = openEpubSession(file(), target, controller.signal)
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  controller.abort()
+  expect(target.children).toHaveLength(0)
+  expect(mocks.destroy).toHaveBeenCalledTimes(1)
+  finish()
+  await expect(opening).rejects.toThrow()
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
 })
 
