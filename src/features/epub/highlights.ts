@@ -76,12 +76,17 @@ export function captureEpubHighlight(
   try {
     const index = epubHighlightIndex(doc),
       offsets: number[] = []
+    const selectedNodes = new Map<Text, { from: number; to: number }>()
+    for (const node of index.nodes) {
+      if (!range.intersectsNode(node)) continue
+      selectedNodes.set(node, {
+        from: node === range.startContainer ? range.startOffset : 0,
+        to: node === range.endContainer ? range.endOffset : node.length,
+      })
+    }
     index.positions.forEach((position, offset) => {
-      const node = position.node
-      if (!range.intersectsNode(node)) return
-      const from = node === range.startContainer ? range.startOffset : 0
-      const to = node === range.endContainer ? range.endOffset : node.length
-      if (position.offset >= from && position.offset < to) {
+      const bounds = selectedNodes.get(position.node)
+      if (bounds && position.offset >= bounds.from && position.offset < bounds.to) {
         if (!offsets.length) offsets.push(offset)
         offsets[1] = offset + 1
       }
