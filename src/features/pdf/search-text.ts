@@ -12,28 +12,32 @@ export interface TextMatch {
   context: SearchContext
 }
 
-/** Same canonical text for PDF extraction and rendered text nodes; retain source offsets. */
+/** Canonical text with UTF-16 source offsets, built without growing-string scans. */
 export function indexPdfText(parts: readonly string[]) {
-  let text = ''
+  const characters: string[] = []
   const positions: ({ part: number; offset: number } | null)[] = []
-  function append(char: string, position: { part: number; offset: number } | null) {
+  function append(char: string, part: number | null, offset = 0) {
     if (/\s/u.test(char)) {
-      if (!text || text.endsWith(' ')) return
+      if (!characters.length || characters.at(-1) === ' ') return
       char = ' '
     }
-    text += char
-    positions.push(position)
+    characters.push(char)
+    positions.push(part === null ? null : { part, offset })
   }
   parts.forEach((part, index) => {
     if (index) append(' ', null)
-    for (let offset = 0; offset < part.length; offset++)
-      append(part[offset]!, { part: index, offset })
+    for (let offset = 0; offset < part.length; offset++) append(part[offset]!, index, offset)
   })
-  if (text.endsWith(' ')) {
-    text = text.slice(0, -1)
+  if (characters.at(-1) === ' ') {
+    characters.pop()
     positions.pop()
   }
-  return { text, positions }
+  return { text: characters.join(''), positions }
+}
+
+/** Equivalent search-only text: no source-position objects or character array. */
+export function canonicalPdfText(parts: readonly string[]) {
+  return parts.join(' ').replace(/\s+/gu, ' ').trim()
 }
 
 export function findTextMatches(text: string, query: string, limit = 200): TextMatch[] {
