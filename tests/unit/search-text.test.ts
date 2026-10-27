@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   findTextMatches,
   indexPdfText,
+  canonicalPdfText,
   textLayerMatchRanges,
 } from '../../src/features/pdf/search-text'
 
@@ -48,4 +49,43 @@ describe('PDF search context and text-layer mapping', () => {
       trailing: false,
     })
   })
+})
+
+it('normalizes dense PDF text without changing UTF-16 source anchors or search-only text', () => {
+  const body = 'Alpha beta '.repeat(24000)
+  const parts = ['  ' + body, '\t🌿\u00a0tail\n']
+  const indexed = indexPdfText(parts)
+  expect(indexed.text).toBe(body.trimEnd() + ' 🌿 tail')
+  expect(canonicalPdfText(parts)).toBe(indexed.text)
+  expect(indexed.positions).toHaveLength(indexed.text.length)
+  const leaf = indexed.text.indexOf('🌿')
+  expect(indexed.positions[leaf]).toEqual({ part: 1, offset: 1 })
+  expect(indexed.positions[leaf + 1]).toEqual({ part: 1, offset: 2 })
+  expect(indexPdfText(['One', 'Two']).positions[3]).toBeNull()
+  expect(canonicalPdfText([' ', '', '\t'])).toBe('')
+  expect(findTextMatches(indexed.text, '🌿 tail')[0]?.start).toBe(leaf)
+})
+
+it('keeps search-only normalization identical for Unicode whitespace, empty parts and surrogate units', () => {
+  for (const gap of [
+    ' ',
+    '\t',
+    '\r\n',
+    '\v',
+    '\f',
+    '\u00a0',
+    '\u1680',
+    '\u2000',
+    '\u2007',
+    '\u2028',
+    '\u2029',
+    '\u202f',
+    '\u205f',
+    '\u3000',
+    '\ufeff',
+  ]) {
+    const parts = [gap, 'A' + gap + '🌿', '', gap + 'tail', gap]
+    expect(canonicalPdfText(parts)).toBe(indexPdfText(parts).text)
+  }
+  expect(canonicalPdfText(['\ud800', '\udfff'])).toBe(indexPdfText(['\ud800', '\udfff']).text)
 })
