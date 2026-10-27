@@ -1,5 +1,5 @@
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
-import { findTextMatches, indexPdfText, type SearchContext } from './search-text'
+import { findTextMatches, canonicalPdfText, type SearchContext } from './search-text'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
 export type PdfFitMode = 'width' | 'page' | 'custom'
@@ -319,7 +319,7 @@ export class PdfDocumentSession {
 
       const page = await this.getPage(pageNumber)
       const content = await page.getTextContent()
-      const text = indexPdfText(content.items.map((item) => ('str' in item ? item.str : ''))).text
+      const text = canonicalPdfText(content.items.map((item) => ('str' in item ? item.str : '')))
       if (!text) continue
       textPageCount += 1
       for (const match of findTextMatches(text, query, maxMatches - matches.length)) {
