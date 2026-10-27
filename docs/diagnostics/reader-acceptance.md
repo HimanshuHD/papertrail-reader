@@ -94,3 +94,18 @@ Controlled picker tests cannot check off these rows.
 Record source, browser/OS, date, native-versus-fallback path and each outcome. Keep
 raw profiles/documents private. Unexecuted rows stay unchecked. Profiling, accepted
 budgets and engine-retention investigation continue separately.
+
+## EPUB view-mode persistence regression (#276)
+
+The manual suite includes both formatted and text-only final modes. Each case
+switches modes, changes to a PDF and back, then performs a normal reload and
+explicit local-file reconnect. It checks chapter and mode restoration without
+synthetic pagehide events or an added save-delay sleep. The unit regression checks
+that a completed explicit mode change starts persistence without waiting for the
+scroll-save debounce. Ordinary reading/scroll writes remain debounced.
+
+For preview review, repeat with a representative real multi-chapter EPUB: navigate
+to a later chapter, enable then disable text-only view, resize, switch to a PDF
+and back, reload and reconnect the same files. Verify the formatted mode and
+chapter survive. Repeat leaving text-only enabled. Also verify the PDF's page and
+zoom survive. Keep document names/content and raw browser evidence private.

@@ -55,7 +55,7 @@ const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
   focusPane: []
-  readingChange: []
+  readingChange: [immediate?: boolean]
   phaseChange: [phase: 'ready' | 'error']
   utilityChange: [panel: UtilityPanel, query: string]
   status: [message: string]
@@ -381,9 +381,10 @@ function captureReading(): EpubReadingSettings | undefined {
   }
   return lastReading
 }
-function persistReading() {
+function persistReading(immediate = false) {
   continuity.save()
-  emit('readingChange')
+  if (immediate) continuity.flush()
+  emit('readingChange', immediate)
 }
 function saveReading() {
   scheduleNoteIndicators()
@@ -724,7 +725,8 @@ async function open(preserve = false) {
     if (preserve) reader.contentsEntry.value = contentsEntry
     if (saved?.location && !normalizeLocation(saved.location, reader.session.value.chapters.length))
       continuity.notice.value = 'The saved chapter is unavailable. Reading starts at the beginning.'
-    persistReading()
+    // Explicit view changes should not wait behind the scroll-save debounce.
+    persistReading(preserve)
     if (continuity.fingerprint.value) {
       emit('identity', continuity.fingerprint.value)
       emit('recentReady', {

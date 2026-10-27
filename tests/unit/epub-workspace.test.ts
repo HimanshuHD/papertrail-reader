@@ -828,3 +828,43 @@ it('does not reobserve the EPUB host or rebind frames after disposal and release
     vi.unstubAllGlobals()
   }
 })
+
+it('persists explicit mode round trips without waiting for the scroll debounce', async () => {
+  const sessions: EpubSession[] = Array.from({ length: 3 }, () => ({
+    title: 'Mode persistence',
+    contents: [],
+    contentsSource: 'spine',
+    chapters: [{ label: 'One', href: 'one' }],
+    typography: vi.fn(),
+    display: vi.fn(async () => {}),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  }))
+  for (const session of sessions) mocked.open.mockResolvedValueOnce(session)
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'mode',
+        name: 'mode.epub',
+        format: 'EPUB',
+        relativePath: 'mode.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'mode.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  mocked.save.mockClear()
+  for (const textOnly of [true, false]) {
+    await wrapper.get('button[role="switch"]').trigger('click')
+    await flushPromises()
+    expect(mocked.save).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ textOnly }),
+    )
+    expect(wrapper.emitted('readingChange')?.at(-1)).toEqual([true])
+  }
+  wrapper.unmount()
+})
