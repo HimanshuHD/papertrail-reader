@@ -37,6 +37,7 @@ function mountReader(
     initialSearchQuery?: string
     initialState?: import('../../src/features/reader/document-sessions').SessionState
   } = {},
+  autoRender = true,
 ) {
   return mount(PdfReaderWorkspace, {
     attachTo: document.body,
@@ -55,9 +56,10 @@ function mountReader(
     global: {
       stubs: {
         PdfPageView: {
+          name: 'PdfPageView',
           props: ['pageNumber'],
           mounted() {
-            this.$emit('rendered', this.pageNumber, 1)
+            if (autoRender) this.$emit('rendered', this.pageNumber, 1)
           },
           template: '<div />',
         },
@@ -333,6 +335,39 @@ describe('PDF reader utility workspace', () => {
     await flushPromises()
     expect(document.querySelector('[role="tooltip"]')).toBeNull()
     expect(wrapper.find('input[type="range"]').exists()).toBe(false)
+  })
+  it('keeps the pending restoration page in view when the viewport widens before rendering', async () => {
+    const wrapper = mountReader(
+      {
+        initialState: {
+          panel: null,
+          query: '',
+          pdf: { page: 3, view: { fitMode: 'width', zoom: 1 } },
+        },
+      },
+      false,
+    )
+    wrappers.push(wrapper)
+    await flushPromises()
+    const viewport = wrapper.get('[aria-label="PDF pages"]').element as HTMLElement
+    expect(viewport.getAttribute('aria-busy')).toBe('true')
+    Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 900 })
+    const target = wrapper.findAllComponents({ name: 'PdfPageView' })[2]!
+    target.element.setAttribute('data-pdf-page', '3')
+    vi.spyOn(target.element, 'getBoundingClientRect').mockReturnValue({ top: 1800 } as DOMRect)
+    const scroll = vi.fn()
+    viewport.scrollTo = scroll
+    vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(0)
+      return 1
+    })
+    window.dispatchEvent(new Event('resize'))
+    await flushPromises()
+    expect(scroll).toHaveBeenCalledWith({ top: 1800, behavior: 'instant' })
+    // Only the actual target's rendered event completes restoration.
+    target.vm.$emit('rendered', 3, 1)
+    await flushPromises()
+    expect(viewport.getAttribute('aria-busy')).toBe('false')
   })
   it('restores the selected page independently of a neighboring viewport-center anchor', async () => {
     const wrapper = mountReader({

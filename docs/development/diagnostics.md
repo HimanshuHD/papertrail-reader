@@ -278,3 +278,13 @@ changes require lifecycle investigation, not universal memory ceilings or leak
 verdicts. Unsupported heap readings produce no numeric observation. Reset clears
 the comparison baseline. #16 owns accepted targets; #253 owns representative
 native/device/large-workload and total instrumentation/UI overhead acceptance.
+
+## External profiling and target calibration
+
+`npm run profile:browser` runs the separate manual Chromium CPU/process-memory
+profiler against generated fixtures. It writes private reports and optional
+trace/heap artifacts; it does not run in CI or change diagnostic rules.
+[Methodology, interpretation and calibration handoff](../diagnostics/external-profiling.md)
+explain process CPU versus GPU utilization, partial RSS coverage, page versus
+worker heap, GC-separated snapshots and the remaining evidence for accepted #16
+budgets/#250 targets.

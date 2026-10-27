@@ -7,7 +7,7 @@ import type { Annotation } from '../../services/annotation-storage'
 import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
 import {
   pdfTextIndex,
-  pdfTextRange,
+  pdfIndexedRange,
   capturePdfRectangles,
   PDF_HIGHLIGHT_COLORS,
 } from '../../features/pdf/highlights'
@@ -103,10 +103,16 @@ function updateSavedHighlights() {
   const layer = textLayer.value
   const page = root.value?.querySelector<HTMLElement>('.pdf-page')
   if (!layer || !page || !rendered.value || rendering.value || !props.fingerprint) return
-  const text = pdfTextIndex(layer).text
+  const applicable = (props.annotations ?? []).filter(
+    (annotation) =>
+      annotation.selector.format === 'PDF' &&
+      annotation.selector.segments.some((segment) => segment.page === props.pageNumber),
+  )
+  if (!applicable.length) return
+  const index = pdfTextIndex(layer)
   const identity = { format: 'PDF' as const, fingerprint: props.fingerprint }
   const rotation = Number(layer.dataset.mainRotation ?? 0) as 0 | 90 | 180 | 270
-  for (const annotation of props.annotations ?? []) {
+  for (const annotation of applicable) {
     if (annotation.selector.format !== 'PDF') continue
     const segments = annotation.selector.segments.filter(
       (segment) => segment.page === props.pageNumber,
@@ -116,7 +122,7 @@ function updateSavedHighlights() {
       identity,
       identity,
       { ...annotation.selector, segments },
-      new Map([[props.pageNumber, text]]),
+      new Map([[props.pageNumber, index.text]]),
     )
     if (result.status !== 'resolved') {
       emit('highlightResolution', annotation.id, false, props.pageNumber)
@@ -125,7 +131,7 @@ function updateSavedHighlights() {
     let visible = false
     for (const segment of result.value) {
       // Always measure verified text in the current layer, including rotated glyphs/crop boxes.
-      const range = pdfTextRange(layer, segment.start, segment.end)
+      const range = pdfIndexedRange(index, segment.start, segment.end)
       if (!range) continue
       for (const rectangle of capturePdfRectangles(range, page, layer)) {
         const rect = projectPdfRectangle(rectangle, rotation)

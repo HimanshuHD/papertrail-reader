@@ -13,17 +13,24 @@ export function epubHighlightIndex(doc: Document) {
   const nodes: Text[] = [],
     positions: { node: Text; offset: number }[] = []
   const walker = doc.createTreeWalker(doc.body, 4)
-  let text = '',
-    previousBlock: Element | null = null
+  // Append into an array and join once: checking a growing concatenated string
+  // flattens V8 ropes repeatedly and stalls long chapters. Offsets stay UTF-16.
+  const characters: string[] = []
+  let previousBlock: Element | null = null
   while (walker.nextNode()) {
     const node = walker.currentNode as Text
     if (node.parentElement?.closest('[data-reader-image],script,style')) continue
-    if (nodes.length >= 20000 || text.length + node.length > ANNOTATION_LIMITS.text)
+    if (nodes.length >= 20000 || characters.length + node.length > ANNOTATION_LIMITS.text)
       throw Error('Chapter text is too large to highlight.')
     const block =
       node.parentElement?.closest('p,div,h1,h2,h3,h4,h5,h6,li,blockquote,pre,td,th') ?? doc.body
-    if (previousBlock && block !== previousBlock && text && !text.endsWith(' ')) {
-      text += ' '
+    if (
+      previousBlock &&
+      block !== previousBlock &&
+      characters.length &&
+      characters.at(-1) !== ' '
+    ) {
+      characters.push(' ')
       positions.push({ node, offset: 0 })
     }
     previousBlock = block
@@ -31,18 +38,18 @@ export function epubHighlightIndex(doc: Document) {
     for (let offset = 0; offset < node.length; offset++) {
       let char = node.data[offset]!
       if (/\s/u.test(char)) {
-        if (!text || text.endsWith(' ')) continue
+        if (!characters.length || characters.at(-1) === ' ') continue
         char = ' '
       }
-      text += char
+      characters.push(char)
       positions.push({ node, offset })
     }
   }
-  if (text.endsWith(' ')) {
-    text = text.slice(0, -1)
+  if (characters.at(-1) === ' ') {
+    characters.pop()
     positions.pop()
   }
-  return { text, nodes, positions }
+  return { text: characters.join(''), nodes, positions }
 }
 function rangeAt(
   index: ReturnType<typeof epubHighlightIndex>,
@@ -69,12 +76,17 @@ export function captureEpubHighlight(
   try {
     const index = epubHighlightIndex(doc),
       offsets: number[] = []
+    const selectedNodes = new Map<Text, { from: number; to: number }>()
+    for (const node of index.nodes) {
+      if (!range.intersectsNode(node)) continue
+      selectedNodes.set(node, {
+        from: node === range.startContainer ? range.startOffset : 0,
+        to: node === range.endContainer ? range.endOffset : node.length,
+      })
+    }
     index.positions.forEach((position, offset) => {
-      const node = position.node
-      if (!range.intersectsNode(node)) return
-      const from = node === range.startContainer ? range.startOffset : 0
-      const to = node === range.endContainer ? range.endOffset : node.length
-      if (position.offset >= from && position.offset < to) {
+      const bounds = selectedNodes.get(position.node)
+      if (bounds && position.offset >= bounds.from && position.offset < bounds.to) {
         if (!offsets.length) offsets.push(offset)
         offsets[1] = offset + 1
       }
@@ -121,15 +133,19 @@ export function paintEpubHighlights(
     identity = { format: 'EPUB' as const, fingerprint }
   const ranges = new Map<keyof typeof colors, Range[]>()
   const resolvedRanges = new Map<string, Range>()
+  const chapterAnnotations = annotations.filter(
+    (annotation) =>
+      annotation.selector.format === 'EPUB' && annotation.selector.chapter === context.chapter,
+  )
   let index: ReturnType<typeof epubHighlightIndex> | undefined
-  try {
-    index = epubHighlightIndex(doc)
-  } catch {
-    /* Refuse oversized chapter. */
+  if (chapterAnnotations.length) {
+    try {
+      index = epubHighlightIndex(doc)
+    } catch {
+      /* Refuse oversized chapter. */
+    }
   }
-  for (const annotation of annotations) {
-    if (annotation.selector.format !== 'EPUB' || annotation.selector.chapter !== context.chapter)
-      continue
+  for (const annotation of chapterAnnotations) {
     const result =
       index &&
       resolveEpubAnnotation(identity, identity, annotation.selector, {

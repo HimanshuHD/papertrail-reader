@@ -429,6 +429,7 @@ function measureViewport() {
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
   const preservePosition = phase.value === 'ready'
+  const sequence = openSequence
   const readingPoint = preservePosition ? captureReadingPoint() : null
   const operation = layoutOperation
   const scrollBefore = element.scrollTop
@@ -449,7 +450,14 @@ function measureViewport() {
   )
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
-      if (!preservePosition || viewport.value !== element || operation !== layoutOperation) return
+      if (viewport.value !== element || sequence !== openSequence) return
+      // Sidebar transitions can change page heights after the first restore scroll.
+      // Keep its target visible so lazy rendering can finish the restore.
+      if (phase.value === 'restoring' && !completingRestore) {
+        void goToPage(restoredAnchor?.page ?? currentPage.value)
+        return
+      }
+      if (!preservePosition || operation !== layoutOperation) return
       if (Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
