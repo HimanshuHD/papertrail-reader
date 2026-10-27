@@ -38,6 +38,10 @@ zoom limits and reading-position semantics are unchanged by this increment.
 
 ## Remaining investigations and tradeoffs
 
+Follow-up [EPUB manager lifecycle cleanup](epub-manager-cleanup.md) removes two
+confirmed engine window-listener roots. Its scoped listener and heap checks do
+not establish complete reader cleanup; the last-reader observation remains open.
+
 | Area                               | Evidence / risk                                                                                                                                                                                     | Follow-up                                                                                                                                                                                                     |
 | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Closed EPUB readers                | The prior heap investigation found retained closed reader DOM. Navigation/indexing fixes do not establish cleanup.                                                                                  | Resolve the engine/reader retention path and repeat independent heap/process observations under #16.                                                                                                          |
