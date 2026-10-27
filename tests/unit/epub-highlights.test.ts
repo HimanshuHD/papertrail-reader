@@ -160,3 +160,12 @@ it('keeps UTF-16 character anchors and whitespace normalization across a long ch
   expect(result.resolvedRanges.get('tail')?.toString()).toBe('Tail 🌿 quotation\u00a0 kept.')
   result.dispose()
 })
+
+it('checks selection intersection once per text node instead of once per character', () => {
+  const ctx = context('<p>Words ' + 'with spaces '.repeat(100) + '<em>and inline text</em>.</p>')
+  select(ctx, ctx.document.querySelector('p')!)
+  const range = ctx.document.getSelection()!.getRangeAt(0)
+  const intersects = vi.spyOn(range, 'intersectsNode')
+  expect(captureEpubHighlight(ctx)?.format).toBe('EPUB')
+  expect(intersects).toHaveBeenCalledTimes(epubHighlightIndex(ctx.document).nodes.length)
+})
