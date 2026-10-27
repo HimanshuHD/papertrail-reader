@@ -19,6 +19,8 @@ const tabs = [
   'Technical details',
 ] as const
 const active = defineModel<DiagnosticView>('activeTab', { default: 'Overview' })
+// ARIA ID references are whitespace-delimited; multiword labels need one ID token.
+const viewId = (tab: string) => tab.replaceAll(' ', '-')
 const stats = computed(() => operationStats(props.snapshot.timings))
 const latest = computed(() => props.snapshot.samples.at(-1))
 const resources = [
@@ -83,13 +85,13 @@ function selectTab(event: KeyboardEvent, index: number) {
   <div role="tablist" aria-label="Diagnostic views" class="tabs">
     <button
       v-for="(tab, index) in tabs"
-      :id="`diagnostic-tab-${tab}`"
+      :id="`diagnostic-tab-${viewId(tab)}`"
       :key="tab"
       type="button"
       role="tab"
       class="pt-plain-control"
       :aria-selected="active === tab"
-      :aria-controls="`diagnostic-view-${tab}`"
+      :aria-controls="`diagnostic-view-${viewId(tab)}`"
       :tabindex="active === tab ? 0 : -1"
       @click="active = tab"
       @keydown="selectTab($event, index)"
@@ -100,10 +102,10 @@ function selectTab(event: KeyboardEvent, index: number) {
   <div
     v-for="tab in tabs"
     v-show="active === tab"
-    :id="`diagnostic-view-${tab}`"
+    :id="`diagnostic-view-${viewId(tab)}`"
     :key="tab"
     role="tabpanel"
-    :aria-labelledby="`diagnostic-tab-${tab}`"
+    :aria-labelledby="`diagnostic-tab-${viewId(tab)}`"
     :hidden="active !== tab"
   >
     <template v-if="tab === 'Overview'">
