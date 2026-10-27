@@ -14,6 +14,8 @@
     "vitest.config.ts",
     "playwright.config.ts",
     "playwright.diagnostics.config.ts",
+    "playwright.reader-acceptance.config.ts",
+    "tests/reader-acceptance/**/*.ts",
     "tests/diagnostics/**/*.ts",
     "tests/e2e/**/*.ts",
     "playwright.visual.config.ts",
