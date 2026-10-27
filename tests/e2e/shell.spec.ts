@@ -780,10 +780,24 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
   const overlay = page.locator('[data-pdf-page="1"] .pdf-saved-highlight').first()
   await expect(overlay).toBeVisible()
   const aligned = async () => {
-    const expected = await layer.locator('span').first().boundingBox(),
-      actual = await overlay.boundingBox()
-    expect(Math.abs(actual!.x - expected!.x)).toBeLessThan(3)
-    expect(Math.abs(actual!.y - expected!.y)).toBeLessThan(3)
+    await expect(overlay).toBeVisible()
+    // A rotated span's layout box differs from the actual selected glyph Range.
+    // Read both geometries in one frame; keep the same pixel tolerance.
+    const errors = await layer.evaluate((element) => {
+      const span = element.querySelector('span')!
+      const overlay = element.closest('.pdf-page')!.querySelector('.pdf-saved-highlight')!
+      const range = element.ownerDocument.createRange()
+      range.selectNodeContents(span)
+      const expected = range.getBoundingClientRect()
+      const actual = overlay.getBoundingClientRect()
+      return [
+        Math.abs(actual.x - expected.x),
+        Math.abs(actual.y - expected.y),
+        Math.abs(actual.width - expected.width),
+        Math.abs(actual.height - expected.height),
+      ]
+    })
+    for (const error of errors) expect(error).toBeLessThan(3)
   }
   await aligned()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
