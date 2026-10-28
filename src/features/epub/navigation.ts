@@ -1,3 +1,4 @@
+import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { EpubArchiveError } from './archive-preflight'
 
 export interface EpubContentsEntry {
@@ -34,7 +35,10 @@ export function parseEpubContents(
     for (const element of parent.children) {
       if (element.namespaceURI !== ns || element.localName !== (kind === 'nav' ? 'li' : 'navPoint'))
         continue
-      if (++count > 512) throw new EpubArchiveError('EPUB navigation entries exceed their budget.')
+      if (++count > EPUB_PUBLICATION_LIMITS.navigationEntries)
+        throw new EpubArchiveError(
+          `EPUB contents exceed the supported limit of ${EPUB_PUBLICATION_LIMITS.navigationEntries} entries.`,
+        )
       const id = `contents-${count}`
       const labelElement =
         kind === 'nav'

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { createPdfFixture } from '../fixtures/pdf'
-import { createEpubFixture } from '../fixtures/epub'
+import { createLargeSpineEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
 for (const format of ['PDF', 'EPUB'] as const) {
@@ -17,7 +17,7 @@ for (const format of ['PDF', 'EPUB'] as const) {
         : {
             name: 'cancel.epub',
             mimeType: 'application/epub+zip',
-            buffer: Buffer.from(createEpubFixture()),
+            buffer: Buffer.from(createLargeSpineEpubFixture()),
           }
     await page
       .locator('input[accept*=".pdf"]')
