@@ -1,1 +1,0 @@
-var e=`/papertrail-reader/preview/pr-277/assets/pdf.worker.min-Dswkl-cV.mjs`;export{e as default};
