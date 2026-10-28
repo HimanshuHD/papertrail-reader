@@ -125,7 +125,7 @@ export function verifyBookImage(bytes: Uint8Array, mime: string): Uint8Array | n
             throw new EpubImageLimitError('SVG illustration coordinates exceed their limit.')
           geometryNumbers++
         }
-        if (geometryNumbers > 500000 || geometryCommands > 100000)
+        if (geometryNumbers > 1000000 || geometryCommands > 100000)
           throw new EpubImageLimitError('SVG illustration exceeds the geometry-work limit.')
         end = token.index + token[0].length
       }

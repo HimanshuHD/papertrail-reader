@@ -1,3 +1,4 @@
+import { keepChapterPainted } from './chapter-transition'
 import { applyBookViewport } from './book-viewport'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
@@ -94,6 +95,7 @@ async function createEpubSession(
   let destroyed = false
   let disposed = false
   let opening = true
+  let restoreChapterPainting: (() => void) | undefined
   const pendingDisplays = new Set<() => void>()
   function displayChapter(href: string): Promise<void> {
     const current = rendition
@@ -322,6 +324,8 @@ async function createEpubSession(
     disposed = true
     restoreResize?.()
     restoreResize = null
+    restoreChapterPainting?.()
+    restoreChapterPainting = undefined
     try {
       book.destroy()
     } finally {
@@ -384,6 +388,7 @@ async function createEpubSession(
       .list?.()
       .find((hook: { name?: string }) => hook.name === 'bound adjustImages')
     if (imageAdjustment) rendition.hooks.content.deregister(imageAdjustment)
+    restoreChapterPainting = keepChapterPainted(rendition)
     function applyTheme(dark: boolean) {
       rendition?.themes.default({
         html: { 'overflow-x': 'hidden !important' },
@@ -453,6 +458,7 @@ async function createEpubSession(
     if (requestedLocation) keepLocation(requestedLocation)
     else restorePosition(options.position)
     bindLocationEvents()
+    publication.warmChapters(chapterIndex)
     let displayedChapter = chapterIndex
     const session: EpubSession = {
       get imageWarnings() {
@@ -479,6 +485,7 @@ async function createEpubSession(
         try {
           if (!sameChapter) await displayChapter(chapter.href)
           displayedChapter = index
+          publication.warmChapters(index)
           signal.throwIfAborted()
           if (owner !== navigationEpoch) throw new Error('EPUB navigation was replaced.')
           if (destroyed) throw new Error('EPUB session is unavailable.')

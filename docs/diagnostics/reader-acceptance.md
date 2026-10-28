@@ -10,12 +10,14 @@ The generated oversized-SVG case verifies omission above 4 MiB, readable text,
 alternative text, mode changes and warm tabs. The fidelity case uses a valid SVG
 with a path over 1 MiB: rendered pixel colour, complete drawing data, a stable
 240px author maximum width, centering, resizing, approved SVG wrapper rendering
-and revisiting chapters are checked. The 195-image book verifies that only the
-active chapter's 65 image URLs remain live and that closing releases them. URL
+and revisiting chapters are checked. The 195-image book verifies a rolling previous/current/next window, bounded
+retention/eviction and full image-URL release on close. A DOM observer verifies
+that chapter navigation never inserts the full-reader loading overlay. URL
 counts are ownership checks, not process/GPU-memory measurements.
 
 Unit coverage checks 128/129 chapter boundaries, repeated CSS/HTML resources,
-missing resources, long geometry, recursive/exponential references and disposal
+missing resources, geometry above the former limit, recursive/exponential
+references, shared-cache budget handling, stale preloads, painted transitions and disposal
 during a pending read. Run installed Firefox/WebKit as well as Chromium, then
 preview representative illustrated books. Unsupported SVG features may still
 require explicit fallback; embedded-font support remains #286.

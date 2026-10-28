@@ -62,5 +62,5 @@ test('detailed SVG paths, author sizing and owned wrappers remain complete acros
   expect(next).not.toBe(first)
   await reader.getByRole('button', { name: 'Previous chapter', exact: true }).click()
   await ready()
-  expect(await check()).not.toBe(first)
+  expect(await check()).toBe(first)
 })

@@ -483,7 +483,7 @@ watch(
       pendingHighlight.value = null
       clearFrameListeners()
     }
-    if (busy) {
+    if (busy && !reader.chapterTransition.value) {
       loaderRegistrations?.set('ownedTimers', 1)
       loaderTimer = setTimeout(() => {
         loaderRegistrations?.set('ownedTimers', 0)
@@ -1032,12 +1032,19 @@ watch(
         <div
           ref="host"
           class="epub-host"
-          :class="{ 'epub-host-loading': loading }"
+          :class="{ 'epub-host-loading': loading && !reader.chapterTransition.value }"
           :aria-busy="loading"
           :inert="loading || undefined"
           @load.capture="bindFrameListeners"
         />
-        <div v-if="loading" class="epub-loading-cover" aria-busy="true">
+        <p v-if="loading && reader.chapterTransition.value" role="status" class="sr-only">
+          Changing chapter…
+        </p>
+        <div
+          v-if="loading && !reader.chapterTransition.value"
+          class="epub-loading-cover"
+          aria-busy="true"
+        >
           <LoadingState
             v-if="restoringSession || showLoader"
             :label="

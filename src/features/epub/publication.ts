@@ -1,3 +1,4 @@
+import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
 import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { diagnostics } from '../diagnostics/recorder'
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
@@ -18,6 +19,8 @@ function encode(text: string) {
 export interface TextPublication {
   imageWarnings: readonly string[]
   renderChapter(index: number): Promise<string | undefined>
+  isChapterReady(index: number): boolean
+  warmChapters(index: number): void
   bytes: ArrayBuffer
   title: string
   dispose(): void
@@ -305,14 +308,14 @@ export async function preparePublication(
   const ownedURLs: string[] = []
   let ownedBlobBytes = 0
   let disposed = false
-  let activeChapter = -1
-  let activeMarkup = ''
-  let clearChapter = () => {
-    activeMarkup = ''
-    activeChapter = -1
-  }
+  let cache: ChapterCache | undefined
+  let requestedChapter = -1
+  let workSignal = signal
+  let imageAllowance = 32 * 1024 * 1024
+  let clearChapter = () => {}
   function ensureOpen() {
     signal?.throwIfAborted()
+    workSignal?.throwIfAborted()
     if (disposed) throw new DOMException('EPUB publication was disposed.', 'AbortError')
   }
   const releaseImages = () => {
@@ -322,6 +325,7 @@ export async function preparePublication(
   }
   const dispose = () => {
     disposed = true
+    cache?.dispose()
     releaseImages()
     clearChapter()
   }
@@ -334,7 +338,7 @@ export async function preparePublication(
       const entry = byPath.get(path)
       if (!entry || entry.expandedBytes > limit)
         throw new EpubArchiveError('EPUB resource is missing or too large.')
-      return xml(await readEpubEntry(file, entry, signal), limit)
+      return xml(await readEpubEntry(file, entry, workSignal), limit)
     }
     const container = await resource('META-INF/container.xml', 256 * 1024)
     if (
@@ -404,6 +408,7 @@ export async function preparePublication(
     }
     const imageCache = new Map<string, string | null>()
     const imageWarnings = new Set<string>()
+    const svgURLs = new Set<string>()
     let imageTotal = 0
     let imageCount = 0
     let imageWorkBytes = 0
@@ -450,7 +455,7 @@ export async function preparePublication(
       }
       imageAttempts++
       imageWorkBytes += entry.expandedBytes
-      const input = await readEpubEntry(file, entry, signal)
+      const input = await readEpubEntry(file, entry, workSignal)
       let bytes: Uint8Array | null
       try {
         bytes = verifyBookImage(input, mime)
@@ -471,10 +476,13 @@ export async function preparePublication(
         return null
       }
       ensureOpen()
+      if (ownedBlobBytes + bytes.byteLength > imageAllowance)
+        throw new ChapterCacheBudgetError('Adjacent chapter cache is full.')
       imageTotal += entry.expandedBytes
       imageCount++
       const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }))
       ownedURLs.push(url)
+      if (mime === 'image/svg+xml') svgURLs.add(url)
       ownedBlobBytes += bytes.byteLength
       if (__READER_DIAGNOSTICS__)
         diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length, blobBytes: ownedBlobBytes })
@@ -485,10 +493,9 @@ export async function preparePublication(
     const cssCache = new Map<string, string>()
     clearChapter = () => {
       imageCache.clear()
+      svgURLs.clear()
       cssCache.clear()
       imageWarnings.clear()
-      activeChapter = -1
-      activeMarkup = ''
     }
     async function css(text: string, base: string, inline = false) {
       cssTotal += text.length
@@ -508,7 +515,7 @@ export async function preparePublication(
       const elements = [...chapter.getElementsByTagName('*')]
       if (elements.length > 100000) throw new EpubArchiveError('EPUB chapter is too complex.')
       for (const element of elements) {
-        signal?.throwIfAborted()
+        ensureOpen()
         const cover = coverImage(element)
         if (cover) {
           const href =
@@ -542,7 +549,7 @@ export async function preparePublication(
               throw new EpubArchiveError('EPUB stylesheet is missing or too large.')
             clean = await css(
               new TextDecoder('utf-8', { fatal: true }).decode(
-                await readEpubEntry(file, entry, signal),
+                await readEpubEntry(file, entry, workSignal),
               ),
               href,
             )
@@ -685,38 +692,98 @@ export async function preparePublication(
     )
     signal?.throwIfAborted()
     const packed = zipSync(files, { level: 0 })
-    async function renderChapter(index: number): Promise<string | undefined> {
+    async function buildChapter(
+      index: number,
+      buildSignal: AbortSignal,
+      budget: number,
+    ): Promise<PreparedChapter> {
       ensureOpen()
-      const path = chapterPaths[index]
-      if (!path) throw new EpubArchiveError('EPUB chapter is unavailable.')
-      if (textOnly || !deferFormatting) return undefined
-      if (activeChapter === index) return activeMarkup
-      // The default single-view manager clears its previous view before invoking
-      // this serialize hook. No previous chapter image URLs remain live.
       releaseImages()
       clearChapter()
       imageTotal = imageCount = imageWorkBytes = imageAttempts = cssTotal = 0
+      workSignal = buildSignal
+      imageAllowance = Math.min(32 * 1024 * 1024, budget - 4 * 1024 * 1024)
       try {
+        const path = chapterPaths[index]!
         const chapter = await resource(path, 4 * 1024 * 1024)
         const formatted = await formatting(chapter, path)
         ensureOpen()
         const markup = sanitizeChapter(chapter, formatted)
-        if (encode(markup).length > 4 * 1024 * 1024)
+        const markupBytes = encode(markup).length
+        if (markupBytes > 4 * 1024 * 1024)
           throw new EpubArchiveError('Formatted EPUB chapter exceeds its reading budget.')
-        activeChapter = index
-        activeMarkup = markup
-        return markup
+        // Warm vector decodes sequentially and yield between resources. Do not
+        // force speculative raster bitmap decoding for off-screen chapters.
+        for (const url of svgURLs) {
+          ensureOpen()
+          const img = typeof Image !== 'undefined' ? new Image() : undefined
+          if (!img?.decode) continue
+          await new Promise<void>((resolve, reject) => {
+            const cancel = () => {
+              img.src = ''
+              reject(new DOMException('Image preload cancelled.', 'AbortError'))
+            }
+            buildSignal.addEventListener('abort', cancel, { once: true })
+            img.src = url
+            img
+              .decode()
+              .then(resolve, () => resolve())
+              .finally(() => buildSignal.removeEventListener('abort', cancel))
+            if (buildSignal.aborted) cancel()
+          })
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        }
+        ensureOpen()
+        const urls = ownedURLs.splice(0)
+        const blobBytes = ownedBlobBytes
+        ownedBlobBytes = 0
+        if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
+        let released = false
+        const prepared: PreparedChapter = {
+          markup,
+          warnings: [...imageWarnings],
+          bytes: markupBytes + blobBytes,
+          dispose() {
+            if (released) return
+            released = true
+            for (const url of urls) URL.revokeObjectURL(url)
+            if (__READER_DIAGNOSTICS__) diagnostics.release(prepared)
+          },
+        }
+        if (__READER_DIAGNOSTICS__)
+          diagnostics.resources(prepared, { blobURLs: urls.length, blobBytes })
+        return prepared
       } catch (error) {
         releaseImages()
-        clearChapter()
         throw error
+      } finally {
+        clearChapter()
+        workSignal = signal
+        imageAllowance = 32 * 1024 * 1024
       }
+    }
+    if (!textOnly && deferFormatting) cache = new ChapterCache(buildChapter, chapters.length)
+    async function renderChapter(index: number): Promise<string | undefined> {
+      ensureOpen()
+      if (!chapterPaths[index]) throw new EpubArchiveError('EPUB chapter is unavailable.')
+      if (!cache) return undefined
+      requestedChapter = index
+      cache.focus(index)
+      return (await cache.prepare(index)).markup
     }
     return {
       get imageWarnings() {
-        return [...imageWarnings]
+        return cache ? (cache.get(requestedChapter)?.warnings ?? []) : [...imageWarnings]
       },
       renderChapter,
+      isChapterReady(index) {
+        return textOnly || !!cache?.ready(index)
+      },
+      warmChapters(index) {
+        if (disposed || !cache?.ready(index)) return
+        cache.commit(index)
+        void cache.warm()
+      },
       title,
       dispose,
       chapters,

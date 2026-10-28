@@ -116,7 +116,7 @@ export function createLargeSpineEpubFixture(count = 844, navigation = true) {
 
 /** Detailed vector artwork with a legitimate path larger than the former 64 KiB attribute cap. */
 export function createSvgFidelityEpubFixture() {
-  const d = 'M10 10 L310 10 310 190 10 190 10 10 ' + '10 10 '.repeat(190000) + 'Z'
+  const d = 'M10 10 L310 10 310 190 10 190 10 10 ' + '10 10 '.repeat(350000) + 'Z'
   const styles =
     '<style>.picture{display:block;width:100%;max-width:240px;margin-left:auto;margin-right:auto}h1{text-align:center;font-variant:small-caps}</style>'
   return createEpubFixture({

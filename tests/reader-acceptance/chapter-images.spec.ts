@@ -2,9 +2,8 @@ import { expect, test } from '@playwright/test'
 import { createImageHeavyEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
-test('195-image book owns only active chapter illustrations and releases them on close', async ({
-  page,
-}) => {
+test('195-image book rotates a three-chapter window without a chapter loader', async ({ page }) => {
+  test.setTimeout(120000)
   await page.addInitScript(() => {
     const create = URL.createObjectURL.bind(URL),
       revoke = URL.revokeObjectURL.bind(URL)
@@ -34,22 +33,49 @@ test('195-image book owns only active chapter illustrations and releases them on
   await page.getByRole('button', { name: 'EPUB: illustrated.epub', exact: true }).click()
   await page.getByRole('button', { name: 'Hide library', exact: true }).click()
   const reader = page.locator('.epub-reader:visible')
+  await expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', {
+    timeout: 60000,
+  })
+  await reader.evaluate((element) => {
+    Reflect.set(window, 'chapterLoaderCount', 0)
+    const observer = new MutationObserver((records) => {
+      for (const record of records)
+        for (const node of record.addedNodes)
+          if (
+            node instanceof Element &&
+            (node.matches('.epub-loading-cover') || node.querySelector('.epub-loading-cover'))
+          )
+            Reflect.set(window, 'chapterLoaderCount', Reflect.get(window, 'chapterLoaderCount') + 1)
+    })
+    observer.observe(element, { childList: true, subtree: true })
+  })
   const ownership = () => page.evaluate(() => Reflect.get(window, 'imageOwnership')())
   for (const [step, chapter] of [1, 2, 3, 2].entries()) {
-    await expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
+    await expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', {
+      timeout: 60000,
+    })
     await expect(
       reader
         .frameLocator('iframe')
         .getByRole('heading', { name: `Illustrated section ${chapter}` }),
     ).toBeVisible()
     await expect(reader.frameLocator('iframe').locator('img')).toHaveCount(65)
-    await expect.poll(ownership).toEqual({ live: 65, created: (step + 1) * 65 })
+    await expect.poll(ownership, { timeout: 15000 }).toEqual(
+      [
+        { live: 130, created: 130 },
+        { live: 195, created: 195 },
+        { live: 130, created: 195 },
+        { live: 195, created: 260 },
+      ][step],
+    )
+    await expect(reader.locator('.epub-loading-cover')).toHaveCount(0)
     await expect(reader.getByRole('status', { name: 'Illustration notice' })).toHaveCount(0)
     if (step < 3)
       await reader
         .getByRole('button', { name: step < 2 ? 'Next chapter' : 'Previous chapter', exact: true })
         .click()
   }
+  expect(await page.evaluate(() => Reflect.get(window, 'chapterLoaderCount'))).toBe(0)
   await page.getByRole('button', { name: 'Close illustrated.epub', exact: true }).click()
   await expect.poll(async () => (await ownership()).live).toBe(0)
 })

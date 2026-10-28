@@ -48,7 +48,7 @@ function urls() {
   vi.stubGlobal('URL', { createObjectURL: create, revokeObjectURL: revoke })
   return { create, revoke }
 }
-it('loads only active-chapter illustrations, deduplicates CSS/HTML, releases and recreates on revisit', async () => {
+it('retains nearby chapter illustrations, deduplicates CSS/HTML and evicts outside the window', async () => {
   const { create, revoke } = urls()
   const publication = await preparePublication(book(), undefined, false, true)
   expect(create).not.toHaveBeenCalled()
@@ -56,12 +56,12 @@ it('loads only active-chapter illustrations, deduplicates CSS/HTML, releases and
     const markup = await publication.renderChapter(index)
     expect(markup).toContain('Readable chapter text.')
     // Chapter 1/2 additionally reference the first chapter image explicitly.
-    const expected = index === 0 ? 65 : 66
+    const expected = [65, 131, 132, 131][step]
     const active = create.mock.calls.length - revoke.mock.calls.length
     expect(active).toBe(expected)
-    expect(active).toBeLessThanOrEqual(66)
+    expect(active).toBeLessThanOrEqual(198)
     expect(publication.imageWarnings).toEqual([])
-    if (step) expect(revoke).toHaveBeenCalled()
+    if (step > 1) expect(revoke).toHaveBeenCalled()
     const calls = create.mock.calls.length
     expect(await publication.renderChapter(index)).toBe(markup)
     expect(create).toHaveBeenCalledTimes(calls)
@@ -158,4 +158,14 @@ it('reports unsupported drawing elements instead of silently publishing a partia
         'image/svg+xml',
       ),
     ).toThrow('unsupported drawing feature')
+})
+
+it('rejects geometry above the one-million-number budget', () => {
+  const d = 'M0 0 L' + '0 0 '.repeat(500001)
+  expect(() =>
+    verifyBookImage(
+      strToU8(`<svg xmlns="http://www.w3.org/2000/svg"><path d="${d}"/></svg>`),
+      'image/svg+xml',
+    ),
+  ).toThrow('geometry-work limit')
 })

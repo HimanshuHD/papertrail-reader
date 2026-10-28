@@ -100,15 +100,26 @@ Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted sou
 
 Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.
 
-## SVG fidelity and active-chapter illustration ownership (#282/#284)
+## SVG fidelity and rolling chapter resources (#282/#284)
 
-The runtime still validates archive/spine metadata and bounded text across the
-reading order, but formatting, CSS images and illustrations are prepared only for
-the chapter being serialized into the single active iframe. EPUB.js's awaited
-spine serialization hook replaces the metadata chapter with freshly rebuilt,
-validated XHTML before iframe loading. The default single-view manager removes
-the old view first. Its illustration URLs are then revoked; revisiting a chapter
-recreates them. Warm document tabs retain their active reader as before.
+The runtime validates archive/spine metadata and bounded text across the reading
+order. Formatting and illustration resources are prepared in a rolling window:
+current, previous and next chapter. The cache retains at most three prepared
+chapters under a shared 96 MiB budget counting serialized markup and image Blob
+bytes. Individual chapter limits remain independent. Speculative neighbors are
+skipped when the shared budget is exhausted; foreground preparation can reclaim
+unneeded neighbors. This is not a process/decoded-image/GPU RAM measurement.
+
+An awaited EPUB.js spine serialization hook supplies rebuilt XHTML before loading
+its iframe. The departing surface stays painted and inert until the replacement
+is ready, without moving its live iframe. Chapter navigation has no full-reader
+loader overlay; controls remain busy and an accessible status reports the change.
+Initial opening, mode changes and reading-position restoration retain their own
+loading states. Adjacent resources prepare in the background, with sequential SVG
+warm-up and yields between resources; raster bitmaps are not forcibly decoded in
+advance. Obsolete jobs are cancelled. Resources outside the new window are released
+after the departing view is removed. Revisiting a retained neighbor reuses its
+prepared markup and image URLs. Warm document-tab retention remains unchanged.
 
 Each active chapter admits up to 128 validated images, 32 MiB of image input and
 32 MiB of owned image Blob data. Missing/unsupported paths do not consume accepted
@@ -120,7 +131,7 @@ and the 8 MiB individual-image bound remain independent.
 
 SVG input now allows 4 MiB. Long valid path/points attributes are preserved; SVG
 presentation styles and classes are rebuilt with local-fragment-only resource
-references. Geometry is bounded across a resource (500,000 numbers, 100,000 path
+references. Geometry is bounded across a resource (1,000,000 numbers, 100,000 path
 commands, finite coordinate magnitudes at most 1e9). Source structure remains
 20,000 elements/depth 64; reference expansion is bounded to 100,000 estimated
 nodes with recursive references rejected. Existing image dimension/pixel limits
