@@ -7,7 +7,11 @@ for (const count of [844, 1024]) {
   test(`${count}-section EPUB navigates, retains one reader and restores after reconnect`, async ({
     page,
   }) => {
-    test.setTimeout(120000)
+    // This is functional acceptance, not a preparation-speed threshold. WebKit
+    // performs thousands of bounded Blob reads for these boundary-size books.
+    // Allow two full preparations; keep navigation and warm switches short.
+    const preparationTimeout = 120000
+    test.setTimeout(preparationTimeout * 2 + 30000)
     const files = [
       {
         name: 'large.epub',
@@ -22,9 +26,9 @@ for (const count of [844, 1024]) {
     await page.getByRole('button', { name: 'EPUB: large.epub', exact: true }).click()
     await page.getByRole('button', { name: 'Hide library', exact: true }).click()
     const reader = page.locator('.epub-reader:visible')
-    const ready = () =>
-      expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', { timeout: 60000 })
-    await ready()
+    const ready = (timeout = 5000) =>
+      expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', { timeout })
+    await test.step('Prepare and open the large EPUB', () => ready(preparationTimeout))
     await reader.getByRole('button', { name: 'Contents', exact: true }).click()
     const contents = reader.getByRole('navigation', { name: 'EPUB contents', exact: true })
     await expect(contents.getByRole('button')).toHaveCount(count)
@@ -53,7 +57,7 @@ for (const count of [844, 1024]) {
       'false',
     )
     await page.getByRole('tab', { name: /EPUB: large.epub/ }).click()
-    await ready()
+    await test.step('Activate the retained EPUB reader', () => ready())
     await expect(
       reader
         .frameLocator('iframe')
@@ -66,7 +70,8 @@ for (const count of [844, 1024]) {
     const hide = page.getByRole('button', { name: 'Hide library', exact: true })
     if (await hide.isVisible()) await hide.click()
     await page.getByRole('tab', { name: /EPUB: large.epub/ }).click()
-    await ready()
+    await test.step('Prepare the reconnected EPUB and restore its chapter', () =>
+      ready(preparationTimeout))
     await expect(
       reader
         .frameLocator('iframe')
