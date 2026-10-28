@@ -209,7 +209,8 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
   await toggle.click()
   await expect(frame.locator('img')).toHaveCount(0)
   await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
-  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  // Cross-mode restoration keeps a clipped text anchor visible at the top.
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(Math.max(0, anchor.offset), 0)
   await next.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await toggle.click()
@@ -428,7 +429,7 @@ test('EPUB retains a character inside a long paragraph through typography, panel
   await expect(
     reader.frameLocator('iframe').getByRole('heading', { name: 'Long chapter' }),
   ).toBeVisible()
-  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(Math.max(0, anchor.offset), 0)
   await noOverflow(page)
 })
 
