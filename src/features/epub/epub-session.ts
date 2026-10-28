@@ -1,4 +1,3 @@
-import { keepChapterPainted } from './chapter-transition'
 import { applyBookViewport } from './book-viewport'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
@@ -95,7 +94,6 @@ async function createEpubSession(
   let destroyed = false
   let disposed = false
   let opening = true
-  let restoreChapterPainting: (() => void) | undefined
   const pendingDisplays = new Set<() => void>()
   function displayChapter(href: string): Promise<void> {
     const current = rendition
@@ -295,6 +293,7 @@ async function createEpubSession(
     const saved = lastLocation ?? currentLocation()
     width = nextWidth
     height = nextHeight
+    root.style.setProperty('--papertrail-viewport-height', `${height}px`)
     const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
     try {
       for (const frame of root.querySelectorAll('iframe')) {
@@ -324,8 +323,6 @@ async function createEpubSession(
     disposed = true
     restoreResize?.()
     restoreResize = null
-    restoreChapterPainting?.()
-    restoreChapterPainting = undefined
     try {
       book.destroy()
     } finally {
@@ -370,6 +367,7 @@ async function createEpubSession(
     opening = false
     cleanup()
     signal.throwIfAborted()
+    root.style.setProperty('--papertrail-viewport-height', `${root.clientHeight || 1}px`)
     rendition = book.renderTo(root, {
       manager: managedEpubViewManager(
         engine.Rendition.prototype.requireManager('default') as EpubManagerConstructor,
@@ -388,10 +386,13 @@ async function createEpubSession(
       .list?.()
       .find((hook: { name?: string }) => hook.name === 'bound adjustImages')
     if (imageAdjustment) rendition.hooks.content.deregister(imageAdjustment)
-    restoreChapterPainting = keepChapterPainted(rendition)
     function applyTheme(dark: boolean) {
       rendition?.themes.default({
-        html: { 'overflow-x': 'hidden !important' },
+        html: {
+          'overflow-x': 'hidden !important',
+          'overflow-y': 'hidden !important',
+          height: 'auto !important',
+        },
         ':where(body)': {
           'font-family': 'Georgia, serif',
           'font-size': '18px',
@@ -401,7 +402,13 @@ async function createEpubSession(
           margin: '0',
           padding: '24px',
         },
-        body: { 'box-sizing': 'border-box !important', 'overflow-x': 'hidden !important' },
+        body: {
+          'box-sizing': 'border-box !important',
+          'overflow-x': 'clip !important',
+          'overflow-y': 'visible !important',
+          height: 'auto !important',
+          'min-height': 'calc(100 * var(--papertrail-reader-height)) !important',
+        },
         ':where(*)': {
           'max-width': '100%',
           'min-width': '0',

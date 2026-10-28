@@ -111,9 +111,11 @@ skipped when the shared budget is exhausted; foreground preparation can reclaim
 unneeded neighbors. This is not a process/decoded-image/GPU RAM measurement.
 
 An awaited EPUB.js spine serialization hook supplies rebuilt XHTML before loading
-its iframe. The departing surface stays painted and inert until the replacement
-is ready, without moving its live iframe. Chapter navigation has no full-reader
-loader overlay; controls remain busy and an accessible status reports the change.
+its iframe. Chapter navigation keeps the full-reader loading cover visible until
+the replacement chapter is ready; controls remain busy. The rolling resource cache
+reduces preparation work without exposing incomplete chapter painting. The white
+page fills the reading viewport even for short chapters. Iframe/body dimensions
+avoid a second vertical scrollbar; the outer reading container owns scrolling.
 Initial opening, mode changes and reading-position restoration retain their own
 loading states. Adjacent resources prepare in the background, with sequential SVG
 warm-up and yields between resources; raster bitmaps are not forcibly decoded in

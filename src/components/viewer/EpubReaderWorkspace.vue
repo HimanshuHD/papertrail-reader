@@ -483,7 +483,7 @@ watch(
       pendingHighlight.value = null
       clearFrameListeners()
     }
-    if (busy && !reader.chapterTransition.value) {
+    if (busy) {
       loaderRegistrations?.set('ownedTimers', 1)
       loaderTimer = setTimeout(() => {
         loaderRegistrations?.set('ownedTimers', 0)
@@ -1032,19 +1032,12 @@ watch(
         <div
           ref="host"
           class="epub-host"
-          :class="{ 'epub-host-loading': loading && !reader.chapterTransition.value }"
+          :class="{ 'epub-host-loading': loading }"
           :aria-busy="loading"
           :inert="loading || undefined"
           @load.capture="bindFrameListeners"
         />
-        <p v-if="loading && reader.chapterTransition.value" role="status" class="sr-only">
-          Changing chapter…
-        </p>
-        <div
-          v-if="loading && !reader.chapterTransition.value"
-          class="epub-loading-cover"
-          aria-busy="true"
-        >
+        <div v-if="loading" class="epub-loading-cover" aria-busy="true">
           <LoadingState
             v-if="restoringSession || showLoader"
             :label="
@@ -1442,6 +1435,16 @@ watch(
   position: absolute;
   inset: 0 40px;
   overflow: hidden;
+}
+.epub-host {
+  background: #ffffff;
+}
+:global(:root[data-theme='dark']) .epub-host {
+  background: #111b22;
+}
+.epub-host :deep(.epub-view),
+.epub-host :deep(iframe) {
+  min-height: var(--papertrail-viewport-height, 100%);
 }
 .epub-host :deep(.epub-container) {
   max-width: 100%;

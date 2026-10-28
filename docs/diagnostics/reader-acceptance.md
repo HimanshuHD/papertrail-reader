@@ -12,12 +12,13 @@ with a path over 1 MiB: rendered pixel colour, complete drawing data, a stable
 240px author maximum width, centering, resizing, approved SVG wrapper rendering
 and revisiting chapters are checked. The 195-image book verifies a rolling previous/current/next window, bounded
 retention/eviction and full image-URL release on close. A DOM observer verifies
-that chapter navigation never inserts the full-reader loading overlay. URL
+that chapter navigation inserts a loading cover and removes it when ready.
+Short-page coverage checks full-height page surfaces and outer-only scrolling. URL
 counts are ownership checks, not process/GPU-memory measurements.
 
 Unit coverage checks 128/129 chapter boundaries, repeated CSS/HTML resources,
 missing resources, geometry above the former limit, recursive/exponential
-references, shared-cache budget handling, stale preloads, painted transitions and disposal
+references, shared-cache budget handling, stale preloads and disposal
 during a pending read. Run installed Firefox/WebKit as well as Chromium, then
 preview representative illustrated books. Unsupported SVG features may still
 require explicit fallback; embedded-font support remains #286.

@@ -2,7 +2,9 @@ import { expect, test } from '@playwright/test'
 import { createImageHeavyEpubFixture } from '../fixtures/epub'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
-test('195-image book rotates a three-chapter window without a chapter loader', async ({ page }) => {
+test('195-image book rotates a three-chapter window with a chapter loading cover', async ({
+  page,
+}) => {
   test.setTimeout(120000)
   await page.addInitScript(() => {
     const create = URL.createObjectURL.bind(URL),
@@ -75,7 +77,9 @@ test('195-image book rotates a three-chapter window without a chapter loader', a
         .getByRole('button', { name: step < 2 ? 'Next chapter' : 'Previous chapter', exact: true })
         .click()
   }
-  expect(await page.evaluate(() => Reflect.get(window, 'chapterLoaderCount'))).toBe(0)
+  expect(
+    await page.evaluate(() => Reflect.get(window, 'chapterLoaderCount')),
+  ).toBeGreaterThanOrEqual(3)
   await page.getByRole('button', { name: 'Close illustrated.epub', exact: true }).click()
   await expect.poll(async () => (await ownership()).live).toBe(0)
 })

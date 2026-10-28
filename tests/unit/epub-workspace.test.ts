@@ -345,7 +345,7 @@ it('dismisses utility surfaces with Escape and outside pointers, restores focus 
   wrapper.unmount()
 })
 
-it('keeps Contents and the current surface stable without an overlay during chapter navigation', async () => {
+it('keeps Contents stable and covers chapter navigation until the replacement is ready', async () => {
   let finish!: () => void
   const session: EpubSession = {
     title: 'Stable book',
@@ -394,12 +394,12 @@ it('keeps Contents and the current surface stable without an overlay during chap
       .trigger('click')
     await flushPromises()
     expect(wrapper.findAll('nav button').map((button) => button.text())).toEqual(['One', 'Two'])
-    expect(wrapper.find('.epub-loading-cover').exists()).toBe(false)
-    expect(wrapper.get('.epub-host').classes()).not.toContain('epub-host-loading')
+    expect(wrapper.find('.epub-loading-cover').exists()).toBe(true)
+    expect(wrapper.get('.epub-host').classes()).toContain('epub-host-loading')
     expect(wrapper.find('.loading-card').exists()).toBe(false)
     expect(wrapper.find('header + p[role="status"]').exists()).toBe(false)
     await vi.advanceTimersByTimeAsync(150)
-    expect(wrapper.find('.loading-card').exists()).toBe(false)
+    expect(wrapper.find('.loading-card').exists()).toBe(true)
     finish()
     await flushPromises()
     expect(wrapper.find('.epub-loading-cover').exists()).toBe(false)

@@ -9,7 +9,6 @@ import {
 export function useEpubReader() {
   const session = shallowRef<EpubSession | null>(null)
   const busy = ref(false)
-  const chapterTransition = ref(false)
   const error = ref('')
   const chapter = ref(0)
   const contentsEntry = ref<string | null>(null)
@@ -23,7 +22,6 @@ export function useEpubReader() {
     session.value?.destroy()
     session.value = null
     busy.value = false
-    chapterTransition.value = false
     activeFile = null
   }
   const openings = new Set<Promise<void>>()
@@ -70,7 +68,6 @@ export function useEpubReader() {
     const current = session.value
     const owner = operation
     if (!current || busy.value || !current.chapters[index]) return
-    chapterTransition.value = true
     busy.value = true
     await nextTick()
     if (owner !== operation) return
@@ -86,10 +83,7 @@ export function useEpubReader() {
       if (owner === operation)
         error.value = 'This chapter could not be displayed. Try opening the document again.'
     } finally {
-      if (owner === operation) {
-        busy.value = false
-        chapterTransition.value = false
-      }
+      if (owner === operation) busy.value = false
     }
   }
   async function reopen(file: File, target: HTMLElement, dark: boolean, options: EpubOpenOptions) {
@@ -111,7 +105,6 @@ export function useEpubReader() {
     const current = session.value
     const owner = operation
     if (!current?.restore || busy.value) return false
-    chapterTransition.value = true
     busy.value = true
     await nextTick()
     if (owner !== operation) return false
@@ -128,17 +121,13 @@ export function useEpubReader() {
       if (owner === operation) error.value = 'This reading location could not be restored.'
       return false
     } finally {
-      if (owner === operation) {
-        busy.value = false
-        chapterTransition.value = false
-      }
+      if (owner === operation) busy.value = false
     }
   }
   onBeforeUnmount(close)
   return {
     session,
     busy,
-    chapterTransition,
     error,
     chapter,
     contentsEntry,
