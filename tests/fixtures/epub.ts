@@ -91,3 +91,25 @@ export function createContentsEpubFixture(kind: 'nav' | 'ncx' = 'nav') {
     },
   })
 }
+
+/** Many small chapters exercise metadata limits without oversized image/text payloads. */
+export function createLargeSpineEpubFixture(count = 844, navigation = true) {
+  const chapters = Array.from({ length: count }, (_, index) => ({
+    id: `chapter-${index}`,
+    href: `chapters/${index}.xhtml`,
+    label: `Section ${index + 1}`,
+  }))
+  const files: Record<string, Uint8Array> = {}
+  for (const chapter of chapters)
+    files[`OPS/${chapter.href}`] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${chapter.label}</title></head><body><h1>${chapter.label}</h1><p id="passage">Reading passage in ${chapter.label}.</p></body></html>`,
+    )
+  if (navigation)
+    files['OPS/toc.xhtml'] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol>${chapters.map((c) => `<li><a href="${c.href}#passage">${c.label}</a></li>`).join('')}</ol></nav></body></html>`,
+    )
+  return createEpubFixture({
+    packageBody: `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">large-spine-fixture</dc:identifier><dc:title>Large spine test book</dc:title><dc:language>en</dc:language></metadata><manifest>${chapters.map((c) => `<item id="${c.id}" href="${c.href}" media-type="application/xhtml+xml"/>`).join('')}${navigation ? '<item id="nav" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>' : ''}</manifest><spine>${chapters.map((c) => `<itemref idref="${c.id}"/>`).join('')}</spine></package>`,
+    files,
+  })
+}
