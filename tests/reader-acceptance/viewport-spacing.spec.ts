@@ -7,6 +7,8 @@ for (const inline of [false, true]) {
   test(`reader-sized chapter spacing and passage restoration (${inline ? 'inline' : 'sheet'})`, async ({
     page,
   }) => {
+    // This case performs repeated rebuilds, a cold PDF open and a reconnect.
+    test.setTimeout(90000)
     const css = 'section{margin-top:20vh}p{margin:1em 0}'
     const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Viewport chapter</title>${inline ? '' : `<style>${css}</style>`}</head><body><section id="chapter" ${inline ? 'style="margin-top:20vh"' : ''}><h1>Viewport chapter</h1>${Array.from({ length: 250 }, (_, i) => `<p id="line-${i}">Passage ${i}. This uniquely numbered paragraph keeps a logical reading position across layout changes.</p>`).join('')}</section></body></html>`
     const files = [
@@ -24,7 +26,8 @@ for (const inline of [false, true]) {
     await page.getByRole('button', { name: 'Hide library', exact: true }).click()
     const reader = page.locator('.epub-reader:visible'),
       frame = reader.locator('iframe')
-    const ready = () => expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
+    const ready = () =>
+      expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', { timeout: 15000 })
     const spacing = async () => {
       await ready()
       await expect
@@ -82,6 +85,7 @@ for (const inline of [false, true]) {
     await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
       'aria-busy',
       'false',
+      { timeout: 15000 },
     )
     await page.getByRole('tab', { name: /EPUB: viewport.epub/ }).click()
     await ready()

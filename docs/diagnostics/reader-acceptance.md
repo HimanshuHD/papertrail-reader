@@ -23,6 +23,15 @@ during a pending read. Run installed Firefox/WebKit as well as Chromium, then
 preview representative illustrated books. Unsupported SVG features may still
 require explicit fallback; embedded-font support remains #286.
 
+## Document-readiness waits
+
+The oversized-SVG recovery and viewport-spacing cases use bounded 15-second
+readiness assertions for document opening/rebuilds, within a 90-second case limit.
+They still assert ready state, readable content, mode changes, chapter navigation,
+warm-tab behavior and position restoration. These waits are functional acceptance
+budgets, not performance targets. There are no fixed sleeps or retries; a reader
+that never becomes ready still fails. Other content assertions keep their defaults.
+
 ## Run
 
 Use Node 24, installed dependencies and the desired Playwright browsers/OS

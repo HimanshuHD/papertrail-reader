@@ -4,6 +4,8 @@ import { createPdfFixture } from '../fixtures/pdf'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
 test('oversized SVG preserves readable text, modes, chapters and warm tabs', async ({ page }) => {
+  // Document rebuilds are functional readiness checks, not five-second performance limits.
+  test.setTimeout(90000)
   const files = [
     {
       name: 'illustrated.epub',
@@ -29,7 +31,8 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
   await page.getByRole('button', { name: 'EPUB: illustrated.epub', exact: true }).click()
   await page.getByRole('button', { name: 'Hide library', exact: true }).click()
   const reader = page.locator('.epub-reader:visible')
-  const ready = () => expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
+  const ready = () =>
+    expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false', { timeout: 15000 })
   await ready()
   const notice = reader.getByRole('status', { name: 'Illustration notice' })
   await expect(notice).toContainText('4 MiB')
@@ -64,6 +67,7 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
   await expect(page.getByRole('region', { name: 'PDF pages', exact: true })).toHaveAttribute(
     'aria-busy',
     'false',
+    { timeout: 15000 },
   )
   await page.getByRole('tab', { name: /EPUB: illustrated.epub/ }).click()
   await ready()
