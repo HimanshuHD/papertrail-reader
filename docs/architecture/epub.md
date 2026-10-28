@@ -1,8 +1,17 @@
-# EPUB implementation — #12
+# EPUB architecture
+
+Publication metadata supports at most 1,024 linear reading-order sections, with
+2,048 optional Contents entries. Empty reading orders and over-limit counts have
+distinct feedback. Archive, decompression, text/image/CSS byte and structural
+budgets remain independent. A book passing the spine bound can still encounter a
+separate resource limit. Large-spine generated acceptance and boundary checks are
+in the manual reader suite and publication tests (#280).
+
+## EPUB implementation — #12
 
 ## Contents and session typography — #131
 
-`navigation.ts` extracts nested EPUB 3 XHTML toc and EPUB 2 NCX labels/targets only, after optional local resources are size/CRC/XML verified. Navigation has a 1 MiB resource, 8192 elements, 512 entries and depth 16 budget. Invalid or unavailable nav falls through to declared NCX, then verified linear-spine chapter order. Malformed optional navigation does not prevent reading; cancellation remains observable. Root namespaces and toc ownership are checked; no original navigation markup or URLs are inserted into the UI.
+`navigation.ts` extracts nested EPUB 3 XHTML toc and EPUB 2 NCX labels/targets only, after optional local resources are size/CRC/XML verified. Navigation has a 1 MiB resource, 8192 elements, 2,048 entries and depth 16 budget. Invalid or unavailable nav falls through to declared NCX, then verified linear-spine chapter order. Malformed optional navigation does not prevent reading; cancellation remains observable. Root namespaces and toc ownership are checked; no original navigation markup or URLs are inserted into the UI.
 
 Publication preparation resolves targets only to verified linear chapters and unique IDs that survive reconstruction. IDs remain available in both rendering modes; engine/application reserved IDs and duplicates are excluded from destinations. Fragment navigation validates the chapter's target set, uses DOM `getElementById` rather than interpolated selectors/engine URLs, and scrolls the owned container. Same-chapter navigation retains its mounted iframe. The Contents hierarchy uses native lists/buttons, focus indication and an active navigation/current-chapter marker; live CFI/section tracking remains #132.
 

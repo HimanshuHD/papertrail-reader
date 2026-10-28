@@ -147,3 +147,21 @@ spacing. Verify the opening margin is proportional to the reader, then scroll to
 a recognizable passage and toggle modes, resize, switch tabs and reload/reconnect.
 Keep raw documents, names and browser reports private. Installed Firefox/WebKit
 validation remains required where local browser prerequisites are unavailable.
+
+## Large EPUB reading order (#280)
+
+The publication metadata limit is 1,024 linear reading-order sections; optional
+Contents navigation allows 2,048 entries within the existing structure/depth and
+XML byte limits. Empty reading orders and over-limit books have distinct messages;
+over-limit feedback includes the observed count and supported limit.
+
+These metadata limits do not increase archive, decompression, chapter input/text,
+image, SVG or CSS budgets. An illustrated book may encounter a separate image
+limit after its spine is accepted. Preparation still validates/rebuilds chapters
+sequentially into a bounded archive; it does not render every chapter. Existing
+abort checks and per-resource task yields remain in place.
+
+Generated large-spine acceptance navigates directly to the final section through
+Contents, checks previous-chapter navigation and a single rendered iframe, switches
+to a PDF and back, and reloads/reconnects to the saved section. Run it through the
+manual reader acceptance suite. No automatic Visual QA or profiling is added.

@@ -1,3 +1,4 @@
+import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { diagnostics } from '../diagnostics/recorder'
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
@@ -337,8 +338,11 @@ export async function preparePublication(
       items.set(id, item)
     }
     const refs = [...spine.children].filter((item) => item.getAttribute('linear') !== 'no')
-    if (!refs.length || refs.length > 512)
-      throw new EpubArchiveError('EPUB spine size is unsupported.')
+    if (!refs.length) throw new EpubArchiveError('EPUB has no linear reading-order sections.')
+    if (refs.length > EPUB_PUBLICATION_LIMITS.spineEntries)
+      throw new EpubArchiveError(
+        `EPUB has ${refs.length} linear reading-order sections; the supported limit is ${EPUB_PUBLICATION_LIMITS.spineEntries}. Choose a book with fewer sections.`,
+      )
     const manifestPaths = new Map<string, string>()
     for (const item of items.values()) {
       try {

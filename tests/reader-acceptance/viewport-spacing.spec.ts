@@ -93,6 +93,11 @@ for (const inline of [false, true]) {
     await page.locator('input[accept*=".pdf"]').setInputFiles(files)
     const hide = page.getByRole('button', { name: 'Hide library', exact: true })
     if (await hide.isVisible()) await hide.click()
+    // Reconnecting a batch may activate its PDF. Select the EPUB before checking
+    // its saved passage; this case does not require reconnect to select a tab.
+    const restoredTab = page.getByRole('tab', { name: /EPUB: viewport.epub/ })
+    await restoredTab.click()
+    await expect(restoredTab).toHaveAttribute('aria-selected', 'true')
     await ready()
     await expect(passage).toBeInViewport()
     await spacing()
