@@ -109,3 +109,9 @@ to a later chapter, enable then disable text-only view, resize, switch to a PDF
 and back, reload and reconnect the same files. Verify the formatted mode and
 chapter survive. Repeat leaving text-only enabled. Also verify the PDF's page and
 zoom survive. Keep document names/content and raw browser evidence private.
+
+Mode changes also retain a partially visible reading passage when author styling
+uses much taller lines than text-only mode. The generated long-chapter regression
+checks the same source text in both directions after switching. A cross-mode text
+anchor with an old negative line offset is aligned to the viewport top instead of
+being hidden above it; same-mode pixel offsets and end-of-chapter behavior remain.

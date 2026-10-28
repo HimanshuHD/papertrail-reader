@@ -92,7 +92,7 @@ it('uses stable source text when mode CFIs differ, excluding image alternate tex
   }
   expect(restoreLocation(s.root, saved, 'text', wrong)).toBe(true)
   expect(wrong.range).not.toHaveBeenCalled()
-  expect(s.container.scrollTop).toBe(101)
+  expect(s.container.scrollTop).toBe(96)
 })
 it('rejects bad locations and wrong text anchors without moving scroll', () => {
   const s = scene()
@@ -157,4 +157,16 @@ it('uses RTL caret coordinates and rejects a CFI for a different chapter base', 
     ),
   ).toBe(true)
   expect(bridge.range).not.toHaveBeenCalled()
+})
+
+it('keeps the anchored passage visible when a mode change shrinks a partially visible line', () => {
+  const s = scene('x'.repeat(1000))
+  s.reflow(10, 80)
+  s.container.scrollTop = 55
+  const saved = captureLocation(s.root, 0, 'formatted')!
+  expect(saved.offset).toBe(-55)
+  s.reflow(20, 20)
+  expect(restoreLocation(s.root, saved, 'text')).toBe(true)
+  expect(s.container.scrollTop).toBe(0)
+  expect(captureLocation(s.root, 0, 'text')?.character).toBe(saved.character)
 })
