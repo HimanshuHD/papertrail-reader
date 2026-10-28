@@ -1,6 +1,7 @@
 declare module 'css-tree' {
   export interface CssNode {
     type: string
+    unit?: string
     name?: string
     property?: string
     value?: CssNode | string
