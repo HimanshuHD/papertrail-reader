@@ -1,3 +1,4 @@
+import { bindBookViewportLengths } from './book-viewport'
 import { parse, generate, walk, type CssNode } from 'css-tree'
 
 const properties = new Set(
@@ -50,7 +51,10 @@ export function sanitizeBookCSS(
           else value.value = replacement
         }
       })
-      if (safe) output.push(generate(node))
+      if (safe) {
+        bindBookViewportLengths(node.value)
+        output.push(generate(node))
+      }
     })
     return output.join(';')
   }

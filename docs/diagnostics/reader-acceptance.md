@@ -115,3 +115,25 @@ uses much taller lines than text-only mode. The generated long-chapter regressio
 checks the same source text in both directions after switching. A cross-mode text
 anchor with an old negative line offset is aligned to the viewport top instead of
 being hidden above it; same-mode pixel offsets and end-of-chapter behavior remain.
+
+## Reader viewport spacing (#279)
+
+Approved author CSS declaration lengths using `vh`, `vw`, `vmin`, `vmax` and their
+small/large/dynamic variants are bound to host-owned reader dimensions. They no
+longer use the expanded chapter iframe as their viewport. Ordinary author margins,
+units and formatting remain intact. This conversion does not redefine CSS media
+query evaluation; it applies to approved declaration values, including inline
+styles and declarations inside media rules.
+
+The manual suite covers a generated long chapter with `20vh` leading space in
+both stylesheet and inline styles. It checks the computed margin against 20% of
+the visible reader height, resizing, mode switches from blank space and a reading
+passage, and reload/reconnect. Existing mode-persistence cases remain separate.
+The passage check uses an exact character offset within the stable source node so
+repeated wording cannot select a different occurrence.
+
+For preview, repeat with a real EPUB containing author viewport-based chapter
+spacing. Verify the opening margin is proportional to the reader, then scroll to
+a recognizable passage and toggle modes, resize, switch tabs and reload/reconnect.
+Keep raw documents, names and browser reports private. Installed Firefox/WebKit
+validation remains required where local browser prerequisites are unavailable.

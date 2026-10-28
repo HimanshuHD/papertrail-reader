@@ -1,3 +1,4 @@
+import { applyBookViewport } from './book-viewport'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
@@ -253,6 +254,9 @@ async function createEpubSession(
     height = nextHeight
     const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
     try {
+      for (const frame of root.querySelectorAll('iframe')) {
+        if (frame.contentDocument) applyBookViewport(frame.contentDocument, width, height)
+      }
       rendition.resize(width, height)
       settled?.()
     } catch (error) {
@@ -362,6 +366,7 @@ async function createEpubSession(
     const defaultSizes = new WeakMap<Document, number>()
     rendition.hooks.content.register((contents: Contents) => {
       const doc = contents.document
+      applyBookViewport(doc, root.clientWidth || 1, root.clientHeight || 1)
       const sample = doc.querySelector('p,li') ?? doc.body
       const size =
         sample && doc.defaultView

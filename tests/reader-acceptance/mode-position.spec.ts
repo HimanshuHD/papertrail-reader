@@ -37,6 +37,19 @@ test('mode changes retain the visible passage within a long styled chapter', asy
       c = frame.closest('.epub-container')!,
       f = frame.getBoundingClientRect(),
       v = c.getBoundingClientRect()
+    const anchorAt = (node: Text, offset: number) => {
+      const parent = node.parentElement!.closest('[data-reader-node]')!
+      const texts = d.createTreeWalker(parent, NodeFilter.SHOW_TEXT)
+      let previous: Node | null
+      let character = offset
+      while ((previous = texts.nextNode()) && previous !== node)
+        character += previous.textContent!.length
+      return {
+        text: node.data.slice(offset, offset + 24),
+        parent: parent.getAttribute('data-reader-node')!,
+        character,
+      }
+    }
     const caret = d.caretRangeFromPoint?.(32, v.top - f.top + 8)
     if (caret?.startContainer.nodeType === Node.TEXT_NODE) {
       const node = caret.startContainer as Text
@@ -45,12 +58,7 @@ test('mode changes retain the visible passage within a long styled chapter', asy
       range.setEnd(node, Math.min(node.length, caret.startOffset + 1))
       const rect = range.getBoundingClientRect()
       if (rect.bottom + f.top > v.top && rect.top + f.top < v.bottom)
-        return {
-          text: node.data.slice(caret.startOffset, caret.startOffset + 24),
-          parent: node
-            .parentElement!.closest('[data-reader-node]')!
-            .getAttribute('data-reader-node')!,
-        }
+        return anchorAt(node, caret.startOffset)
     }
     const walker = d.createTreeWalker(d.body, NodeFilter.SHOW_TEXT)
     let candidate: Node | null
@@ -70,12 +78,7 @@ test('mode changes retain the visible passage within a long styled chapter', asy
         if (range.getBoundingClientRect().bottom + f.top <= v.top) low = mid + 1
         else high = mid
       }
-      return {
-        text: node.data.slice(low, low + 24),
-        parent: node
-          .parentElement!.closest('[data-reader-node]')!
-          .getAttribute('data-reader-node')!,
-      }
+      return anchorAt(node, low)
     }
     throw new Error('No visible text anchor in generated chapter')
   })
@@ -93,9 +96,15 @@ test('mode changes retain the visible passage within a long styled chapter', asy
             p = d.querySelector(`[data-reader-node="${a.parent}"]`)!
           const w = d.createTreeWalker(p, NodeFilter.SHOW_TEXT)
           let n: Node | null
+          let remaining = a.character
           while ((n = w.nextNode())) {
-            const i = n.textContent!.indexOf(a.text)
-            if (i < 0) continue
+            const length = n.textContent!.length
+            if (remaining >= length) {
+              remaining -= length
+              continue
+            }
+            const i = remaining
+            if (!n.textContent!.slice(i).startsWith(a.text)) return false
             const r = d.createRange()
             r.setStart(n, i)
             r.setEnd(n, i + 1)
