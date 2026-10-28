@@ -111,5 +111,5 @@ export function useWorkspaceContinuity(
     globalThis.removeEventListener('pagehide', flush)
     document.removeEventListener('visibilitychange', hide)
   })
-  return { snapshot, notice, access, restore, resume, remember, patch, forget }
+  return { snapshot, notice, access, restore, resume, remember, patch, flush, forget }
 }

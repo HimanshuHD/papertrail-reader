@@ -24,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   comparisonChange: [ids: [string, string] | null]
   status: [message: string]
-  snapshotChange: []
+  snapshotChange: [immediate?: boolean]
   recover: []
   change: [tabs: DocumentSession[], selectedId: string | null]
   activeChange: [document: DiscoveredDocument | null, fingerprint: string | null]
@@ -285,7 +285,7 @@ defineExpose({
           :initial-state="owner.session.state"
           :active="owner.session.id === selected"
           @focus-pane="visible.includes(owner.session.id) && focusPane(owner.session.id)"
-          @reading-change="emit('snapshotChange')"
+          @reading-change="emit('snapshotChange', $event)"
           @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
           @status="current(owner) && emit('status', $event)"
           @identity="identity(owner, $event)"

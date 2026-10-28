@@ -243,8 +243,12 @@ export function restoreLocation(
       (rect ?? element.getBoundingClientRect()).top +
       iframe.getBoundingClientRect().top -
       container.getBoundingClientRect().top -
-      (location.kind === 'element' && location.mode !== mode
-        ? Math.max(location.offset, -Math.max(0, element.getBoundingClientRect().height - 1))
+      (location.mode !== mode
+        ? location.kind === 'text'
+          ? // An old line can be taller than the new one. Its negative offset
+            // would hide the very text anchor we are restoring above the viewport.
+            Math.max(0, location.offset)
+          : Math.max(location.offset, -Math.max(0, element.getBoundingClientRect().height - 1))
         : location.offset)
   container.scrollTop = Math.max(0, Math.min(maximum, top))
   container.scrollLeft = 0

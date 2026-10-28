@@ -40,7 +40,7 @@ type DiscoveryPhase = 'idle' | 'indexing' | 'ready' | 'cancelled' | 'error'
 const workspace = useWorkspaceContinuity(undefined, saveTabs)
 let tabsHydrated = false
 let lastTabs = ''
-function saveTabs() {
+function saveTabs(immediate = false) {
   if (!tabsHydrated || !workspace.snapshot.value || !readerSessions.value) return
   try {
     const saved = readerSessions.value.snapshot()
@@ -49,6 +49,8 @@ function saveTabs() {
       lastTabs = serialized
       workspace.patch({ tabs: saved })
     }
+    // A ready-phase snapshot may already match while its write is still queued.
+    if (immediate) workspace.flush()
   } catch {
     workspace.notice.value =
       'Tab state could not be saved. Close some tabs or use Forget library to reset workspace storage.'
