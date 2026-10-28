@@ -100,17 +100,44 @@ Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted sou
 
 Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.
 
-## Unsupported SVG illustrations (#282)
+## SVG fidelity and active-chapter illustration ownership (#282/#284)
 
-The 1 MiB SVG input bound, dimension/pixel limits and structure/nesting limits
-remain enforced. An SVG exceeding these limits is omitted from the rebuilt book;
-oversized inputs are not read or parsed. Chapter text and alternative text remain
-available. The reader shows a bounded, deduplicated notice distinguishing size,
-dimensions, complexity and malformed/unsupported SVG data. Notices contain no
-resource paths or document content. Approved SVGs still pass through reconstruction
-that removes active and external resources.
+The runtime still validates archive/spine metadata and bounded text across the
+reading order, but formatting, CSS images and illustrations are prepared only for
+the chapter being serialized into the single active iframe. EPUB.js's awaited
+spine serialization hook replaces the metadata chapter with freshly rebuilt,
+validated XHTML before iframe loading. The default single-view manager removes
+the old view first. Its illustration URLs are then revoked; revisiting a chapter
+recreates them. Warm document tabs retain their active reader as before.
 
-The formatted-opening error surface also offers an explicit text-only retry. This
-is recovery, not automatic acceptance of an invalid archive. Archive validation, CRC failures in resources that are read,
-cancellation, raster validation, the image-count budget and total-image byte budget
-retain their existing behavior. Book-wide image-count compatibility is #284.
+Each active chapter admits up to 128 validated images, 32 MiB of image input and
+32 MiB of owned image Blob data. Missing/unsupported paths do not consume accepted
+image slots; repeated CSS/HTML references are deduplicated. Validation attempts
+are separately bounded to 256 resources and 32 MiB, including rejected inputs. Other images remain
+readable placeholders with a bounded notice. These are resource/byte bounds, not
+claims about actual renderer, decoded-image, process or GPU memory. Archive limits
+and the 8 MiB individual-image bound remain independent.
+
+SVG input now allows 4 MiB. Long valid path/points attributes are preserved; SVG
+presentation styles and classes are rebuilt with local-fragment-only resource
+references. Geometry is bounded across a resource (500,000 numbers, 100,000 path
+commands, finite coordinate magnitudes at most 1e9). Source structure remains
+20,000 elements/depth 64; reference expansion is bounded to 100,000 estimated
+nodes with recursive references rejected. Existing image dimension/pixel limits
+remain. Unsupported drawing elements (including scripts/foreign content) cause explicit
+illustration omission rather than silent partial reconstruction. Remote requests
+remain excluded.
+
+Simple SVG image wrappers are rebuilt as application-owned SVG/image elements
+using only approved layout attributes and owned Blob references. Source wrapper
+nodes are never inserted. Author classes, sanitized inline layout, viewBox and
+aspect ratio survive. Low-specificity responsive rules replace the engine's
+paginated image adjustment, preserving narrower author maximum widths and
+centering. Arbitrary inline drawing SVG and every possible SVG feature are not
+promised by this policy.
+
+Unsupported images provide alternative text and an accessible notice. A formatted
+opening failure offers explicit text-only retry. CRC/read errors, cancellation and
+unexpected exceptions are not swallowed. Disposal clears cached chapter markup,
+styles and URL ownership, including pending preparation. Embedded fonts remain
+separate work in #286; font loading is not enabled by these changes.

@@ -113,3 +113,48 @@ export function createLargeSpineEpubFixture(count = 844, navigation = true) {
     files,
   })
 }
+
+/** Detailed vector artwork with a legitimate path larger than the former 64 KiB attribute cap. */
+export function createSvgFidelityEpubFixture() {
+  const d = 'M10 10 L310 10 310 190 10 190 10 10 ' + '10 10 '.repeat(190000) + 'Z'
+  const styles =
+    '<style>.picture{display:block;width:100%;max-width:240px;margin-left:auto;margin-right:auto}h1{text-align:center;font-variant:small-caps}</style>'
+  return createEpubFixture({
+    manifest: '<item id="art" href="art.svg" media-type="image/svg+xml"/>',
+    chapter: `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Vector chapter</title>${styles}</head><body><h1>Vector chapter</h1><img class="picture" src="art.svg" alt="Complete vector illustration"/><p>Text below the illustration.</p></body></html>`,
+    files: {
+      'OPS/art.svg': encode(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200"><style>.art{fill:#123456;stroke:none}</style><path class="art" d="${d}"/></svg>`,
+      ),
+      'OPS/two.xhtml': encode(
+        `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Wrapper chapter</title>${styles}</head><body><h1>Wrapper chapter</h1><svg xmlns="http://www.w3.org/2000/svg" class="picture" viewBox="0 0 320 200" width="320" height="200"><title>Complete vector illustration</title><image href="art.svg" width="320" height="200"/></svg><p>Text below the wrapper.</p></body></html>`,
+      ),
+    },
+  })
+}
+
+export function createImageHeavyEpubFixture() {
+  const files: Record<string, Uint8Array> = {}
+  let manifest = '',
+    spine = ''
+  for (let chapter = 0; chapter < 3; chapter++) {
+    manifest += `<item id="c${chapter}" href="c${chapter}.xhtml" media-type="application/xhtml+xml"/>`
+    spine += `<itemref idref="c${chapter}"/>`
+    let content = `<h1>Illustrated section ${chapter + 1}</h1>`
+    for (let image = 0; image < 65; image++) {
+      const id = `image-${chapter}-${image}`
+      manifest += `<item id="${id}" href="${id}.svg" media-type="image/svg+xml"/>`
+      files[`OPS/${id}.svg`] = encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"><rect width="20" height="10"/></svg>',
+      )
+      content += `<img src="${id}.svg" alt="Illustration ${image + 1}"/>`
+    }
+    files[`OPS/c${chapter}.xhtml`] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Illustrated section ${chapter + 1}</title></head><body>${content}</body></html>`,
+    )
+  }
+  return createEpubFixture({
+    files,
+    packageBody: `<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata/><manifest>${manifest}</manifest><spine>${spine}</spine></package>`,
+  })
+}

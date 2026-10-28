@@ -4,15 +4,21 @@ This is a **manual-only functional suite**, separate from profiling, Visual QA a
 workflows. It uses generated documents. Actual native OS permissions and personal
 or real-device document checks remain manual.
 
-## SVG fallback (#282)
+## SVG fidelity and chapter resources (#282/#284)
 
-The generated oversized-SVG case verifies the reader notice, preserved alternative
-text and chapter text, formatted/text-only switching, chapter navigation, a warm
-PDF switch and a single EPUB iframe. Run the manual suite on installed browsers.
-Also preview a representative illustrated EPUB: supported illustrations must still
-render, unsupported SVGs should leave readable content, and a formatted-opening
-failure should offer an explicit text-only recovery action. Image-count failures
-are tracked separately in #284; this increment does not remove that budget.
+The generated oversized-SVG case verifies omission above 4 MiB, readable text,
+alternative text, mode changes and warm tabs. The fidelity case uses a valid SVG
+with a path over 1 MiB: rendered pixel colour, complete drawing data, a stable
+240px author maximum width, centering, resizing, approved SVG wrapper rendering
+and revisiting chapters are checked. The 195-image book verifies that only the
+active chapter's 65 image URLs remain live and that closing releases them. URL
+counts are ownership checks, not process/GPU-memory measurements.
+
+Unit coverage checks 128/129 chapter boundaries, repeated CSS/HTML resources,
+missing resources, long geometry, recursive/exponential references and disposal
+during a pending read. Run installed Firefox/WebKit as well as Chromium, then
+preview representative illustrated books. Unsupported SVG features may still
+require explicit fallback; embedded-font support remains #286.
 
 ## Run
 

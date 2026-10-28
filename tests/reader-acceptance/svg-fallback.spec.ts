@@ -15,7 +15,7 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
             '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Illustrated chapter</title></head><body><h1>Illustrated chapter</h1><img src="large.svg" alt="Map of the journey"/><p>Readable text after the illustration.</p></body></html>',
           files: {
             'OPS/large.svg': new TextEncoder().encode(
-              '<svg xmlns="http://www.w3.org/2000/svg"/>'.padEnd(1024 * 1024 + 1),
+              '<svg xmlns="http://www.w3.org/2000/svg"/>'.padEnd(4 * 1024 * 1024 + 1),
             ),
           },
         }),
@@ -32,7 +32,7 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
   const ready = () => expect(reader.locator('.epub-host')).toHaveAttribute('aria-busy', 'false')
   await ready()
   const notice = reader.getByRole('status', { name: 'Illustration notice' })
-  await expect(notice).toContainText('1 MiB')
+  await expect(notice).toContainText('4 MiB')
   await expect(
     reader.frameLocator('iframe').getByText('Map of the journey', { exact: true }),
   ).toBeVisible()
