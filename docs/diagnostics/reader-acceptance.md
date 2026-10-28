@@ -4,6 +4,16 @@ This is a **manual-only functional suite**, separate from profiling, Visual QA a
 workflows. It uses generated documents. Actual native OS permissions and personal
 or real-device document checks remain manual.
 
+## SVG fallback (#282)
+
+The generated oversized-SVG case verifies the reader notice, preserved alternative
+text and chapter text, formatted/text-only switching, chapter navigation, a warm
+PDF switch and a single EPUB iframe. Run the manual suite on installed browsers.
+Also preview a representative illustrated EPUB: supported illustrations must still
+render, unsupported SVGs should leave readable content, and a formatted-opening
+failure should offer an explicit text-only recovery action. Image-count failures
+are tracked separately in #284; this increment does not remove that budget.
+
 ## Run
 
 Use Node 24, installed dependencies and the desired Playwright browsers/OS

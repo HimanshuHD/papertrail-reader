@@ -1,7 +1,7 @@
 import { diagnostics } from '../diagnostics/recorder'
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
-import { verifyBookImage } from './book-images'
+import { verifyBookImage, EpubImageLimitError, EPUB_SVG_BYTE_LIMIT } from './book-images'
 import { Inflate, strToU8, zipSync } from 'fflate'
 import {
   EpubArchiveError,
@@ -15,6 +15,7 @@ function encode(text: string) {
 }
 
 export interface TextPublication {
+  imageWarnings: readonly string[]
   bytes: ArrayBuffer
   title: string
   dispose(): void
@@ -243,7 +244,8 @@ export function sanitizeChapter(
         attributes(element, alt)
         alt.setAttribute('data-reader-node', `pt-${nodes}`)
         alt.setAttribute('data-reader-image', '')
-        alt.textContent = element.getAttribute('alt') ?? ''
+        alt.textContent =
+          element.getAttribute('alt') || (formatting ? 'Illustration unavailable.' : '')
         parent.appendChild(alt)
       }
       return
@@ -349,6 +351,7 @@ export async function preparePublication(
       }
     }
     const imageCache = new Map<string, string | null>()
+    const imageWarnings = new Set<string>()
     let imageTotal = 0
     async function image(base: string, href: string): Promise<string | null> {
       let path: string
@@ -367,13 +370,31 @@ export async function preparePublication(
       )
         return null
       const entry = byPath.get(path)
+      // Omit oversized SVGs before reading/parsing them. Count and total-image
+      // budgets still apply independently; this is not unrestricted image support.
+      if (mime === 'image/svg+xml' && entry && entry.expandedBytes > EPUB_SVG_BYTE_LIMIT) {
+        imageWarnings.add('SVG illustration exceeds the 1 MiB size limit.')
+        return null
+      }
       if (!entry || entry.expandedBytes > 8 * 1024 * 1024)
         throw new EpubArchiveError('EPUB image is missing or too large.')
       imageTotal += entry.expandedBytes
       if (imageTotal > 32 * 1024 * 1024)
         throw new EpubArchiveError('EPUB images exceed their reading budget.')
-      const bytes = verifyBookImage(await readEpubEntry(file, entry, signal), mime)
-      if (!bytes) return null
+      const input = await readEpubEntry(file, entry, signal)
+      let bytes: Uint8Array | null
+      try {
+        bytes = verifyBookImage(input, mime)
+      } catch (error) {
+        if (mime !== 'image/svg+xml' || !(error instanceof EpubImageLimitError)) throw error
+        imageWarnings.add(error.message)
+        return null
+      }
+      if (!bytes) {
+        if (mime === 'image/svg+xml')
+          imageWarnings.add('SVG illustration is malformed or uses an unsupported format.')
+        return null
+      }
       signal?.throwIfAborted()
       const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }))
       ownedURLs.push(url)
@@ -571,6 +592,7 @@ export async function preparePublication(
     signal?.throwIfAborted()
     const packed = zipSync(files, { level: 0 })
     return {
+      imageWarnings: [...imageWarnings],
       title,
       dispose,
       chapters,

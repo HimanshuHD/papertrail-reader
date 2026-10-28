@@ -90,3 +90,18 @@ After reflow, retain the restored logical character and its viewport offset rath
 Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
 
 Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.
+
+## Unsupported SVG illustrations (#282)
+
+The 1 MiB SVG input bound, dimension/pixel limits and structure/nesting limits
+remain enforced. An SVG exceeding these limits is omitted from the rebuilt book;
+oversized inputs are not read or parsed. Chapter text and alternative text remain
+available. The reader shows a bounded, deduplicated notice distinguishing size,
+dimensions, complexity and malformed/unsupported SVG data. Notices contain no
+resource paths or document content. Approved SVGs still pass through reconstruction
+that removes active and external resources.
+
+The formatted-opening error surface also offers an explicit text-only retry. This
+is recovery, not automatic acceptance of an invalid archive. Archive validation, CRC failures in resources that are read,
+cancellation, raster validation, the image-count budget and total-image byte budget
+retain their existing behavior. Book-wide image-count compatibility is #284.

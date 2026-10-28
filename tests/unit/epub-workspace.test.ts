@@ -30,6 +30,45 @@ const mocked = vi.hoisted(() => ({
 }))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
 
+it('offers text-only recovery after formatted preparation fails', async () => {
+  mocked.open.mockRejectedValueOnce(new Error('EPUB images exceed their reading budget.'))
+  mocked.open.mockResolvedValueOnce({
+    title: 'Recovered',
+    chapters: [{ label: 'One', href: 'one' }],
+    contents: [],
+    contentsSource: 'spine',
+    typography: vi.fn(),
+    display: vi.fn(),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  })
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'recovery',
+        name: 'recovery.epub',
+        format: 'EPUB',
+        relativePath: 'recovery.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'recovery.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  const recovery = wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Open text-only view')!
+  expect(recovery.exists()).toBe(true)
+  await recovery.trigger('click')
+  await flushPromises()
+  expect(mocked.open.mock.lastCall![3]).toMatchObject({ textOnly: true })
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('true')
+  wrapper.unmount()
+})
+
 vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/services/annotation-storage')>()
   return {

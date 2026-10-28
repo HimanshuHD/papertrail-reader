@@ -1,4 +1,6 @@
 const SVG = 'http://www.w3.org/2000/svg'
+export const EPUB_SVG_BYTE_LIMIT = 1024 * 1024
+export class EpubImageLimitError extends Error {}
 const tags = new Set(
   'svg g defs path rect circle ellipse line polyline polygon text tspan linearGradient radialGradient stop clipPath mask use title desc'.split(
     ' ',
@@ -19,14 +21,20 @@ function dimensions(width: number, height: number) {
     height > 8192 ||
     width * height > 32 * 1024 * 1024
   )
-    throw new Error('EPUB image dimensions exceed their budget.')
+    throw new EpubImageLimitError('EPUB image dimensions exceed their budget.')
 }
 
 /** Validate raster headers or rebuild standalone SVG without active/remote resources. */
 export function verifyBookImage(bytes: Uint8Array, mime: string): Uint8Array | null {
   if (mime === 'image/svg+xml') {
-    if (bytes.length > 1024 * 1024) throw new Error('EPUB vector image is too large.')
-    const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    if (bytes.length > EPUB_SVG_BYTE_LIMIT)
+      throw new EpubImageLimitError('SVG illustration exceeds the 1 MiB size limit.')
+    let text: string
+    try {
+      text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+    } catch {
+      return null
+    }
     if (/<!DOCTYPE|<!ENTITY/iu.test(text)) return null
     const source = new DOMParser().parseFromString(text, 'application/xml')
     if (
@@ -38,7 +46,8 @@ export function verifyBookImage(bytes: Uint8Array, mime: string): Uint8Array | n
     const output = document.implementation.createDocument(SVG, 'svg')
     let count = 0
     function copy(from: Element, to: Element, depth: number) {
-      if (++count > 20000 || depth > 64) throw new Error('EPUB vector image is too complex.')
+      if (++count > 20000 || depth > 64)
+        throw new EpubImageLimitError('SVG illustration exceeds the structure or nesting limit.')
       for (const attr of from.attributes) {
         if (
           attrs.has(attr.name) &&

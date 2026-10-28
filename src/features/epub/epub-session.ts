@@ -36,6 +36,7 @@ export interface EpubAnnotationContext {
   cfiFromRange?: (range: Range) => string
 }
 export interface EpubSession {
+  imageWarnings?: readonly string[]
   title: string
   chapters: readonly { label: string; href: string }[]
   contents: readonly EpubContentsEntry[]
@@ -401,6 +402,7 @@ async function createEpubSession(
     else restorePosition(options.position)
     bindLocationEvents()
     const session: EpubSession = {
+      imageWarnings: publication.imageWarnings,
       title: publication.title,
       chapters: publication.chapters,
       contents: publication.contents,
