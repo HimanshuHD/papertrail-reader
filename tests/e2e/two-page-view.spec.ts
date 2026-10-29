@@ -155,10 +155,29 @@ test('EPUB stays in scrolling mode and renders verified SVG cover wrappers', asy
   await page.getByRole('button', { name: 'Hide library', exact: true }).click()
   const reader = page.getByRole('region', { name: 'EPUB reader', exact: true })
   const frame = reader.frameLocator('iframe')
-  await expect(frame.getByRole('img', { name: 'Local cover' })).toBeVisible()
-  expect(await frame.locator('img').evaluate((img) => (img as HTMLImageElement).naturalWidth)).toBe(
-    120,
-  )
+  const cover = frame.getByRole('img', { name: 'Local cover', exact: true })
+  await expect(cover).toBeVisible()
+  // The reader preserves an owned SVG wrapper, rather than flattening it to <img>.
+  await expect(cover).toHaveJSProperty('localName', 'svg')
+  const illustrationImage = cover.locator('image')
+  await expect(illustrationImage).toHaveAttribute('href', /^blob:/)
+  const decoded = await illustrationImage.evaluate(async (image) => {
+    const doc = image.ownerDocument
+    const img = doc.createElement('img')
+    img.src = image.getAttribute('href')!
+    await img.decode()
+    const canvas = doc.createElement('canvas')
+    canvas.width = img.naturalWidth
+    canvas.height = img.naturalHeight
+    const context = canvas.getContext('2d')!
+    context.drawImage(img, 0, 0)
+    return {
+      width: img.naturalWidth,
+      height: img.naturalHeight,
+      pixel: [...context.getImageData(60, 30, 1, 1).data],
+    }
+  })
+  expect(decoded).toEqual({ width: 120, height: 60, pixel: [255, 0, 0, 255] })
   await expect(reader.getByRole('button', { name: /two.page/i })).toHaveCount(0)
   const dimensions = await frame.locator('body').evaluate((body) => ({
     width: body.scrollWidth,
