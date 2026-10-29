@@ -40,14 +40,13 @@ for (const format of ['ttf', 'woff', 'woff2', 'otf'] as const)
         .locator('body')
         .evaluate((body) => {
           const result: { family: string; weight: string; style: string; status: string }[] = []
-          body.ownerDocument.fonts.forEach((face) =>
+          for (const face of body.ownerDocument.fonts.values())
             result.push({
               family: face.family.replaceAll('"', ''),
               weight: face.weight,
               style: face.style,
               status: face.status,
-            }),
-          )
+            })
           return result
         })
       expect(faces.filter((face) => face.family === 'PaperTrail Generated Fixture')).toEqual(

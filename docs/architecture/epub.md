@@ -196,3 +196,31 @@ Generated font metrics/mappings, mode changes, chapter navigation, warm tabs,
 reconnect and fallback have manual browser acceptance cases. Container/policy,
 shared ownership, cancellation and readiness cleanup have unit coverage. Browser
 acceptance and owner preview must pass before this scope is declared delivered.
+
+## Author heading groups and semantic selectors
+
+The rebuilt element allowlist retains `hgroup`, preserving the author's selector
+hierarchy for grouped heading numbers/titles, inherited caps/alignment, boldness
+and group spacing. No generic title centering, capitalization or margin theme is
+added. The low-specificity body default establishes a flow root so child heading
+margins stay inside the page; an authored body display rule remains authoritative.
+
+Bounded EPUB `type` and XML `lang` metadata survive reconstruction. Known namespace
+declarations are retained, and their semantic attribute selectors are normalized
+to application-owned `data-reader-epub-type`/`data-reader-xml-lang` mirrors. These
+selectors therefore work when the engine uses HTML `srcdoc`, whose parser does
+not retain XML attribute namespace identity. Source attributes cannot supply the
+owned mirrors. Unknown namespace selectors/default namespaces are omitted rather
+than broadened into a different match.
+
+Approved caps/numeric/ligature/font-feature and hyphenation declarations are
+retained. Bounded `@supports` rules follow the same selector/declaration filtering
+as media rules; conditional font-face definitions remain omitted with a notice.
+Script/resource restrictions, CRC/byte budgets, source text, node identifiers and
+reader-selected typography behavior remain independent.
+
+FontFaceSet inspection/readiness uses native iteration rather than callback-based
+`forEach`, avoiding sandboxed-frame callback execution restrictions. Generated
+heading-group tests cover the semantic selectors, bold hierarchy, spacing, caps,
+mode changes, resize and page bounds. These tests are not a claim of pixel-identical
+rendering to another reader or acceptance of every EPUB CSS feature.

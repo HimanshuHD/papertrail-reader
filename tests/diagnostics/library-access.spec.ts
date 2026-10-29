@@ -5,6 +5,8 @@ import { join } from 'node:path'
 import { createPdfFixture } from '../fixtures/pdf'
 import { waitForWorkspaceReady } from '../fixtures/browser'
 
+test.use({ trace: 'retain-on-failure' })
+
 for (const [scenario, errorName] of [
   ['picker-cancel', 'AbortError'],
   ['picker-denied', 'NotAllowedError'],
@@ -14,6 +16,8 @@ for (const [scenario, errorName] of [
     page,
     browserName,
   }, info) => {
+    // Reader rendering, two exports and directory recovery are functional work, not a 30s performance target.
+    test.setTimeout(90000)
     // Deliberate capability simulation, not an OS permission/revocation test.
     await page.addInitScript((name) => {
       Reflect.set(window, 'controlledPickerCalls', 0)
@@ -42,7 +46,7 @@ for (const [scenario, errorName] of [
     await page.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
     const exported = async () => {
       await toggle.click()
-      const pending = page.waitForEvent('download')
+      const pending = page.waitForEvent('download', { timeout: 15000 })
       await page.getByRole('button', { name: 'Export local JSON', exact: true }).click()
       const file = await pending
       const text = await readFile((await file.path())!, 'utf8')
@@ -67,7 +71,7 @@ for (const [scenario, errorName] of [
     await page
       .locator('.pdf-reader')
       .evaluate((el) => el.setAttribute('data-access-probe', 'retained'))
-    const before = (await exported()).resources
+    const before = (await test.step('Export baseline with an open PDF', exported)).resources
     const chooseFolder = async () => {
       await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
       await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
@@ -99,7 +103,8 @@ for (const [scenario, errorName] of [
     await expect(
       page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab'),
     ).toHaveCount(1)
-    const after = (await exported()).resources
+    const after = (await test.step('Export state after controlled picker rejection', exported))
+      .resources
     const keys = ['viewers', 'pdfWorkerOwners', 'blobURLs'] as const
     expect(before.viewers).toBe(1)
     expect(before.pdfWorkerOwners).toBeGreaterThan(0)
@@ -115,7 +120,7 @@ for (const [scenario, errorName] of [
       const folder = await mkdtemp(join(tmpdir(), 'papertrail-access-'))
       try {
         await writeFile(join(folder, 'recovery-private.pdf'), createPdfFixture(2))
-        const pending = page.waitForEvent('filechooser')
+        const pending = page.waitForEvent('filechooser', { timeout: 15000 })
         await chooseFolder()
         await (await pending).setFiles(folder)
         const recovery = page.getByRole('button', {

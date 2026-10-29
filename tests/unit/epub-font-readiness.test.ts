@@ -13,7 +13,13 @@ function chapter(load: () => Promise<unknown>) {
   doc.head.append(style)
   const face = { load: vi.fn(load) }
   Object.defineProperty(doc, 'fonts', {
-    value: { forEach: (run: (face: unknown) => void) => run(face), ready: Promise.resolve() },
+    value: {
+      values: () => [face].values(),
+      forEach: () => {
+        throw new Error('Sandbox callbacks must not be used.')
+      },
+      ready: Promise.resolve(),
+    },
   })
   return { doc, face, style }
 }

@@ -1,3 +1,4 @@
+import { copyBookSemantics } from './book-semantics'
 import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
 import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { diagnostics } from '../diagnostics/recorder'
@@ -141,7 +142,7 @@ function coverImage(element: Element): Element | undefined {
   if (images.length === 1 && !images[0]!.children.length) return images[0]
 }
 const allowed = new Set(
-  'a main header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
+  'a main hgroup header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
     ' ',
   ),
 )
@@ -189,6 +190,7 @@ export function sanitizeChapter(
   const direction = body.getAttribute('dir') ?? source.documentElement.getAttribute('dir')
   if (direction === 'rtl' || direction === 'ltr') target.setAttribute('dir', direction)
   function attributes(from: Element, to: Element) {
+    copyBookSemantics(from, to)
     const id = from.getAttribute('id')
     if (
       id &&

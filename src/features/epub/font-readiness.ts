@@ -6,11 +6,10 @@ export async function settleBookFonts(
 ): Promise<string | null> {
   signal.throwIfAborted()
   const fonts = doc.fonts
-  if (!fonts || typeof fonts.forEach !== 'function') return null
+  if (!fonts || typeof fonts.values !== 'function') return null
   // Flush style so CSS-connected faces are available in FontFaceSet.
   doc.body?.getBoundingClientRect()
-  const faces: FontFace[] = []
-  fonts.forEach((face) => faces.push(face))
+  const faces = Array.from(fonts.values())
   if (!faces.length) return null
   let timer: ReturnType<typeof setTimeout> | undefined
   let cancel!: () => void

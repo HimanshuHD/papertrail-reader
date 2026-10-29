@@ -1,8 +1,9 @@
+import { bookNamespaceContext, normalizeBookSelector } from './book-semantics'
 import { bindBookViewportLengths } from './book-viewport'
 import { parse, generate, walk, type CssNode } from 'css-tree'
 
 const properties = new Set(
-  `color background background-color background-image background-position background-size background-repeat font-family font-size font-style font-weight font-variant line-height text-align text-indent text-decoration text-transform letter-spacing word-spacing white-space vertical-align margin margin-top margin-right margin-bottom margin-left padding padding-top padding-right padding-bottom padding-left border border-width border-style border-color border-top border-right border-bottom border-left border-radius border-collapse border-spacing display width min-width max-width height min-height max-height box-sizing float clear list-style-type list-style-position table-layout break-before break-after break-inside page-break-before page-break-after page-break-inside orphans widows flex flex-direction flex-wrap flex-grow flex-shrink flex-basis align-items align-self justify-content gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row`.split(
+  `color background background-color background-image background-position background-size background-repeat font-family font-size font-style font-weight font-variant font-variant-caps font-variant-numeric font-variant-ligatures font-feature-settings font-kerning hyphens -epub-hyphens line-height text-align text-indent text-decoration text-transform letter-spacing word-spacing white-space vertical-align margin margin-top margin-right margin-bottom margin-left padding padding-top padding-right padding-bottom padding-left border border-width border-style border-color border-top border-right border-bottom border-left border-radius border-collapse border-spacing display width min-width max-width height min-height max-height box-sizing float clear list-style-type list-style-position table-layout break-before break-after break-inside page-break-before page-break-after page-break-inside orphans widows flex flex-direction flex-wrap flex-grow flex-shrink flex-basis align-items align-self justify-content gap row-gap column-gap grid-template-columns grid-template-rows grid-column grid-row`.split(
     ' ',
   ),
 )
@@ -38,6 +39,8 @@ export function sanitizeBookCSS(
     if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face') faces++
   })
   if (faces > topFaces) fontState.warn()
+  const namespace = bookNamespaceContext(ast)
+  if (namespace.unsupportedDefault) return ''
   function declarations(block: CssNode): string {
     const output: string[] = []
     block.children?.forEach((node) => {
@@ -152,10 +155,7 @@ export function sanitizeBookCSS(
     const output: string[] = []
     sheet.children?.forEach((node) => {
       if (node.type === 'Rule' && node.prelude && node.block) {
-        let safe = true
-        walk(node.prelude, (selector) => {
-          if (selector.type === 'Raw') safe = false
-        })
+        const safe = normalizeBookSelector(node.prelude, namespace.aliases)
         const content = declarations(node.block)
         if (safe && content) output.push(`${generate(node.prelude)}{${content}}`)
       } else if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face' && node.block) {
@@ -166,7 +166,7 @@ export function sanitizeBookCSS(
         if (face) output.push(face)
       } else if (
         node.type === 'Atrule' &&
-        node.name?.toLowerCase() === 'media' &&
+        ['media', 'supports'].includes(node.name?.toLowerCase() ?? '') &&
         node.prelude &&
         node.block
       ) {
@@ -174,12 +174,13 @@ export function sanitizeBookCSS(
         walk(node.prelude, (value) => {
           if (value.type === 'Raw' || value.type === 'Url') safe = false
         })
-        if (safe) output.push(`@media ${generate(node.prelude)}{${rules(node.block, depth + 1)}}`)
+        if (safe)
+          output.push(`@${node.name} ${generate(node.prelude)}{${rules(node.block, depth + 1)}}`)
       }
     })
     return output.join('\n')
   }
-  return inline ? declarations(ast) : rules(ast)
+  return inline ? declarations(ast) : [...namespace.declarations, rules(ast)].join('\n')
 }
 
 export function stylesheetURLs(css: string, inline = false): string[] {
@@ -228,11 +229,11 @@ export function withoutBookFontFaces(css: string): string {
       if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face') return
       if (
         node.type === 'Atrule' &&
-        node.name?.toLowerCase() === 'media' &&
+        ['media', 'supports'].includes(node.name?.toLowerCase() ?? '') &&
         node.block &&
         node.prelude
       )
-        output.push(`@media ${generate(node.prelude)}{${copy(node.block)}}`)
+        output.push(`@${node.name} ${generate(node.prelude)}{${copy(node.block)}}`)
       else output.push(generate(node))
     })
     return output.join('\n')

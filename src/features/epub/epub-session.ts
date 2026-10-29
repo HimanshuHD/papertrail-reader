@@ -409,6 +409,7 @@ async function createEpubSession(
           height: 'auto !important',
         },
         ':where(body)': {
+          display: 'flow-root',
           'font-family': 'Georgia, serif',
           'font-size': '18px',
           'line-height': '1.7',
