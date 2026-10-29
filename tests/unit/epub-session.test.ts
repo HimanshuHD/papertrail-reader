@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
   on: vi.fn(),
   css: vi.fn(),
   hook: vi.fn(),
+  serialize: vi.fn(),
 }))
 vi.mock('../../src/features/epub/scroll-layout', () => ({
   keepScrolledChapterMounted: () => vi.fn(),
@@ -29,6 +30,7 @@ vi.mock('epubjs', () => ({
     }
   },
   default: () => ({
+    spine: { hooks: { serialize: { register: mocks.serialize } } },
     open: mocks.open,
     destroy: mocks.destroy,
     renderTo: mocks.render.mockImplementation(() => ({
@@ -221,6 +223,11 @@ it('opens the requested chapter and revokes formatted image URLs on session disp
     { chapter: 1 },
   )
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
+  expect(create).not.toHaveBeenCalled() // Inactive chapter illustrations are not prepared.
+  const serialize = mocks.serialize.mock.calls.at(-1)![0]
+  await serialize('', { index: 0, output: '' })
+  expect(create).toHaveBeenCalledOnce()
+  await serialize('', { index: 1, output: '' })
   session.appearance(true)
   expect(mocks.override).not.toHaveBeenCalled()
   session.destroy()
@@ -230,8 +237,8 @@ it('opens the requested chapter and revokes formatted image URLs on session disp
   await expect(
     openEpubSession(source(), document.createElement('div'), new AbortController().signal),
   ).rejects.toThrow('engine rejected')
-  expect(create).toHaveBeenCalledTimes(2)
-  expect(revoke).toHaveBeenCalledTimes(2)
+  expect(create).toHaveBeenCalledTimes(1)
+  expect(revoke).toHaveBeenCalledTimes(1)
 })
 
 it('validates contents targets, reuses same-chapter rendering, and replaces typography on reset', async () => {

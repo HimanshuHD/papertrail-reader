@@ -99,3 +99,58 @@ After reflow, retain the restored logical character and its viewport offset rath
 Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
 
 Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.
+
+## SVG fidelity and rolling chapter resources (#282/#284)
+
+The runtime validates archive/spine metadata and bounded text across the reading
+order. Formatting and illustration resources are prepared in a rolling window:
+current, previous and next chapter. The cache retains at most three prepared
+chapters under a shared 96 MiB budget counting serialized markup and image Blob
+bytes. Individual chapter limits remain independent. Speculative neighbors are
+skipped when the shared budget is exhausted; foreground preparation can reclaim
+unneeded neighbors. This is not a process/decoded-image/GPU RAM measurement.
+
+An awaited EPUB.js spine serialization hook supplies rebuilt XHTML before loading
+its iframe. Chapter navigation keeps the full-reader loading cover visible until
+the replacement chapter is ready; controls remain busy. The rolling resource cache
+reduces preparation work without exposing incomplete chapter painting. The white
+page fills the reading viewport even for short chapters. Iframe/body dimensions
+avoid a second vertical scrollbar; the outer reading container owns scrolling.
+Initial opening, mode changes and reading-position restoration retain their own
+loading states. Adjacent resources prepare in the background, with sequential SVG
+warm-up and yields between resources; raster bitmaps are not forcibly decoded in
+advance. Obsolete jobs are cancelled. Resources outside the new window are released
+after the departing view is removed. Revisiting a retained neighbor reuses its
+prepared markup and image URLs. Warm document-tab retention remains unchanged.
+
+Each active chapter admits up to 128 validated images, 32 MiB of image input and
+32 MiB of owned image Blob data. Missing/unsupported paths do not consume accepted
+image slots; repeated CSS/HTML references are deduplicated. Validation attempts
+are separately bounded to 256 resources and 32 MiB, including rejected inputs. Other images remain
+readable placeholders with a bounded notice. These are resource/byte bounds, not
+claims about actual renderer, decoded-image, process or GPU memory. Archive limits
+and the 8 MiB individual-image bound remain independent.
+
+SVG input now allows 4 MiB. Long valid path/points attributes are preserved; SVG
+presentation styles and classes are rebuilt with local-fragment-only resource
+references. Geometry is bounded across a resource (1,000,000 numbers, 100,000 path
+commands, finite coordinate magnitudes at most 1e9). Source structure remains
+20,000 elements/depth 64; reference expansion is bounded to 100,000 estimated
+nodes with recursive references rejected. Existing image dimension/pixel limits
+remain. Unsupported drawing elements (including scripts/foreign content) cause explicit
+illustration omission rather than silent partial reconstruction. Remote requests
+remain excluded.
+
+Simple SVG image wrappers are rebuilt as application-owned SVG/image elements
+using only approved layout attributes and owned Blob references. Source wrapper
+nodes are never inserted. Author classes, sanitized inline layout, viewBox and
+aspect ratio survive. Low-specificity responsive rules replace the engine's
+paginated image adjustment, preserving narrower author maximum widths and
+centering. Arbitrary inline drawing SVG and every possible SVG feature are not
+promised by this policy.
+
+Unsupported images provide alternative text and an accessible notice. A formatted
+opening failure offers explicit text-only retry. CRC/read errors, cancellation and
+unexpected exceptions are not swallowed. Disposal clears cached chapter markup,
+styles and URL ownership, including pending preparation. Embedded fonts remain
+separate work in #286; font loading is not enabled by these changes.

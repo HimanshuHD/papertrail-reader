@@ -30,6 +30,45 @@ const mocked = vi.hoisted(() => ({
 }))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
 
+it('offers text-only recovery after formatted preparation fails', async () => {
+  mocked.open.mockRejectedValueOnce(new Error('EPUB images exceed their reading budget.'))
+  mocked.open.mockResolvedValueOnce({
+    title: 'Recovered',
+    chapters: [{ label: 'One', href: 'one' }],
+    contents: [],
+    contentsSource: 'spine',
+    typography: vi.fn(),
+    display: vi.fn(),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  })
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'recovery',
+        name: 'recovery.epub',
+        format: 'EPUB',
+        relativePath: 'recovery.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'recovery.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  const recovery = wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Open text-only view')!
+  expect(recovery.exists()).toBe(true)
+  await recovery.trigger('click')
+  await flushPromises()
+  expect(mocked.open.mock.lastCall![3]).toMatchObject({ textOnly: true })
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('true')
+  wrapper.unmount()
+})
+
 vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/services/annotation-storage')>()
   return {
@@ -306,7 +345,7 @@ it('dismisses utility surfaces with Escape and outside pointers, restores focus 
   wrapper.unmount()
 })
 
-it('keeps Contents stable while loading and delays the overlay loader without changing the stage layout', async () => {
+it('keeps Contents stable and covers chapter navigation until the replacement is ready', async () => {
   let finish!: () => void
   const session: EpubSession = {
     title: 'Stable book',
@@ -356,10 +395,11 @@ it('keeps Contents stable while loading and delays the overlay loader without ch
     await flushPromises()
     expect(wrapper.findAll('nav button').map((button) => button.text())).toEqual(['One', 'Two'])
     expect(wrapper.find('.epub-loading-cover').exists()).toBe(true)
+    expect(wrapper.get('.epub-host').classes()).toContain('epub-host-loading')
     expect(wrapper.find('.loading-card').exists()).toBe(false)
     expect(wrapper.find('header + p[role="status"]').exists()).toBe(false)
     await vi.advanceTimersByTimeAsync(150)
-    expect(wrapper.get('.loading-card').text()).toContain('Loading chapter')
+    expect(wrapper.find('.loading-card').exists()).toBe(true)
     finish()
     await flushPromises()
     expect(wrapper.find('.epub-loading-cover').exists()).toBe(false)

@@ -985,8 +985,28 @@ watch(
       <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
     </p>
 
+    <div
+      v-if="!loading && reader.session.value?.imageWarnings?.length"
+      role="status"
+      aria-label="Illustration notice"
+      class="border-b border-line px-4 py-2 text-xs text-muted"
+    >
+      <p>Some illustrations are unavailable. You can continue reading or use Text-only view.</p>
+      <ul class="list-inside list-disc">
+        <li v-for="warning in reader.session.value.imageWarnings" :key="warning">{{ warning }}</li>
+      </ul>
+    </div>
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
+      <button
+        v-if="!textOnly"
+        type="button"
+        class="mt-3 mr-3 rounded border border-line px-3 py-2"
+        :disabled="loading"
+        @click="toggleTextOnly"
+      >
+        Open text-only view
+      </button>
       <button class="mt-3 rounded border border-line px-3 py-2" @click="open()">
         Retry opening EPUB
       </button>
@@ -1415,6 +1435,16 @@ watch(
   position: absolute;
   inset: 0 40px;
   overflow: hidden;
+}
+.epub-host {
+  background: #ffffff;
+}
+:global(:root[data-theme='dark']) .epub-host {
+  background: #111b22;
+}
+.epub-host :deep(.epub-view),
+.epub-host :deep(iframe) {
+  min-height: var(--papertrail-viewport-height, 100%);
 }
 .epub-host :deep(.epub-container) {
   max-width: 100%;

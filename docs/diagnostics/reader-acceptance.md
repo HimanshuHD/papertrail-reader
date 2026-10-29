@@ -4,6 +4,34 @@ This is a **manual-only functional suite**, separate from profiling, Visual QA a
 workflows. It uses generated documents. Actual native OS permissions and personal
 or real-device document checks remain manual.
 
+## SVG fidelity and chapter resources (#282/#284)
+
+The generated oversized-SVG case verifies omission above 4 MiB, readable text,
+alternative text, mode changes and warm tabs. The fidelity case uses a valid SVG
+with a path over 1 MiB: rendered pixel colour, complete drawing data, a stable
+240px author maximum width, centering, resizing, approved SVG wrapper rendering
+and revisiting chapters are checked. The 195-image book verifies a rolling previous/current/next window, bounded
+retention/eviction and full image-URL release on close. A DOM observer verifies
+that chapter navigation inserts a loading cover and removes it when ready.
+Short-page coverage checks full-height page surfaces and outer-only scrolling. URL
+counts are ownership checks, not process/GPU-memory measurements.
+
+Unit coverage checks 128/129 chapter boundaries, repeated CSS/HTML resources,
+missing resources, geometry above the former limit, recursive/exponential
+references, shared-cache budget handling, stale preloads and disposal
+during a pending read. Run installed Firefox/WebKit as well as Chromium, then
+preview representative illustrated books. Unsupported SVG features may still
+require explicit fallback; embedded-font support remains #286.
+
+## Document-readiness waits
+
+The oversized-SVG recovery and viewport-spacing cases use bounded 15-second
+readiness assertions for document opening/rebuilds, within a 90-second case limit.
+They still assert ready state, readable content, mode changes, chapter navigation,
+warm-tab behavior and position restoration. These waits are functional acceptance
+budgets, not performance targets. There are no fixed sleeps or retries; a reader
+that never becomes ready still fails. Other content assertions keep their defaults.
+
 ## Run
 
 Use Node 24, installed dependencies and the desired Playwright browsers/OS

@@ -1,8 +1,9 @@
+import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
 import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { diagnostics } from '../diagnostics/recorder'
 import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
-import { verifyBookImage } from './book-images'
+import { verifyBookImage, EpubImageLimitError, EPUB_SVG_BYTE_LIMIT } from './book-images'
 import { Inflate, strToU8, zipSync } from 'fflate'
 import {
   EpubArchiveError,
@@ -16,6 +17,10 @@ function encode(text: string) {
 }
 
 export interface TextPublication {
+  imageWarnings: readonly string[]
+  renderChapter(index: number): Promise<string | undefined>
+  isChapterReady(index: number): boolean
+  warmChapters(index: number): void
   bytes: ArrayBuffer
   title: string
   dispose(): void
@@ -114,7 +119,7 @@ function resolvePath(base: string, href: string): string {
 
 const XHTML = 'http://www.w3.org/1999/xhtml'
 const SVG = 'http://www.w3.org/2000/svg'
-/** Flatten common ebook cover wrappers; never render the source SVG tree. */
+/** Recognize simple image wrappers; only an application-built SVG wrapper may render. */
 function coverImage(element: Element): Element | undefined {
   if (element.namespaceURI !== SVG || element.localName !== 'svg') return
   const children = [...element.children]
@@ -210,15 +215,44 @@ export function sanitizeChapter(
     const cover = coverImage(element)
     if (cover) {
       const url = formatting?.images.get(element)
-      const fresh = output.createElementNS(XHTML, url ? 'img' : 'span')
+      const fresh = output.createElementNS(url ? SVG : XHTML, url ? 'svg' : 'span')
+      attributes(element, fresh)
       fresh.setAttribute('data-reader-node', `pt-${nodes}`)
       fresh.setAttribute('data-reader-image', '')
       const alt = (
         element.getElementsByTagNameNS(SVG, 'title')[0]?.textContent || 'Book illustration'
       ).slice(0, 1000)
       if (url) {
-        fresh.setAttribute('src', url)
-        fresh.setAttribute('alt', alt)
+        fresh.setAttribute('role', 'img')
+        fresh.setAttribute('aria-label', alt)
+        const viewBox = element.getAttribute('viewBox')
+        if (viewBox && /^[\d.eE+\-,\s]+$/u.test(viewBox) && viewBox.length < 200)
+          fresh.setAttribute('viewBox', viewBox)
+        const image = output.createElementNS(SVG, 'image')
+        attributes(cover, image)
+        image.setAttribute('href', url)
+        for (const name of ['width', 'height', 'x', 'y']) {
+          for (const [from, to] of [
+            [element, fresh],
+            [cover, image],
+          ] as const) {
+            const value = from.getAttribute(name)
+            if (value && /^[-+]?(?:\d*\.)?\d+(?:px|%)?$/u.test(value) && value.length < 30)
+              to.setAttribute(name, value)
+          }
+        }
+        for (const [from, to] of [
+          [element, fresh],
+          [cover, image],
+        ] as const) {
+          const aspect = from.getAttribute('preserveAspectRatio')
+          if (
+            aspect &&
+            /^(?:none|x(?:Min|Mid|Max)Y(?:Min|Mid|Max)(?:\s+(?:meet|slice))?)$/u.test(aspect)
+          )
+            to.setAttribute('preserveAspectRatio', aspect)
+        }
+        fresh.append(image)
       } else fresh.textContent = alt
       parent.appendChild(fresh)
       return
@@ -244,7 +278,8 @@ export function sanitizeChapter(
         attributes(element, alt)
         alt.setAttribute('data-reader-node', `pt-${nodes}`)
         alt.setAttribute('data-reader-image', '')
-        alt.textContent = element.getAttribute('alt') ?? ''
+        alt.textContent =
+          element.getAttribute('alt') || (formatting ? 'Illustration unavailable.' : '')
         parent.appendChild(alt)
       }
       return
@@ -268,12 +303,31 @@ export async function preparePublication(
   file: Blob,
   signal?: AbortSignal,
   textOnly = false,
+  deferFormatting = false,
 ): Promise<TextPublication> {
   const ownedURLs: string[] = []
   let ownedBlobBytes = 0
-  const dispose = () => {
+  let disposed = false
+  let cache: ChapterCache | undefined
+  let requestedChapter = -1
+  let workSignal = signal
+  let imageAllowance = 32 * 1024 * 1024
+  let clearChapter = () => {}
+  function ensureOpen() {
+    signal?.throwIfAborted()
+    workSignal?.throwIfAborted()
+    if (disposed) throw new DOMException('EPUB publication was disposed.', 'AbortError')
+  }
+  const releaseImages = () => {
     for (const url of ownedURLs.splice(0)) URL.revokeObjectURL(url)
+    ownedBlobBytes = 0
     if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
+  }
+  const dispose = () => {
+    disposed = true
+    cache?.dispose()
+    releaseImages()
+    clearChapter()
   }
   try {
     const entries = await preflightEpubArchive(file, signal)
@@ -284,7 +338,7 @@ export async function preparePublication(
       const entry = byPath.get(path)
       if (!entry || entry.expandedBytes > limit)
         throw new EpubArchiveError('EPUB resource is missing or too large.')
-      return xml(await readEpubEntry(file, entry, signal), limit)
+      return xml(await readEpubEntry(file, entry, workSignal), limit)
     }
     const container = await resource('META-INF/container.xml', 256 * 1024)
     if (
@@ -353,8 +407,14 @@ export async function preparePublication(
       }
     }
     const imageCache = new Map<string, string | null>()
+    const imageWarnings = new Set<string>()
+    const svgURLs = new Set<string>()
     let imageTotal = 0
+    let imageCount = 0
+    let imageWorkBytes = 0
+    let imageAttempts = 0
     async function image(base: string, href: string): Promise<string | null> {
+      ensureOpen()
       let path: string
       try {
         path = resolvePath(base, href)
@@ -362,7 +422,6 @@ export async function preparePublication(
         return null
       }
       if (imageCache.has(path)) return imageCache.get(path)!
-      if (imageCache.size >= 128) throw new EpubArchiveError('EPUB image count exceeds its budget.')
       imageCache.set(path, null)
       const mime = manifestPaths.get(path)
       if (
@@ -371,16 +430,59 @@ export async function preparePublication(
       )
         return null
       const entry = byPath.get(path)
-      if (!entry || entry.expandedBytes > 8 * 1024 * 1024)
-        throw new EpubArchiveError('EPUB image is missing or too large.')
+      // Omit oversized SVGs before reading/parsing them. Count and total-image
+      // budgets still apply independently; this is not unrestricted image support.
+      if (mime === 'image/svg+xml' && entry && entry.expandedBytes > EPUB_SVG_BYTE_LIMIT) {
+        imageWarnings.add('SVG illustration exceeds the 4 MiB size limit.')
+        return null
+      }
+      if (!entry) return null
+      if (entry.expandedBytes > 8 * 1024 * 1024) {
+        imageWarnings.add('Illustration exceeds the 8 MiB image size limit.')
+        return null
+      }
+      if (imageCount >= 128 || imageTotal + entry.expandedBytes > 32 * 1024 * 1024) {
+        imageWarnings.add(
+          'Additional illustrations exceed this chapter’s image budget (128 images / 32 MiB).',
+        )
+        return null
+      }
+      if (imageAttempts >= 256 || imageWorkBytes + entry.expandedBytes > 32 * 1024 * 1024) {
+        imageWarnings.add(
+          'Additional illustrations exceed this chapter’s image-validation work budget.',
+        )
+        return null
+      }
+      imageAttempts++
+      imageWorkBytes += entry.expandedBytes
+      const input = await readEpubEntry(file, entry, workSignal)
+      let bytes: Uint8Array | null
+      try {
+        bytes = verifyBookImage(input, mime)
+      } catch (error) {
+        if (!(error instanceof EpubImageLimitError)) throw error
+        imageWarnings.add(error.message)
+        return null
+      }
+      if (!bytes) {
+        if (mime === 'image/svg+xml')
+          imageWarnings.add('SVG illustration is malformed or uses an unsupported format.')
+        return null
+      }
+      if (ownedBlobBytes + bytes.byteLength > 32 * 1024 * 1024) {
+        imageWarnings.add(
+          'Additional illustrations exceed this chapter’s 32 MiB live-image budget.',
+        )
+        return null
+      }
+      ensureOpen()
+      if (ownedBlobBytes + bytes.byteLength > imageAllowance)
+        throw new ChapterCacheBudgetError('Adjacent chapter cache is full.')
       imageTotal += entry.expandedBytes
-      if (imageTotal > 32 * 1024 * 1024)
-        throw new EpubArchiveError('EPUB images exceed their reading budget.')
-      const bytes = verifyBookImage(await readEpubEntry(file, entry, signal), mime)
-      if (!bytes) return null
-      signal?.throwIfAborted()
+      imageCount++
       const url = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: mime }))
       ownedURLs.push(url)
+      if (mime === 'image/svg+xml') svgURLs.add(url)
       ownedBlobBytes += bytes.byteLength
       if (__READER_DIAGNOSTICS__)
         diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length, blobBytes: ownedBlobBytes })
@@ -389,6 +491,12 @@ export async function preparePublication(
     }
     let cssTotal = 0
     const cssCache = new Map<string, string>()
+    clearChapter = () => {
+      imageCache.clear()
+      svgURLs.clear()
+      cssCache.clear()
+      imageWarnings.clear()
+    }
     async function css(text: string, base: string, inline = false) {
       cssTotal += text.length
       if (cssTotal > 2 * 1024 * 1024)
@@ -407,7 +515,7 @@ export async function preparePublication(
       const elements = [...chapter.getElementsByTagName('*')]
       if (elements.length > 100000) throw new EpubArchiveError('EPUB chapter is too complex.')
       for (const element of elements) {
-        signal?.throwIfAborted()
+        ensureOpen()
         const cover = coverImage(element)
         if (cover) {
           const href =
@@ -416,6 +524,10 @@ export async function preparePublication(
             ''
           const url = await image(path, href)
           if (url) images.set(element, url)
+          for (const node of [element, cover]) {
+            const style = node.getAttribute('style')
+            if (style) inline.set(node, await css(style, path, true))
+          }
         }
         if (element.namespaceURI !== XHTML) continue
         if (element.localName === 'style') sheets.push(await css(element.textContent ?? '', path))
@@ -437,7 +549,7 @@ export async function preparePublication(
               throw new EpubArchiveError('EPUB stylesheet is missing or too large.')
             clean = await css(
               new TextDecoder('utf-8', { fatal: true }).decode(
-                await readEpubEntry(file, entry, signal),
+                await readEpubEntry(file, entry, workSignal),
               ),
               href,
             )
@@ -455,6 +567,7 @@ export async function preparePublication(
       return { sheets, images, inline }
     }
     const chapters: { label: string; href: string }[] = []
+    const chapterPaths: string[] = []
     const fragments: Set<string>[] = []
     const targets = new Map<string, { chapter: number; fragments: Set<string> }>()
     const files: Record<string, Uint8Array> = { mimetype: encode('application/epub+zip') }
@@ -476,6 +589,7 @@ export async function preparePublication(
       if (spinePaths.has(path))
         throw new EpubArchiveError('Repeated EPUB spine resources are unsupported.')
       spinePaths.add(path)
+      chapterPaths.push(path)
       inputTotal += byPath.get(path)?.expandedBytes ?? 0
       if (inputTotal > 32 * 1024 * 1024)
         throw new EpubArchiveError('EPUB chapter input exceeds the reading budget.')
@@ -483,7 +597,11 @@ export async function preparePublication(
       const href = `chapter-${index}.xhtml`
       const cleanText = sanitizeChapter(
         chapter,
-        textOnly ? undefined : await formatting(chapter, path),
+        textOnly
+          ? undefined
+          : deferFormatting
+            ? { sheets: [], images: new Map(), inline: new Map() }
+            : await formatting(chapter, path),
       )
       const clean = encode(cleanText)
       const sanitized = new DOMParser().parseFromString(cleanText, 'application/xml')
@@ -574,7 +692,98 @@ export async function preparePublication(
     )
     signal?.throwIfAborted()
     const packed = zipSync(files, { level: 0 })
+    async function buildChapter(
+      index: number,
+      buildSignal: AbortSignal,
+      budget: number,
+    ): Promise<PreparedChapter> {
+      ensureOpen()
+      releaseImages()
+      clearChapter()
+      imageTotal = imageCount = imageWorkBytes = imageAttempts = cssTotal = 0
+      workSignal = buildSignal
+      imageAllowance = Math.min(32 * 1024 * 1024, budget - 4 * 1024 * 1024)
+      try {
+        const path = chapterPaths[index]!
+        const chapter = await resource(path, 4 * 1024 * 1024)
+        const formatted = await formatting(chapter, path)
+        ensureOpen()
+        const markup = sanitizeChapter(chapter, formatted)
+        const markupBytes = encode(markup).length
+        if (markupBytes > 4 * 1024 * 1024)
+          throw new EpubArchiveError('Formatted EPUB chapter exceeds its reading budget.')
+        // Warm vector decodes sequentially and yield between resources. Do not
+        // force speculative raster bitmap decoding for off-screen chapters.
+        for (const url of svgURLs) {
+          ensureOpen()
+          const img = typeof Image !== 'undefined' ? new Image() : undefined
+          if (!img?.decode) continue
+          await new Promise<void>((resolve, reject) => {
+            const cancel = () => {
+              img.src = ''
+              reject(new DOMException('Image preload cancelled.', 'AbortError'))
+            }
+            buildSignal.addEventListener('abort', cancel, { once: true })
+            img.src = url
+            img
+              .decode()
+              .then(resolve, () => resolve())
+              .finally(() => buildSignal.removeEventListener('abort', cancel))
+            if (buildSignal.aborted) cancel()
+          })
+          await new Promise<void>((resolve) => setTimeout(resolve, 0))
+        }
+        ensureOpen()
+        const urls = ownedURLs.splice(0)
+        const blobBytes = ownedBlobBytes
+        ownedBlobBytes = 0
+        if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
+        let released = false
+        const prepared: PreparedChapter = {
+          markup,
+          warnings: [...imageWarnings],
+          bytes: markupBytes + blobBytes,
+          dispose() {
+            if (released) return
+            released = true
+            for (const url of urls) URL.revokeObjectURL(url)
+            if (__READER_DIAGNOSTICS__) diagnostics.release(prepared)
+          },
+        }
+        if (__READER_DIAGNOSTICS__)
+          diagnostics.resources(prepared, { blobURLs: urls.length, blobBytes })
+        return prepared
+      } catch (error) {
+        releaseImages()
+        throw error
+      } finally {
+        clearChapter()
+        workSignal = signal
+        imageAllowance = 32 * 1024 * 1024
+      }
+    }
+    if (!textOnly && deferFormatting) cache = new ChapterCache(buildChapter, chapters.length)
+    async function renderChapter(index: number): Promise<string | undefined> {
+      ensureOpen()
+      if (!chapterPaths[index]) throw new EpubArchiveError('EPUB chapter is unavailable.')
+      if (!cache) return undefined
+      requestedChapter = index
+      cache.focus(index)
+      return (await cache.prepare(index)).markup
+    }
     return {
+      get imageWarnings() {
+        return cache ? (cache.get(requestedChapter)?.warnings ?? []) : [...imageWarnings]
+      },
+      renderChapter,
+      isChapterReady(index) {
+        return textOnly || !!cache?.ready(index)
+      },
+      warmChapters(index) {
+        if (disposed || !cache?.ready(index)) return
+        cache.commit(index)
+        void cache.warm()
+      },
       title,
       dispose,
       chapters,

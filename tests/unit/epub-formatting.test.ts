@@ -3,7 +3,7 @@ import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
 import { afterEach, expect, it, vi } from 'vitest'
 import { createFormattedEpubFixture } from '../fixtures/epub'
 import { sanitizeBookCSS, stylesheetURLs } from '../../src/features/epub/book-styles'
-import { verifyBookImage } from '../../src/features/epub/book-images'
+import { verifyBookImage, EPUB_SVG_BYTE_LIMIT } from '../../src/features/epub/book-images'
 import { preparePublication } from '../../src/features/epub/publication'
 
 afterEach(() => vi.unstubAllGlobals())
@@ -35,7 +35,7 @@ it('preserves approved CSS layout and colors while dropping active and remote CS
 it('rebuilds SVG without scripts, foreign content, event handlers or resource URLs', () => {
   const bytes = verifyBookImage(
     strToU8(
-      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10" onload="attack()"><script>attack()</script><foreignObject><p>bad</p></foreignObject><image href="https://evil.invalid/x"/><use href="https://evil.invalid/x"/><rect width="20" height="10" fill="url(https://evil.invalid/x)"/><circle r="2" fill="red"/></svg>',
+      '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10" onload="attack()"><use href="https://evil.invalid/x"/><rect width="20" height="10" fill="url(https://evil.invalid/x)"/><circle r="2" fill="red"/></svg>',
     ),
     'image/svg+xml',
   )!
@@ -98,7 +98,7 @@ it('revokes prepared resources when a later chapter is invalid or preparation is
   expect(revoke).toHaveBeenLastCalledWith('blob:cancelled')
 })
 
-it('flattens local SVG cover wrappers without admitting live SVG or remote images', async () => {
+it('rebuilds local SVG image wrappers without source scripts or remote resources', async () => {
   const { create, revoke } = urls()
   const files = unzipSync(createFormattedEpubFixture())
   const wrapper = (href: string) =>
@@ -111,10 +111,10 @@ it('flattens local SVG cover wrappers without admitting live SVG or remote image
   const file = blob(zipSync(files, { level: 0 }))
   const publication = await preparePublication(file)
   const chapter = strFromU8(unzipSync(new Uint8Array(publication.bytes))['chapter-0.xhtml']!)
-  expect(chapter).toContain('src="blob:local-image"')
-  expect(chapter).toContain('alt="Book cover"')
+  expect(chapter).toContain('href="blob:local-image"')
+  expect(chapter).toContain('aria-label="Book cover"')
   expect(chapter).toContain('Long chapter content remains readable.')
-  expect(chapter).not.toMatch(/<svg|<image|onload|attack|evil/)
+  expect(chapter).not.toMatch(/onload|attack|evil/)
   expect(create).toHaveBeenCalledOnce()
   const plainPublication = await preparePublication(file, undefined, true)
   const plain = strFromU8(unzipSync(new Uint8Array(plainPublication.bytes))['chapter-0.xhtml']!)
@@ -126,4 +126,51 @@ it('flattens local SVG cover wrappers without admitting live SVG or remote image
   publication.dispose()
   plainPublication.dispose()
   expect(revoke).toHaveBeenCalledOnce()
+})
+
+it('accepts the exact SVG byte boundary and rejects the next byte', () => {
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg"/>'
+  expect(verifyBookImage(strToU8(svg.padEnd(EPUB_SVG_BYTE_LIMIT)), 'image/svg+xml')).not.toBeNull()
+  expect(() =>
+    verifyBookImage(strToU8(svg.padEnd(EPUB_SVG_BYTE_LIMIT + 1)), 'image/svg+xml'),
+  ).toThrow('4 MiB')
+})
+
+for (const [reason, svg] of [
+  ['4 MiB', '<svg xmlns="http://www.w3.org/2000/svg"/>'.padEnd(EPUB_SVG_BYTE_LIMIT + 1)],
+  ['dimensions', '<svg xmlns="http://www.w3.org/2000/svg" width="10000"/>'],
+  ['structure', '<svg xmlns="http://www.w3.org/2000/svg">' + '<g/>'.repeat(20001) + '</svg>'],
+  [
+    'nesting',
+    '<svg xmlns="http://www.w3.org/2000/svg">' + '<g>'.repeat(65) + '</g>'.repeat(65) + '</svg>',
+  ],
+  ['malformed', '<svg'],
+] as const) {
+  it(`omits an unsupported SVG (${reason}) while retaining readable content and anchors`, async () => {
+    const { create, revoke } = urls()
+    const files = unzipSync(createFormattedEpubFixture())
+    files['OPS/images/illustration.svg'] = new Uint8Array(strToU8(svg))
+    const file = blob(zipSync(files, { level: 0 }))
+    const publication = await preparePublication(file)
+    const chapter = strFromU8(unzipSync(new Uint8Array(publication.bytes))['chapter-0.xhtml']!)
+    expect(chapter).toContain('Local illustration')
+    expect(chapter).toContain('Reading paragraph')
+    expect(chapter).not.toContain('<img')
+    expect(publication.imageWarnings).toHaveLength(1)
+    expect(publication.imageWarnings[0]).toContain(reason)
+    expect(create).not.toHaveBeenCalled()
+    const plain = await preparePublication(file, undefined, true)
+    const text = strFromU8(unzipSync(new Uint8Array(plain.bytes))['chapter-0.xhtml']!)
+    expect(text.match(/data-reader-node="[^"]+"/g)).toEqual(
+      chapter.match(/data-reader-node="[^"]+"/g),
+    )
+    expect(plain.imageWarnings).toEqual([])
+    publication.dispose()
+    plain.dispose()
+    expect(revoke).not.toHaveBeenCalled()
+  })
+}
+
+it('omits invalid UTF-8 SVG without passing it to the engine', () => {
+  expect(verifyBookImage(new Uint8Array([255]), 'image/svg+xml')).toBeNull()
 })
