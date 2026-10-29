@@ -40,13 +40,18 @@ for (const format of ['ttf', 'woff', 'woff2', 'otf'] as const)
         .locator('body')
         .evaluate((body) => {
           const result: { family: string; weight: string; style: string; status: string }[] = []
-          for (const face of body.ownerDocument.fonts.values())
+          // Firefox's isolated world does not expose the iframe iterator's Symbol.iterator.
+          // Advance the native iterator directly; avoid cross-realm callbacks as well.
+          const iterator = body.ownerDocument.fonts.values()
+          for (let entry = iterator.next(); !entry.done; entry = iterator.next()) {
+            const face = entry.value
             result.push({
               family: face.family.replaceAll('"', ''),
               weight: face.weight,
               style: face.style,
               status: face.status,
             })
+          }
           return result
         })
       expect(faces.filter((face) => face.family === 'PaperTrail Generated Fixture')).toEqual(
