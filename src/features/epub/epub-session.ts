@@ -1,3 +1,4 @@
+import { settleBookFonts } from './font-readiness'
 import { applyBookViewport } from './book-viewport'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
@@ -38,6 +39,7 @@ export interface EpubAnnotationContext {
 }
 export interface EpubSession {
   imageWarnings?: readonly string[]
+  fontWarnings?: readonly string[]
   title: string
   chapters: readonly { label: string; href: string }[]
   contents: readonly EpubContentsEntry[]
@@ -95,10 +97,11 @@ async function createEpubSession(
   let disposed = false
   let opening = true
   const pendingDisplays = new Set<() => void>()
-  function displayChapter(href: string): Promise<void> {
+  const fontLayoutWarnings = new WeakMap<Document, string | null>()
+  async function displayChapter(href: string): Promise<void> {
     const current = rendition
     if (!current || destroyed) return Promise.reject(new Error('EPUB session is unavailable.'))
-    return new Promise<void>((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       let settled = false
       const pending = current as Rendition & { displaying?: { reject(reason: unknown): void } }
       function finish(error?: unknown) {
@@ -132,6 +135,18 @@ async function createEpubSession(
         }
       }
     })
+    const doc = root.querySelector('iframe')?.contentDocument
+    if (doc && !options.textOnly) {
+      fontLayoutWarnings.set(doc, await settleBookFonts(doc, signal))
+      signal.throwIfAborted()
+      // Reframe the mounted chapter after font metrics settle, without clearing it.
+      const manager = (
+        current as unknown as {
+          manager?: { views?: { forEach(callback: (view: { expand?(): void }) => void): void } }
+        }
+      ).manager
+      manager?.views?.forEach((view) => view.expand?.())
+    }
   }
   let observer: ResizeObserver | null = null
   let diagnosticFrame = 0
@@ -470,6 +485,11 @@ async function createEpubSession(
     const session: EpubSession = {
       get imageWarnings() {
         return publication.imageWarnings
+      },
+      get fontWarnings() {
+        const doc = root.querySelector('iframe')?.contentDocument
+        const warning = doc && fontLayoutWarnings.get(doc)
+        return [...publication.fontWarnings, ...(warning ? [warning] : [])]
       },
       title: publication.title,
       chapters: publication.chapters,

@@ -154,3 +154,43 @@ opening failure offers explicit text-only retry. CRC/read errors, cancellation a
 unexpected exceptions are not swallowed. Disposal clears cached chapter markup,
 styles and URL ownership, including pending preparation. Embedded fonts remain
 separate work in #286; font loading is not enabled by these changes.
+
+## Embedded fonts (#286)
+
+Formatted chapters may rebuild manifest-local `@font-face` sources for TTF,
+CFF OpenType, WOFF and WOFF2. Only verified owned Blob URLs enter the font source
+map; the image-source map remains independent. Approved family, weight, style,
+stretch and unicode-range descriptors survive. Remote URLs, `local()` alternatives
+and imports are excluded; a valid local alternative can remain. Formatted chapter
+CSP allows Blob fonts only when a font was admitted. Text-only mode keeps fonts
+blocked and creates no font resources.
+
+Admission limits are 4 MiB encoded input per font, 16 MiB declared expanded data,
+128 tables, 16 resources/faces and 16 MiB font Blob data per chapter. Validation work
+is capped separately at 32 resources/32 MiB. SFNT/WOFF table ranges, overlap and
+container lengths are checked. WOFF2 fixed-header bounds are checked; its variable
+directory/compressed outlines are left to the browser decoder. These checks do not
+promise that every admitted container decodes or provide a physical-memory limit.
+Encrypted/obfuscated books still receive the existing explicit unsupported error;
+no encryption declaration is bypassed or silently ignored.
+
+A publication-local reference-counted pool shares verified font URLs across
+retained chapters. Chapter entries conservatively count their referenced font
+bytes toward the existing 96 MiB markup/resource budget, even when URLs are shared.
+Font admission reserves the existing full image allowance under cache pressure;
+fonts that do not fit fall back with a notice instead of displacing illustrations.
+Cancellation, eviction and close release font references; the final owner revokes
+the URL. No font payloads or source paths are persisted.
+
+After display, an explicit gate loads the chapter's at-most-16 faces and awaits
+FontFaceSet readiness for up to three seconds before reframing the mounted view
+and restoring the reading position. EPUB.js content hooks alone are not an awaited
+readiness boundary. Decoder rejection/timeout removes font-face rules before
+restoration so late font loads cannot change the restored layout. An accessible
+Font notice is separate from illustration notices. Reader font-size, line-spacing
+and reading-width overrides/reset remain authoritative.
+
+Generated font metrics/mappings, mode changes, chapter navigation, warm tabs,
+reconnect and fallback have manual browser acceptance cases. Container/policy,
+shared ownership, cancellation and readiness cleanup have unit coverage. Browser
+acceptance and owner preview must pass before this scope is declared delivered.

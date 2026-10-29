@@ -32,6 +32,21 @@ warm-tab behavior and position restoration. These waits are functional acceptanc
 budgets, not performance targets. There are no fixed sleeps or retries; a reader
 that never becomes ready still fails. Other content assertions keep their defaults.
 
+## Embedded-font acceptance (#286)
+
+Five generated-font cases cover TTF, CFF OpenType, WOFF and WOFF2 decoding/width
+metrics and bold/italic face mappings, plus malformed-font fallback and a distinct
+accessible Font notice. All four supported formats exercise resize, text-only
+switches and chapter navigation. The TTF case also covers reader typography/reset,
+retained iframe tab switching and reload/reconnect at a saved passage.
+
+The suite now lists 37 cases per engine (74 for Firefox/WebKit, 111 for all three).
+A clean passing report must come from the current source. Structural unit tests
+are not evidence that a browser rendered a font, and a fallback/timeout does not
+pass the font-fidelity case. Font obfuscation/encryption is still explicitly
+unsupported. Generated geometric fixture sources live in `tests/fixtures/fonts`;
+private fonts/books must not be committed as regression evidence.
+
 ## Run
 
 Use Node 24, installed dependencies and the desired Playwright browsers/OS

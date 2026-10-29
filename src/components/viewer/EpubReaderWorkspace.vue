@@ -996,6 +996,17 @@ watch(
         <li v-for="warning in reader.session.value.imageWarnings" :key="warning">{{ warning }}</li>
       </ul>
     </div>
+    <div
+      v-if="!loading && reader.session.value?.fontWarnings?.length"
+      role="status"
+      aria-label="Font notice"
+      class="border-b border-line px-4 py-2 text-xs text-muted"
+    >
+      <p>Some book fonts are unavailable. Reading continues with fallback fonts.</p>
+      <ul class="list-inside list-disc">
+        <li v-for="warning in reader.session.value.fontWarnings" :key="warning">{{ warning }}</li>
+      </ul>
+    </div>
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
       <button
