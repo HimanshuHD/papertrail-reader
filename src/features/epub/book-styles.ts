@@ -27,10 +27,17 @@ export function sanitizeBookCSS(
   } catch {
     return ''
   }
-  let nodes = 0
-  walk(ast, () => {
-    if (++nodes > 20000) throw new Error('EPUB stylesheet is too complex.')
+  let nodes = 0,
+    faces = 0,
+    topFaces = 0
+  ast.children?.forEach((node) => {
+    if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face') topFaces++
   })
+  walk(ast, (node) => {
+    if (++nodes > 20000) throw new Error('EPUB stylesheet is too complex.')
+    if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face') faces++
+  })
+  if (faces > topFaces) fontState.warn()
   function declarations(block: CssNode): string {
     const output: string[] = []
     block.children?.forEach((node) => {
@@ -152,6 +159,9 @@ export function sanitizeBookCSS(
         const content = declarations(node.block)
         if (safe && content) output.push(`${generate(node.prelude)}{${content}}`)
       } else if (node.type === 'Atrule' && node.name?.toLowerCase() === 'font-face' && node.block) {
+        // Conditional face definitions could start a new font load after resize
+        // and move an already-restored passage. Keep them as explicit fallback.
+        if (depth > 0) return
         const face = fontFace(node.block)
         if (face) output.push(face)
       } else if (
@@ -195,7 +205,8 @@ export function stylesheetFontURLs(css: string): string[] {
     walk(ast, () => {
       if (++count > 20000) throw new Error('EPUB stylesheet is too complex.')
     })
-    walk(ast, (node) => {
+    // Conditional faces are unsupported, so do not read/admit their unused files.
+    ast.children?.forEach((node) => {
       if (node.type !== 'Atrule' || node.name?.toLowerCase() !== 'font-face' || !node.block) return
       walk(node.block, (value) => {
         if (value.type === 'Url' && typeof value.value === 'string' && urls.size < 32)

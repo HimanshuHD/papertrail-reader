@@ -161,7 +161,9 @@ Formatted chapters may rebuild manifest-local `@font-face` sources for TTF,
 CFF OpenType, WOFF and WOFF2. Only verified owned Blob URLs enter the font source
 map; the image-source map remains independent. Approved family, weight, style,
 stretch and unicode-range descriptors survive. Remote URLs, `local()` alternatives
-and imports are excluded; a valid local alternative can remain. Formatted chapter
+and imports are excluded; a valid local alternative can remain. Conditional
+font-face declarations inside conditional rules are omitted with a notice, preventing
+a new deferred font load from shifting restored text after a resize. Formatted chapter
 CSP allows Blob fonts only when a font was admitted. Text-only mode keeps fonts
 blocked and creates no font resources.
 

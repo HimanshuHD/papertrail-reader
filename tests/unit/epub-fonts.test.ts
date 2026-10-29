@@ -249,3 +249,21 @@ it('repeated linked stylesheets retain layout rules without multiplying live fon
   pub.dispose()
   expect(revoke).toHaveBeenCalledOnce()
 })
+
+it('omits conditional faces to prevent late font swaps after resize, preserving media layout rules', () => {
+  expect(
+    stylesheetFontURLs('@media(min-width:400px){@font-face{font-family:Book;src:url(font.ttf)}}'),
+  ).toEqual([])
+  const state = { remaining: 16, warn: vi.fn() }
+  const clean = sanitizeBookCSS(
+    '@media(min-width:400px){@font-face{font-family:Book;src:url(font.ttf)}p{font-family:Book;color:red}}',
+    undefined,
+    false,
+    new Map([['font.ttf', 'blob:font']]),
+    state,
+  )
+  expect(clean).toContain('@media')
+  expect(clean).toContain('color:red')
+  expect(clean).not.toContain('@font-face')
+  expect(state.warn).toHaveBeenCalledOnce()
+})
