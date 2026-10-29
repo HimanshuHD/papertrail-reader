@@ -214,12 +214,7 @@
       "status": "retired"
     },
     "288": {
-      "sha": "f62e8ba62b37d4c5540a4108730da8ebee495958",
-      "runId": "40830801849",
-      "sourceSha": "b1023033722bb9b8a4181e9b3e063912385da562",
-      "tree": "53c9bc79ca3c9656dd788db4c6a2fc0417e4d841",
-      "branch": "staging",
-      "status": "active"
+      "status": "retired"
     }
   },
   "production": {
