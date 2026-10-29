@@ -2,6 +2,7 @@ export class ChapterCacheBudgetError extends Error {}
 export interface PreparedChapter {
   markup: string
   warnings: readonly string[]
+  fontWarnings?: readonly string[]
   bytes: number
   dispose(): void
 }

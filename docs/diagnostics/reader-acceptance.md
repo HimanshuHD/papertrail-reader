@@ -32,6 +32,37 @@ warm-tab behavior and position restoration. These waits are functional acceptanc
 budgets, not performance targets. There are no fixed sleeps or retries; a reader
 that never becomes ready still fails. Other content assertions keep their defaults.
 
+## Embedded-font acceptance (#286)
+
+Five generated-font cases cover TTF, CFF OpenType, WOFF and WOFF2 decoding/width
+metrics and bold/italic face mappings, plus malformed-font fallback and a distinct
+accessible Font notice. All four supported formats exercise resize, text-only
+switches and chapter navigation. The TTF case also covers reader typography/reset,
+retained iframe tab switching and reload/reconnect at a saved passage.
+
+The suite now lists 38 cases per engine (76 for Firefox/WebKit, 114 for all three).
+A clean passing report must come from the current source. Structural unit tests
+are not evidence that a browser rendered a font, and a fallback/timeout does not
+pass the font-fidelity case. Font obfuscation/encryption is still explicitly
+unsupported. Generated geometric fixture sources live in `tests/fixtures/fonts`;
+private fonts/books must not be committed as regression evidence.
+
+## Heading and test-harness follow-up
+
+A generated heading-group case verifies author-owned hierarchy, caps, alignment,
+spacing, semantic attribute selectors, text-only switching, resize and page bounds.
+It does not hard-code a heading theme or include private book content. Font-face
+inspection uses native iteration, preserving metric and mapping assertions without
+callbacks executed through a sandboxed FontFaceSet.
+
+The mixed-reader cleanup case has a 120-second aggregate budget for three real
+cycles and repeated downloads; picker/recovery cases have 90 seconds. Download and
+filechooser waits are bounded to 15 seconds, and cleanup still requires every
+instrumented counter to return to baseline. Named steps and retain-on-failure
+traces identify a stuck operation if a failure persists. These are functional
+acceptance budgets, not performance or native-permission certification. Traces
+and raw reports remain private; no retry, fake clock or counter reset is added.
+
 ## Run
 
 Use Node 24, installed dependencies and the desired Playwright browsers/OS

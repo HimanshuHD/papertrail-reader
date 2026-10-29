@@ -1,7 +1,14 @@
+import { copyBookSemantics } from './book-semantics'
 import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
 import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
 import { diagnostics } from '../diagnostics/recorder'
-import { sanitizeBookCSS, stylesheetURLs } from './book-styles'
+import {
+  sanitizeBookCSS,
+  stylesheetURLs,
+  stylesheetFontURLs,
+  withoutBookFontFaces,
+} from './book-styles'
+import { verifyBookFont, EpubFontError, EPUB_FONT_LIMITS, BookFontPool } from './book-fonts'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
 import { verifyBookImage, EpubImageLimitError, EPUB_SVG_BYTE_LIMIT } from './book-images'
 import { Inflate, strToU8, zipSync } from 'fflate'
@@ -18,6 +25,7 @@ function encode(text: string) {
 
 export interface TextPublication {
   imageWarnings: readonly string[]
+  fontWarnings: readonly string[]
   renderChapter(index: number): Promise<string | undefined>
   isChapterReady(index: number): boolean
   warmChapters(index: number): void
@@ -134,7 +142,7 @@ function coverImage(element: Element): Element | undefined {
   if (images.length === 1 && !images[0]!.children.length) return images[0]
 }
 const allowed = new Set(
-  'a main header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
+  'a main hgroup header footer aside address p div span h1 h2 h3 h4 h5 h6 blockquote pre code em strong b i u s small sup sub br hr ul ol li dl dt dd table thead tbody tfoot tr th td caption figure figcaption section article'.split(
     ' ',
   ),
 )
@@ -153,6 +161,7 @@ export function sanitizeChapter(
     sheets: string[]
     images: Map<Element, string>
     inline: Map<Element, string>
+    fonts?: boolean
   },
 ): string {
   const body = source.getElementsByTagNameNS(XHTML, 'body')[0]
@@ -163,7 +172,12 @@ export function sanitizeChapter(
   policy.setAttribute('http-equiv', 'Content-Security-Policy')
   policy.setAttribute(
     'content',
-    formatting ? EPUB_TEXT_CSP.replace("img-src 'none'", 'img-src blob:') : EPUB_TEXT_CSP,
+    formatting
+      ? EPUB_TEXT_CSP.replace("img-src 'none'", 'img-src blob:').replace(
+          "font-src 'none'",
+          formatting.fonts ? 'font-src blob:' : "font-src 'none'",
+        )
+      : EPUB_TEXT_CSP,
   )
   head.append(policy)
   if (formatting)
@@ -176,6 +190,7 @@ export function sanitizeChapter(
   const direction = body.getAttribute('dir') ?? source.documentElement.getAttribute('dir')
   if (direction === 'rtl' || direction === 'ltr') target.setAttribute('dir', direction)
   function attributes(from: Element, to: Element) {
+    copyBookSemantics(from, to)
     const id = from.getAttribute('id')
     if (
       id &&
@@ -306,27 +321,33 @@ export async function preparePublication(
   deferFormatting = false,
 ): Promise<TextPublication> {
   const ownedURLs: string[] = []
+  const fontPool = new BookFontPool()
+  const releaseURL = (url: string) => {
+    if (!fontPool.release(url)) URL.revokeObjectURL(url)
+  }
   let ownedBlobBytes = 0
+  let ownedImageBytes = 0
   let disposed = false
   let cache: ChapterCache | undefined
   let requestedChapter = -1
   let workSignal = signal
-  let imageAllowance = 32 * 1024 * 1024
+  let resourceAllowance = 32 * 1024 * 1024 + EPUB_FONT_LIMITS.chapterBytes
+  let fontAllowance = EPUB_FONT_LIMITS.chapterBytes
   let clearChapter = () => {}
   function ensureOpen() {
     signal?.throwIfAborted()
     workSignal?.throwIfAborted()
     if (disposed) throw new DOMException('EPUB publication was disposed.', 'AbortError')
   }
-  const releaseImages = () => {
-    for (const url of ownedURLs.splice(0)) URL.revokeObjectURL(url)
-    ownedBlobBytes = 0
+  const releaseResources = () => {
+    for (const url of ownedURLs.splice(0)) releaseURL(url)
+    ownedBlobBytes = ownedImageBytes = 0
     if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
   }
   const dispose = () => {
     disposed = true
     cache?.dispose()
-    releaseImages()
+    releaseResources()
     clearChapter()
   }
   try {
@@ -469,14 +490,14 @@ export async function preparePublication(
           imageWarnings.add('SVG illustration is malformed or uses an unsupported format.')
         return null
       }
-      if (ownedBlobBytes + bytes.byteLength > 32 * 1024 * 1024) {
+      if (ownedImageBytes + bytes.byteLength > 32 * 1024 * 1024) {
         imageWarnings.add(
           'Additional illustrations exceed this chapter’s 32 MiB live-image budget.',
         )
         return null
       }
       ensureOpen()
-      if (ownedBlobBytes + bytes.byteLength > imageAllowance)
+      if (ownedBlobBytes + bytes.byteLength > resourceAllowance)
         throw new ChapterCacheBudgetError('Adjacent chapter cache is full.')
       imageTotal += entry.expandedBytes
       imageCount++
@@ -484,15 +505,124 @@ export async function preparePublication(
       ownedURLs.push(url)
       if (mime === 'image/svg+xml') svgURLs.add(url)
       ownedBlobBytes += bytes.byteLength
+      ownedImageBytes += bytes.byteLength
       if (__READER_DIAGNOSTICS__)
         diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length, blobBytes: ownedBlobBytes })
       imageCache.set(path, url)
+      return url
+    }
+    const fontCache = new Map<string, string | null>()
+    const fontWarnings = new Set<string>()
+    let fontCount = 0,
+      fontBytes = 0,
+      fontAttempts = 0,
+      fontWork = 0
+    const fontState = {
+      remaining: EPUB_FONT_LIMITS.faces,
+      warn: () =>
+        fontWarnings.add(
+          'Some embedded font declarations are unsupported or exceed the chapter face limit. Fallback fonts are used.',
+        ),
+    }
+    async function font(base: string, href: string): Promise<string | null> {
+      ensureOpen()
+      let path: string
+      try {
+        path = resolvePath(base, href)
+      } catch {
+        fontWarnings.add(
+          'Remote or unsupported font sources are unavailable. Fallback fonts are used.',
+        )
+        return null
+      }
+      if (fontCache.has(path)) return fontCache.get(path)!
+      fontCache.set(path, null)
+      const mime = manifestPaths.get(path),
+        entry = byPath.get(path)
+      if (
+        !entry ||
+        !mime ||
+        ![
+          'font/woff',
+          'font/woff2',
+          'font/ttf',
+          'font/otf',
+          'application/font-woff',
+          'application/vnd.ms-opentype',
+          'application/x-font-ttf',
+          'application/x-font-opentype',
+          'application/font-sfnt',
+        ].includes(mime)
+      ) {
+        fontWarnings.add(
+          'An embedded font is missing or uses an unsupported manifest type. Fallback fonts are used.',
+        )
+        return null
+      }
+      if (
+        entry.expandedBytes > EPUB_FONT_LIMITS.inputBytes ||
+        fontCount >= EPUB_FONT_LIMITS.faces ||
+        fontAttempts >= EPUB_FONT_LIMITS.attempts ||
+        fontWork + entry.expandedBytes > EPUB_FONT_LIMITS.workBytes ||
+        fontBytes + entry.expandedBytes > Math.min(EPUB_FONT_LIMITS.chapterBytes, fontAllowance)
+      ) {
+        fontWarnings.add(
+          'Embedded fonts exceed their input, chapter or available cache budget. Fallback fonts are used.',
+        )
+        return null
+      }
+      fontAttempts++
+      fontWork += entry.expandedBytes
+      const retained = fontPool.acquire(path)
+      if (retained) {
+        if (ownedBlobBytes + retained.bytes > resourceAllowance) {
+          fontPool.release(retained.url)
+          throw new ChapterCacheBudgetError('Adjacent chapter cache is full.')
+        }
+        ownedURLs.push(retained.url)
+        ownedBlobBytes += retained.bytes
+        fontBytes += retained.bytes
+        fontCount++
+        fontCache.set(path, retained.url)
+        if (__READER_DIAGNOSTICS__)
+          diagnostics.resources(ownedURLs, {
+            blobURLs: ownedURLs.length,
+            blobBytes: ownedBlobBytes,
+          })
+        return retained.url
+      }
+      const bytes = await readEpubEntry(file, entry, workSignal)
+      let type: string
+      try {
+        type = verifyBookFont(bytes)
+      } catch (error) {
+        if (!(error instanceof EpubFontError)) throw error
+        fontWarnings.add(
+          'An embedded font is malformed, unsupported or oversized. Fallback fonts are used.',
+        )
+        return null
+      }
+      ensureOpen()
+      if (ownedBlobBytes + bytes.byteLength > resourceAllowance)
+        throw new ChapterCacheBudgetError('Adjacent chapter cache is full.')
+      const { url } = fontPool.add(path, bytes, type)
+      ownedURLs.push(url)
+      ownedBlobBytes += bytes.byteLength
+      fontBytes += bytes.byteLength
+      fontCount++
+      if (__READER_DIAGNOSTICS__)
+        diagnostics.resources(ownedURLs, { blobURLs: ownedURLs.length, blobBytes: ownedBlobBytes })
+      fontCache.set(path, url)
       return url
     }
     let cssTotal = 0
     const cssCache = new Map<string, string>()
     clearChapter = () => {
       imageCache.clear()
+      fontCache.clear()
+      fontWarnings.clear()
+      fontCount = fontBytes = fontAttempts = fontWork = 0
+      fontState.remaining = EPUB_FONT_LIMITS.faces
       svgURLs.clear()
       cssCache.clear()
       imageWarnings.clear()
@@ -506,10 +636,17 @@ export async function preparePublication(
         const url = await image(base, href)
         if (url) urls.set(href, url)
       }
-      return sanitizeBookCSS(text, urls, inline)
+      const fonts = new Map<string, string>()
+      if (!inline)
+        for (const href of stylesheetFontURLs(text)) {
+          const url = await font(base, href)
+          if (url) fonts.set(href, url)
+        }
+      return sanitizeBookCSS(text, urls, inline, fonts, fontState)
     }
     async function formatting(chapter: Document, path: string) {
       const sheets: string[] = []
+      const linkedSheets = new Set<string>()
       const images = new Map<Element, string>()
       const inline = new Map<Element, string>()
       const elements = [...chapter.getElementsByTagName('*')]
@@ -555,7 +692,8 @@ export async function preparePublication(
             )
             cssCache.set(href, clean)
           }
-          sheets.push(clean)
+          sheets.push(linkedSheets.has(href) ? withoutBookFontFaces(clean) : clean)
+          linkedSheets.add(href)
         }
         const style = element.getAttribute('style')
         if (style) inline.set(element, await css(style, path, true))
@@ -564,7 +702,7 @@ export async function preparePublication(
           if (url) images.set(element, url)
         }
       }
-      return { sheets, images, inline }
+      return { sheets, images, inline, fonts: fontBytes > 0 }
     }
     const chapters: { label: string; href: string }[] = []
     const chapterPaths: string[] = []
@@ -682,7 +820,7 @@ export async function preparePublication(
         chapter: index,
         children: [],
       }))
-    // Only rebuilt XHTML, sanitized CSS and owned image URLs reach the engine.
+    // Only rebuilt XHTML, sanitized CSS and owned image/font URLs reach the engine.
     files.mimetype = encode('application/epub+zip')
     files['META-INF/container.xml'] = encode(
       '<container xmlns="urn:oasis:names:tc:opendocument:xmlns:container" version="1.0"><rootfiles><rootfile full-path="package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>',
@@ -698,11 +836,17 @@ export async function preparePublication(
       budget: number,
     ): Promise<PreparedChapter> {
       ensureOpen()
-      releaseImages()
+      releaseResources()
       clearChapter()
       imageTotal = imageCount = imageWorkBytes = imageAttempts = cssTotal = 0
       workSignal = buildSignal
-      imageAllowance = Math.min(32 * 1024 * 1024, budget - 4 * 1024 * 1024)
+      resourceAllowance = budget - 4 * 1024 * 1024
+      // Preserve the existing full image allowance; skip speculative font ownership
+      // if the shared pool cannot hold it alongside the departing chapter.
+      fontAllowance = Math.max(
+        0,
+        Math.min(EPUB_FONT_LIMITS.chapterBytes, resourceAllowance - 32 * 1024 * 1024),
+      )
       try {
         const path = chapterPaths[index]!
         const chapter = await resource(path, 4 * 1024 * 1024)
@@ -736,17 +880,18 @@ export async function preparePublication(
         ensureOpen()
         const urls = ownedURLs.splice(0)
         const blobBytes = ownedBlobBytes
-        ownedBlobBytes = 0
+        ownedBlobBytes = ownedImageBytes = 0
         if (__READER_DIAGNOSTICS__) diagnostics.release(ownedURLs)
         let released = false
         const prepared: PreparedChapter = {
           markup,
           warnings: [...imageWarnings],
+          fontWarnings: [...fontWarnings],
           bytes: markupBytes + blobBytes,
           dispose() {
             if (released) return
             released = true
-            for (const url of urls) URL.revokeObjectURL(url)
+            for (const url of urls) releaseURL(url)
             if (__READER_DIAGNOSTICS__) diagnostics.release(prepared)
           },
         }
@@ -754,12 +899,13 @@ export async function preparePublication(
           diagnostics.resources(prepared, { blobURLs: urls.length, blobBytes })
         return prepared
       } catch (error) {
-        releaseImages()
+        releaseResources()
         throw error
       } finally {
         clearChapter()
         workSignal = signal
-        imageAllowance = 32 * 1024 * 1024
+        resourceAllowance = 32 * 1024 * 1024 + EPUB_FONT_LIMITS.chapterBytes
+        fontAllowance = EPUB_FONT_LIMITS.chapterBytes
       }
     }
     if (!textOnly && deferFormatting) cache = new ChapterCache(buildChapter, chapters.length)
@@ -774,6 +920,9 @@ export async function preparePublication(
     return {
       get imageWarnings() {
         return cache ? (cache.get(requestedChapter)?.warnings ?? []) : [...imageWarnings]
+      },
+      get fontWarnings() {
+        return cache ? (cache.get(requestedChapter)?.fontWarnings ?? []) : [...fontWarnings]
       },
       renderChapter,
       isChapterReady(index) {

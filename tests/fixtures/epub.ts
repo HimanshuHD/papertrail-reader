@@ -158,3 +158,27 @@ export function createImageHeavyEpubFixture() {
     packageBody: `<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata/><manifest>${manifest}</manifest><spine>${spine}</spine></package>`,
   })
 }
+
+/** Generated geometric fonts expose deterministic width metrics without private book assets. */
+export async function createFontEpubFixture(
+  format: 'ttf' | 'woff' | 'woff2' | 'otf',
+  invalid = false,
+) {
+  const fonts = await import('./fonts/generated-font')
+  const encoded = {
+    ttf: fonts.ttfBase64,
+    woff: fonts.woffBase64,
+    woff2: fonts.woff2Base64,
+    otf: fonts.otfBase64,
+  }[format]
+  const font = invalid ? new Uint8Array([0, 1, 2]) : new Uint8Array(Buffer.from(encoded, 'base64'))
+  const family = 'PaperTrail Generated Fixture'
+  const face = (extra = '') =>
+    `@font-face{font-family:"${family}";src:url(font.${format});${extra}}`
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Embedded font chapter</title><style>${face()}${face('font-weight:700')}${face('font-style:italic')}body{font-family:"${family}";font-size:20px}p{font-family:"${family}"}#probe{font-size:20px;white-space:nowrap}</style></head><body><h1>Embedded font chapter</h1><p><span id="probe">iii</span></p><p><strong>Bold mapping</strong> <em>Italic mapping</em></p>${Array.from({ length: 50 }, (_, i) => `<p id="font-line-${i}">Reading line ${i}. Stable text for position restoration.</p>`).join('')}</body></html>`
+  return createEpubFixture({
+    chapter,
+    manifest: `<item id="font" href="font.${format}" media-type="font/${format}"/>`,
+    files: { [`OPS/font.${format}`]: font },
+  })
+}
