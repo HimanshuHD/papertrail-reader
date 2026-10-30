@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { createEpubFixture } from '../fixtures/epub'
 import { createPdfFixture } from '../fixtures/pdf'
-import { waitForWorkspaceReady } from '../fixtures/browser'
+import { settleReaderLayout, waitForWorkspaceReady } from '../fixtures/browser'
 
 test('oversized SVG preserves readable text, modes, chapters and warm tabs', async ({ page }) => {
   // Document rebuilds are functional readiness checks, not five-second performance limits.
@@ -65,6 +65,10 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
     )
     .toBe(12)
   await expect(page.getByRole('dialog', { name: 'Illustration availability' })).toHaveCount(0)
+  // Library collapse is animated independently of document readiness. Measure
+  // only after its finite transitions and resize work settle; keep exact bounds
+  // equality so the notice still cannot consume any reader space.
+  await settleReaderLayout(reader)
   const before = await reader.locator('.epub-host').boundingBox()
   await noticeTrigger.click()
   const details = page.getByRole('dialog', { name: 'Illustration availability', exact: true })
