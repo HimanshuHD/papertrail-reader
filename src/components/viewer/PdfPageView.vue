@@ -313,6 +313,7 @@ async function renderPage() {
       if (sequence !== renderSequence) return
       contentLinks.value = found
     } catch {
+      if (sequence !== renderSequence || disposed) return
       emit('linkNotice', 'Links on this page could not be read. You can continue reading.')
     }
     rendered.value = true
