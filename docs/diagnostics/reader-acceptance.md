@@ -255,3 +255,17 @@ bounds. Diagnostics E2E asserts responsive edge placement and paused state. Unit
 checks cover focus restoration, original reasons, stale-details dismissal and
 independent split-reader IDs. Collection/check success does not certify visual
 fidelity; owner preview and a browser run remain required before closure.
+
+### Page inset and dark illustration follow-up
+
+The notice trigger uses 12px top/right padding from the usable reader viewport,
+excluding EPUB navigation gutters and native scrollbar width. A scoped resize
+observer updates those bounds and disconnects on hide/unmount; opening details
+still does not affect document layout.
+
+Dark EPUB images and application-owned SVG wrappers receive a white backing.
+Their resource pixels, SVG fills/strokes and colour palettes are preserved: page
+CSS cannot recolor SVGs loaded as image resources. Light mode removes this
+appearance override. The SVG fidelity acceptance case checks a white dark-mode
+backing while decoded colour pixels and the original Blob source remain intact.
+Check the supplied monochrome illustration visually in the preview as well.

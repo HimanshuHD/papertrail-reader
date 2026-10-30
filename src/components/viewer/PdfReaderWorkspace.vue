@@ -1428,6 +1428,7 @@ onBeforeUnmount(() => {
     <div class="pdf-body relative flex min-h-0 flex-1">
       <div class="relative z-0 flex min-w-0 flex-1">
         <ReaderNotice
+          :viewport="viewport"
           :active="active !== false && phase === 'ready'"
           :sections="
             persistenceNotice

@@ -318,6 +318,7 @@ watch(highlights.highlights, scheduleHighlights)
 
 let openGeneration = 0
 const host = ref<HTMLElement | null>(null)
+const noticeViewport = shallowRef<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -431,6 +432,7 @@ function clearFrameListeners() {
   noteIndicators.value = []
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
+  noticeViewport.value = null
   for (const doc of frameDocuments) {
     doc.removeEventListener('focusin', onFrameFocus, true)
     doc.removeEventListener('pointerdown', onFramePointer, true)
@@ -446,6 +448,7 @@ function bindFrameListeners() {
   if (readerDisposed) return
   clearFrameListeners()
   readingContainer = host.value?.querySelector<HTMLElement>('.epub-container') ?? null
+  noticeViewport.value = readingContainer
   readingContainer?.addEventListener('scroll', saveReading, { passive: true })
   for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
     const doc = frame.contentDocument
@@ -1026,7 +1029,11 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
-        <ReaderNotice :sections="renderingNotices" :active="active !== false && !loading" />
+        <ReaderNotice
+          :sections="renderingNotices"
+          :viewport="noticeViewport"
+          :active="active !== false && !loading"
+        />
         <NoteIndicator
           v-for="item in noteIndicators"
           :key="item.id"

@@ -38,6 +38,32 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
   await expect(notice).toContainText('4 MiB')
   const noticeTrigger = reader.getByRole('button', { name: 'Rendering information', exact: true })
   await expect(noticeTrigger).toBeVisible()
+  await expect
+    .poll(() =>
+      noticeTrigger.evaluate((button) => {
+        const viewport = button
+          .closest('.epub-stage')!
+          .querySelector<HTMLElement>('.epub-container')!
+        const page = viewport.getBoundingClientRect(),
+          icon = button.getBoundingClientRect()
+        return Math.round(page.left + viewport.clientLeft + viewport.clientWidth - icon.right)
+      }),
+    )
+    .toBe(12)
+  await expect
+    .poll(() =>
+      noticeTrigger.evaluate((button) => {
+        const viewport = button
+          .closest('.epub-stage')!
+          .querySelector<HTMLElement>('.epub-container')!
+        return Math.round(
+          button.getBoundingClientRect().top -
+            viewport.getBoundingClientRect().top -
+            viewport.clientTop,
+        )
+      }),
+    )
+    .toBe(12)
   await expect(page.getByRole('dialog', { name: 'Illustration availability' })).toHaveCount(0)
   const before = await reader.locator('.epub-host').boundingBox()
   await noticeTrigger.click()

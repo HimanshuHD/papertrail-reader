@@ -10,11 +10,51 @@ export type ReaderNoticeSection = {
   message: string
   reasons?: readonly string[]
 }
-const props = withDefaults(defineProps<{ sections: ReaderNoticeSection[]; active?: boolean }>(), {
-  active: true,
-})
+const props = withDefaults(
+  defineProps<{
+    sections: ReaderNoticeSection[]
+    active?: boolean
+    viewport?: HTMLElement | null
+  }>(),
+  {
+    active: true,
+    viewport: null,
+  },
+)
 const id = useId()
+const root = ref<HTMLElement | null>(null)
+const inset = ref({ top: '12px', right: '12px' })
 const trigger = ref<HTMLButtonElement | null>(null)
+watch(
+  [() => props.viewport, () => props.active, () => JSON.stringify(props.sections)],
+  ([viewport, active], _, cleanup) => {
+    let observer: ResizeObserver | undefined
+    let cancelled = false
+    cleanup(() => {
+      cancelled = true
+      observer?.disconnect()
+    })
+    void nextTick().then(() => {
+      const parent = root.value?.offsetParent as HTMLElement | null
+      if (cancelled || !active || !viewport || !parent) return
+      const place = () => {
+        const page = viewport.getBoundingClientRect(),
+          stage = parent.getBoundingClientRect()
+        inset.value = {
+          top: `${Math.max(12, page.top - stage.top + viewport.clientTop + 12)}px`,
+          right: `${Math.max(12, stage.right - page.left - viewport.clientLeft - viewport.clientWidth + 12)}px`,
+        }
+      }
+      place()
+      if (typeof ResizeObserver !== 'undefined') {
+        observer = new ResizeObserver(place)
+        observer.observe(viewport)
+        observer.observe(parent)
+      }
+    })
+  },
+  { immediate: true, flush: 'post' },
+)
 const closeButton = ref<HTMLButtonElement | null>(null)
 const expanded = ref(false)
 const tooltip = ref(false)
@@ -50,7 +90,7 @@ function close(restoreFocus = false) {
 </script>
 
 <template>
-  <div v-if="sections.length && active !== false" class="reader-notice">
+  <div v-if="sections.length && active !== false" ref="root" class="reader-notice" :style="inset">
     <button
       :key="signature"
       ref="trigger"
@@ -130,7 +170,7 @@ function close(restoreFocus = false) {
 .reader-notice {
   position: absolute;
   top: 12px;
-  right: 24px;
+  right: 12px;
   z-index: 15;
 }
 .reader-notice-trigger {

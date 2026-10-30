@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils'
 import { nextTick } from 'vue'
-import { afterEach, expect, it } from 'vitest'
+import { afterEach, expect, it, vi } from 'vitest'
 import ReaderNotice from '../../src/components/viewer/ReaderNotice.vue'
 const sections = [
   {
@@ -74,5 +74,44 @@ it('closes stale details on warning/mode/tab changes and keeps IDs independent i
     expect(first.find('[role=status]').exists()).toBe(false)
   } finally {
     parent.unmount()
+  }
+})
+
+it('insets from usable page bounds including navigation gutters and scrollbar, and disconnects on hide', async () => {
+  const viewport = document.createElement('div'),
+    stage = document.createElement('div')
+  stage.append(viewport)
+  document.body.append(stage)
+  vi.spyOn(stage, 'getBoundingClientRect').mockReturnValue({ top: 0, right: 500 } as DOMRect)
+  vi.spyOn(viewport, 'getBoundingClientRect').mockReturnValue({ top: 20, left: 40 } as DOMRect)
+  Object.defineProperties(viewport, {
+    clientWidth: { value: 400 },
+    clientLeft: { value: 0 },
+    clientTop: { value: 0 },
+  })
+  const disconnect = vi.fn(),
+    observe = vi.fn()
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      observe = observe
+      disconnect = disconnect
+    },
+  )
+  const wrapper = mount(ReaderNotice, { props: { sections, viewport }, attachTo: stage })
+  Object.defineProperty(wrapper.element, 'offsetParent', { value: stage })
+  try {
+    await nextTick()
+    await nextTick()
+    expect((wrapper.element as HTMLElement).style.right).toBe('72px')
+    expect((wrapper.element as HTMLElement).style.top).toBe('32px')
+    expect(observe).toHaveBeenCalledWith(viewport)
+    expect(observe).toHaveBeenCalledWith(stage)
+    await wrapper.setProps({ active: false })
+    expect(disconnect).toHaveBeenCalledOnce()
+  } finally {
+    wrapper.unmount()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   }
 })

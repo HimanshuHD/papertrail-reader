@@ -54,6 +54,18 @@ test('detailed SVG paths, author sizing and owned wrappers remain complete acros
     return rendered.source
   }
   const first = await check()
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await expect(reader.frameLocator('iframe').locator('.picture')).toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  )
+  // Decode/pixel checks must still match the authored colour, not an inverted resource.
+  expect(await check()).toBe(first)
+  await page.getByRole('button', { name: 'Dark mode', exact: true }).click()
+  await expect(reader.frameLocator('iframe').locator('.picture')).not.toHaveCSS(
+    'background-color',
+    'rgb(255, 255, 255)',
+  )
   await page.setViewportSize({ width: 900, height: 700 })
   await check()
   await reader.getByRole('button', { name: 'Next chapter', exact: true }).click()
