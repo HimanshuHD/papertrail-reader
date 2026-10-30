@@ -214,3 +214,58 @@ Generated large-spine acceptance navigates directly to the final section through
 Contents, checks previous-chapter navigation and a single rendered iframe, switches
 to a PDF and back, and reloads/reconnects to the saved section. Run it through the
 manual reader acceptance suite. No automatic Visual QA or profiling is added.
+
+## Compact notices and diagnostics edge entry (#289)
+
+Non-blocking EPUB illustration/font notices use a shared reader-local overlay.
+Their original messages/reasons remain in a polite live status and click-open
+non-modal details dialog. PDF reading-position notices use the same overlay;
+PDF open/page-render failures remain prominent errors, not recoverable notices.
+The icon does not reserve a row or reframe the document. Changed notices close
+stale details, briefly pulse three times and then become steady; reduced motion
+suppresses the pulse. Reopening a warm tab with unchanged warnings does not pulse
+again. Escape and the explicit close button return focus to the trigger.
+
+The existing diagnostics entry is attached to the right window edge, 24px above
+the bottom (respecting a larger bottom safe inset). Above 800px it uses reference
+A's vertical Diagnostics label; at 800px and below it uses reference C's icon-only
+entry. The custom tooltip opens to its left. There is one entry and the existing
+sampling, health, provisional-target, pause/reset/export and reopen state remain
+unchanged. Expanded panel placement remains bottom-right.
+
+Manual review on a preview build:
+
+1. Open a generated warning EPUB (oversized SVG or malformed font). Confirm the
+   warning row is gone, text is unchanged in the popover, hover/focus shows only
+   one short tooltip and click opens details. Close using X/Escape, then reopen.
+2. Record a visible passage and scroll offset; open/close details and confirm no
+   document reframe, reload or position change. Switch chapters, tabs, modes and
+   split readers; details must not leak into another document or stay open while
+   its reader is hidden. Unchanged warnings must not pulse on every warm switch.
+3. Check long reasons, narrow widths, light/dark themes and reduced motion. Keep
+   controls, scrollbars and popovers reachable and inside the viewport. Verify a
+   PDF reading-position warning if available; opening/render errors stay visible.
+4. Open diagnostics, choose a tab, minimize, reopen and check retained tab/data.
+   At wide and <=800px widths check A/C respectively, including library hidden,
+   keyboard focus, the single left tooltip and right-edge placement. Pause and
+   minimize: grey/static; resume: preserve existing health/sampling behavior.
+
+The SVG fallback reader case asserts click/keyboard details and unchanged host
+bounds. Diagnostics E2E asserts responsive edge placement and paused state. Unit
+checks cover focus restoration, original reasons, stale-details dismissal and
+independent split-reader IDs. Collection/check success does not certify visual
+fidelity; owner preview and a browser run remain required before closure.
+
+### Page inset and dark illustration follow-up
+
+The notice trigger uses 12px top/right padding from the usable reader viewport,
+excluding EPUB navigation gutters and native scrollbar width. A scoped resize
+observer updates those bounds and disconnects on hide/unmount; opening details
+still does not affect document layout.
+
+Dark EPUB images and application-owned SVG wrappers receive a white backing.
+Their resource pixels, SVG fills/strokes and colour palettes are preserved: page
+CSS cannot recolor SVGs loaded as image resources. Light mode removes this
+appearance override. The SVG fidelity acceptance case checks a white dark-mode
+backing while decoded colour pixels and the original Blob source remain intact.
+Check the supplied monochrome illustration visually in the preview as well.

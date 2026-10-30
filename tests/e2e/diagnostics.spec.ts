@@ -226,7 +226,18 @@ test('diagnostic dashboard remains readable and keyboard accessible at mobile wi
   await header.getByRole('button', { name: 'Minimize diagnostics', exact: true }).click()
   const trigger = page.getByRole('button', { name: 'Developer diagnostics', exact: true })
   const triggerBounds = await trigger.boundingBox()
-  expect(Math.round(triggerBounds!.y + triggerBounds!.height)).toBe(900)
+  expect(Math.round(triggerBounds!.x + triggerBounds!.width)).toBe(320)
+  expect(Math.round(triggerBounds!.y + triggerBounds!.height)).toBe(876)
+  await expect(trigger.locator('.trigger-label')).toBeHidden()
+  await trigger.focus()
+  await expect(page.getByRole('tooltip', { name: 'Open diagnostics', exact: true })).toBeVisible()
+  await expect(page.getByRole('tooltip')).toHaveCount(1)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await expect(trigger.locator('.trigger-label')).toBeVisible()
+  expect(Math.round((await trigger.boundingBox())!.x + (await trigger.boundingBox())!.width)).toBe(
+    1440,
+  )
+  await page.setViewportSize({ width: 320, height: 900 })
   await expect(trigger.locator('.pulse-loader')).toHaveAttribute(
     'data-state',
     /recording|collecting/,

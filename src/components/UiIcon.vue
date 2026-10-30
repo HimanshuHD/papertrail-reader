@@ -1,6 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   name:
+    | 'activity'
     | 'edit'
     | 'trash'
     | 'check'
@@ -35,6 +36,8 @@ defineProps<{
     | 'info'
 }>()
 const paths = {
+  // Lucide activity; license in docs/licenses/lucide.txt.
+  activity: 'M22 12h-4l-3 9L9 3l-3 9H2',
   pause: 'M8 5v14M16 5v14',
   play: 'm8 5 11 7-11 7V5Z',
   minimize: 'M5 16h14',

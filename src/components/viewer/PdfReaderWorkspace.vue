@@ -12,6 +12,7 @@ import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/high
 import type { AnnotationSelector } from '../../features/annotations/selectors'
 import type { AnnotationColor } from '../../services/annotation-storage'
 import LoadingState from '../LoadingState.vue'
+import ReaderNotice from './ReaderNotice.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
@@ -1204,13 +1205,6 @@ onBeforeUnmount(() => {
     :style="{ '--pt-selection-color': SELECTION_COLORS[highlightColor] }"
     @pointerdown.capture="clearPendingHighlight"
   >
-    <p
-      v-if="persistenceNotice"
-      role="status"
-      class="border-b border-line bg-panel px-4 py-2 text-xs text-muted"
-    >
-      {{ persistenceNotice }}
-    </p>
     <header
       class="pdf-header relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
@@ -1432,76 +1426,95 @@ onBeforeUnmount(() => {
     </p>
 
     <div class="pdf-body relative flex min-h-0 flex-1">
-      <section
-        ref="viewport"
-        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
-        aria-label="PDF pages"
-        tabindex="0"
-        :aria-describedby="readerId('reader-title')"
-        :aria-busy="phase === 'loading' || phase === 'restoring'"
-        @scroll.passive="handleViewerScroll"
-      >
-        <div
-          v-if="phase === 'loading' || phase === 'restoring'"
-          class="absolute inset-0 z-10 bg-canvas"
+      <div class="relative z-0 flex min-w-0 flex-1">
+        <ReaderNotice
+          :viewport="viewport"
+          :active="active !== false && phase === 'ready'"
+          :sections="
+            persistenceNotice
+              ? [
+                  {
+                    title: 'Reading position',
+                    label: 'Reading position notice',
+                    message: persistenceNotice,
+                  },
+                ]
+              : []
+          "
+        />
+        <section
+          ref="viewport"
+          class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
+          aria-label="PDF pages"
+          tabindex="0"
+          :aria-describedby="readerId('reader-title')"
+          :aria-busy="phase === 'loading' || phase === 'restoring'"
+          @scroll.passive="handleViewerScroll"
         >
-          <LoadingState
-            :label="initialState?.pdf ? 'Restoring your reading position…' : 'Opening document'"
-            :detail="document.name"
-          />
-        </div>
+          <div
+            v-if="phase === 'loading' || phase === 'restoring'"
+            class="absolute inset-0 z-10 bg-canvas"
+          >
+            <LoadingState
+              :label="initialState?.pdf ? 'Restoring your reading position…' : 'Opening document'"
+              :detail="document.name"
+            />
+          </div>
 
-        <div
-          v-if="phase === 'error'"
-          class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
-          role="alert"
-        >
-          <p class="font-medium">PaperTrail could not open this PDF</p>
-          <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
-        </div>
+          <div
+            v-if="phase === 'error'"
+            class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
+            role="alert"
+          >
+            <p class="font-medium">PaperTrail could not open this PDF</p>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
+          </div>
 
-        <div
-          v-else-if="session"
-          class="pdf-pages"
-          :class="{ 'pdf-pages-spread': twoPage }"
-          :inert="phase !== 'ready'"
-          :aria-hidden="phase !== 'ready'"
-          :style="{
-            visibility: phase === 'ready' ? 'visible' : 'hidden',
-            opacity: phase === 'ready' ? 1 : 0,
-          }"
-        >
-          <PdfPageView
-            v-for="pageNumber in pages"
-            :id="readerId(`pdf-page-${pageNumber}`)"
-            :key="`${openSequence}:${pageNumber}`"
-            :session="session"
-            :page-number="pageNumber"
-            :fit-mode="fitMode"
-            :zoom="zoom"
-            :available-width="pageAvailableWidth"
-            :available-height="availableHeight"
-            :scroll-root="viewport"
-            :annotations="highlights.highlights.value"
-            :fingerprint="continuity.fingerprint.value"
-            :active-highlight="selectedHighlight"
-            :search-query="completedSearchQuery"
-            :selected-occurrence="
-              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.occurrence : null
-            "
-            :selection-request="
-              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
-            "
-            @highlight-selected="openHighlight"
-            @note-selected="openNote"
-            @highlight-resolution="highlightResolution"
-            @pointerup="captureSelection"
-            @visibility="handleVisibility"
-            @rendered="handleRendered"
-            @error="handleRenderError"
-          />
-        </div>
-      </section>
+          <div
+            v-else-if="session"
+            class="pdf-pages"
+            :class="{ 'pdf-pages-spread': twoPage }"
+            :inert="phase !== 'ready'"
+            :aria-hidden="phase !== 'ready'"
+            :style="{
+              visibility: phase === 'ready' ? 'visible' : 'hidden',
+              opacity: phase === 'ready' ? 1 : 0,
+            }"
+          >
+            <PdfPageView
+              v-for="pageNumber in pages"
+              :id="readerId(`pdf-page-${pageNumber}`)"
+              :key="`${openSequence}:${pageNumber}`"
+              :session="session"
+              :page-number="pageNumber"
+              :fit-mode="fitMode"
+              :zoom="zoom"
+              :available-width="pageAvailableWidth"
+              :available-height="availableHeight"
+              :scroll-root="viewport"
+              :annotations="highlights.highlights.value"
+              :fingerprint="continuity.fingerprint.value"
+              :active-highlight="selectedHighlight"
+              :search-query="completedSearchQuery"
+              :selected-occurrence="
+                selectedSearchMatch?.pageNumber === pageNumber
+                  ? selectedSearchMatch.occurrence
+                  : null
+              "
+              :selection-request="
+                selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
+              "
+              @highlight-selected="openHighlight"
+              @note-selected="openNote"
+              @highlight-resolution="highlightResolution"
+              @pointerup="captureSelection"
+              @visibility="handleVisibility"
+              @rendered="handleRendered"
+              @error="handleRenderError"
+            />
+          </div>
+        </section>
+      </div>
 
       <Transition
         name="utility-panel"
