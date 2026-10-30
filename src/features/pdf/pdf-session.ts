@@ -1,7 +1,16 @@
+import { externalLink, unavailableLink, type DocumentLink } from '../reader/document-links'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import { findTextMatches, canonicalPdfText, type SearchContext } from './search-text'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
+export interface PdfContentLink {
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+  action: DocumentLink
+}
 export type PdfFitMode = 'width' | 'page' | 'custom'
 
 export interface PdfRenderRequest {
@@ -248,6 +257,92 @@ export class PdfDocumentSession {
       throw new RangeError(`Page ${pageNumber} is outside this PDF.`)
     }
     return this.document.getPage(pageNumber)
+  }
+
+  async getPageLinks(pageNumber: number): Promise<readonly PdfContentLink[]> {
+    const page = await this.getPage(pageNumber),
+      viewport = page.getViewport({ scale: 1 })
+    const annotations = await page.getAnnotations({ intent: 'display' })
+    if (this.closed) return []
+    const links: PdfContentLink[] = []
+    for (const item of annotations.slice(0, 2000)) {
+      if (
+        item.subtype !== 'Link' ||
+        !Array.isArray(item.rect) ||
+        item.rect.length !== 4 ||
+        !item.rect.every(Number.isFinite)
+      )
+        continue
+      const rect = [
+        ...viewport.convertToViewportPoint(item.rect[0], item.rect[1]),
+        ...viewport.convertToViewportPoint(item.rect[2], item.rect[3]),
+      ]
+      const x = Math.max(0, Math.min(...[rect[0]!, rect[2]!]) / viewport.width),
+        y = Math.max(0, Math.min(rect[1]!, rect[3]!) / viewport.height)
+      const width = Math.min(1 - x, Math.abs(rect[2]! - rect[0]!) / viewport.width),
+        height = Math.min(1 - y, Math.abs(rect[3]! - rect[1]!) / viewport.height)
+      if (width <= 0 || height <= 0) continue
+      let action: DocumentLink = unavailableLink()
+      if (typeof item.url === 'string' || typeof item.unsafeUrl === 'string')
+        action = externalLink(item.url ?? item.unsafeUrl)
+      else if (typeof item.dest === 'string' || Array.isArray(item.dest))
+        action = { kind: 'pdf', destination: item.dest }
+      const label =
+        typeof item.contentsObj?.str === 'string' && item.contentsObj.str.slice(0, 200).trim()
+          ? item.contentsObj.str.slice(0, 200)
+          : action.kind === 'external'
+            ? `External link: ${action.url}`
+            : action.kind === 'pdf'
+              ? 'Go to document destination'
+              : 'Unsupported document link'
+      links.push({ x, y, width, height, label, action })
+    }
+    return links
+  }
+
+  async resolveLinkDestination(
+    destination: string | unknown[],
+  ): Promise<{ pageNumber: number; x?: number; y?: number } | null> {
+    try {
+      const resolved =
+        typeof destination === 'string'
+          ? await this.document.getDestination(destination)
+          : destination
+      const pageNumber = await this.resolveDestinationPage(resolved)
+      if (!resolved || !pageNumber || pageNumber < 1 || pageNumber > this.totalPages || this.closed)
+        return null
+      const page = await this.getPage(pageNumber),
+        viewport = page.getViewport({ scale: 1 })
+      await this.getPageDimensions(pageNumber)
+      const mode = (resolved[1] as { name?: string } | undefined)?.name
+      if (!['XYZ', 'Fit', 'FitB', 'FitH', 'FitBH', 'FitV', 'FitBV', 'FitR'].includes(mode ?? ''))
+        return null
+      let x: number | undefined, y: number | undefined
+      if (mode === 'XYZ') {
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+        y = typeof resolved[3] === 'number' ? resolved[3] : undefined
+      } else if (mode === 'FitH' || mode === 'FitBH')
+        y = typeof resolved[2] === 'number' ? resolved[2] : undefined
+      else if (mode === 'FitV' || mode === 'FitBV')
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+      else if (mode === 'FitR') {
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+        y = typeof resolved[5] === 'number' ? resolved[5] : undefined
+      }
+      if ((x !== undefined && !Number.isFinite(x)) || (y !== undefined && !Number.isFinite(y)))
+        return null
+      const point = viewport.convertToViewportPoint(x ?? page.view[0]!, y ?? page.view[3]!)
+      const [a, b, c, d] = viewport.transform ?? [1, 0, 0, -1]
+      const viewportX = (x !== undefined && a !== 0) || (y !== undefined && c !== 0)
+      const viewportY = (x !== undefined && b !== 0) || (y !== undefined && d !== 0)
+      return {
+        pageNumber,
+        ...(viewportX ? { x: Math.max(0, Math.min(1, point[0]! / viewport.width)) } : {}),
+        ...(viewportY ? { y: Math.max(0, Math.min(1, point[1]! / viewport.height)) } : {}),
+      }
+    } catch {
+      return null
+    }
   }
 
   private async resolveDestinationPage(

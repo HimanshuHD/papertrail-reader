@@ -12,6 +12,9 @@ import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/high
 import type { AnnotationSelector } from '../../features/annotations/selectors'
 import type { AnnotationColor } from '../../services/annotation-storage'
 import LoadingState from '../LoadingState.vue'
+import ExternalLinkDialog from './ExternalLinkDialog.vue'
+import { useDocumentLinks } from '../../composables/useDocumentLinks'
+import type { DocumentLink } from '../../features/reader/document-links'
 import ReaderNotice from './ReaderNotice.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
@@ -102,12 +105,73 @@ const searchInput = ref<HTMLInputElement | null>(null)
 const popoverRoot = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
+const linksActive = () => props.active !== false && phase.value === 'ready'
+const links = useDocumentLinks(linksActive)
 const errorMessage = ref('')
 const currentPage = ref(1)
 const pageEditing = ref(false)
 const pageDraft = ref('1')
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
+const readerNotices = computed(() => [
+  ...(persistenceNotice.value
+    ? [
+        {
+          title: 'Reading position',
+          label: 'Reading position notice',
+          message: persistenceNotice.value,
+        },
+      ]
+    : []),
+  ...(links.notice.value
+    ? [{ title: 'Link availability', label: 'Link notice', message: links.notice.value }]
+    : []),
+])
+let contentLinkSequence = 0
+let pendingContentDestination: {
+  pageNumber: number
+  x?: number
+  y?: number
+  layout: number
+  sequence: number
+  owner: PdfDocumentSession
+} | null = null
+function cancelContentNavigation() {
+  ++contentLinkSequence
+  pendingContentDestination = null
+}
+function finishContentNavigation() {
+  const target = pendingContentDestination
+  if (!target) return
+  if (
+    target.owner !== session.value ||
+    target.layout !== layoutOperation ||
+    target.sequence !== contentLinkSequence ||
+    !linksActive()
+  ) {
+    pendingContentDestination = null
+    return
+  }
+  const pane = viewport.value,
+    shell = pane?.querySelector<HTMLElement>(`[data-pdf-page="${target.pageNumber}"]`),
+    page = shell?.querySelector<HTMLElement>('.pdf-page')
+  if (!pane || !page || shell?.dataset.renderState !== 'ready') return
+  pendingContentDestination = null
+  const box = page.getBoundingClientRect(),
+    bounds = pane.getBoundingClientRect()
+  pane.scrollTo({
+    top: box.top - bounds.top + pane.scrollTop + (target.y ?? 0) * box.height,
+    left:
+      target.x === undefined
+        ? pane.scrollLeft
+        : box.left - bounds.left + pane.scrollLeft + target.x * box.width,
+    behavior: 'instant',
+  })
+  shell.tabIndex = -1
+  shell.focus({ preventScroll: true })
+  saveReadingPoint()
+}
+
 const bookmarks = usePdfBookmarks(continuity.documentId)
 const highlights = usePdfHighlights(continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
@@ -143,6 +207,7 @@ const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
 )
 function clearPendingHighlight(event: PointerEvent) {
+  cancelContentNavigation()
   selectingHighlight =
     event.target instanceof Element &&
     !!event.target.closest('.textLayer') &&
@@ -575,6 +640,42 @@ async function loadDocument() {
   }
 }
 
+async function activateContentLink(link: DocumentLink, origin: HTMLElement) {
+  const sequence = ++contentLinkSequence
+  const layout = layoutOperation
+  if (link.kind !== 'pdf') {
+    links.request(link, origin)
+    return
+  }
+  const current = session.value
+  if (!current || props.active === false) return
+  const destination = await current.resolveLinkDestination(link.destination)
+  if (
+    current !== session.value ||
+    !linksActive() ||
+    sequence !== contentLinkSequence ||
+    layout !== layoutOperation
+  )
+    return
+  if (!destination) {
+    links.notice.value = 'This link destination is unavailable or unsupported.'
+    return
+  }
+  links.notice.value = ''
+  const navigating = goToPage(destination.pageNumber)
+  const expectedLayout = layoutOperation
+  await navigating
+  if (
+    current !== session.value ||
+    !linksActive() ||
+    sequence !== contentLinkSequence ||
+    expectedLayout !== layoutOperation
+  )
+    return
+  pendingContentDestination = { ...destination, layout: expectedLayout, sequence, owner: current }
+  finishContentNavigation()
+}
+
 async function goToPage(page: number, bookmarkNavigation = false) {
   if (!bookmarkNavigation) pendingBookmark = null
   finishNavigation?.('cancelled')
@@ -650,6 +751,7 @@ function stepPage(delta: number) {
 
 let completingRestore = false
 async function handleRendered(pageNumber: number, scale: number) {
+  if (pendingContentDestination?.pageNumber === pageNumber) void nextTick(finishContentNavigation)
   if (phase.value === 'ready' && pendingBookmark?.anchor.page === pageNumber)
     await finishBookmarkNavigation(pageNumber)
   if (
@@ -1425,22 +1527,17 @@ onBeforeUnmount(() => {
       <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
     </p>
 
+    <ExternalLinkDialog
+      v-if="links.pending.value"
+      :url="links.pending.value.url"
+      @close="links.close"
+    />
     <div class="pdf-body relative flex min-h-0 flex-1">
       <div class="relative z-0 flex min-w-0 flex-1">
         <ReaderNotice
           :viewport="viewport"
           :active="active !== false && phase === 'ready'"
-          :sections="
-            persistenceNotice
-              ? [
-                  {
-                    title: 'Reading position',
-                    label: 'Reading position notice',
-                    message: persistenceNotice,
-                  },
-                ]
-              : []
-          "
+          :sections="readerNotices"
         />
         <section
           ref="viewport"
@@ -1449,6 +1546,7 @@ onBeforeUnmount(() => {
           tabindex="0"
           :aria-describedby="readerId('reader-title')"
           :aria-busy="phase === 'loading' || phase === 'restoring'"
+          @wheel.passive="cancelContentNavigation"
           @scroll.passive="handleViewerScroll"
         >
           <div
@@ -1510,6 +1608,8 @@ onBeforeUnmount(() => {
               @pointerup="captureSelection"
               @visibility="handleVisibility"
               @rendered="handleRendered"
+              @link="activateContentLink"
+              @link-notice="links.notice.value = $event"
               @error="handleRenderError"
             />
           </div>

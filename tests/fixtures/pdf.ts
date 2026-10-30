@@ -5,21 +5,34 @@ export function createPdfFixture(
   title?: string,
   searchFixture = false,
   rotation = 0,
+  contentLinks = false,
 ): Buffer {
   const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
-    '<< /Type /Catalog /Pages 2 0 R >>',
+    `<< /Type /Catalog /Pages 2 0 R ${contentLinks ? `/Names << /Dests << /Names [(chapter-two) [${pageIds[1] ?? pageIds[0]} 0 R /XYZ 0 720 null]] >> >>` : ''} >>`,
     `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageCount} >>`,
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
   ]
   for (let i = 0; i < pageCount; i++) {
     const label = i === 0 ? 'First page' : i === 1 ? 'Second page' : `Page ${i + 1}`
     const stream =
-      searchFixture && i === 1
-        ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
-        : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
+      contentLinks && i === 0
+        ? 'BT /F1 18 Tf 72 720 Td (Go to second page) Tj 0 -40 Td (Open website) Tj 0 -40 Td (Missing destination) Tj 0 -40 Td (Unsafe action) Tj 0 -40 Td (Named chapter link) Tj ET'
+        : searchFixture && i === 1
+          ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
+          : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R >>`,
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R ${
+        contentLinks && i === 0
+          ? `/Annots [
+          << /Type /Annot /Subtype /Link /Rect [72 716 245 740] /Contents (Go to second page) /Dest [${pageIds[1] ?? pageIds[0]} 0 R /XYZ 0 720 null] >>
+          << /Type /Annot /Subtype /Link /Rect [72 676 190 700] /Contents (Open website) /A << /S /URI /URI (https://example.test/reader-link) >> >>
+          << /Type /Annot /Subtype /Link /Rect [72 636 250 660] /Contents (Missing destination) /Dest (missing) >>
+          << /Type /Annot /Subtype /Link /Rect [72 596 200 620] /Contents (Unsafe action) /A << /S /Launch /F (unsafe.exe) >> >>
+          << /Type /Annot /Subtype /Link /Rect [72 556 250 580] /Contents (Named chapter link) /Dest (chapter-two) >>
+        ]`
+          : ''
+      } >>`,
     )
     objects.push(
       `<< /Length ${Buffer.byteLength(stream, 'ascii')} >>\nstream\n${stream}\nendstream`,
