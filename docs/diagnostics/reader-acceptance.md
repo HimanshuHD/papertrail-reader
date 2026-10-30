@@ -269,3 +269,52 @@ CSS cannot recolor SVGs loaded as image resources. Light mode removes this
 appearance override. The SVG fidelity acceptance case checks a white dark-mode
 backing while decoded colour pixels and the original Blob source remain intact.
 Check the supplied monochrome illustration visually in the preview as well.
+
+## Document content hyperlinks (#291)
+
+Content anchors are visibly underlined in PDF and EPUB. EPUB reconstruction keeps
+bounded, application-owned inert link metadata in formatted and text-only modes;
+no native navigation href or source event handler is inserted. Verified spine
+paths and unique retained fragments resolve same/cross-chapter and return links.
+PDF link annotations are projected through the page viewport, including rotation,
+onto underlined keyboard-accessible overlays for rendered pages. Named/explicit
+PDF destinations preserve zoom and align coordinates after the target page is
+ready; obsolete navigation is discarded. This is destination navigation, not a
+full implementation of destination-specific zoom modes or remote file actions.
+
+HTTP/HTTPS links always show a native modal confirmation with the canonical URL,
+Cancel initially focused, Escape cancellation and native modal focus containment.
+Mouse, keyboard, modified and middle activations share the same inert handler.
+No destination is contacted or tab opened before confirmation. Only Open link
+opens a tab synchronously; the temporary same-origin blank tab is created after
+consent to detect popup blocking, its opener is cleared, then a no-referrer link
+navigates that tab. A blocked popup offers an explicit retry. Script/data/file,
+credentialed and other unsupported destinations are never executed. The URL is
+not persisted or added to diagnostic exports. Existing book script/remote resource
+restrictions and resource ownership remain unchanged.
+
+The three generated content-link cases cover PDF, formatted EPUB and text-only
+EPUB. All-engine reader collection is now **41 cases/engine, 123 total**. Browser
+coverage asserts underline/roles, internal and missing destinations, Ctrl/middle/
+keyboard confirmation, Cancel/Escape/focus loop, exactly one consented popup and
+null opener/empty referrer. These are not executed by collecting tests.
+
+Manual preview review:
+
+1. Use a PDF with real Link annotations (printed URL text alone is not a link).
+   Try contents entries/named destinations, distant pages, non-default zoom and
+   two-page layout. Confirm destination alignment once the page is rendered.
+2. In EPUB formatted and text-only modes, follow same-chapter notes/return links,
+   chapter links and encoded fragment names. Check an unavailable target: a
+   compact Link availability notice appears and reading remains usable.
+3. Activate external links by mouse, Enter and Ctrl/Cmd/middle click. Confirm the
+   full URL is visible, Cancel gets focus, Tab stays in the modal, and Escape/
+   Cancel restore link focus without a tab or request. Open link should create
+   one new tab and leave the original reader's state intact. Test popup blocking.
+4. Repeat in light/dark themes, narrow/fullscreen/split readers, and warm tabs.
+   Check link focus outlines, normal text selection/highlights outside link
+   hotspots, and per-reader position/zoom after tab changes. Unsafe actions must
+   show useful feedback rather than execute.
+
+Use the existing all-engine reader command; preserve the resulting summary and
+report privately. Manual Visual QA remains separate and opt-in.

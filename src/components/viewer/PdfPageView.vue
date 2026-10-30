@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { bindDocumentLinks, type DocumentLink } from '../../features/reader/document-links'
+import type { PdfContentLink } from '../../features/pdf/pdf-session'
 import { diagnostics } from '../../features/diagnostics/recorder'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
@@ -36,6 +38,8 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
+  link: [action: DocumentLink, origin: HTMLElement]
+  linkNotice: [message: string]
   visibility: [pageNumber: number, ratio: number]
   rendered: [pageNumber: number, scale: number]
   error: [message: string]
@@ -45,6 +49,7 @@ const emit = defineEmits<{
 }>()
 
 const root = ref<HTMLElement | null>(null)
+const contentLinks = ref<readonly PdfContentLink[]>([])
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
 const highlightRects = ref<
@@ -223,6 +228,7 @@ let disposed = false
 let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
+let releaseLinks: (() => void) | undefined
 let releaseTextSelection: (() => void) | undefined
 let releaseHighlightHover: (() => void) | undefined
 
@@ -302,6 +308,14 @@ async function renderPage() {
         hoveredHighlight.value = id
       },
     )
+    try {
+      const found = (await props.session.getPageLinks?.(props.pageNumber)) ?? []
+      if (sequence !== renderSequence) return
+      contentLinks.value = found
+    } catch {
+      if (sequence !== renderSequence || disposed) return
+      emit('linkNotice', 'Links on this page could not be read. You can continue reading.')
+    }
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -362,6 +376,7 @@ function releaseBitmap() {
     diagnostics.resources(root, { canvases: 1, canvasBytes: 0 })
   highlightRects.value = []
   savedRects.value = []
+  contentLinks.value = []
   releaseTextSelection?.()
   releaseTextSelection = undefined
   releaseHighlightHover?.()
@@ -454,6 +469,16 @@ watch(
   },
 )
 onMounted(() => {
+  if (root.value)
+    releaseLinks = bindDocumentLinks(
+      root.value,
+      (element) =>
+        contentLinks.value[Number(element.dataset.readerLink)]?.action ?? {
+          kind: 'blocked',
+          message: 'This link is unavailable.',
+        },
+      (action, origin) => emit('link', action, origin),
+    )
   if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { canvases: 1 })
   props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
   observePage()
@@ -461,6 +486,7 @@ onMounted(() => {
 })
 
 onBeforeUnmount(() => {
+  releaseLinks?.()
   if (__READER_DIAGNOSTICS__) diagnostics.release(root)
   disposed = true
   if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
@@ -549,6 +575,22 @@ onBeforeUnmount(() => {
           }"
         />
       </div>
+      <div v-if="rendered && !rendering" class="pdf-content-links">
+        <a
+          v-for="(link, index) in contentLinks"
+          :key="index"
+          role="link"
+          tabindex="0"
+          :data-reader-link="index"
+          :aria-label="link.label"
+          :style="{
+            left: `${link.x * 100}%`,
+            top: `${link.y * 100}%`,
+            width: `${link.width * 100}%`,
+            height: `${link.height * 100}%`,
+          }"
+        />
+      </div>
       <div
         ref="textLayer"
         class="textLayer absolute top-0 left-0 overflow-hidden"
@@ -569,6 +611,27 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-content-links {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.pdf-content-links a {
+  position: absolute;
+  display: block;
+  border-bottom: 1px solid #075caa;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.pdf-content-links a:hover {
+  background: #1674bd18;
+}
+.pdf-content-links a:focus-visible {
+  outline: 2px solid #075caa;
+  outline-offset: 2px;
+}
+
 .pdf-page-shell {
   /* Keep oversized pages inside the reachable scroll area. */
   justify-content: safe center;

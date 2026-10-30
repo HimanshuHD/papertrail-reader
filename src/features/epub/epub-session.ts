@@ -1,3 +1,4 @@
+import type { DocumentLink } from '../reader/document-links'
 import { settleBookFonts } from './font-readiness'
 import { applyBookViewport } from './book-viewport'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
@@ -52,6 +53,7 @@ export interface EpubSession {
   location?(): EpubLocation | undefined
   restore?(location: EpubLocation): Promise<boolean>
   position?(): EpubPosition | undefined
+  resolveLink?(chapter: number, href: string): DocumentLink
   appearance(dark: boolean): void
   destroy(): void
 }
@@ -484,6 +486,7 @@ async function createEpubSession(
     publication.warmChapters(chapterIndex)
     let displayedChapter = chapterIndex
     const session: EpubSession = {
+      resolveLink: (chapter, href) => publication.resolveLink(chapter, href),
       get imageWarnings() {
         return publication.imageWarnings
       },
@@ -521,12 +524,14 @@ async function createEpubSession(
           const iframe = root.querySelector('iframe')
           if (container && iframe) {
             const anchor = fragment ? iframe.contentDocument?.getElementById(fragment) : null
-            if (anchor)
+            if (anchor) {
               container.scrollTop +=
                 iframe.getBoundingClientRect().top +
                 anchor.getBoundingClientRect().top -
                 container.getBoundingClientRect().top
-            else container.scrollTop = 0
+              if (!anchor.hasAttribute('tabindex')) anchor.setAttribute('tabindex', '-1')
+              ;(anchor as HTMLElement).focus?.({ preventScroll: true })
+            } else container.scrollTop = 0
           }
         } catch (error) {
           displayedChapter = -1

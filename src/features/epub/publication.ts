@@ -1,3 +1,4 @@
+import { epubContentLink, inertLinkValue, type DocumentLink } from '../reader/document-links'
 import { copyBookSemantics } from './book-semantics'
 import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
 import { EPUB_PUBLICATION_LIMITS } from './publication-limits'
@@ -34,6 +35,7 @@ export interface TextPublication {
   dispose(): void
   contents: readonly EpubContentsEntry[]
   contentsSource: 'nav' | 'ncx' | 'spine'
+  resolveLink(chapter: number, href: string): DocumentLink
   fragments: readonly ReadonlySet<string>[]
   chapters: readonly { label: string; href: string }[]
 }
@@ -180,6 +182,9 @@ export function sanitizeChapter(
       : EPUB_TEXT_CSP,
   )
   head.append(policy)
+  const linkStyle = output.createElementNS(XHTML, 'style')
+  linkStyle.textContent =
+    'a[data-reader-link]:focus-visible{outline:2px solid currentColor;outline-offset:2px}'
   if (formatting)
     for (const css of formatting.sheets) {
       const style = output.createElementNS(XHTML, 'style')
@@ -303,6 +308,21 @@ export function sanitizeChapter(
     if (fresh) {
       attributes(element, fresh)
       fresh.setAttribute('data-reader-node', `pt-${nodes}`)
+      if (tag === 'a') {
+        const href = element.getAttribute('href'),
+          name = element.getAttribute('name')
+        if (!fresh.hasAttribute('id') && name && /^[\w.-]{1,256}$/u.test(name))
+          fresh.setAttribute('id', name)
+        if (href) {
+          fresh.setAttribute('data-reader-link', inertLinkValue(href))
+          fresh.setAttribute('role', 'link')
+          fresh.setAttribute('tabindex', '0')
+          fresh.setAttribute(
+            'style',
+            `${fresh.getAttribute('style') ?? ''};text-decoration:underline!important;text-underline-offset:0.15em;cursor:pointer`,
+          )
+        }
+      }
       const dir = element.getAttribute('dir')
       if (dir === 'rtl' || dir === 'ltr') fresh.setAttribute('dir', dir)
       parent.appendChild(fresh)
@@ -310,6 +330,7 @@ export function sanitizeChapter(
     for (const child of element.childNodes) copy(child, fresh ?? parent, depth + 1)
   }
   for (const child of body.childNodes) copy(child, target, 0)
+  if (target.querySelector('a[data-reader-link]')) head.append(linkStyle)
   return new XMLSerializer().serializeToString(output)
 }
 
@@ -924,6 +945,7 @@ export async function preparePublication(
       get fontWarnings() {
         return cache ? (cache.get(requestedChapter)?.fontWarnings ?? []) : [...fontWarnings]
       },
+      resolveLink: (chapter, href) => epubContentLink(chapterPaths[chapter] ?? '', href, targets),
       renderChapter,
       isChapterReady(index) {
         return textOnly || !!cache?.ready(index)

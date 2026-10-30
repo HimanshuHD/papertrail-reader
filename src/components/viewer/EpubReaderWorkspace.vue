@@ -15,6 +15,13 @@ import type { AnnotationColor } from '../../services/annotation-storage'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
 import LoadingState from '../LoadingState.vue'
+import ExternalLinkDialog from './ExternalLinkDialog.vue'
+import { useDocumentLinks } from '../../composables/useDocumentLinks'
+import {
+  bindDocumentLinks,
+  unavailableLink,
+  type DocumentLink,
+} from '../../features/reader/document-links'
 import ReaderNotice, { type ReaderNoticeSection } from './ReaderNotice.vue'
 import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
@@ -37,6 +44,16 @@ import {
   type EpubTypography,
 } from '../../features/epub/typography'
 
+const linkDisposers: (() => void)[] = []
+async function activateContentLink(link: DocumentLink, origin: HTMLElement) {
+  if (props.active === false || reader.busy.value) return
+  if (link.kind !== 'epub') {
+    links.request(link, origin)
+    return
+  }
+  links.notice.value = ''
+  await reader.go(link.chapter, link.fragment)
+}
 const renderingNotices = computed<ReaderNoticeSection[]>(() => {
   // Session warning getters are not reactive; refresh after each chapter's readiness gate.
   if (loading.value) return []
@@ -57,6 +74,8 @@ const renderingNotices = computed<ReaderNoticeSection[]>(() => {
       message: 'Some book fonts are unavailable. Reading continues with fallback fonts.',
       reasons: session.fontWarnings,
     })
+  if (links.notice.value)
+    sections.push({ title: 'Link availability', label: 'Link notice', message: links.notice.value })
   return sections
 })
 
@@ -88,6 +107,7 @@ const emit = defineEmits<{
 }>()
 const continuity = useEpubContinuity(captureReading)
 const reader = useEpubReader()
+const links = useDocumentLinks(() => props.active !== false && !reader.busy.value)
 const bookmarks = useEpubBookmarks(continuity.documentId)
 const highlights = useAnnotationHighlights('EPUB', continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
@@ -418,6 +438,7 @@ function saveReading() {
   persistReading()
 }
 function clearFrameListeners() {
+  linkDisposers.splice(0).forEach((dispose) => dispose())
   hoverDisposers.splice(0).forEach((dispose) => dispose())
   pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
@@ -462,6 +483,19 @@ function bindFrameListeners() {
     doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
     colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
+    linkDisposers.push(
+      bindDocumentLinks(
+        doc,
+        (element) =>
+          reader.session.value?.resolveLink?.(
+            reader.chapter.value,
+            element.dataset.readerLink ?? '',
+          ) ?? unavailableLink(),
+        (link, origin) => {
+          void activateContentLink(link, origin)
+        },
+      ),
+    )
     pageAppearances.push(bindEpubPageAppearance(doc, theme.resolvedTheme === 'dark'))
     hoverDisposers.push(
       bindHighlightHover(
@@ -495,7 +529,7 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
-  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 9)
+  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 12)
   frameRegistrations?.set('ownedObservers', highlightObservers.length)
   paintHighlights()
 }
@@ -1027,6 +1061,11 @@ watch(
         Retry opening EPUB
       </button>
     </div>
+    <ExternalLinkDialog
+      v-if="links.pending.value"
+      :url="links.pending.value.url"
+      @close="links.close"
+    />
     <div class="epub-body">
       <div class="epub-stage">
         <ReaderNotice
