@@ -15,6 +15,7 @@ import type { AnnotationColor } from '../../services/annotation-storage'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
 import LoadingState from '../LoadingState.vue'
+import ReaderNotice, { type ReaderNoticeSection } from './ReaderNotice.vue'
 import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
 import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
@@ -35,6 +36,27 @@ import {
   readingWidthOptions,
   type EpubTypography,
 } from '../../features/epub/typography'
+
+const renderingNotices = computed<ReaderNoticeSection[]>(() => {
+  const sections: ReaderNoticeSection[] = []
+  const session = reader.session.value
+  if (session?.imageWarnings?.length)
+    sections.push({
+      title: 'Illustration availability',
+      label: 'Illustration notice',
+      message:
+        'Some illustrations are unavailable. You can continue reading or use Text-only view.',
+      reasons: session.imageWarnings,
+    })
+  if (session?.fontWarnings?.length)
+    sections.push({
+      title: 'Font availability',
+      label: 'Font notice',
+      message: 'Some book fonts are unavailable. Reading continues with fallback fonts.',
+      reasons: session.fontWarnings,
+    })
+  return sections
+})
 
 const shellRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
 const frameRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
@@ -985,28 +1007,6 @@ watch(
       <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
     </p>
 
-    <div
-      v-if="!loading && reader.session.value?.imageWarnings?.length"
-      role="status"
-      aria-label="Illustration notice"
-      class="border-b border-line px-4 py-2 text-xs text-muted"
-    >
-      <p>Some illustrations are unavailable. You can continue reading or use Text-only view.</p>
-      <ul class="list-inside list-disc">
-        <li v-for="warning in reader.session.value.imageWarnings" :key="warning">{{ warning }}</li>
-      </ul>
-    </div>
-    <div
-      v-if="!loading && reader.session.value?.fontWarnings?.length"
-      role="status"
-      aria-label="Font notice"
-      class="border-b border-line px-4 py-2 text-xs text-muted"
-    >
-      <p>Some book fonts are unavailable. Reading continues with fallback fonts.</p>
-      <ul class="list-inside list-disc">
-        <li v-for="warning in reader.session.value.fontWarnings" :key="warning">{{ warning }}</li>
-      </ul>
-    </div>
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
       <button
@@ -1024,6 +1024,7 @@ watch(
     </div>
     <div class="epub-body">
       <div class="epub-stage">
+        <ReaderNotice :sections="renderingNotices" :active="active !== false && !loading" />
         <NoteIndicator
           v-for="item in noteIndicators"
           :key="item.id"

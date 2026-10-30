@@ -7,6 +7,7 @@ const props = withDefaults(
     anchor: HTMLElement | null
     expanded?: boolean
     compact?: boolean
+    notice?: boolean
     reserveAsideHeader?: boolean
   }>(),
   { reserveAsideHeader: true },
@@ -111,7 +112,7 @@ watch(
     <div
       ref="root"
       class="floating-popover"
-      :class="{ expanded, compact }"
+      :class="{ expanded, compact, notice }"
       :style="position"
       @pointerdown.stop
     >
@@ -141,6 +142,13 @@ watch(
   width: min(224px, calc(100vw - 16px));
   padding: 8px;
   border-radius: 8px;
+  box-shadow: 0 4px 16px #0003;
+}
+.notice {
+  width: min(320px, calc(100vw - 16px));
+  padding: 12px;
+  border-radius: 10px;
+  border-color: var(--pt-line);
   box-shadow: 0 4px 16px #0003;
 }
 .expanded {

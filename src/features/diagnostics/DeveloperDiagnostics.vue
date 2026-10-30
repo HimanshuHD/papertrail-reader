@@ -3,6 +3,7 @@ import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { version } from '../../../package.json'
 import { diagnostics } from './recorder'
 import IconButton from '../../components/IconButton.vue'
+import UiIcon from '../../components/UiIcon.vue'
 import AccessibleTooltip from '../../components/AccessibleTooltip.vue'
 import { IndicatorMonitor, type Target } from './indicators'
 import IndicatorTargets from './IndicatorTargets.vue'
@@ -223,7 +224,8 @@ onBeforeUnmount(() => {
           :style="{ animationDelay: `${(ring - 1) * 0.6}s` }"
         />
       </span>
-      <span class="trigger-label">Developer diagnostics</span
+      <UiIcon name="activity" class="trigger-icon" />
+      <span class="trigger-label">Diagnostics</span
       ><span id="diagnostics-trigger-status" role="status" class="sr-only">
         · {{ health.label }}</span
       >
@@ -231,7 +233,8 @@ onBeforeUnmount(() => {
     <AccessibleTooltip
       id="diagnostics-trigger-tooltip"
       :anchor="trigger"
-      text="Developer diagnostics"
+      text="Open diagnostics"
+      side="left"
       :open="triggerTooltip && (!open || minimized)"
       @dismiss="triggerTooltip = false"
     />
@@ -428,17 +431,38 @@ pre {
 dt {
   font-weight: 600;
 }
+.developer-diagnostics:not(.expanded) {
+  right: 0;
+  bottom: max(24px, env(safe-area-inset-bottom));
+}
 .diagnostics-trigger {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 6px;
   background: var(--pt-panel);
   color: var(--pt-ink);
   border: 1px solid var(--pt-line);
-  border-bottom: 0;
-  border-radius: 10px 10px 0 0;
+  border-color: var(--pt-brand);
+  border-right: 0;
+  border-radius: 10px 0 0 10px;
+  width: 44px;
+  box-shadow: 0 2px 6px #0002;
   min-height: 44px;
+}
+.trigger-label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-weight: 600;
+  font-size: 12px;
+}
+.trigger-icon {
+  color: var(--pt-brand);
+}
+.diagnostics-trigger:focus-visible {
+  outline: 2px solid var(--pt-brand);
+  outline-offset: -3px;
 }
 .pulse-loader {
   --signal: var(--pt-muted);
@@ -446,8 +470,8 @@ dt {
   display: inline-flex;
   justify-content: center;
   align-items: center;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 .pulse-loader[data-state='recording'] {
@@ -493,13 +517,12 @@ dt {
     animation: none;
   }
 }
-@media (max-width: 640px) {
-  /* Keep the bottom-docked entry clear of the library's build details. */
+@media (max-width: 800px) {
   .diagnostics-trigger {
-    width: 48px;
+    width: 44px;
     justify-content: center;
     padding: 8px 0;
-    gap: 0;
+    gap: 4px;
   }
   .trigger-label {
     display: none;
