@@ -70,6 +70,7 @@ test('oversized SVG preserves readable text, modes, chapters and warm tabs', asy
   }
   await reader.getByRole('button', { name: 'Next chapter', exact: true }).click()
   await ready()
+  await expect(noticeTrigger).toHaveCount(0)
   await expect(
     reader.frameLocator('iframe').getByRole('heading', { name: 'Second chapter' }),
   ).toBeVisible()

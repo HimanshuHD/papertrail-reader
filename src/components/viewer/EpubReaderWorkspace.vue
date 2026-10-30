@@ -38,6 +38,8 @@ import {
 } from '../../features/epub/typography'
 
 const renderingNotices = computed<ReaderNoticeSection[]>(() => {
+  // Session warning getters are not reactive; refresh after each chapter's readiness gate.
+  if (loading.value) return []
   const sections: ReaderNoticeSection[] = []
   const session = reader.session.value
   if (session?.imageWarnings?.length)
