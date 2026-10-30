@@ -40,6 +40,7 @@ it('focuses Cancel and neither opens on presentation nor cancellation; only conf
     expect(document.activeElement).toBe(buttons[0])
     ;(document.querySelector('dialog button') as HTMLButtonElement).click()
     expect(wrapper.emitted('close')).toHaveLength(1)
+    expect(document.querySelector('dialog')?.hasAttribute('open')).toBe(false)
     expect(openConfirmedLink).not.toHaveBeenCalled()
     vi.mocked(openConfirmedLink).mockReturnValueOnce(false).mockReturnValueOnce(true)
     const confirm = document.querySelectorAll<HTMLButtonElement>('dialog button')[1]!

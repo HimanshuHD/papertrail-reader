@@ -71,7 +71,21 @@ for (const [scenario, errorName] of [
     await page
       .locator('.pdf-reader')
       .evaluate((el) => el.setAttribute('data-access-probe', 'retained'))
-    const before = (await test.step('Export baseline with an open PDF', exported)).resources
+    const keys = ['viewers', 'pdfWorkerOwners', 'blobURLs'] as const
+    let before: Record<string, number> = {}
+    await test.step('Wait for metadata task teardown before exporting the open-reader baseline', async () => {
+      await expect
+        .poll(
+          async () => {
+            before = (await exported()).resources
+            // One retained reader task. Library title enrichment owns a temporary
+            // second task and can start/finish after the first page becomes ready.
+            return keys.map((key) => before[key] ?? 0)
+          },
+          { timeout: 15000, intervals: [250, 500, 1000] },
+        )
+        .toEqual([1, 1, 0])
+    })
     const chooseFolder = async () => {
       await page.getByRole('button', { name: /^(Add local documents|Library actions)$/ }).click()
       await page.getByRole('menuitem', { name: 'Choose folder', exact: true }).click()
@@ -103,14 +117,23 @@ for (const [scenario, errorName] of [
     await expect(
       page.getByRole('tablist', { name: 'Open documents' }).getByRole('tab'),
     ).toHaveCount(1)
-    const after = (await test.step('Export state after controlled picker rejection', exported))
-      .resources
-    const keys = ['viewers', 'pdfWorkerOwners', 'blobURLs'] as const
+    let resourceDelta: number[] = []
+    await test.step('Verify settled ownership after controlled picker rejection', async () => {
+      await expect
+        .poll(
+          async () => {
+            const after = (await exported()).resources
+            resourceDelta = keys.map((key) => (after[key] ?? 0) - (before[key] ?? 0))
+            return resourceDelta
+          },
+          { timeout: 15000, intervals: [250, 500, 1000] },
+        )
+        .toEqual([0, 0, 0])
+    })
     expect(before.viewers).toBe(1)
     expect(before.pdfWorkerOwners).toBeGreaterThan(0)
     // Recorder ownership maps are sparse: an unregistered named counter is zero.
     // This is not an unsupported browser sensor reading.
-    const resourceDelta = keys.map((key) => (after[key] ?? 0) - (before[key] ?? 0))
     expect(resourceDelta).toEqual([0, 0, 0])
     await page.getByRole('button', { name: 'Next page', exact: true }).click()
     await expect(pageNumber).toHaveValue('4')

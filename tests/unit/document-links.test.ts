@@ -78,11 +78,19 @@ it('uses the same inert activation path for mouse/modifiers/middle/keyboard and 
     expect(event.defaultPrevented).toBe(true)
   }
   expect(activate).toHaveBeenCalledTimes(3)
+  // Pointer release is portable even where auxclick is absent for inert anchors.
+  for (const name of ['pointerdown', 'pointerup', 'auxclick']) {
+    const event = new MouseEvent(name, { bubbles: true, cancelable: true, button: 1 })
+    anchor.dispatchEvent(event)
+    expect(event.defaultPrevented).toBe(true)
+  }
+  expect(activate).toHaveBeenCalledTimes(4)
   expect(open).not.toHaveBeenCalled()
   expect(anchor.hasAttribute('href')).toBe(false)
   dispose()
   anchor.click()
-  expect(activate).toHaveBeenCalledTimes(3)
+  anchor.dispatchEvent(new MouseEvent('pointerup', { bubbles: true, button: 1 }))
+  expect(activate).toHaveBeenCalledTimes(4)
 })
 it('opens only on explicit confirmation with opener/referrer isolation and handles blocked popups', () => {
   const child = document.implementation.createHTMLDocument('Tab')

@@ -73,19 +73,45 @@ export function bindDocumentLinks(
   resolve: (element: HTMLElement) => DocumentLink,
   activate: (link: DocumentLink, origin: HTMLElement) => void,
 ) {
+  let middlePressed: HTMLElement | null = null
+  let middleActivated: HTMLElement | null = null
+  const names = ['pointerdown', 'pointerup', 'click', 'auxclick', 'keydown'] as const
   const handle = (event: Event) => {
+    const mouse = event as MouseEvent
     if (event.type === 'keydown' && (event as KeyboardEvent).key !== 'Enter') return
-    if (event.type === 'auxclick' && (event as MouseEvent).button !== 1) return
     const link = (event.target as Element | null)?.closest?.<HTMLElement>('[data-reader-link]')
+    if (event.type === 'pointerdown') {
+      middleActivated = null
+      middlePressed = mouse.button === 1 && link && root.contains(link) ? link : null
+      // Prevent Windows autoscroll before it consumes the middle-button release.
+      if (middlePressed) event.preventDefault()
+      return
+    }
     if (!link || !root.contains(link)) return
+    if (event.type === 'click' && mouse.button !== 0) return
+    if (event.type === 'pointerup') {
+      const pressed = middlePressed
+      middlePressed = null
+      if (mouse.button !== 1 || pressed !== link) return
+      middleActivated = link
+    }
+    if (event.type === 'auxclick') {
+      if (mouse.button !== 1) return
+      if (middleActivated === link) {
+        middleActivated = null
+        event.preventDefault()
+        event.stopImmediatePropagation()
+        return
+      }
+    }
     event.preventDefault()
     event.stopImmediatePropagation()
     activate(resolve(link), link)
   }
-  for (const name of ['click', 'auxclick', 'keydown']) root.addEventListener(name, handle, true)
+  for (const name of names) root.addEventListener(name, handle, true)
   return () => {
-    for (const name of ['click', 'auxclick', 'keydown'])
-      root.removeEventListener(name, handle, true)
+    middlePressed = middleActivated = null
+    for (const name of names) root.removeEventListener(name, handle, true)
   }
 }
 /** Runs only inside the explicit confirmation gesture. */

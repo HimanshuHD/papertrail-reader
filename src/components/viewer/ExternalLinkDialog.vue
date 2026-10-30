@@ -18,6 +18,12 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => dialog.value?.close())
+function dismiss() {
+  // Close the native modal (and release inertness) before the parent restores
+  // focus across an EPUB iframe boundary.
+  if (dialog.value?.open) dialog.value.close()
+  emit('close')
+}
 function keydown(event: KeyboardEvent) {
   if (event.key !== 'Tab') return
   const buttons = Array.from(
@@ -32,7 +38,7 @@ function keydown(event: KeyboardEvent) {
 function confirm(url: string) {
   if (opening.value) return
   opening.value = true
-  if (openConfirmedLink(url)) emit('close')
+  if (openConfirmedLink(url)) dismiss()
   else {
     error.value =
       'The browser could not open the link. Allow pop-ups for PaperTrail, then try again.'
@@ -48,14 +54,14 @@ function confirm(url: string) {
       :aria-describedby="`${id}-description`"
       @keydown.stop="keydown"
       @pointerdown.stop
-      @cancel.prevent="emit('close')"
+      @cancel.prevent="dismiss"
     >
       <h2 :id="`${id}-title`">Open external link?</h2>
       <p :id="`${id}-description`">This link opens a website in a new browser tab.</p>
       <p class="destination">{{ url }}</p>
       <p v-if="error" role="status">{{ error }}</p>
       <div class="actions">
-        <button ref="cancel" type="button" @click="emit('close')">Cancel</button>
+        <button ref="cancel" type="button" @click="dismiss">Cancel</button>
         <button type="button" :disabled="opening" @click="confirm(url)">Open link</button>
       </div>
     </dialog>
