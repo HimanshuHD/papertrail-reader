@@ -46,7 +46,34 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   expect(titleBounds!.y).toBeGreaterThanOrEqual(openerBounds!.y + openerBounds!.height)
   const frame = reader.frameLocator('iframe')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
-  await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
+  // Parent-owned link callbacks need a scripting-capable frame in WebKit.
+  // Author code remains forbidden by the first-head CSP and rebuilt allowlist.
+  await expect(reader.locator('iframe')).toHaveAttribute(
+    'sandbox',
+    'allow-same-origin allow-scripts',
+  )
+  await expect(frame.locator('head > :first-child')).toHaveAttribute(
+    'http-equiv',
+    'Content-Security-Policy',
+  )
+  await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+    'content',
+    /script-src 'none'; script-src-attr 'none'/,
+  )
+  const scriptBlocked = await frame.locator('body').evaluate((body) => {
+    const doc = body.ownerDocument
+    const script = doc.createElement('script')
+    script.textContent = 'document.documentElement.dataset.epubScriptProbe="ran"'
+    doc.head.append(script)
+    const button = doc.createElement('button')
+    button.setAttribute('onclick', 'document.documentElement.dataset.epubScriptProbe="ran"')
+    body.append(button)
+    button.click()
+    script.remove()
+    button.remove()
+    return !doc.documentElement.hasAttribute('data-epub-script-probe')
+  })
+  expect(scriptBlocked).toBe(true)
   expect(await frame.locator('script,img,iframe,style[src],link[href^="https:"]').count()).toBe(0)
   expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
   await reader.getByRole('button', { name: 'Next chapter' }).click()
