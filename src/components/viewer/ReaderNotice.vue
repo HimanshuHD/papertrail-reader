@@ -74,13 +74,12 @@ watch(
   },
   { immediate: true },
 )
-async function toggle() {
+function toggle() {
   tooltip.value = false
   expanded.value = !expanded.value
-  if (expanded.value) {
-    await nextTick()
-    closeButton.value?.focus({ preventScroll: true })
-  }
+}
+function focusDetails() {
+  if (expanded.value) closeButton.value?.focus({ preventScroll: true })
 }
 function close(restoreFocus = false) {
   expanded.value = false
@@ -134,6 +133,7 @@ function close(restoreFocus = false) {
       notice
       :reserve-aside-header="false"
       @close="close()"
+      @ready="focusDetails"
     >
       <div
         :id="`${id}-details`"

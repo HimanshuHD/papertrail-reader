@@ -12,6 +12,13 @@ const sections = [
 ]
 afterEach(() => document.body.replaceChildren())
 it('opens details only on activation, keeps reasons, and restores keyboard focus on Escape/close', async () => {
+  const focusedVisibility: string[] = []
+  const observeFocus = (event: FocusEvent) => {
+    const element = event.target as HTMLElement
+    if (element.getAttribute('aria-label') === 'Close rendering information')
+      focusedVisibility.push((element.closest('.floating-popover') as HTMLElement).style.visibility)
+  }
+  document.addEventListener('focusin', observeFocus)
   const wrapper = mount(ReaderNotice, { props: { sections }, attachTo: document.body })
   try {
     const button = wrapper.get('button')
@@ -27,6 +34,7 @@ it('opens details only on activation, keeps reasons, and restores keyboard focus
     expect(document.querySelector('[role=dialog]')?.textContent).toContain(sections[0]!.reasons[0])
     expect(document.querySelectorAll('[role=tooltip]')).toHaveLength(0)
     expect(document.activeElement?.getAttribute('aria-label')).toBe('Close rendering information')
+    expect(focusedVisibility).toEqual(['visible'])
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     await nextTick()
     expect(document.querySelector('[role=dialog]')).toBeNull()
@@ -39,6 +47,7 @@ it('opens details only on activation, keeps reasons, and restores keyboard focus
     expect(document.activeElement).toBe(button.element)
     expect(wrapper.get('[role=status]').text()).toContain(sections[0]!.reasons[0])
   } finally {
+    document.removeEventListener('focusin', observeFocus)
     wrapper.unmount()
   }
 })

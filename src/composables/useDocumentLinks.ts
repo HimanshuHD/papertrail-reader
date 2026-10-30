@@ -16,7 +16,11 @@ export function useDocumentLinks(active: () => boolean) {
     const origin = pending.value?.origin
     pending.value = null
     await nextTick()
-    if (active() && origin?.isConnected) origin.focus({ preventScroll: true })
+    if (active() && !pending.value && origin?.isConnected) {
+      const frame = origin.ownerDocument.defaultView?.frameElement
+      if (frame instanceof HTMLElement) frame.focus({ preventScroll: true })
+      origin.focus({ preventScroll: true })
+    }
   }
   watch(active, () => {
     pending.value = null

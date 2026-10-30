@@ -529,7 +529,7 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
-  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 12)
+  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 14)
   frameRegistrations?.set('ownedObservers', highlightObservers.length)
   paintHighlights()
 }

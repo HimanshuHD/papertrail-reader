@@ -5,6 +5,8 @@ import path from 'node:path'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 
+import { combineReaderReports } from './reader-acceptance-report.mjs'
+
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const engines = (process.env.READER_ACCEPTANCE_ENGINES || 'chromium').split(',')
 if (
@@ -37,6 +39,7 @@ const result = {
   schema: 1,
   source,
   engines,
+  execution: { lifecycleWorkers: engines.length, functionalWorkers: 1 },
   status: 'incomplete',
   nativePermissionAcceptance: false,
   performanceAcceptance: false,
@@ -50,21 +53,49 @@ try {
       VITE_BUILD_SHA: source.sha,
     },
   )
-  await run(
-    [
-      'node_modules/@playwright/test/cli.js',
-      'test',
-      '--config',
-      'playwright.reader-acceptance.config.ts',
-    ],
-    {
-      DIAGNOSTIC_BUILD_ROOT: build,
-      READER_ACCEPTANCE_REPORT: report,
-      DIAGNOSTIC_EXPECTED_SHA: source.sha,
-    },
+  const reports = []
+  let phaseFailed = false
+  for (const phase of ['lifecycle', 'functional']) {
+    const phaseReport = path.join(report, phase)
+    await mkdir(phaseReport, { recursive: true })
+    try {
+      await run(
+        [
+          'node_modules/@playwright/test/cli.js',
+          'test',
+          '--config',
+          'playwright.reader-acceptance.config.ts',
+        ],
+        {
+          DIAGNOSTIC_BUILD_ROOT: build,
+          READER_ACCEPTANCE_REPORT: phaseReport,
+          READER_ACCEPTANCE_PHASE: phase,
+          DIAGNOSTIC_EXPECTED_SHA: source.sha,
+        },
+      )
+    } catch (error) {
+      phaseFailed = true
+      console.error(`${phase}: ${error.message}`)
+    }
+    // Run both phases even when one fails; never silently omit the other cases.
+    try {
+      reports.push(JSON.parse(await readFile(path.join(phaseReport, 'playwright.json'), 'utf8')))
+    } catch (error) {
+      phaseFailed = true
+      console.error(`${phase} report: ${error.message}`)
+    }
+  }
+  if (reports.length !== 2) throw new Error('Both reader acceptance phase reports are required')
+  const data = combineReaderReports(reports)
+  await writeFile(path.join(report, 'playwright.json'), JSON.stringify(data, null, 2))
+  if (phaseFailed) throw new Error('A reader acceptance phase failed')
+  if (
+    data.errors.length ||
+    data.stats.unexpected ||
+    data.stats.flaky ||
+    data.stats.skipped ||
+    !data.stats.expected
   )
-  const data = JSON.parse(await readFile(path.join(report, 'playwright.json'), 'utf8'))
-  if (data.stats.unexpected || data.stats.flaky || data.stats.skipped || !data.stats.expected)
     throw new Error('Reader acceptance requires passed cases without failures, flakes or skips')
   result.status = 'passed'
 } catch (error) {

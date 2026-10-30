@@ -318,3 +318,38 @@ Manual preview review:
 
 Use the existing all-engine reader command; preserve the resulting summary and
 report privately. Manual Visual QA remains separate and opt-in.
+
+Hyperlink acceptance follow-up (#291): the confirmation dialog explicitly cycles Tab and
+Shift+Tab through its enabled buttons; Cancel remains the default and Escape restores
+source focus. Warning details receive focus only after their positioned popover is visible.
+WebKit needs a scripting-capable iframe to dispatch parent-owned link handlers. Only
+rebuilt allowlisted chapter XHTML is loaded, with an initial CSP denying scripts and inline
+handlers (`script-src 'none'; script-src-attr 'none'`), no native link hrefs, and no popup
+sandbox allowance. Content-link acceptance probes verify injected scripts/handlers remain
+blocked in both EPUB modes, in addition to confirmation, cancellation and navigation.
+
+## Follow-up acceptance scheduling and input/focus checks (#293)
+
+The manual command runs two phases against the same build and clean source identity:
+
+1. **Lifecycle:** one isolated browser context per selected engine, up to three workers.
+   The real five-minute PDF/EPUB expiry scenarios overlap across browsers. Each case
+   still proves the full 300,000 ms lower bound, original-instance release and restored
+   state; a slow-file warning for this deliberately long case is expected.
+2. **Functional:** all remaining cases run with one worker, retaining serial resource
+   checks and avoiding extra concurrent rendering pressure during those comparisons.
+
+The root `playwright.json` combines both phases (123 cases for all three engines),
+including failures, errors and attachments. Raw phase reports/artifacts remain under
+`lifecycle/` and `functional/`. The root `summary.json` records the worker policy.
+Both phases execute even after a test failure; missing reports or any failure, flake,
+skip or report error fail acceptance. Browser clocks are never accelerated. Visual QA
+and workflow triggers remain unchanged.
+
+Middle-button links use a completed pointer press/release, with auxclick as a fallback
+and duplicate suppression; native autoscroll cannot consume the press. The same consent
+modal must appear exactly once. Native modal inertness is released before restoring the
+owning EPUB iframe and its originating link. Both behaviors have focused unit checks.
+The picker ownership test waits for temporary PDF-title metadata tasks to settle before
+its baseline and after rejection, with bounded 15-second polling. It still requires exactly
+one reader task and zero net viewer/worker/blob ownership growth; persistent leaks fail.

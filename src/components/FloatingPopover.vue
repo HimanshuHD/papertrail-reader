@@ -12,7 +12,7 @@ const props = withDefaults(
   }>(),
   { reserveAsideHeader: true },
 )
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; ready: [] }>()
 const root = ref<HTMLElement | null>(null)
 const position = ref({
   left: '8px',
@@ -67,6 +67,10 @@ onMounted(async () => {
   await nextTick()
   if (!root.value) return
   place()
+  // Focus is possible only after Vue commits visibility: visible to the DOM.
+  await nextTick()
+  if (!root.value) return
+  emit('ready')
   if (typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver(place)
     if (root.value) observer.observe(root.value)

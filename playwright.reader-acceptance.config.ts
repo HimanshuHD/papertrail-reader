@@ -11,16 +11,25 @@ if (
 )
   throw new Error('READER_ACCEPTANCE_ENGINES must contain unique chromium,firefox,webkit names')
 
+const phase = process.env.READER_ACCEPTANCE_PHASE || 'all'
+if (!['all', 'lifecycle', 'functional'].includes(phase))
+  throw new Error('READER_ACCEPTANCE_PHASE must be all, lifecycle or functional')
+
 export default defineConfig({
   testDir: './tests',
-  testMatch: [
-    'reader-acceptance/*.spec.ts',
-    'e2e/tab-restoration.spec.ts',
-    'e2e/document-sessions.spec.ts',
-    'diagnostics/library-access.spec.ts',
-    'diagnostics/cleanup.spec.ts',
-  ],
-  workers: 1,
+  testMatch:
+    phase === 'lifecycle'
+      ? ['reader-acceptance/lifecycle.spec.ts']
+      : [
+          'reader-acceptance/*.spec.ts',
+          'e2e/tab-restoration.spec.ts',
+          'e2e/document-sessions.spec.ts',
+          'diagnostics/library-access.spec.ts',
+          'diagnostics/cleanup.spec.ts',
+        ],
+  testIgnore: phase === 'functional' ? ['**/reader-acceptance/lifecycle.spec.ts'] : [],
+  // Only independent real-time expiry waits overlap. Other acceptance stays serial.
+  workers: phase === 'lifecycle' ? engines.length : 1,
   retries: 0,
   timeout: 30000,
   reporter: [['list'], ['json', { outputFile: path.join(report, 'playwright.json') }]],
