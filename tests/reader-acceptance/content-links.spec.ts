@@ -67,6 +67,23 @@ for (const mode of ['pdf', 'epub-formatted', 'epub-text'] as const)
     if (pdf) await expect(external).toHaveCSS('border-bottom-style', 'solid')
     else await expect(external).toHaveCSS('text-decoration-line', 'underline')
     await expect(external).not.toHaveAttribute('href')
+    if (!pdf) {
+      // Allowing the frame scripting environment must not permit chapter scripts.
+      const blocked = await external.evaluate((element) => {
+        const doc = element.ownerDocument
+        const script = doc.createElement('script')
+        script.textContent = 'document.documentElement.dataset.untrustedScript="ran"'
+        doc.head.append(script)
+        const probe = doc.createElement('button')
+        probe.setAttribute('onclick', 'document.documentElement.dataset.untrustedScript="ran"')
+        doc.body.append(probe)
+        probe.click()
+        script.remove()
+        probe.remove()
+        return !doc.documentElement.hasAttribute('data-untrusted-script')
+      })
+      expect(blocked).toBe(true)
+    }
     await external.click({ modifiers: ['Control'] })
     const dialog = page.getByRole('dialog', { name: 'Open external link?', exact: true })
     await expect(dialog).toContainText('https://example.test/reader-link')

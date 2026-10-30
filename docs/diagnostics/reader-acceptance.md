@@ -318,3 +318,12 @@ Manual preview review:
 
 Use the existing all-engine reader command; preserve the resulting summary and
 report privately. Manual Visual QA remains separate and opt-in.
+
+Hyperlink acceptance follow-up (#291): the confirmation dialog explicitly cycles Tab and
+Shift+Tab through its enabled buttons; Cancel remains the default and Escape restores
+source focus. Warning details receive focus only after their positioned popover is visible.
+WebKit needs a scripting-capable iframe to dispatch parent-owned link handlers. Only
+rebuilt allowlisted chapter XHTML is loaded, with an initial CSP denying scripts and inline
+handlers (`script-src 'none'; script-src-attr 'none'`), no native link hrefs, and no popup
+sandbox allowance. Content-link acceptance probes verify injected scripts/handlers remain
+blocked in both EPUB modes, in addition to confirmation, cancellation and navigation.

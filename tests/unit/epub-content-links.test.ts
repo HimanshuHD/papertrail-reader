@@ -30,6 +30,9 @@ for (const textOnly of [false, true])
       )
       expect(doc.querySelector('a')?.getAttribute('tabindex')).toBe('0')
       expect(doc.querySelector('a[href]')).toBeNull()
+      expect(doc.querySelector('head')?.firstElementChild?.getAttribute('content')).toContain(
+        "script-src 'none'; script-src-attr 'none'",
+      )
       expect(xml).not.toContain('javascript:')
       expect(pub.resolveLink(0, 'second.xhtml#target')).toEqual({
         kind: 'epub',

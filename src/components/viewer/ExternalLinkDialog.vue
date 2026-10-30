@@ -18,6 +18,17 @@ onMounted(async () => {
   }
 })
 onBeforeUnmount(() => dialog.value?.close())
+function keydown(event: KeyboardEvent) {
+  if (event.key !== 'Tab') return
+  const buttons = Array.from(
+    dialog.value?.querySelectorAll<HTMLButtonElement>('button:not(:disabled)') ?? [],
+  )
+  if (!buttons.length) return
+  const current = buttons.indexOf(document.activeElement as HTMLButtonElement)
+  const next = (current + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length
+  event.preventDefault()
+  buttons[next]?.focus({ preventScroll: true })
+}
 function confirm(url: string) {
   if (opening.value) return
   opening.value = true
@@ -35,7 +46,7 @@ function confirm(url: string) {
       ref="dialog"
       :aria-labelledby="`${id}-title`"
       :aria-describedby="`${id}-description`"
-      @keydown.stop
+      @keydown.stop="keydown"
       @pointerdown.stop
       @cancel.prevent="emit('close')"
     >

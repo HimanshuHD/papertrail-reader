@@ -66,7 +66,7 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   expect(mocks.open).toHaveBeenCalledWith(expect.any(ArrayBuffer), 'binary')
   expect(mocks.render).toHaveBeenCalledWith(
     expect.any(HTMLElement),
-    expect.objectContaining({ allowScriptedContent: false, manager: expect.any(Function) }),
+    expect.objectContaining({ allowScriptedContent: true, manager: expect.any(Function) }),
   )
   await session.display(1)
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')

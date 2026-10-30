@@ -154,7 +154,7 @@ const discarded = new Set(
   ),
 )
 export const EPUB_TEXT_CSP =
-  "default-src 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; frame-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'"
+  "default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; frame-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'"
 
 /** Rebuild a fresh XHTML tree, never insert the original document into a live DOM. */
 export function sanitizeChapter(

@@ -29,6 +29,15 @@ it('focuses Cancel and neither opens on presentation nor cancellation; only conf
     await nextTick()
     expect(document.activeElement?.textContent).toBe('Cancel')
     expect(openConfirmedLink).not.toHaveBeenCalled()
+    const buttons = document.querySelectorAll<HTMLButtonElement>('dialog button')
+    buttons[0]!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, bubbles: true, cancelable: true }),
+    )
+    expect(document.activeElement).toBe(buttons[1])
+    buttons[1]!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true }),
+    )
+    expect(document.activeElement).toBe(buttons[0])
     ;(document.querySelector('dialog button') as HTMLButtonElement).click()
     expect(wrapper.emitted('close')).toHaveLength(1)
     expect(openConfirmedLink).not.toHaveBeenCalled()

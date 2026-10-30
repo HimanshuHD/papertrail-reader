@@ -394,7 +394,12 @@ async function createEpubSession(
       resizeOnOrientationChange: false,
       flow: 'scrolled-doc',
       spread: 'none',
-      allowScriptedContent: false,
+      // WebKit suppresses even parent-owned DOM callbacks in a scripts-disabled
+      // frame. Chapters are rebuilt from an allowlist before loading and begin
+      // with a CSP that denies all scripts, inline handlers and remote resources.
+      // Permit the scripting environment for trusted parent event listeners;
+      // publication content still cannot execute script or open native popups.
+      allowScriptedContent: true,
     })
     // epub.js's paginated-image adjustment also runs in scrolled-doc and injects
     // !important width/height caps. Replace that hook with our low-specificity
