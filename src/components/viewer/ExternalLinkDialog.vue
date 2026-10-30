@@ -95,7 +95,7 @@ button {
 }
 button:last-child {
   background: var(--pt-brand);
-  color: white;
+  color: var(--pt-on-brand);
 }
 button:focus-visible {
   outline: 2px solid var(--pt-brand);
