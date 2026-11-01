@@ -1,6 +1,6 @@
 import { Blob } from 'node:buffer'
 import { strFromU8, strToU8, unzipSync, zipSync } from 'fflate'
-import { expect, it } from 'vitest'
+import { expect, it, vi } from 'vitest'
 import { createEpubFixture } from '../fixtures/epub'
 import { preflightEpubArchive } from '../../src/features/epub/archive-preflight'
 import { prepareTextPublication, readEpubEntry } from '../../src/features/epub/publication'
@@ -95,4 +95,40 @@ it('aborts publication preparation without returning a reusable buffer', async (
   await expect(
     prepareTextPublication(blob(createEpubFixture()), controller.signal),
   ).rejects.toThrow()
+})
+
+it('collects only unique sanitized fragment IDs without reparsing serialized chapters', async () => {
+  const parser = vi.spyOn(DOMParser.prototype, 'parseFromString')
+  const chapter =
+    '<html xmlns="http://www.w3.org/1999/xhtml" id="root"><head/><body id="body"><p id="duplicate">One</p><p id="duplicate">Two</p><script id="discarded">bad</script><unknown id="unwrapped"><span id="kept">Kept</span></unknown><a name="legacy">Link</a><p id="papertrail-private">Filtered ID</p></body></html>'
+  const book = await prepareTextPublication(blob(createEpubFixture({ chapter })))
+  try {
+    expect(parser).toHaveBeenCalledTimes(4) // container, package, two source chapters
+    expect([...book.fragments[0]!].sort()).toEqual(['body', 'kept', 'legacy', 'root'])
+    expect(book.resolveLink(0, '#legacy')).toEqual({ kind: 'epub', chapter: 0, fragment: 'legacy' })
+    expect(book.resolveLink(0, '#duplicate').kind).toBe('blocked')
+  } finally {
+    book.dispose()
+    parser.mockRestore()
+  }
+})
+it('observes an abort queued by the last chapter serialization before delivering packed bytes', async () => {
+  const controller = new AbortController()
+  const original = XMLSerializer.prototype.serializeToString
+  let chapters = 0
+  const serialize = vi
+    .spyOn(XMLSerializer.prototype, 'serializeToString')
+    .mockImplementation(function (this: XMLSerializer, node: Node) {
+      const value = original.call(this, node)
+      if (++chapters === 2) setTimeout(() => controller.abort(), 0)
+      return value
+    })
+  try {
+    await expect(
+      prepareTextPublication(blob(createEpubFixture()), controller.signal),
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(chapters).toBe(2)
+  } finally {
+    serialize.mockRestore()
+  }
 })
