@@ -1,3 +1,5 @@
+import { packPublication } from './publication-packer'
+import { EpubPreparationWork } from './preparation-work'
 import { epubContentLink, inertLinkValue, type DocumentLink } from '../reader/document-links'
 import { copyBookSemantics } from './book-semantics'
 import { ChapterCache, ChapterCacheBudgetError, type PreparedChapter } from './chapter-cache'
@@ -12,7 +14,7 @@ import {
 import { verifyBookFont, EpubFontError, EPUB_FONT_LIMITS, BookFontPool } from './book-fonts'
 import { parseEpubContents, type EpubContentsEntry, type EpubContentsTarget } from './navigation'
 import { verifyBookImage, EpubImageLimitError, EPUB_SVG_BYTE_LIMIT } from './book-images'
-import { Inflate, strToU8, zipSync } from 'fflate'
+import { Inflate, strToU8 } from 'fflate'
 import {
   EpubArchiveError,
   EPUB_ARCHIVE_LIMITS,
@@ -156,16 +158,15 @@ const discarded = new Set(
 export const EPUB_TEXT_CSP =
   "default-src 'none'; script-src 'none'; script-src-attr 'none'; style-src 'unsafe-inline'; img-src 'none'; font-src 'none'; frame-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'"
 
+type ChapterFormatting = {
+  sheets: string[]
+  images: Map<Element, string>
+  inline: Map<Element, string>
+  fonts?: boolean
+}
+
 /** Rebuild a fresh XHTML tree, never insert the original document into a live DOM. */
-export function sanitizeChapter(
-  source: Document,
-  formatting?: {
-    sheets: string[]
-    images: Map<Element, string>
-    inline: Map<Element, string>
-    fonts?: boolean
-  },
-): string {
+function rebuildChapter(source: Document, formatting?: ChapterFormatting): Document {
   const body = source.getElementsByTagNameNS(XHTML, 'body')[0]
   if (!body) throw new EpubArchiveError('EPUB chapter has no XHTML body.')
   const output = document.implementation.createDocument(XHTML, 'html')
@@ -331,7 +332,11 @@ export function sanitizeChapter(
   }
   for (const child of body.childNodes) copy(child, target, 0)
   if (target.querySelector('a[data-reader-link]')) head.append(linkStyle)
-  return new XMLSerializer().serializeToString(output)
+  return output
+}
+
+export function sanitizeChapter(source: Document, formatting?: ChapterFormatting): string {
+  return new XMLSerializer().serializeToString(rebuildChapter(source, formatting))
 }
 
 /** Build an inert EPUB for epub.js from verified local publication data. */
@@ -360,6 +365,7 @@ export async function preparePublication(
     workSignal?.throwIfAborted()
     if (disposed) throw new DOMException('EPUB publication was disposed.', 'AbortError')
   }
+  const preparation = new EpubPreparationWork(ensureOpen)
   const releaseResources = () => {
     for (const url of ownedURLs.splice(0)) releaseURL(url)
     ownedBlobBytes = ownedImageBytes = 0
@@ -663,7 +669,9 @@ export async function preparePublication(
           const url = await font(base, href)
           if (url) fonts.set(href, url)
         }
-      return sanitizeBookCSS(text, urls, inline, fonts, fontState)
+      const clean = sanitizeBookCSS(text, urls, inline, fonts, fontState)
+      await preparation.checkpoint()
+      return clean
     }
     async function formatting(chapter: Document, path: string) {
       const sheets: string[] = []
@@ -672,8 +680,10 @@ export async function preparePublication(
       const inline = new Map<Element, string>()
       const elements = [...chapter.getElementsByTagName('*')]
       if (elements.length > 100000) throw new EpubArchiveError('EPUB chapter is too complex.')
+      let visited = 0
       for (const element of elements) {
         ensureOpen()
+        if (++visited % 256 === 0) await preparation.checkpoint()
         const cover = coverImage(element)
         if (cover) {
           const href =
@@ -754,16 +764,15 @@ export async function preparePublication(
         throw new EpubArchiveError('EPUB chapter input exceeds the reading budget.')
       const chapter = await resource(path, 4 * 1024 * 1024)
       const href = `chapter-${index}.xhtml`
-      const cleanText = sanitizeChapter(
-        chapter,
-        textOnly
-          ? undefined
-          : deferFormatting
-            ? { sheets: [], images: new Map(), inline: new Map() }
-            : await formatting(chapter, path),
-      )
-      const clean = encode(cleanText)
-      const sanitized = new DOMParser().parseFromString(cleanText, 'application/xml')
+      await preparation.checkpoint()
+      const chapterFormatting = textOnly
+        ? undefined
+        : deferFormatting
+          ? { sheets: [], images: new Map<Element, string>(), inline: new Map<Element, string>() }
+          : await formatting(chapter, path)
+      await preparation.checkpoint()
+      const sanitized = rebuildChapter(chapter, chapterFormatting)
+      await preparation.checkpoint()
       const ids = new Set<string>()
       const duplicateIds = new Set<string>()
       for (const el of sanitized.querySelectorAll('[id]')) {
@@ -772,6 +781,10 @@ export async function preparePublication(
         ids.add(id)
       }
       for (const id of duplicateIds) ids.delete(id)
+      const cleanText = new XMLSerializer().serializeToString(sanitized)
+      await preparation.checkpoint()
+      const clean = encode(cleanText)
+      await preparation.checkpoint()
       fragments.push(ids)
       targets.set(path, { chapter: index, fragments: ids })
       total += clean.length
@@ -849,8 +862,9 @@ export async function preparePublication(
     files['package.opf'] = encode(
       `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">papertrail-local-text</dc:identifier><dc:title>Local EPUB</dc:title><dc:language>en</dc:language></metadata><manifest>${chapters.map((chapter, index) => `<item id="c${index}" href="${chapter.href}" media-type="application/xhtml+xml"/>`).join('')}</manifest><spine>${chapters.map((_, index) => `<itemref idref="c${index}"/>`).join('')}</spine></package>`,
     )
-    signal?.throwIfAborted()
-    const packed = zipSync(files, { level: 0 })
+    await preparation.checkpoint(true)
+    const packed = await packPublication(files, signal)
+    await preparation.checkpoint(true)
     async function buildChapter(
       index: number,
       buildSignal: AbortSignal,
@@ -871,9 +885,13 @@ export async function preparePublication(
       try {
         const path = chapterPaths[index]!
         const chapter = await resource(path, 4 * 1024 * 1024)
+        await preparation.checkpoint()
         const formatted = await formatting(chapter, path)
-        ensureOpen()
-        const markup = sanitizeChapter(chapter, formatted)
+        await preparation.checkpoint()
+        const sanitized = rebuildChapter(chapter, formatted)
+        await preparation.checkpoint()
+        const markup = new XMLSerializer().serializeToString(sanitized)
+        await preparation.checkpoint()
         const markupBytes = encode(markup).length
         if (markupBytes > 4 * 1024 * 1024)
           throw new EpubArchiveError('Formatted EPUB chapter exceeds its reading budget.')
@@ -961,10 +979,15 @@ export async function preparePublication(
       fragments,
       contents,
       contentsSource,
-      bytes: packed.buffer.slice(
-        packed.byteOffset,
-        packed.byteOffset + packed.byteLength,
-      ) as ArrayBuffer,
+      bytes:
+        packed.buffer instanceof ArrayBuffer &&
+        packed.byteOffset === 0 &&
+        packed.byteLength === packed.buffer.byteLength
+          ? packed.buffer
+          : (packed.buffer.slice(
+              packed.byteOffset,
+              packed.byteOffset + packed.byteLength,
+            ) as ArrayBuffer),
     }
   } catch (error) {
     dispose()
