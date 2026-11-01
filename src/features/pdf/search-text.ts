@@ -1,3 +1,4 @@
+import { TextSourceMapBuilder } from '../annotations/text-source-map'
 export interface SearchContext {
   before: string
   term: string
@@ -15,14 +16,14 @@ export interface TextMatch {
 /** Canonical text with UTF-16 source offsets, built without growing-string scans. */
 export function indexPdfText(parts: readonly string[]) {
   const characters: string[] = []
-  const positions: ({ part: number; offset: number } | null)[] = []
+  const source = new TextSourceMapBuilder()
   function append(char: string, part: number | null, offset = 0) {
     if (/\s/u.test(char)) {
       if (!characters.length || characters.at(-1) === ' ') return
       char = ' '
     }
     characters.push(char)
-    positions.push(part === null ? null : { part, offset })
+    source.append(part, offset)
   }
   parts.forEach((part, index) => {
     if (index) append(' ', null)
@@ -30,9 +31,9 @@ export function indexPdfText(parts: readonly string[]) {
   })
   if (characters.at(-1) === ' ') {
     characters.pop()
-    positions.pop()
+    source.trimLast()
   }
-  return { text: characters.join(''), positions }
+  return { text: characters.join(''), source: source.finish() }
 }
 
 /** Equivalent search-only text: no source-position objects or character array. */
@@ -74,8 +75,8 @@ export function textLayerMatchRanges(layer: HTMLElement, query: string) {
   while (walker.nextNode()) nodes.push(walker.currentNode as Text)
   const indexed = indexPdfText(nodes.map((node) => node.data))
   return findTextMatches(indexed.text, query).flatMap((match) => {
-    const first = indexed.positions[match.start]
-    const last = indexed.positions[match.end - 1]
+    const first = indexed.source.at(match.start)
+    const last = indexed.source.at(match.end - 1)
     if (!first || !last) return []
     const range = document.createRange()
     range.setStart(nodes[first.part]!, first.offset)

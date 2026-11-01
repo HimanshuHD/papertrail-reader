@@ -37,7 +37,7 @@ it('guards the whole layer while dragging through blank space without altering t
   expect(element.lastElementChild?.className).toBe('endOfContent')
   expect(selection.toString()).toBe('rst lineSecond')
   expect(pdfTextIndex(element).text).toBe(before.text)
-  expect(pdfTextIndex(element).positions).toEqual(before.positions)
+  expect(pdfTextIndex(element).source).toEqual(before.source)
   document.body.dispatchEvent(new Event('pointerup', { bubbles: true }))
   expect(element.classList.contains('selecting')).toBe(false)
   expect(selection.toString()).toBe('rst lineSecond')

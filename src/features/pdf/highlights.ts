@@ -23,8 +23,8 @@ export function pdfIndexedRange(
   start: number,
   end: number,
 ): Range | undefined {
-  const first = index.positions[start]
-  const last = index.positions[end - 1]
+  const first = index.source.at(start)
+  const last = index.source.at(end - 1)
   if (!first || !last) return
   const range = index.nodes[first.part]!.ownerDocument.createRange()
   range.setStart(index.nodes[first.part]!, first.offset)
@@ -137,18 +137,9 @@ export function capturePdfHighlight(
       const b = node === selected.endContainer ? selected.endOffset : node.length
       if (b > a) selectedParts.set(part, { start: a, end: b })
     })
-    const offsets: number[] = []
-    index.positions.forEach((position, offset) => {
-      if (!position) return
-      const bounds = selectedParts.get(position.part)
-      if (bounds && position.offset >= bounds.start && position.offset < bounds.end) {
-        if (!offsets.length) offsets.push(offset)
-        offsets[1] = offset + 1
-      }
-    })
-    if (!offsets.length) return
-    const from = Math.min(...offsets),
-      to = Math.max(...offsets)
+    const offsets = index.source.bounds(selectedParts)
+    if (!offsets) return
+    const [from, to] = offsets
     let text
     try {
       text = captureTextSelector(index.text, from, to)
