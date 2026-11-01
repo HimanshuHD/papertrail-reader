@@ -16,6 +16,7 @@ import {
   type EpubLocation,
   type CfiBridge,
 } from './location'
+import { EpubLocationCapture } from './location-capture'
 import { keepScrolledChapterMounted } from './scroll-layout'
 import { managedEpubViewManager, type EpubManagerConstructor } from './view-manager'
 import { scrollHighlightRange } from '../annotations/highlight-navigation'
@@ -204,6 +205,13 @@ async function createEpubSession(
   function currentLocation() {
     return destroyed || navigating ? undefined : captureLocation(root, chapterIndex, mode, bridge())
   }
+  const scrollCapture = new EpubLocationCapture(() => {
+    if (!destroyed && !restoring && !navigating) lastLocation = currentLocation() ?? lastLocation
+  })
+  function readLocation() {
+    scrollCapture.flush()
+    return lastLocation ?? currentLocation()
+  }
   function cancelRestoration() {
     ++restorationEpoch
     cancelAnimationFrame(restorationFrame)
@@ -211,6 +219,7 @@ async function createEpubSession(
     restoring = false
   }
   function keepLocation(saved: EpubLocation | undefined) {
+    scrollCapture.cancel()
     cancelRestoration()
     if (!saved || destroyed || navigating || saved.chapter !== chapterIndex) return false
     const owner = restorationEpoch
@@ -234,12 +243,13 @@ async function createEpubSession(
     return applied
   }
   function rememberScroll() {
-    if (!restoring && !navigating) lastLocation = currentLocation()
+    if (!destroyed && !restoring && !navigating) scrollCapture.schedule()
   }
   function userInput() {
     cancelRestoration()
   }
   function bindLocationEvents() {
+    scrollCapture.cancel()
     if (!scrollContainer) {
       scrollContainer = root.querySelector<HTMLElement>('.epub-container')
       scrollContainer?.addEventListener('scroll', rememberScroll, { passive: true })
@@ -307,7 +317,7 @@ async function createEpubSession(
     const nextHeight = root.clientHeight
     // Hidden panels must not replace the last usable layout with a zero-sized one.
     if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
-    const saved = lastLocation ?? currentLocation()
+    const saved = readLocation()
     width = nextWidth
     height = nextHeight
     root.style.setProperty('--papertrail-viewport-height', `${height}px`)
@@ -351,6 +361,7 @@ async function createEpubSession(
   function destroy() {
     if (destroyed) return
     destroyed = true
+    scrollCapture.cancel()
     for (const cancel of [...pendingDisplays]) cancel()
     if (__READER_DIAGNOSTICS__) {
       cancelReflow()
@@ -476,7 +487,7 @@ async function createEpubSession(
       .querySelector('iframe')
       ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     restoreResize = keepScrolledChapterMounted(rendition, root, {
-      capture: () => lastLocation ?? currentLocation(),
+      capture: readLocation,
       restore: (saved) => {
         if (saved) keepLocation(saved as EpubLocation)
       },
@@ -512,6 +523,7 @@ async function createEpubSession(
           throw new Error('EPUB contents target is unavailable.')
         const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('epub.chapter') : undefined
         const owner = ++navigationEpoch
+        scrollCapture.cancel()
         cancelRestoration()
         lastLocation = undefined
         const previousChapter = chapterIndex
@@ -558,8 +570,8 @@ async function createEpubSession(
         if (destroyed || !rendition || navigating) return
         const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
         try {
-          const savedLocation = lastLocation ?? currentLocation()
-          const saved = capturePosition()
+          const savedLocation = readLocation()
+          const saved = savedLocation ? undefined : capturePosition()
           rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
           // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
           const contents = rendition.getContents() as unknown as Contents[]
@@ -596,6 +608,7 @@ async function createEpubSession(
         const frame = root.querySelector('iframe')
         if (!container || !frame) return false
         // An explicit highlight jump replaces any earlier resize/location restoration.
+        scrollCapture.cancel()
         cancelRestoration()
         if (!scrollHighlightRange(container, range, frame)) return false
         lastLocation = currentLocation()
@@ -605,7 +618,7 @@ async function createEpubSession(
         const doc = root.querySelector('iframe')?.contentDocument
         return doc ? (defaultSizes.get(doc) ?? 18) : 18
       },
-      location: () => lastLocation ?? currentLocation(),
+      location: readLocation,
       async restore(value) {
         const saved = normalizeLocation(value, publication.chapters.length)
         if (!saved || destroyed || navigating) return false
