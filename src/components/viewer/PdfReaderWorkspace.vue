@@ -25,6 +25,7 @@ import { selectionAnchor, type SelectionAnchor } from '../../features/annotation
 import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
+import { PdfViewportTracker, type PdfViewportSample } from '../../features/pdf/viewport-tracker'
 import {
   openPdfDocument,
   resolvePdfScale,
@@ -74,9 +75,9 @@ import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-re
 
 let restoredAnchor: PdfReadingAnchor | undefined
 let restoredPage: number | undefined
-function saveReadingPoint() {
+function saveReadingPoint(sample?: PdfViewportSample) {
   if (phase.value !== 'ready') return
-  const point = captureReadingPoint()
+  const point = captureReadingPoint(sample)
   const page = Number(point?.page.closest('article')?.dataset.pdfPage)
   const view = {
     fitMode: fitMode.value,
@@ -389,7 +390,7 @@ const fitMode = ref<PdfFitMode>('width')
 watch(
   [currentPage, fitMode, zoom],
   () => {
-    if (phase.value === 'ready') void nextTick().then(saveReadingPoint)
+    if (phase.value === 'ready') void nextTick().then(() => saveReadingPoint())
   },
   { flush: 'sync' },
 )
@@ -441,7 +442,21 @@ const searchError = ref('')
 const fullscreen = ref(false)
 let openSequence = 0
 let resizeFrame = 0
-let scrollFrame = 0
+const pageTracking = new PdfViewportTracker((sample) => {
+  chooseMostVisiblePage(sample)
+  saveReadingPoint(sample)
+})
+watch(
+  viewport,
+  (root) => {
+    pageTracking.setRoot(root)
+    registrationOwner?.set('ownedObservers', (resizeObserver ? 1 : 0) + pageTracking.observerCount)
+  },
+  { flush: 'post' },
+)
+watch(twoPage, (spread) => {
+  void nextTick(() => pageTracking.setColumns(spread ? 2 : 1))
+})
 let layoutOperation = 0
 let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
@@ -490,6 +505,7 @@ function clampPage(page: number): number {
 function measureViewport() {
   const element = viewport.value
   if (!element) return
+  pageTracking.schedule()
 
   const atEnd =
     element.scrollHeight > element.clientHeight &&
@@ -692,6 +708,7 @@ async function goToPage(page: number, bookmarkNavigation = false) {
       scrollElement.getBoundingClientRect().top +
       scrollElement.scrollTop
     scrollElement.scrollTo?.({ top, behavior: 'instant' })
+    pageTracking.schedule()
   }
   if (pageElement?.dataset.renderState === 'ready') {
     finishNavigation?.()
@@ -700,20 +717,19 @@ async function goToPage(page: number, bookmarkNavigation = false) {
   emit('status', `Page ${next} of ${totalPages.value}.`)
 }
 
-function chooseMostVisiblePage() {
+function chooseMostVisiblePage(sample = pageTracking.measure()) {
   if (phase.value !== 'ready') return
   const pane = viewport.value
   if (!pane) return
-  const bounds = pane.getBoundingClientRect()
+  if (!sample) return
+  const bounds = sample.bounds
   let bestPage = currentPage.value
   let bestPixels = 0
-  for (const element of pane.querySelectorAll<HTMLElement>('.pdf-page-shell')) {
-    const box = element.getBoundingClientRect()
+  for (const { page, box } of sample.pages) {
     const pixels = Math.max(
       0,
       Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
     )
-    const page = Number(element.dataset.pdfPage)
     // Two fully visible pages can differ by a fractional CSS pixel after resizing.
     // Preserve the selected page in a visibility tie instead of advancing spuriously.
     if (
@@ -733,15 +749,7 @@ function chooseMostVisiblePage() {
 function handleViewerScroll() {
   toolbarSavedId.value = ''
   pendingHighlight.value = null
-  cancelAnimationFrame(scrollFrame)
-  scrollFrame = requestAnimationFrame(() => {
-    chooseMostVisiblePage()
-    saveReadingPoint()
-  })
-}
-
-function handleVisibility() {
-  handleViewerScroll()
+  pageTracking.schedule()
 }
 
 function stepPage(delta: number) {
@@ -816,12 +824,14 @@ function handleRenderError(message: string) {
   emit('status', message)
 }
 
-function captureReadingPoint() {
+function captureReadingPoint(sample = pageTracking.measure()) {
   const pane = viewport.value
   if (!pane) return null
-  const bounds = pane.getBoundingClientRect()
+  const bounds = sample?.bounds ?? pane.getBoundingClientRect()
   const center = bounds.top + pane.clientHeight / 2
-  const candidates = [...pane.querySelectorAll<HTMLElement>('.pdf-page')]
+  const candidates = (sample?.pages ?? [])
+    .map(({ element }) => element.querySelector<HTMLElement>('.pdf-page'))
+    .filter((element): element is HTMLElement => !!element)
   const page =
     candidates.find((element) => {
       const box = element.getBoundingClientRect()
@@ -1230,6 +1240,8 @@ function dispose(): Promise<void> {
   finishNavigation = undefined
   if (disposed) return disposed
   saveReadingPoint()
+  pageTracking.dispose()
+  registrationOwner?.set('ownedObservers', resizeObserver ? 1 : 0)
   const writes = continuity.reset()
   phase.value = 'loading'
   ++openSequence
@@ -1245,6 +1257,7 @@ function dispose(): Promise<void> {
 watch(
   () => props.active,
   (active) => {
+    if (active) pageTracking.schedule()
     if (active === false) {
       annotationsPanel.value?.closeMenu()
       if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
@@ -1261,7 +1274,7 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && viewport.value) {
     resizeObserver = new ResizeObserver(scheduleViewportMeasure)
     resizeObserver.observe(viewport.value)
-    registrationOwner?.set('ownedObservers', 1)
+    registrationOwner?.set('ownedObservers', 1 + pageTracking.observerCount)
   }
   void openDocument()
   globalThis.addEventListener('resize', scheduleViewportMeasure)
@@ -1284,7 +1297,6 @@ watch(
 onBeforeUnmount(() => {
   void dispose()
   cancelAnimationFrame(resizeFrame)
-  cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
   registrationOwner?.dispose()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
@@ -1584,6 +1596,7 @@ onBeforeUnmount(() => {
               :id="readerId(`pdf-page-${pageNumber}`)"
               :key="`${openSequence}:${pageNumber}`"
               :session="session"
+              :tracking="pageTracking"
               :page-number="pageNumber"
               :fit-mode="fitMode"
               :zoom="zoom"
@@ -1606,7 +1619,6 @@ onBeforeUnmount(() => {
               @note-selected="openNote"
               @highlight-resolution="highlightResolution"
               @pointerup="captureSelection"
-              @visibility="handleVisibility"
               @rendered="handleRendered"
               @link="activateContentLink"
               @link-notice="links.notice.value = $event"
