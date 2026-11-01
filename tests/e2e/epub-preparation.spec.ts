@@ -85,6 +85,7 @@ test('closing while the packer script is blocked aborts preparation and permits 
       buffer: largeBook(),
     })
     await open(page)
+    await page.getByRole('button', { name: 'Hide library', exact: true }).click()
     await blocked
     await page.getByRole('button', { name: 'Close preparation.epub', exact: true }).click()
     await expect(page.locator('.epub-reader')).toHaveCount(0)
