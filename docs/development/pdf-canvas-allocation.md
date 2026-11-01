@@ -2,9 +2,11 @@
 
 ## Scope and current code
 
-This increment adds a manual profiling harness and baseline evidence. It changes
-no production rendering behavior, backing resolution, quality or zoom limit.
-#299 stays open for strategy comparison, implementation and matched acceptance.
+This increment adds a two-slot render-admission queue per PDF reader, cancellation
+guards and a manual profiling harness. Requested backing resolution, quality and
+the 400% zoom limit remain unchanged. #299 stays open until owner review, merge
+and matching staging acceptance. The original pre-queue baseline is retained
+below as historical evidence; the final matched comparison follows it.
 
 `PdfSession.renderPage` in `src/features/pdf/pdf-session.ts` resolves CSS scale,
 then computes backing dimensions as `floor(viewportDimension * devicePixelRatio)`.
@@ -123,7 +125,7 @@ Process RSS matching is unavailable in this execution environment. GPU allocatio
 is unavailable. JS heap is recorded privately as a separate metric and cannot
 explain native canvas costs. No physical memory reduction is claimed.
 
-## Strategy comparison and next implementation
+## Strategy alternatives
 
 Prefer comparing quality-preserving scheduling before imposing a pixel ceiling:
 
@@ -138,9 +140,121 @@ Prefer comparing quality-preserving scheduling before imposing a pixel ceiling:
   a larger architecture change. Do not silently lower density, change the 400%
   UI limit or infer a universal budget from this machine/browser/fixture.
 
-A concurrency cap is the first comparison candidate, not a selected production
-policy. Complete matched before/after runs, review latency/quality tradeoffs,
-then implement the supported strategy in a focused follow-up PR for #299.
+The final comparison selects two concurrent pending page pipelines per session.
+This reduces pending overlap while retaining better two-page/distant readiness
+than the one-slot candidate in these samples. It is an admission policy, not a
+byte ceiling or global tab budget. The selected strategy and limits are detailed
+below; canvas swapping and tiling remain future alternatives.
 
 Visual QA remains manual-only. These fixtures do not establish general leak
 freedom or accepted CPU/RAM budgets. Broader component virtualization is #304.
+
+## Render admission implementation
+
+The follow-up implementation keeps the requested backing dimensions and adds
+`PdfRenderSlots`, a session-local FIFO admission queue. `PdfPageView` reserves
+before calling the renderer and releases only after its pending canvas dimensions
+are zeroed in `finally`. This covers rendering, text-layer preparation and display
+commit, including the existing link lookup before pending cleanup.
+
+A waiting page owns a small canvas element but has not requested its 2D context
+or assigned full-resolution backing dimensions. Cancellation removes queued
+entries immediately. Active cancellation marks the entry obsolete but retains its
+slot until cleanup actually finishes; releasing capacity early could exceed the
+intended bound while cancelled pixel storage still exists. Releases are idempotent.
+Closing rejects queued/new reservations and prevents late releases from restarting
+admission. Every session has an independent queue, so multiple warm readers are
+not governed by a global memory budget.
+
+The page lifecycle follows this ownership order:
+
+```ts
+releaseSlot = await session.reserveRender(pendingCanvas)
+// Recheck sequence, disposal and proximity before starting the renderer.
+await session.render(request)
+// Existing display copy, text layer and link commit.
+// finally:
+pendingCanvas.width = 0
+pendingCanvas.height = 0
+releaseSlot()
+```
+
+Zoom/layout changes cancel the obsolete reservation as well as an active engine
+task. `PdfSession` separates internal engine replacement from public cancellation:
+starting the admitted render must not cancel its own reservation. Checks after
+asynchronous page/text retrieval reject a cancelled/closed request before it can
+allocate backing pixels or start a stale text layer.
+
+Admission covers the workspace page pipeline. Direct low-level `session.render`
+callers retain their existing replacement semantics; they must reserve explicitly
+to participate in the composite render/commit bound. The production workspace does
+so. Unit fixtures without the optional reservation hook retain their existing
+mock rendering path.
+
+The private comparison runner derived from the baseline profiler recorded the
+selected capacity, working-diff hash and action-to-ready observations before its
+settling interval. It sent zoom requests atomically to isolate renderer capacity
+from a separate fill/Enter automation race observed in a preliminary run.
+Functional UI tests exercise normal typed zoom interaction separately. Preliminary
+interrupted or untimed comparisons are excluded from the final policy comparison.
+The extended runner source and raw reports remain private after automatic
+publication review rejected its process-path/reporting code. The committed manual
+command retains the original baseline recorder; it does not include the private
+capacity/hash/timing extensions or atomic-request adjustment. The timing table
+therefore has a reproduction limitation in addition to the measurement limits.
+
+## Final matched policy comparison
+
+The final comparison ran 48 fresh-browser scenarios: original staging and the
+updated pipeline with effectively unbounded (1,000), one and two slots, each with
+three repetitions per text/image fixture and density. At most 12 pages exist in
+these fixtures, so the 1,000-slot build is a control, not a proposed policy.
+All final builds used the same atomic-zoom profiler and production flags. The
+updated controls differ only in capacity. Source SHA, capacity and working-diff
+hash are recorded privately. Preliminary untimed/interrupted runs are excluded.
+
+The table shows maximum observed window estimates across three repetitions at
+density 2, in MiB. They are calculated from observed HTML canvas dimensions.
+
+| Pipeline                                | Text 400% transition | Image 400% transition | Text two-page transition | Image two-page transition | Text injected close | Image injected close |
+| --------------------------------------- | -------------------: | --------------------: | -----------------------: | ------------------------: | ------------------: | -------------------: |
+| Original staging                        |               355.22 |                355.68 |                    59.49 |                     59.66 |              489.00 |               489.35 |
+| Updated cancellation, unbounded control |               237.00 |                237.34 |                    59.49 |                     59.84 |              252.33 |               252.67 |
+| One slot                                |               237.00 |                237.34 |                    37.41 |                     37.76 |              134.00 |               134.34 |
+| Two slots (selected)                    |               237.00 |                237.34 |                    44.70 |                     45.04 |              252.33 |               252.67 |
+
+Both bounded candidates retain the full-density 400% copy pair (236.67 MiB).
+The unbounded updated control also reduces the ordinary zoom peak, so the
+cancellation/admission-flow changes account for much of this result; do not
+attribute the entire reduction to the capacity limit alone. Two slots further bound pending admission and reduce two-page
+transition estimates while allowing both spread pages to progress. Settled
+display backings and the copy-pair floor remain.
+
+Action-to-ready observations below are median / worst milliseconds across three
+runs at density 2. Settling waits are excluded. They include automation, polling
+and instrumentation overhead and are not CPU or real-user latency measurements.
+
+| Fixture / action        | Original staging | Updated unbounded |    One slot |   Two slots |
+| ----------------------- | ---------------: | ----------------: | ----------: | ----------: |
+| text / open-fit         |      1183 / 1234 |       1367 / 1387 | 1194 / 1211 | 1208 / 1221 |
+| text / zoom-400         |          47 / 51 |           39 / 54 |     53 / 56 |     56 / 58 |
+| text / two-page-100     |        117 / 124 |           83 / 85 |   170 / 177 |   111 / 116 |
+| text / distant-page-12  |         67 / 100 |           81 / 88 |   206 / 212 |    95 / 119 |
+| image / open-fit        |      3312 / 3323 |       3257 / 3303 | 3278 / 3292 | 3197 / 3237 |
+| image / zoom-400        |          51 / 72 |           46 / 51 |     50 / 51 |     45 / 45 |
+| image / two-page-100    |         97 / 130 |           79 / 83 |   128 / 151 |    94 / 110 |
+| image / distant-page-12 |        102 / 112 |         110 / 117 |   108 / 209 |   102 / 109 |
+
+Two slots are selected as the memory/readiness compromise for this increment.
+One slot reduced some estimates further but delayed two-page/distant readiness
+in these samples. This is not an accepted latency budget: only three repetitions
+were collected, variants ran in a fixed order (updated control, one, two, then
+original), OS caches/background work were uncontrolled, and polling is coarse.
+Manual review and staging cross-browser acceptance remain required.
+
+All 48 final scenarios reached 400%, completed distant navigation, released the
+first displayed bitmap and closed after allocation began. Full-size tracked
+backings cleared at closure checkpoints. Small default-size image canvases remain
+weakly observable; no independent retaining-root or physical-memory conclusion is
+made. Process RSS and GPU allocation remain unavailable. No pixel ceiling, density
+reduction, physical RAM improvement or complete leak freedom is claimed.

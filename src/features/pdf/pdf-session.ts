@@ -1,3 +1,4 @@
+import { PdfRenderSlots } from './render-slots'
 import { externalLink, unavailableLink, type DocumentLink } from '../reader/document-links'
 import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import { findTextMatches, canonicalPdfText, type SearchContext } from './search-text'
@@ -137,6 +138,20 @@ export function resolvePdfScale(
 }
 
 export class PdfDocumentSession {
+  private readonly renderSlots = new PdfRenderSlots(2)
+
+  reserveRender(canvas: HTMLCanvasElement): Promise<() => void> {
+    return this.renderSlots.acquire(canvas)
+  }
+
+  private assertRenderCurrent(canvas: HTMLCanvasElement) {
+    if (this.closed) throw new Error('PDF session is closed.')
+    if (this.renderSlots.isCancelled(canvas)) {
+      const error = new Error('PDF rendering cancelled.')
+      error.name = 'RenderingCancelledException'
+      throw error
+    }
+  }
   private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
   private closing: Promise<void> | undefined
@@ -231,6 +246,11 @@ export class PdfDocumentSession {
   }
 
   async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
+    this.renderSlots.cancel(canvas)
+    await this.cancelActiveRender(canvas)
+  }
+
+  private async cancelActiveRender(canvas: HTMLCanvasElement): Promise<void> {
     const current = this.activeRenders.get(canvas)
     this.activeRenders.delete(canvas)
     if (!current) return
@@ -459,9 +479,11 @@ export class PdfDocumentSession {
     requestTiming?: ReturnType<typeof diagnostics.investigation.begin>,
     pixelOwner?: object,
   ): Promise<PdfRenderResult> {
-    await this.cancelRender(request.canvas)
+    await this.cancelActiveRender(request.canvas)
+    this.assertRenderCurrent(request.canvas)
     requestTiming?.start()
     const page = await this.getPage(request.pageNumber)
+    this.assertRenderCurrent(request.canvas)
     const baseViewport = page.getViewport({ scale: 1 })
 
     const scale = resolvePdfScale(
@@ -513,6 +535,7 @@ export class PdfDocumentSession {
 
       if (request.textLayer) {
         const textContent = await page.getTextContent()
+        this.assertRenderCurrent(request.canvas)
         const textLayer = new this.pdfjs.TextLayer({
           textContentSource: textContent,
           container: request.textLayer,
@@ -542,6 +565,7 @@ export class PdfDocumentSession {
   close(): Promise<void> {
     if (this.closing) return this.closing
     this.closed = true
+    this.renderSlots.close()
     if (__READER_DIAGNOSTICS__) diagnostics.release(this)
     this.closing = __READER_DIAGNOSTICS__
       ? diagnostics.investigation.track('pdf.release', async (start) => {
