@@ -183,3 +183,58 @@ it('shows two independent comparison regions, changes owner on focus and returns
   await flushPromises()
   expect(observations.live).toBe(0)
 })
+
+it('stops resize callbacks after final close and observes a fresh workspace on reopen', async () => {
+  const observers: { notify: () => void; disconnect: ReturnType<typeof vi.fn> }[] = []
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      disconnect = vi.fn()
+      observe() {}
+      constructor(notify: () => void) {
+        observers.push({ notify, disconnect: this.disconnect })
+      }
+    },
+  )
+  const wrapper = mount(Workspace, { props: { document: doc('a'), persistent: true } })
+  try {
+    await flushPromises()
+    const first = observers[0]!
+    const firstMeasure = vi.spyOn(
+      wrapper.get('.session-workspace').element,
+      'getBoundingClientRect',
+    )
+    const compact = vi.spyOn(wrapper.vm.sessions, 'setComparisonCompact')
+    first.notify()
+    expect(firstMeasure).toHaveBeenCalledTimes(1)
+    await wrapper.vm.close(wrapper.vm.sessions.selectedId!)
+    await flushPromises()
+    expect(first.disconnect).toHaveBeenCalledTimes(1)
+    compact.mockClear()
+    firstMeasure.mockClear()
+    // Resize deliveries already queued before disconnect must not read closed DOM.
+    first.notify()
+    expect(firstMeasure).not.toHaveBeenCalled()
+    expect(compact).not.toHaveBeenCalled()
+    await wrapper.setProps({ document: doc('b') })
+    await flushPromises()
+    const second = observers[1]!
+    const secondMeasure = vi.spyOn(
+      wrapper.get('.session-workspace').element,
+      'getBoundingClientRect',
+    )
+    first.notify()
+    expect(secondMeasure).not.toHaveBeenCalled()
+    second.notify()
+    expect(secondMeasure).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+    expect(second.disconnect).toHaveBeenCalledTimes(1)
+    secondMeasure.mockClear()
+    second.notify()
+    expect(secondMeasure).not.toHaveBeenCalled()
+  } finally {
+    if (!wrapper.vm.$.isUnmounted) wrapper.unmount()
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+  }
+})

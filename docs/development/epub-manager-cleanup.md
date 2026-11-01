@@ -44,3 +44,55 @@ instrumentation roots before any further fix or leak verdict.
 Raw snapshots stay private. No CPU speedup, physical GPU/RAM reduction, accepted
 performance budget or universal absence of leaks is inferred. Five-minute warm-tab
 retention is intentional and unchanged; these checks concern explicit closure.
+
+## Workspace observer follow-up (#295)
+
+The engine adapter is already integrated through #271. A separate application
+ownership path remained: `DocumentSessionWorkspace` kept its disconnected resize
+observer in component scope after the final tab closed. The callback captured the
+removed workspace element. Disconnecting an observer stops observation; it does
+not remove an application reference to the observer or its callback.
+
+The observer now belongs to the root watcher's cleanup lifecycle, which runs when
+the root changes or the component unmounts. Its callback reads the current root
+ref instead of capturing the old element, and an invalidation flag rejects late
+deliveries after cleanup. A regression failed on the prior implementation because
+an explicitly delivered stale callback read closed-workspace geometry. It covers
+final close, reopen, stale delivery after reopen and unmount. This confirms the
+callback/ownership correction, not a browser-GC or process-memory improvement.
+The five-minute inactive-reader policy and engine adapter are unchanged.
+
+### Remaining browser acceptance
+
+Fresh local browser/heap verification for #295 is pending: the Chromium download
+returned an invalid archive in the implementation environment. Do not reuse the
+earlier #271 heap observations as measurements of this follow-up.
+
+Use generated fixtures and matching builds for the following manual investigation:
+
+1. Start a fresh local browser/context for each baseline/fixed run, with matching
+   viewport, fixture, cache state and build flags. Keep visual QA manual-only.
+2. Record a settled empty-workspace baseline, then open/close the same generated
+   EPUB ten times without reloading. Capture matching checkpoints after five and
+   ten explicit closes. Allow opening/disposal promises, scheduled callbacks and
+   a consistent settling interval to complete before each checkpoint.
+3. Run a natural-GC/process observation separately from forced-GC heap inspection.
+   Record the process sampling method, baseline/peak/settled values and attribution
+   limitations privately. JS heap and canvas estimates are not process/GPU RAM.
+4. For heap inspection, use comparable forced-GC conditions at all checkpoints.
+   Trace any remaining closed workspace/reader/manager through strong roots.
+   Classify weak/conditional edges separately. Check that the disconnected
+   workspace observer is no longer an application root.
+5. Avoid storing reader elements or engine instances in console variables,
+   selected-node history or test globals. Release CDP remote-object groups and
+   handles. Compare an inspection-light run with the instrumented run before
+   attributing retained objects to the application. Inspector/cache roots need
+   independent confirmation; do not assume every remaining root is tooling.
+6. Check listener baselines, abort during opening/display, repeated disposal,
+   close/reopen, position/highlight restoration, typography, resizing and mode
+   transitions. Exercise warm tab switching separately from explicit closure.
+
+Publish only sanitized fixture-based conclusions and limitations. Raw documents,
+heap snapshots, CPU profiles, local paths, machine details and private measurement
+reports must remain private. Keep #295 open until the remaining acceptance is
+recorded; no universal memory budget or leak-free verdict follows from tests.
