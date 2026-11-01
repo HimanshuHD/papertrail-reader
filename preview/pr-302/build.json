@@ -1,0 +1,32 @@
+{
+  "schema": 2,
+  "sha": "4601146c287439f2cda4151dc32e1f9cec406dcc",
+  "tree": "29a20857fcbb13175b92428c7af3474465ec7296",
+  "headSha": "f7ce3a54e06b59920229b0ac388fff8d5e9adcb3",
+  "baseSha": "5ba0c66e492b8edaf66416fe187970ce01c5802b",
+  "runId": "41273726232",
+  "pr": "302",
+  "channel": "preview",
+  "basePath": "/papertrail-reader/preview/pr-302/",
+  "version": "2.2.0",
+  "sourceBranch": "fix/295-epub-closed-reader-retention",
+  "publish": true,
+  "files": {
+    "assets/bootstrap-DwfxFNpu.css": "e4f6969e780ecb56cad220f50f9fa36dcc476fa74707da18c68c98aef51a8380",
+    "assets/bootstrap-RxLYGamV.js": "00af9e15589a680a911a372220cc8e4138ffe60f4b82236b40b5292244a975a1",
+    "assets/DeveloperDiagnostics-BS84l-Wu.css": "591bb33873eb819a1ae7e79d1fba5c5c7d11987160c18c56725b04a4e91ee980",
+    "assets/DeveloperDiagnostics-D8xYTwle.js": "5e7628fd438473ae12f14f0cc13ea3dd11b24e4b67960ddb01bb9fb064226437",
+    "assets/index-BtVfPWLW.css": "450d3b3d9e277b7183c2c0306ea836ed77b98ef246e4a06acaf25e6f95775f08",
+    "assets/index-DfdqVclf.js": "967a1a16facf7e01ddcf0e32e77ad1fb95aa8731b30cd53d0a83c0d4ac861aef",
+    "assets/pdf-Fuet1s1l.js": "a2f055c8c159b5f2caed20506a3b63ce2312449975e370b363735462fe5eeaa3",
+    "assets/pdf.worker.min-Dswkl-cV.mjs": "8ab0e5e30031b4a06ecfddd5ae9562f0227f830ee7ec9ed1a968b134243d2386",
+    "assets/pdf.worker.min-DzJq1o9g.js": "2e5186cfa726e02b5fb25fa28c4439564d92e36986b0bbe872c649cd229ca06d",
+    "assets/src-BzHx6_j3.js": "458252781bae3bbf1a90890b631fe4ad2e692415176c434377a30b5dbf44952a",
+    "channel.json": "5ac57db00efde8354e5593bc8e37d616e5279ec4f687b25532bda9a029733c7c",
+    "index.html": "a0b8389057c4f11cb579493a0b5437f3e7e31875383d4add445e52749fe6426d",
+    "papertrail.svg": "a3875075424f0aabbd79df93961b9729db7b365fdc09812cec2ec9ed5113b06c",
+    "startup/book-sprite.webp": "c9a5fb6ae8fe7ac2bb4130dea4b8c61cbbccfedb13221772f02e11a4d0ee4f05",
+    "startup/brand.webp": "3188afc4cc8cf6f0a5882b0e8b43432cc604e4bd19c12f7ae82c95ac32197ff2",
+    "startup/README.md": "1aa46901b68eb0c61336a4d7d6db2a3c7d159f2860cb5dfe54d8835e06c67317"
+  }
+}
