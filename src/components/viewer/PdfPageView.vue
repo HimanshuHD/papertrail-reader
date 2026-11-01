@@ -280,7 +280,10 @@ async function renderPage() {
   savedRects.value = []
   dirty = false
 
+  let releaseSlot: (() => void) | undefined
   try {
+    releaseSlot = await props.session.reserveRender?.(pendingCanvas)
+    if (sequence !== renderSequence || disposed || !nearViewport) return
     const result = await props.session.render({
       canvas: pendingCanvas,
       textLayer: pendingText,
@@ -359,6 +362,7 @@ async function renderPage() {
     if (__READER_DIAGNOSTICS__) diagnostics.release(pendingCanvas)
     pendingCanvas.width = 0
     pendingCanvas.height = 0
+    releaseSlot?.()
     pendingBitmap = null
     rendering.value = false
     void nextTick(() => {
@@ -424,6 +428,7 @@ watch(
   () => {
     renderSequence += 1
     dirty = true
+    if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
     void renderPage()
     void nextTick(() => props.tracking.schedule())
   },

@@ -22,6 +22,7 @@
     "test:e2e": "playwright test",
     "test:visual": "node scripts/run-visual-qa.mjs",
     "profile:browser": "node scripts/profile-browser.mjs",
+    "profile:pdf-canvases": "node scripts/profile-pdf-canvases.mjs",
     "test:diagnostics:acceptance": "node scripts/run-diagnostics-acceptance.mjs",
     "test:reader:acceptance": "node scripts/run-reader-acceptance.mjs"
   },

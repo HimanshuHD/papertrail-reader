@@ -1,3 +1,4 @@
+import { PdfRenderSlots } from '../../src/features/pdf/render-slots'
 import { immediatePdfTracking } from '../fixtures/pdf-tracking'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
@@ -28,7 +29,7 @@ function annotation(id: string, page = 1): Annotation {
     },
   }
 }
-function mountPage() {
+function mountPage(overrides: Partial<PdfDocumentSession> = {}) {
   const wrapper = mount(PdfPageView, {
     props: {
       tracking: immediatePdfTracking(),
@@ -38,6 +39,7 @@ function mountPage() {
           return { width: 400, height: 600, scale: 1 }
         }),
         getPageDimensions: vi.fn(async () => ({ width: 400, height: 600 })),
+        ...overrides,
       } as unknown as PdfDocumentSession,
       pageNumber: 1,
       fitMode: 'width',
@@ -131,4 +133,56 @@ it('clears queued page hover on tab suspension without reactivating it from a la
   await wrapper.setProps({ annotations: [] })
   await flushPromises()
   expect(target.style.cursor).toBe('')
+})
+
+it('holds admission through display commit and releases only after pending pixels are zeroed', async () => {
+  const slots = new PdfRenderSlots(1)
+  let finishLinks!: () => void
+  let pending!: HTMLCanvasElement
+  mountPage({
+    reserveRender: (canvas) => slots.acquire(canvas),
+    render: async (request) => {
+      pending = request.canvas
+      pending.width = 400
+      pending.height = 600
+      request.textLayer!.innerHTML = '<span>One Two</span>'
+      return { width: 400, height: 600, scale: 1 }
+    },
+    getPageLinks: () =>
+      new Promise((resolve) => {
+        finishLinks = () => resolve([])
+      }),
+  })
+  await flushPromises()
+  let admitted = false
+  const next = slots.acquire({}).then((release) => {
+    admitted = true
+    expect(pending.width).toBe(0)
+    expect(pending.height).toBe(0)
+    return release
+  })
+  await flushPromises()
+  expect(pending.width).toBe(400)
+  expect(admitted).toBe(false)
+  finishLinks()
+  await flushPromises()
+  ;(await next)()
+})
+
+it('cancels an unmounted queued page without later invoking the renderer', async () => {
+  const slots = new PdfRenderSlots(1),
+    release = await slots.acquire({})
+  const render = vi.fn(async () => ({ width: 400, height: 600, scale: 1 }))
+  const wrapper = mountPage({
+    reserveRender: (canvas) => slots.acquire(canvas),
+    render,
+    cancelRender: async (canvas) => slots.cancel(canvas),
+  })
+  await flushPromises()
+  expect(render).not.toHaveBeenCalled()
+  wrapper.unmount()
+  wrappers.splice(wrappers.indexOf(wrapper), 1)
+  release()
+  await flushPromises()
+  expect(render).not.toHaveBeenCalled()
 })

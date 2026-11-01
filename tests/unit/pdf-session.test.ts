@@ -469,3 +469,37 @@ it('late PDF dimensions cannot repopulate a closed session or resurrect its diag
   expect(diagnostics.owners.has(session)).toBe(false)
   expect(session.defaultPageDimensions).toEqual({ width: 612, height: 792 })
 })
+
+it('rejects a reserved render cancelled while getPage is pending before allocating its canvas', async () => {
+  let resolve!: (value: unknown) => void
+  const getPage = vi.fn(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  const session = new PdfDocumentSession(
+    {} as never,
+    { destroy: async () => {} } as never,
+    { numPages: 1, getPage, cleanup: async () => {} } as never,
+  )
+  const canvas = document.createElement('canvas')
+  const context = vi.spyOn(canvas, 'getContext')
+  const release = await session.reserveRender(canvas)
+  const work = session.render({
+    canvas,
+    pageNumber: 1,
+    fitMode: 'custom',
+    zoom: 4,
+    availableWidth: 600,
+    availableHeight: 800,
+  })
+  const rejected = expect(work).rejects.toMatchObject({ name: 'RenderingCancelledException' })
+  await vi.waitFor(() => expect(getPage).toHaveBeenCalledOnce())
+  await session.cancelRender(canvas)
+  resolve({})
+  await rejected
+  expect(context).not.toHaveBeenCalled()
+  release()
+  await session.close()
+})
