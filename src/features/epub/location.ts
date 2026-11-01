@@ -61,15 +61,16 @@ export function normalizeLocation(value: unknown, chapters: number): EpubLocatio
     atEnd: v.atEnd,
   }
 }
-function textNodes(element: Element): Text[] {
+function* walkTextNodes(element: Element): Generator<Text> {
   const walker = element.ownerDocument.createTreeWalker(element, 4)
-  const nodes: Text[] = []
   let next: Node | null
   let inspected = 0
   while ((next = walker.nextNode()) && ++inspected <= 20000) {
-    if (!next.parentElement?.closest('[data-reader-image]')) nodes.push(next as Text)
+    if (!next.parentElement?.closest('[data-reader-image]')) yield next as Text
   }
-  return nodes
+}
+function textNodes(element: Element): Text[] {
+  return [...walkTextNodes(element)]
 }
 function characterRange(text: Text, offset: number): Range {
   const range = text.ownerDocument.createRange()
@@ -100,34 +101,79 @@ function visibleRange(
   const top = bounds.top - frame.top
   const bottom = bounds.bottom - frame.top
   const x = Math.max(0, Math.min(frame.width - 1, doc.body?.dir === 'rtl' ? frame.width - 32 : 32))
-  const caret = doc.caretRangeFromPoint?.(x, Math.max(0, top + 8))
-  if (
-    caret?.startContainer.nodeType === 3 &&
-    caret.startContainer.parentElement?.closest('[data-reader-node]') &&
-    !caret.startContainer.parentElement?.closest('[data-reader-image]')
-  ) {
-    const result = characterRange(caret.startContainer as Text, caret.startOffset)
+  const y = Math.max(0, top + 8)
+  const verifiedCaret = (node: Node | null | undefined, offset: number | undefined) => {
+    if (
+      node?.nodeType !== 3 ||
+      node.ownerDocument !== doc ||
+      !doc.body.contains(node) ||
+      !Number.isInteger(offset) ||
+      offset! < 0 ||
+      offset! > (node as Text).length ||
+      !node.parentElement?.closest('[data-reader-node]') ||
+      node.parentElement?.closest('[data-reader-image]')
+    )
+      return
+    const result = characterRange(node as Text, offset!)
     const rect = rangeRect(result)
     if (rect && rect.bottom > top && rect.top < bottom) return result
   }
-  // Cross-browser fallback: binary search the first visible character of bounded text nodes.
-  for (const text of textNodes(doc.body)) {
-    if (!text.length || !text.data.trim()) continue
-    const whole = doc.createRange()
-    whole.selectNodeContents(text)
-    const rect = rangeRect(whole)
-    if (!rect || rect.bottom <= top || rect.top >= bottom) continue
-    let low = 0
-    let high = text.length - 1
-    while (low < high) {
-      const mid = Math.floor((low + high) / 2)
-      const box = rangeRect(characterRange(text, mid))
-      if (!box) break
-      if (box.bottom <= top) low = mid + 1
-      else high = mid
-    }
-    return characterRange(text, low)
+  try {
+    const caret = doc.caretRangeFromPoint?.(x, y)
+    const result = verifiedCaret(caret?.startContainer, caret?.startOffset)
+    if (result) return result
+  } catch {
+    /* Fall through to another supported lookup. */
   }
+  try {
+    const caret = doc.caretPositionFromPoint?.(x, y)
+    const result = verifiedCaret(caret?.offsetNode, caret?.offset)
+    if (result) return result
+  } catch {
+    /* Geometry fallback still works when a caret API rejects the point. */
+  }
+
+  const findVisible = (element: Element) => {
+    for (const text of walkTextNodes(element)) {
+      if (!text.length || !text.data.trim()) continue
+      const whole = doc.createRange()
+      whole.selectNodeContents(text)
+      const rect = rangeRect(whole)
+      if (!rect || rect.bottom <= top || rect.top >= bottom) continue
+      let low = 0
+      let high = text.length - 1
+      while (low < high) {
+        const mid = Math.floor((low + high) / 2)
+        const box = rangeRect(characterRange(text, mid))
+        if (!box) break
+        if (box.bottom <= top) low = mid + 1
+        else high = mid
+      }
+      return characterRange(text, low)
+    }
+  }
+  // A point can land in a paragraph margin. Try a few nearby points before
+  // scanning the chapter; every candidate must still contain visible text.
+  const inspected = new Set<Element>()
+  for (const inset of [8, 24, 48]) {
+    const pointY = Math.max(0, Math.min(bottom - 0.5, top + inset))
+    const pointX = Math.max(0, Math.min(frame.width - 1, frame.width / 2))
+    for (const hit of doc.elementsFromPoint?.(pointX, pointY) ?? []) {
+      const scope = hit.closest('[data-reader-node]')
+      if (
+        !scope ||
+        !doc.body.contains(scope) ||
+        scope.closest('[data-reader-image]') ||
+        inspected.has(scope)
+      )
+        continue
+      inspected.add(scope)
+      const result = findVisible(scope)
+      if (result) return result
+    }
+  }
+  // Preserve a bounded, streaming fallback for unavailable or unhelpful hit testing.
+  return findVisible(doc.body)
 }
 export function captureLocation(
   root: HTMLElement,

@@ -346,15 +346,18 @@ it('keeps the text-node offset and cancels deferred corrections on input, naviga
       range.getBoundingClientRect = () => bounds(logicalTop)
       return range
     }
-    doc.caretRangeFromPoint = () => {
+    const caret = vi.fn(() => {
       const range = doc.createRange()
       range.setStart(doc.querySelector('p')!.firstChild!, visibleCharacter)
       range.collapse(true)
       return range
-    }
+    })
+    doc.caretRangeFromPoint = caret
     container.dispatchEvent(new Event('wheel'))
-    container.dispatchEvent(new Event('scroll'))
+    for (let event = 0; event < 50; event++) container.dispatchEvent(new Event('scroll'))
+    expect(caret).not.toHaveBeenCalled()
     const saved = session.location!()!
+    expect(caret).toHaveBeenCalledTimes(1)
     expect(saved.character).toBe(7)
     expect(await session.restore!(saved)).toBe(true)
     visibleCharacter = 4

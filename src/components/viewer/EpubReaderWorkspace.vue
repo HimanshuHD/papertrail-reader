@@ -417,6 +417,8 @@ function onFrameKey(event: KeyboardEvent) {
 }
 let readingContainer: HTMLElement | null = null
 let lastReading: EpubReadingSettings | undefined
+let readingFrame = 0
+let readingEpoch = 0
 function captureReading(): EpubReadingSettings | undefined {
   if (!reader.session.value || reader.busy.value) return lastReading
   lastReading = {
@@ -427,6 +429,9 @@ function captureReading(): EpubReadingSettings | undefined {
   return lastReading
 }
 function persistReading(immediate = false) {
+  ++readingEpoch
+  cancelAnimationFrame(readingFrame)
+  readingFrame = 0
   continuity.save()
   if (immediate) continuity.flush()
   emit('readingChange', immediate)
@@ -435,9 +440,26 @@ function saveReading() {
   scheduleNoteIndicators()
   toolbarSavedId.value = ''
   pendingHighlight.value = null
-  persistReading()
+  if (readerDisposed || readingFrame) return
+  const session = reader.session.value
+  const chapter = reader.chapter.value
+  const epoch = readingEpoch
+  readingFrame = requestAnimationFrame(() => {
+    if (epoch !== readingEpoch) return
+    readingFrame = 0
+    if (
+      !readerDisposed &&
+      !reader.busy.value &&
+      reader.session.value === session &&
+      reader.chapter.value === chapter
+    )
+      persistReading()
+  })
 }
 function clearFrameListeners() {
+  ++readingEpoch
+  cancelAnimationFrame(readingFrame)
+  readingFrame = 0
   linkDisposers.splice(0).forEach((dispose) => dispose())
   hoverDisposers.splice(0).forEach((dispose) => dispose())
   pageAppearances.splice(0).forEach((page) => page.dispose())
@@ -662,7 +684,7 @@ watch(
   (active) => {
     if (active === false) {
       annotationsPanel.value?.closeMenu()
-      saveReading()
+      persistReading(true)
       typographyOpen.value = false
       pendingHighlight.value = null
       selectionPosition.value = null
