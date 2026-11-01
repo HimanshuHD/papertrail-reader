@@ -43,6 +43,10 @@ for (const rotation of [0, 90]) {
     await page.setViewportSize({ width: 768, height: 900 })
     await settleReaderLayout(page.locator('.reader-layout'))
     await expect(target).toHaveAttribute('data-render-state', 'ready')
+    // At narrow widths, spread/resize can make a neighbouring page most visible.
+    // Restoration must retain the settled reading state, not the initial jump's page number.
+    await settleReaderLayout(pane)
+    const savedPage = await field.inputValue()
     // Close persists the viewport anchor and spread; opening must render its distant target.
     await page.getByRole('button', { name: 'Close viewport.pdf', exact: true }).click()
     await expect(page.locator('.pdf-reader')).toHaveCount(0)
@@ -50,7 +54,7 @@ for (const rotation of [0, 90]) {
     await page.getByRole('button', { name: 'PDF: viewport.pdf', exact: true }).click()
     await page.getByRole('button', { name: 'Hide library', exact: true }).click()
     await expect(pane).toHaveAttribute('aria-busy', 'false')
-    await expect(field).toHaveValue('48')
+    await expect(field).toHaveValue(savedPage)
     await expect(spread).toHaveAttribute('aria-pressed', 'true')
     await expect(target).toHaveAttribute('data-render-state', 'ready')
     expect(errors).toEqual([])
