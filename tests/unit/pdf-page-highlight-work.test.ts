@@ -106,3 +106,29 @@ it('rebuilds its transient index after text-layer replacement instead of retaini
   await flushPromises()
   expect(wrapper.emitted('highlightResolution')).toContainEqual(['fresh', true, 1])
 })
+
+it('clears queued page hover on tab suspension without reactivating it from a late frame', async () => {
+  const wrapper = mountPage()
+  await flushPromises()
+  await wrapper.setProps({ active: true, annotations: [annotation('hover')] })
+  await flushPromises()
+  const frames: FrameRequestCallback[] = []
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => frames.push(callback))
+  vi.stubGlobal('cancelAnimationFrame', vi.fn())
+  const target = wrapper.get('.textLayer span').element as HTMLElement
+  const move = () =>
+    target.dispatchEvent(new MouseEvent('pointermove', { clientX: 20, clientY: 25, bubbles: true }))
+  move()
+  await wrapper.setProps({ active: false })
+  frames.splice(0).forEach((callback) => callback(0))
+  expect(target.style.cursor).toBe('')
+  move()
+  expect(frames).toHaveLength(0)
+  await wrapper.setProps({ active: true })
+  move()
+  frames.splice(0).forEach((callback) => callback(0))
+  expect(target.style.cursor).toBe('pointer')
+  await wrapper.setProps({ annotations: [] })
+  await flushPromises()
+  expect(target.style.cursor).toBe('')
+})

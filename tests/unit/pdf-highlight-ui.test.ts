@@ -213,6 +213,15 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   await wrapper.get('.reader-note-indicator').trigger('click')
   expect(wrapper.emitted('noteSelected')).toEqual([['one']])
   const layer = wrapper.get('.textLayer')
+  // A click before the queued hover frame must still resolve fresh painted geometry.
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    vi.fn(() => 1),
+  )
+  layer.element.dispatchEvent(
+    new MouseEvent('pointermove', { clientX: 20, clientY: 30, bubbles: true }),
+  )
+  expect(requestAnimationFrame).toHaveBeenCalledTimes(1)
   layer.element.dispatchEvent(
     new MouseEvent('pointerdown', { clientX: 20, clientY: 30, bubbles: true }),
   )

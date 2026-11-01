@@ -22,22 +22,34 @@ import {
   type PdfFitMode,
 } from '../../features/pdf/pdf-session'
 
-const props = defineProps<{
-  tracking: PdfPageTracking
-  session: PdfDocumentSession
-  pageNumber: number
-  fitMode: PdfFitMode
-  zoom: number
-  availableWidth: number
-  availableHeight: number
-  scrollRoot: HTMLElement | null
-  searchQuery?: string
-  selectedOccurrence?: number | null
-  selectionRequest?: number
-  annotations?: Annotation[]
-  fingerprint?: string | null
-  activeHighlight?: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    active?: boolean
+    tracking: PdfPageTracking
+    session: PdfDocumentSession
+    pageNumber: number
+    fitMode: PdfFitMode
+    zoom: number
+    availableWidth: number
+    availableHeight: number
+    scrollRoot: HTMLElement | null
+    searchQuery?: string
+    selectedOccurrence?: number | null
+    selectionRequest?: number
+    annotations?: Annotation[]
+    fingerprint?: string | null
+    activeHighlight?: string | null
+  }>(),
+  {
+    active: true,
+    searchQuery: undefined,
+    selectedOccurrence: undefined,
+    selectionRequest: undefined,
+    annotations: undefined,
+    fingerprint: undefined,
+    activeHighlight: undefined,
+  },
+)
 
 const emit = defineEmits<{
   link: [action: DocumentLink, origin: HTMLElement]
@@ -105,6 +117,7 @@ function selectSavedHighlight(event: PointerEvent) {
   }
 }
 function updateSavedHighlights() {
+  releaseHighlightHover?.clear()
   savedRects.value = []
   const layer = textLayer.value
   const page = root.value?.querySelector<HTMLElement>('.pdf-page')
@@ -229,7 +242,13 @@ let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
 let releaseLinks: (() => void) | undefined
 let releaseTextSelection: (() => void) | undefined
-let releaseHighlightHover: (() => void) | undefined
+let releaseHighlightHover: ReturnType<typeof bindHighlightHover> | undefined
+watch(
+  () => props.active,
+  (active) => {
+    if (active === false) releaseHighlightHover?.clear()
+  },
+)
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || disposed) return
@@ -306,6 +325,7 @@ async function renderPage() {
       (id) => {
         hoveredHighlight.value = id
       },
+      () => props.active !== false,
     )
     try {
       const found = (await props.session.getPageLinks?.(props.pageNumber)) ?? []
