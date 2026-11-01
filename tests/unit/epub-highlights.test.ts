@@ -103,6 +103,34 @@ it('restores validated ranges across modes without mutating text, and disposes r
   expect(highlights.size).toBe(0)
   expect(second.document.querySelector('[data-papertrail-highlights]')).toBeNull()
 })
+it('restores a preexisting selector with UTF-16 offsets after inline nodes and spaces change', () => {
+  const ctx = context('<p>🌿 <em>same</em>\u00a0  quote</p><p>same quote</p>')
+  ctx.mode = 'text'
+  const annotation: Annotation = {
+    version: 2,
+    id: 'legacy',
+    selector: {
+      version: 1,
+      format: 'EPUB',
+      chapter: 0,
+      mode: 'formatted',
+      cfi: null,
+      text: { start: 3, end: 13, exact: 'same quote', prefix: '🌿 ', suffix: ' same quote' },
+    },
+    color: 'yellow',
+    note: 'Existing note',
+    createdAt: 1,
+    updatedAt: 1,
+  }
+  registry(ctx)
+  const result = paintEpubHighlights(ctx, fingerprint, [annotation])
+  expect(result.unresolved.size).toBe(0)
+  const range = result.resolvedRanges.get('legacy')!
+  expect(range.startContainer).toBe(ctx.document.querySelector('em')!.firstChild)
+  expect(range.startOffset).toBe(0)
+  expect(range.toString()).toBe('same\u00a0  quote')
+  result.dispose()
+})
 it('marks changed quotes unresolved, leaves other chapters untouched and reports unsupported painters', () => {
   const first = context(),
     annotation = saved(first)
@@ -149,7 +177,7 @@ it('keeps UTF-16 character anchors and whitespace normalization across a long ch
   )
   const index = epubHighlightIndex(ctx.document)
   expect(index.text).toBe(repeated.trimEnd() + ' Tail 🌿 quotation kept.')
-  expect(index.positions).toHaveLength(index.text.length)
+  expect(index.source.length).toBe(index.text.length)
   const tail = ctx.document.querySelector('#tail')!
   select(ctx, tail)
   const selector = captureEpubHighlight(ctx)!

@@ -1,3 +1,4 @@
+import { TextSourceMapBuilder } from '../annotations/text-source-map'
 import {
   ANNOTATION_LIMITS,
   captureTextSelector,
@@ -10,8 +11,8 @@ import type { EpubAnnotationContext } from './epub-session'
 
 /** Canonical text excludes reader image alternatives; inline node boundaries add no spaces. */
 export function epubHighlightIndex(doc: Document) {
-  const nodes: Text[] = [],
-    positions: { node: Text; offset: number }[] = []
+  const nodes: Text[] = []
+  const source = new TextSourceMapBuilder()
   const walker = doc.createTreeWalker(doc.body, 4)
   // Append into an array and join once: checking a growing concatenated string
   // flattens V8 ropes repeatedly and stalls long chapters. Offsets stay UTF-16.
@@ -31,7 +32,7 @@ export function epubHighlightIndex(doc: Document) {
       characters.at(-1) !== ' '
     ) {
       characters.push(' ')
-      positions.push({ node, offset: 0 })
+      source.append(nodes.length, 0)
     }
     previousBlock = block
     nodes.push(node)
@@ -42,14 +43,14 @@ export function epubHighlightIndex(doc: Document) {
         char = ' '
       }
       characters.push(char)
-      positions.push({ node, offset })
+      source.append(nodes.length - 1, offset)
     }
   }
   if (characters.at(-1) === ' ') {
     characters.pop()
-    positions.pop()
+    source.trimLast()
   }
-  return { text: characters.join(''), nodes, positions }
+  return { text: characters.join(''), nodes, source: source.finish() }
 }
 function rangeAt(
   index: ReturnType<typeof epubHighlightIndex>,
@@ -57,12 +58,12 @@ function rangeAt(
   start: number,
   end: number,
 ) {
-  const first = index.positions[start],
-    last = index.positions[end - 1]
+  const first = index.source.at(start),
+    last = index.source.at(end - 1)
   if (!first || !last) return
   const range = doc.createRange()
-  range.setStart(first.node, first.offset)
-  range.setEnd(last.node, last.offset + 1)
+  range.setStart(index.nodes[first.part]!, first.offset)
+  range.setEnd(index.nodes[last.part]!, last.offset + 1)
   return range
 }
 export function captureEpubHighlight(
@@ -74,24 +75,17 @@ export function captureEpubHighlight(
   const range = selection.getRangeAt(0)
   if (!doc.body.contains(range.startContainer) || !doc.body.contains(range.endContainer)) return
   try {
-    const index = epubHighlightIndex(doc),
-      offsets: number[] = []
-    const selectedNodes = new Map<Text, { from: number; to: number }>()
-    for (const node of index.nodes) {
+    const index = epubHighlightIndex(doc)
+    const selectedParts = new Map<number, { start: number; end: number }>()
+    for (const [part, node] of index.nodes.entries()) {
       if (!range.intersectsNode(node)) continue
-      selectedNodes.set(node, {
-        from: node === range.startContainer ? range.startOffset : 0,
-        to: node === range.endContainer ? range.endOffset : node.length,
+      selectedParts.set(part, {
+        start: node === range.startContainer ? range.startOffset : 0,
+        end: node === range.endContainer ? range.endOffset : node.length,
       })
     }
-    index.positions.forEach((position, offset) => {
-      const bounds = selectedNodes.get(position.node)
-      if (bounds && position.offset >= bounds.from && position.offset < bounds.to) {
-        if (!offsets.length) offsets.push(offset)
-        offsets[1] = offset + 1
-      }
-    })
-    if (!offsets.length) return
+    const offsets = index.source.bounds(selectedParts)
+    if (!offsets) return
     let cfi: string | null = null
     try {
       cfi = context.cfiFromRange?.(range) ?? null
