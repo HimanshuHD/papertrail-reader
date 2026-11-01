@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { bindDocumentLinks, type DocumentLink } from '../../features/reader/document-links'
 import type { PdfContentLink } from '../../features/pdf/pdf-session'
+import type { PdfPageTracking } from '../../features/pdf/viewport-tracker'
 import { diagnostics } from '../../features/diagnostics/recorder'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
@@ -22,6 +23,7 @@ import {
 } from '../../features/pdf/pdf-session'
 
 const props = defineProps<{
+  tracking: PdfPageTracking
   session: PdfDocumentSession
   pageNumber: number
   fitMode: PdfFitMode
@@ -40,7 +42,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   link: [action: DocumentLink, origin: HTMLElement]
   linkNotice: [message: string]
-  visibility: [pageNumber: number, ratio: number]
   rendered: [pageNumber: number, scale: number]
   error: [message: string]
   highlightSelected: [id: string]
@@ -219,13 +220,11 @@ const layout = computed(() => {
   )
   return { width: size.width * scale, height: size.height * scale }
 })
-let observer: IntersectionObserver | null = null
-let visibilityObserver: IntersectionObserver | null = null
+let unregisterPage: (() => void) | undefined
 let renderSequence = 0
 let nearViewport = false
 let dirty = true
 let disposed = false
-let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
 let releaseLinks: (() => void) | undefined
@@ -400,74 +399,18 @@ function updateProximity(next: boolean) {
   }
 }
 
-function checkScrollPosition() {
-  if (disposed) return
-  cancelAnimationFrame(scrollFrame)
-  scrollFrame = requestAnimationFrame(() => {
-    const element = root.value
-    const pane = props.scrollRoot
-    if (!element || !pane) return
-    const box = element.getBoundingClientRect()
-    const bounds = pane.getBoundingClientRect()
-    const next = box.bottom >= bounds.top - 700 && box.top <= bounds.bottom + 700
-    if (next !== nearViewport || dirty) updateProximity(next)
-  })
-}
-
-function observePage() {
-  const element = root.value
-  if (!element) return
-
-  if (typeof IntersectionObserver === 'undefined') {
-    nearViewport = true
-    void renderPage()
-    return
-  }
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      const entry = entries[0]
-      if (!entry) return
-
-      if (entry.isIntersecting !== nearViewport || dirty) updateProximity(entry.isIntersecting)
-    },
-    {
-      root: props.scrollRoot,
-      rootMargin: '700px 0px',
-      threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-    },
-  )
-  observer.observe(element)
-  visibilityObserver = new IntersectionObserver(
-    ([entry]) => {
-      if (entry)
-        emit('visibility', props.pageNumber, entry.isIntersecting ? entry.intersectionRatio : 0)
-    },
-    { root: props.scrollRoot, threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
-  )
-  visibilityObserver.observe(element)
-}
-
 watch(
   () => [props.fitMode, props.zoom, props.availableWidth, props.availableHeight] as const,
   () => {
     renderSequence += 1
     dirty = true
     void renderPage()
-    checkScrollPosition()
+    void nextTick(() => props.tracking.schedule())
   },
 )
 
-watch(
-  () => props.scrollRoot,
-  (next, previous) => {
-    previous?.removeEventListener('scroll', checkScrollPosition)
-    next?.addEventListener('scroll', checkScrollPosition, { passive: true })
-    observer?.disconnect()
-    visibilityObserver?.disconnect()
-    observePage()
-  },
-)
+// Newly measured dimensions can move all following pages, even without scrolling.
+watch(layout, () => void nextTick(() => props.tracking.schedule()))
 onMounted(() => {
   if (root.value)
     releaseLinks = bindDocumentLinks(
@@ -480,8 +423,8 @@ onMounted(() => {
       (action, origin) => emit('link', action, origin),
     )
   if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { canvases: 1 })
-  props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
-  observePage()
+  if (root.value)
+    unregisterPage = props.tracking.register(root.value, props.pageNumber, updateProximity)
   if (nearViewport) showPreview()
 })
 
@@ -491,13 +434,9 @@ onBeforeUnmount(() => {
   disposed = true
   if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
   releaseBitmap()
-  cancelAnimationFrame(scrollFrame)
-  props.scrollRoot?.removeEventListener('scroll', checkScrollPosition)
+  unregisterPage?.()
+  unregisterPage = undefined
   renderSequence += 1
-  observer?.disconnect()
-  observer = null
-  visibilityObserver?.disconnect()
-  visibilityObserver = null
 })
 </script>
 

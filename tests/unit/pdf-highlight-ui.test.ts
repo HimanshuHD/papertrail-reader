@@ -1,3 +1,4 @@
+import { immediatePdfTracking } from '../fixtures/pdf-tracking'
 import { config } from '@vue/test-utils'
 config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
@@ -185,6 +186,7 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   } as unknown as PdfDocumentSession
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session,
       pageNumber: 1,
       fitMode: 'width',

@@ -1,3 +1,4 @@
+import { immediatePdfTracking } from '../fixtures/pdf-tracking'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import PdfPageView from '../../src/components/viewer/PdfPageView.vue'
@@ -30,6 +31,7 @@ function annotation(id: string, page = 1): Annotation {
 function mountPage() {
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session: {
         render: vi.fn(async (request: { textLayer: HTMLElement }) => {
           request.textLayer.innerHTML = '<span>One Two</span>'
