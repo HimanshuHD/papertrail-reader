@@ -130,6 +130,7 @@ const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
 function paintHighlights() {
   if (readerDisposed) return
+  highlightHovers.forEach((hover) => hover.clear())
   const context = reader.session.value?.annotationContext?.()
   paintedHighlights?.dispose()
   paintedHighlights = undefined
@@ -380,6 +381,7 @@ watch(windowWidth, () => {
 })
 const frameDocuments = new Set<Document>()
 const hoverDisposers: (() => void)[] = []
+const highlightHovers: ReturnType<typeof bindHighlightHover>[] = []
 const pageAppearances: ReturnType<typeof bindEpubPageAppearance>[] = []
 const colorPreviews: ReturnType<typeof selectionColorPreview>[] = []
 watch(highlightColor, (color) => colorPreviews.forEach((preview) => preview.set(color)))
@@ -462,6 +464,7 @@ function clearFrameListeners() {
   readingFrame = 0
   linkDisposers.splice(0).forEach((dispose) => dispose())
   hoverDisposers.splice(0).forEach((dispose) => dispose())
+  highlightHovers.splice(0).forEach((dispose) => dispose())
   pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
   noteResizeObserver?.disconnect()
@@ -519,7 +522,7 @@ function bindFrameListeners() {
       ),
     )
     pageAppearances.push(bindEpubPageAppearance(doc, theme.resolvedTheme === 'dark'))
-    hoverDisposers.push(
+    highlightHovers.push(
       bindHighlightHover(
         doc.body,
         () =>
@@ -537,6 +540,7 @@ function bindFrameListeners() {
         (id) => {
           hoveredHighlight.value = id
         },
+        () => props.active !== false && !readerDisposed && !reader.busy.value,
       ),
     )
     const reportActivity = () =>
@@ -551,7 +555,7 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
-  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 14)
+  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 15)
   frameRegistrations?.set('ownedObservers', highlightObservers.length)
   paintHighlights()
 }
@@ -683,6 +687,7 @@ watch(
   () => props.active,
   (active) => {
     if (active === false) {
+      highlightHovers.forEach((hover) => hover.clear())
       annotationsPanel.value?.closeMenu()
       persistReading(true)
       typographyOpen.value = false

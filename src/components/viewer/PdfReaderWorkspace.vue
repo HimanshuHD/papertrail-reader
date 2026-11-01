@@ -1596,6 +1596,7 @@ onBeforeUnmount(() => {
               :id="readerId(`pdf-page-${pageNumber}`)"
               :key="`${openSequence}:${pageNumber}`"
               :session="session"
+              :active="active !== false"
               :tracking="pageTracking"
               :page-number="pageNumber"
               :fit-mode="fitMode"
