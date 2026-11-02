@@ -132,3 +132,17 @@ Automated functional checks do not constitute visual QA. On the PR preview:
 Source CI, matching merged-source staging browser acceptance/publication and owner
 manual UI review remain delivery requirements. No merge/release/tag is performed
 by this implementation workflow.
+
+## Follow-up anchor and keyboard coverage
+
+A queued anchor correction now records page identity and reader generation. If
+Vue replaces a placeholder's inner `.pdf-page` before correction, restoration
+resolves its replacement through the stable article. A superseding navigation or
+reader generation still rejects the old correction. Regression cases replace
+that inner element and verify both correction and navigation cancellation.
+
+The selection browser case now uses native Shift+ArrowLeft to extend an existing
+cross-page selection, then verifies its exact text survives scrolling away and
+releases its pages when cleared. Seven focused PDF functional cases and the
+22-case workspace unit file passed for this follow-up; the earlier results above
+describe the original increment and are not new timing measurements.

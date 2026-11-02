@@ -112,6 +112,7 @@ test('selected text stays mounted while scrolling away and releases after select
   await zoom.press('Enter')
   await zoom.press('Tab')
   await expect(page.locator('[data-pdf-page="2"]')).toHaveAttribute('data-render-state', 'ready')
+  await pane.focus()
   await page.evaluate(() => {
     const first = document.querySelector('[data-pdf-page="1"] .textLayer span')!.firstChild!
     const last = document.querySelector('[data-pdf-page="2"] .textLayer span')!.firstChild!
@@ -123,7 +124,10 @@ test('selected text stays mounted while scrolling away and releases after select
     selection.addRange(range)
     document.dispatchEvent(new Event('selectionchange'))
   })
+  const originalSelection = await page.evaluate(() => document.getSelection()!.toString())
+  await page.keyboard.press('Shift+ArrowLeft')
   const selected = await page.evaluate(() => document.getSelection()!.toString())
+  expect(selected).toBe(originalSelection.slice(0, -1))
   await pane.evaluate((el) => {
     const target = el.querySelector('[data-pdf-page="40"]')!
     el.scrollTop += target.getBoundingClientRect().top - el.getBoundingClientRect().top

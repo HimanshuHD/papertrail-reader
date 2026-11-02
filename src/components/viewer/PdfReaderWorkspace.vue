@@ -923,7 +923,15 @@ function handleRenderError(message: string) {
   emit('status', message)
 }
 
-function captureReadingPoint(sample = pageTracking.measure()) {
+interface PdfReadingPoint {
+  pane: HTMLElement
+  page: HTMLElement
+  x: number
+  y: number
+  pageNumber?: number
+  sequence?: number
+}
+function captureReadingPoint(sample = pageTracking.measure()): PdfReadingPoint | null {
   const pane = viewport.value
   if (!pane) return null
   const bounds = sample?.bounds ?? pane.getBoundingClientRect()
@@ -949,6 +957,8 @@ function captureReadingPoint(sample = pageTracking.measure()) {
   return {
     pane,
     page,
+    pageNumber: Number(page.closest<HTMLElement>('[data-pdf-page]')?.dataset.pdfPage),
+    sequence: openSequence,
     x: (bounds.left + pane.clientWidth / 2 - box.left) / Math.max(1, box.width),
     y: (bounds.top + pane.clientHeight / 2 - box.top) / Math.max(1, box.height),
   }
@@ -962,12 +972,19 @@ async function restoreReadingPoint(
   if (
     operation !== layoutOperation ||
     !point ||
-    !point.page.isConnected ||
+    (point.sequence !== undefined && point.sequence !== openSequence) ||
     viewport.value !== point.pane
   )
     return
+  // A stable article can replace its estimated inner page while correction awaits Vue.
+  const page = point.page.isConnected
+    ? point.page
+    : point.pageNumber
+      ? point.pane.querySelector<HTMLElement>(`[data-pdf-page="${point.pageNumber}"] .pdf-page`)
+      : null
+  if (!page || !point.pane.contains(page)) return
   const bounds = point.pane.getBoundingClientRect()
-  const box = point.page.getBoundingClientRect()
+  const box = page.getBoundingClientRect()
   point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
   point.pane.scrollLeft += box.left + point.x * box.width - bounds.left - point.pane.clientWidth / 2
 }
