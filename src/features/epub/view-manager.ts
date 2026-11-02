@@ -6,6 +6,8 @@ interface EngineManager {
     resizeFunc?: EventListener & { cancel?(): void }
   }
   _onScroll?: EventListener
+  afterScrolled?: ReturnType<typeof setTimeout>
+  emit(type: string, ...args: unknown[]): unknown
   onScroll(event: Event): void
   addEventListeners(): void
   removeEventListeners(): void
@@ -24,6 +26,31 @@ export function managedEpubViewManager(Base: EpubManagerConstructor): EpubManage
     private scrollTarget?: EventTarget
     private unload?: EventListener
     private disposed = false
+    private locationReport?: ReturnType<typeof setTimeout>
+
+    private cancelLocationReport() {
+      clearTimeout(this.locationReport)
+      this.locationReport = undefined
+    }
+
+    override onScroll(event: Event) {
+      if (this.disposed || !this.unload) return
+      this.cancelLocationReport()
+      super.onScroll(event)
+    }
+
+    override emit(type: string, ...args: unknown[]) {
+      if (type !== 'scrolled') return super.emit(type, ...args)
+      if (this.disposed || !this.unload) return
+      this.cancelLocationReport()
+      // Engine location mapping walks the visible chapter. Keep live SCROLL
+      // delivery, but defer its trailing notification until input has settled.
+      // Application reading locations retain their independent frame capture/flush.
+      this.locationReport = setTimeout(() => {
+        this.locationReport = undefined
+        if (!this.disposed && this.unload) super.emit(type, ...args)
+      }, 120)
+    }
 
     override addEventListeners() {
       if (this.disposed || this.unload) return
@@ -35,6 +62,8 @@ export function managedEpubViewManager(Base: EpubManagerConstructor): EpubManage
     }
 
     override removeEventListeners() {
+      this.cancelLocationReport()
+      clearTimeout(this.afterScrolled)
       if (this.unload) window.removeEventListener('unload', this.unload)
       if (this._onScroll) this.scrollTarget?.removeEventListener('scroll', this._onScroll)
       this.unload = undefined

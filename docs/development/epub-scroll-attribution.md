@@ -49,3 +49,29 @@ The generated workload reproduces substantial engine scroll work but does not
 establish that this is the only cause of the reported lag. No automatic visual
 QA, arbitrary EPUB block virtualization or new saved-location format is proposed.
 Raw documents, probes, timing reports and machine details remain private.
+
+## Isolated engine change
+
+The existing manager subclass now coalesces only the engine's trailing `scrolled`
+notification. Live `scroll` events still pass through the installed manager, so
+the application retains its independent frame capture and explicit final flush.
+Other engine events and initial display/current-location calls are unchanged.
+
+Every scroll cancels the adapter's previous pending report. The engine retains
+its own 20ms timer, then the adapter waits another 120ms of quiet before emitting
+the latest trailing payload. This is approximately 140ms after the last scroll,
+not a universal optimal interval. Engine `relocated` notifications and its own
+location object therefore update later during continuous scrolling. Application
+reading positions are not delayed by this timer and still flush on lifecycle
+boundaries.
+
+Listener removal cancels both timers; stale bound callbacks and reports after
+removal/disposal are ignored. The integration is a per-session manager subclass,
+with no global event interception or epub.js package modification. Unit tests
+execute the installed registration/scroll methods under fake timers and verify
+twelve live scroll deliveries, one latest settled report and complete timer
+cancellation through removal/rebinding.
+
+This increment deliberately does not introduce a note-geometry cache or remove
+EPUB blocks. Notes remain frame-coalesced with fresh rectangles. Any future cache
+needs its own layout/font/image/nested-scroll invalidation and ownership tests.
