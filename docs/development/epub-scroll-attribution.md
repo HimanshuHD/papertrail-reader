@@ -108,7 +108,8 @@ animation produced median 41 → 43 note-update frames and 142.7 → 157.2ms of 
 work. Frame counts and timing vary, and three repetitions do not establish a
 universal keyboard regression or improvement. They do confirm that keyboard
 scroll work remains, and that reduced engine callback counts alone are inadequate
-evidence of responsiveness. Note-marker geometry is the next measured target.
+evidence of responsiveness. Note-marker geometry was the next measured target; its subsequent implementation
+and separate paired results are documented in [epub-note-geometry.md](epub-note-geometry.md).
 
 Layout-duration deltas in the primary eighty-note wheel cases were around
 0–0.1ms; this does not establish a layout bottleneck or justify intra-chapter DOM
@@ -137,7 +138,8 @@ On a local production preview or later ready-for-review preview, manually check:
 4. Keyboard-extend a cross-page PDF selection, scroll away/back, then clear it;
    use a heterogeneous PDF and check anchors when nearby dimensions resolve.
 
-Visual QA is manual-only and was not performed by these automated tests. #304 and
-PR #312 remain in progress for remaining note-marker work, owner UI validation,
-source CI and matching merged-source staging delivery. No merge/release/tag is
-performed here.
+These counts and results describe the engine-report increment. The subsequent
+note-marker increment is documented in [epub-note-geometry.md](epub-note-geometry.md).
+Visual QA is manual-only and was not performed by these automated tests. #304
+remains open for owner UI review, source CI and matching merged-source staging
+delivery. No merge/release/tag is performed here.
