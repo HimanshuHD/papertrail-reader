@@ -6,6 +6,7 @@ export function createPdfFixture(
   searchFixture = false,
   rotation = 0,
   contentLinks = false,
+  pageDimensions?: readonly { width: number; height: number }[],
 ): Buffer {
   const pageIds = Array.from({ length: pageCount }, (_, i) => 4 + i * 2)
   const objects = [
@@ -14,6 +15,7 @@ export function createPdfFixture(
     '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>',
   ]
   for (let i = 0; i < pageCount; i++) {
+    const size = pageDimensions?.[i] ?? { width: 612, height: 792 }
     const label = i === 0 ? 'First page' : i === 1 ? 'Second page' : `Page ${i + 1}`
     const stream =
       contentLinks && i === 0
@@ -22,7 +24,7 @@ export function createPdfFixture(
           ? `BT /F1 5 Tf 72 720 Td (${'A'.repeat(70)} Needle ${'B'.repeat(70)}) Tj 0 -560 Td (needle) Tj 0 -20 Td (wrapped) Tj 0 -20 Td (match <img>) Tj ET`
           : `BT /F1 24 Tf 72 720 Td (${label}) Tj ET`
     objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R ${
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${size.width} ${size.height}] /Rotate ${rotation} /Resources << /Font << /F1 3 0 R >> >> /Contents ${pageIds[i]! + 1} 0 R ${
         contentLinks && i === 0
           ? `/Annots [
           << /Type /Annot /Subtype /Link /Rect [72 716 245 740] /Contents (Go to second page) /Dest [${pageIds[1] ?? pageIds[0]} 0 R /XYZ 0 720 null] >>

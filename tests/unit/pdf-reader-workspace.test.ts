@@ -191,6 +191,23 @@ describe('PDF reader utility workspace', () => {
     expect(continuity.save).toHaveBeenCalledWith(3, { fitMode: 'custom', zoom: 1.5 })
   })
 
+  it('keeps custom zoom authoritative when a remounted page reports an older rendered scale', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get('input[aria-label="PDF zoom percent"]')
+    await input.trigger('focus')
+    ;(input.element as HTMLInputElement).value = '400'
+    await input.trigger('input')
+    wrapper.findComponent({ name: 'PdfPageView' }).vm.$emit('rendered', 1, 1)
+    await flushPromises()
+    expect(input.element).toHaveProperty('value', '400')
+    await input.trigger('keydown', { key: 'Enter' })
+    wrapper.findComponent({ name: 'PdfPageView' }).vm.$emit('rendered', 1, 1)
+    await flushPromises()
+    expect(input.element).toHaveProperty('value', '400')
+  })
+
   it('keeps a page-number edit intact while the visible page changes', async () => {
     continuity.restore.mockResolvedValueOnce({ page: 3, view: { fitMode: 'width', zoom: 1 } })
     const wrapper = mountReader()
@@ -352,9 +369,12 @@ describe('PDF reader utility workspace', () => {
     const viewport = wrapper.get('[aria-label="PDF pages"]').element as HTMLElement
     expect(viewport.getAttribute('aria-busy')).toBe('true')
     Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 900 })
-    const target = wrapper.findAllComponents({ name: 'PdfPageView' })[2]!
-    target.element.setAttribute('data-pdf-page', '3')
-    vi.spyOn(target.element, 'getBoundingClientRect').mockReturnValue({ top: 1800 } as DOMRect)
+    const target = wrapper
+      .findAllComponents({ name: 'PdfPageView' })
+      .find((page) => page.props('pageNumber') === 3)!
+    vi.spyOn(wrapper.get('#pdf-page-3').element, 'getBoundingClientRect').mockReturnValue({
+      top: 1800,
+    } as DOMRect)
     const scroll = vi.fn()
     viewport.scrollTo = scroll
     vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback) => {

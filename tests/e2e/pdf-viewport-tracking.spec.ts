@@ -28,11 +28,7 @@ for (const rotation of [0, 90]) {
       'data-render-state',
       'pending',
     )
-    expect(
-      await page
-        .locator('[data-pdf-page="1"] canvas')
-        .evaluate((canvas) => (canvas as HTMLCanvasElement).width),
-    ).toBe(0)
+    await expect(page.locator('[data-pdf-page="1"] canvas')).toHaveCount(0)
     await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
     await expect(target).toHaveAttribute('data-render-state', 'ready')
     const spread = page.getByRole('button', { name: 'Two-page view', exact: true })

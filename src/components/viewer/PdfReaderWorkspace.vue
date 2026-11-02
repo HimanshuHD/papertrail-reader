@@ -26,6 +26,9 @@ import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
 import { PdfViewportTracker, type PdfViewportSample } from '../../features/pdf/viewport-tracker'
+import { PdfPageLayout, type PdfPageSize } from '../../features/pdf/page-layout'
+import { PdfPageWindow } from '../../features/pdf/page-window'
+import type { ComponentPublicInstance } from 'vue'
 import {
   openPdfDocument,
   resolvePdfScale,
@@ -213,6 +216,10 @@ function clearPendingHighlight(event: PointerEvent) {
     event.target instanceof Element &&
     !!event.target.closest('.textLayer') &&
     !!viewport.value?.contains(event.target)
+  if (selectingHighlight) {
+    componentWindow.beginSelection()
+    refreshPageWindow()
+  }
   if (
     !(event.target instanceof Element) ||
     !event.target.closest('[aria-label="PDF highlights"]')
@@ -224,13 +231,18 @@ function clearPendingHighlight(event: PointerEvent) {
 function finishHighlightSelection() {
   if (!selectingHighlight) return
   selectingHighlight = false
+  componentWindow.endSelection()
+  retainSelectedPages()
   captureSelection()
 }
 function cancelHighlightSelection() {
   selectingHighlight = false
+  componentWindow.endSelection()
+  retainSelectedPages()
   pendingHighlight.value = null
 }
 function captureSelection(event?: Event) {
+  retainSelectedPages()
   if (props.active === false) return
   if (event?.defaultPrevented) return
   // Native selection paints continuously; measuring every drag update stalls it.
@@ -382,6 +394,8 @@ const statistics = useReadingStatistics(
   statisticsPosition,
 )
 const zoom = ref(1)
+const zoomEditing = ref(false)
+const zoomDraft = ref('100')
 const twoPage = ref(false)
 const pageAvailableWidth = computed(() =>
   twoPage.value ? Math.max(1, (availableWidth.value - 24) / 2) : availableWidth.value,
@@ -443,6 +457,8 @@ const fullscreen = ref(false)
 let openSequence = 0
 let resizeFrame = 0
 const pageTracking = new PdfViewportTracker((sample) => {
+  // Read native selection before pruning even if selectionchange is still queued.
+  retainSelectedPages()
   chooseMostVisiblePage(sample)
   saveReadingPoint(sample)
 })
@@ -463,12 +479,91 @@ let searchController: AbortController | null = null
 let documentController: AbortController | null = null
 
 const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
+let componentWindow = new PdfPageWindow()
+const mountedPages = shallowRef(new Set<number>([1]))
+const pageRenderStates = ref<Record<number, string>>({})
+const pageLayout = shallowRef(new PdfPageLayout({ width: 612, height: 792 }))
+const dimensionsVersion = ref(0)
+const pageSlots = new Map<number, { element: HTMLElement; release: () => void }>()
+
+function pageOf(node: Node | null) {
+  const element = node instanceof Element ? node : node?.parentElement
+  const article = element?.closest<HTMLElement>('[data-pdf-page]')
+  return article && viewport.value?.contains(article) ? Number(article.dataset.pdfPage) : undefined
+}
+function refreshPageWindow() {
+  const next = componentWindow.pages(currentPage.value, pageOf(document.activeElement))
+  if (
+    next.size !== mountedPages.value.size ||
+    [...next].some((page) => !mountedPages.value.has(page))
+  ) {
+    pageRenderStates.value = Object.fromEntries(
+      [...next].map((page) => [
+        page,
+        mountedPages.value.has(page) ? (pageRenderStates.value[page] ?? 'pending') : 'pending',
+      ]),
+    )
+    mountedPages.value = next
+  }
+}
+function handlePageState(page: number, state: string) {
+  if (mountedPages.value.has(page) && pageRenderStates.value[page] !== state)
+    pageRenderStates.value = { ...pageRenderStates.value, [page]: state }
+}
+function retainSelectedPages() {
+  const selection = document.getSelection()
+  componentWindow.selection(
+    selection && !selection.isCollapsed ? pageOf(selection.anchorNode) : undefined,
+    selection && !selection.isCollapsed ? pageOf(selection.focusNode) : undefined,
+  )
+  refreshPageWindow()
+}
+function registerPageSlot(page: number, node: Element | ComponentPublicInstance | null) {
+  const element = node instanceof HTMLElement ? node : null
+  const previous = pageSlots.get(page)
+  if (previous?.element === element) return
+  previous?.release()
+  pageSlots.delete(page)
+  if (!element) return
+  const release = pageTracking.register(element, page, (near) => {
+    componentWindow.proximity(page, near)
+  })
+  pageSlots.set(page, { element, release })
+}
+function slotSize(page: number) {
+  // The revision invalidates estimates after an asynchronous page measurement.
+  void dimensionsVersion.value
+  return pageLayout.value.size(
+    page,
+    fitMode.value,
+    zoom.value,
+    pageAvailableWidth.value,
+    availableHeight.value,
+  )
+}
+function handleMeasured(page: number, size: PdfPageSize) {
+  const point = phase.value === 'ready' ? captureReadingPoint() : null
+  const pane = viewport.value
+  const before = pane?.scrollTop
+  const operation = layoutOperation
+  if (!pageLayout.value.measure(page, size)) return
+  dimensionsVersion.value++
+  void nextTick(() => {
+    if (pane === viewport.value && pane?.scrollTop === before)
+      void restoreReadingPoint(point, operation)
+    pageTracking.schedule()
+  })
+}
+watch(currentPage, refreshPageWindow, { flush: 'sync' })
 
 const progressPercent = computed(() =>
   totalPages.value > 0 ? Math.round((currentPage.value / totalPages.value) * 100) : 0,
 )
 
-const zoomPercent = computed(() => Math.round(renderedScale.value * 100))
+// Remounted pages may finish an older fit render while custom zoom is being edited.
+const zoomPercent = computed(() =>
+  Math.round((fitMode.value === 'custom' ? zoom.value : renderedScale.value) * 100),
+)
 
 const flatOutline = computed<readonly FlatOutlineItem[]>(() => {
   const result: FlatOutlineItem[] = []
@@ -604,6 +699,9 @@ async function loadDocument() {
   pageEditing.value = false
   pageDraft.value = '1'
   totalPages.value = 0
+  componentWindow = new PdfPageWindow()
+  mountedPages.value = new Set([1])
+  pageRenderStates.value = {}
   fitMode.value = 'width'
   zoom.value = 1
   renderedScale.value = 1
@@ -633,6 +731,7 @@ async function loadDocument() {
     renderedScale.value = zoom.value
     phase.value = 'restoring'
     session.value = next
+    pageLayout.value = new PdfPageLayout(next.defaultPageDimensions ?? { width: 612, height: 792 })
     totalPages.value = next.totalPages
     rightPanel.value = props.initialState ? props.initialState.panel : (props.initialPanel ?? null)
     await nextTick()
@@ -846,6 +945,7 @@ function captureReadingPoint(sample = pageTracking.measure()) {
     }, null)
   if (!page) return null
   const box = page.getBoundingClientRect()
+  if (box.width <= 0 || box.height <= 0) return null
   return {
     pane,
     page,
@@ -895,11 +995,20 @@ function handleZoomInput(event: Event) {
   const value = input.valueAsNumber
   if (!Number.isFinite(value)) {
     input.value = String(zoomPercent.value)
+    zoomDraft.value = input.value
     return
   }
   const percentage = Math.min(400, Math.max(25, value))
   input.value = String(Math.round(percentage))
+  zoomDraft.value = input.value
   void applyCustomZoom(percentage / 100)
+}
+function beginZoomEdit(event: FocusEvent) {
+  zoomDraft.value = (event.target as HTMLInputElement).value
+  zoomEditing.value = true
+}
+function editZoom(event: Event) {
+  zoomDraft.value = (event.target as HTMLInputElement).value
 }
 async function applyCustomZoom(value: number) {
   if (!session.value || phase.value !== 'ready') return
@@ -1241,6 +1350,7 @@ function dispose(): Promise<void> {
   if (disposed) return disposed
   saveReadingPoint()
   pageTracking.dispose()
+  pageSlots.clear()
   registrationOwner?.set('ownedObservers', resizeObserver ? 1 : 0)
   const writes = continuity.reset()
   phase.value = 'loading'
@@ -1382,13 +1492,16 @@ onBeforeUnmount(() => {
           <label class="pdf-zoom-field">
             <span class="sr-only">PDF zoom percent</span>
             <input
-              :value="zoomPercent"
+              :value="zoomEditing ? zoomDraft : zoomPercent"
               aria-label="PDF zoom percent"
               type="number"
               min="25"
               max="400"
               step="25"
               class="pdf-zoom-input"
+              @focus="beginZoomEdit"
+              @input="editZoom"
+              @blur="zoomEditing = false"
               @change="handleZoomInput"
               @keydown.enter.prevent="handleZoomInput"
             />
@@ -1591,40 +1704,66 @@ onBeforeUnmount(() => {
               opacity: phase === 'ready' ? 1 : 0,
             }"
           >
-            <PdfPageView
+            <article
               v-for="pageNumber in pages"
               :id="readerId(`pdf-page-${pageNumber}`)"
               :key="`${openSequence}:${pageNumber}`"
-              :session="session"
-              :active="active !== false"
-              :tracking="pageTracking"
-              :page-number="pageNumber"
-              :fit-mode="fitMode"
-              :zoom="zoom"
-              :available-width="pageAvailableWidth"
-              :available-height="availableHeight"
-              :scroll-root="viewport"
-              :annotations="highlights.highlights.value"
-              :fingerprint="continuity.fingerprint.value"
-              :active-highlight="selectedHighlight"
-              :search-query="completedSearchQuery"
-              :selected-occurrence="
-                selectedSearchMatch?.pageNumber === pageNumber
-                  ? selectedSearchMatch.occurrence
-                  : null
+              :ref="(node) => registerPageSlot(pageNumber, node)"
+              class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
+              :aria-label="`PDF page ${pageNumber}`"
+              :data-pdf-page="pageNumber"
+              :data-render-state="
+                mountedPages.has(pageNumber)
+                  ? (pageRenderStates[pageNumber] ?? 'pending')
+                  : 'pending'
               "
-              :selection-request="
-                selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
-              "
-              @highlight-selected="openHighlight"
-              @note-selected="openNote"
-              @highlight-resolution="highlightResolution"
-              @pointerup="captureSelection"
-              @rendered="handleRendered"
-              @link="activateContentLink"
-              @link-notice="links.notice.value = $event"
-              @error="handleRenderError"
-            />
+              :data-virtual-placeholder="mountedPages.has(pageNumber) ? undefined : ''"
+            >
+              <PdfPageView
+                v-if="mountedPages.has(pageNumber)"
+                :managed-proximity="true"
+                :initial-dimensions="pageLayout.known(pageNumber)"
+                :session="session"
+                :active="active !== false"
+                :tracking="pageTracking"
+                :page-number="pageNumber"
+                :fit-mode="fitMode"
+                :zoom="zoom"
+                :available-width="pageAvailableWidth"
+                :available-height="availableHeight"
+                :scroll-root="viewport"
+                :annotations="highlights.highlights.value"
+                :fingerprint="continuity.fingerprint.value"
+                :active-highlight="selectedHighlight"
+                :search-query="completedSearchQuery"
+                :selected-occurrence="
+                  selectedSearchMatch?.pageNumber === pageNumber
+                    ? selectedSearchMatch.occurrence
+                    : null
+                "
+                :selection-request="
+                  selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
+                "
+                @highlight-selected="openHighlight"
+                @note-selected="openNote"
+                @highlight-resolution="highlightResolution"
+                @pointerup="captureSelection"
+                @rendered="handleRendered"
+                @measured="handleMeasured"
+                @state="handlePageState"
+                @link="activateContentLink"
+                @link-notice="links.notice.value = $event"
+                @error="handleRenderError"
+              />
+              <div
+                v-else
+                class="pdf-page shrink-0 bg-white shadow-sm"
+                :style="{
+                  width: `${slotSize(pageNumber).width}px`,
+                  height: `${slotSize(pageNumber).height}px`,
+                }"
+              />
+            </article>
           </div>
         </section>
       </div>

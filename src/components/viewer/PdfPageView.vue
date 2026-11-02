@@ -25,6 +25,8 @@ import {
 const props = withDefaults(
   defineProps<{
     active?: boolean
+    managedProximity?: boolean
+    initialDimensions?: { width: number; height: number }
     tracking: PdfPageTracking
     session: PdfDocumentSession
     pageNumber: number
@@ -42,6 +44,8 @@ const props = withDefaults(
   }>(),
   {
     active: true,
+    managedProximity: false,
+    initialDimensions: undefined,
     searchQuery: undefined,
     selectedOccurrence: undefined,
     selectionRequest: undefined,
@@ -55,6 +59,8 @@ const emit = defineEmits<{
   link: [action: DocumentLink, origin: HTMLElement]
   linkNotice: [message: string]
   rendered: [pageNumber: number, scale: number]
+  measured: [pageNumber: number, size: { width: number; height: number }]
+  state: [pageNumber: number, state: 'pending' | 'rendering' | 'ready']
   error: [message: string]
   highlightSelected: [id: string]
   noteSelected: [id: string]
@@ -219,7 +225,14 @@ watch(
 const rendered = ref(false)
 const previewed = ref(false)
 const rendering = ref(false)
-const dimensions = ref<{ width: number; height: number } | null>(null)
+watch([rendering, rendered], () => {
+  emit(
+    'state',
+    props.pageNumber,
+    rendering.value ? 'rendering' : rendered.value ? 'ready' : 'pending',
+  )
+})
+const dimensions = ref<{ width: number; height: number } | null>(props.initialDimensions ?? null)
 const layout = computed(() => {
   const size = dimensions.value ??
     props.session.defaultPageDimensions ?? { width: 612, height: 792 }
@@ -257,6 +270,8 @@ async function renderPage() {
     measuring = true
     try {
       dimensions.value = await props.session.getPageDimensions(props.pageNumber)
+      if (disposed) return
+      emit('measured', props.pageNumber, dimensions.value)
     } catch (error) {
       if (!disposed)
         emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
@@ -448,8 +463,9 @@ onMounted(() => {
       (action, origin) => emit('link', action, origin),
     )
   if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { canvases: 1 })
-  if (root.value)
+  if (root.value && !props.managedProximity)
     unregisterPage = props.tracking.register(root.value, props.pageNumber, updateProximity)
+  if (props.managedProximity) updateProximity(true)
   if (nearViewport) showPreview()
 })
 
@@ -466,12 +482,14 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <article
-    :id="`pdf-page-${pageNumber}`"
+  <component
+    :is="managedProximity ? 'div' : 'article'"
+    :id="managedProximity ? undefined : `pdf-page-${pageNumber}`"
     ref="root"
-    class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
-    :aria-label="`PDF page ${pageNumber}`"
-    :data-pdf-page="pageNumber"
+    class="flex w-full scroll-mt-4 items-start justify-center"
+    :class="managedProximity ? 'pdf-page-content' : 'pdf-page-shell'"
+    :aria-label="managedProximity ? undefined : `PDF page ${pageNumber}`"
+    :data-pdf-page="managedProximity ? undefined : pageNumber"
     :data-render-state="rendering ? 'rendering' : rendered ? 'ready' : 'pending'"
   >
     <div
@@ -571,7 +589,7 @@ onBeforeUnmount(() => {
         Rendering page {{ pageNumber }}…
       </div>
     </div>
-  </article>
+  </component>
 </template>
 
 <style scoped>

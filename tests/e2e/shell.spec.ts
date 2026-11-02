@@ -1,4 +1,9 @@
-import { libraryAction, openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
+import {
+  libraryAction,
+  openAnnotationActions,
+  waitForWorkspaceReady,
+  settleReaderLayout,
+} from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -700,6 +705,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
       'false',
     )
     await page.getByRole('button', { name: 'Hide library' }).click()
+    await settleReaderLayout(page.locator('.reader-layout'))
   }
   const bytes = createPdfFixture(2, undefined, true)
   await select('highlights.pdf', bytes)
@@ -795,6 +801,7 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
     .getByRole('button', { name: 'PDF: rotated.pdf', exact: true })
     .click()
   await page.getByRole('button', { name: 'Hide library' }).click()
+  await settleReaderLayout(page.locator('.reader-layout'))
   const layer = page.locator('[data-pdf-page="1"] .textLayer')
   await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await layer.evaluate((element) => {

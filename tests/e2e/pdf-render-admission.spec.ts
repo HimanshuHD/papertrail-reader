@@ -47,7 +47,7 @@ for (const fixture of ['rotated-text', 'image'] as const) {
     }))
     expect(dimensions.width).toBe(dimensions.expectedWidth)
     expect(dimensions.height).toBe(dimensions.expectedHeight)
-    await expect(reader.locator('[data-pdf-page="1"] canvas')).toHaveJSProperty('width', 0)
+    await expect(reader.locator('[data-pdf-page="1"] canvas')).toHaveCount(0)
     await page.getByRole('button', { name: 'Close admission.pdf', exact: true }).click()
     await expect(reader).toHaveCount(0)
     expect(errors).toEqual([])

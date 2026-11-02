@@ -15,6 +15,61 @@ afterEach(() => {
 })
 
 describe('PDF viewport ownership', () => {
+  it('uses workspace-owned proximity and retained dimensions without another registration', async () => {
+    const tracking = { register: vi.fn(), schedule: vi.fn() }
+    const getPageDimensions = vi.fn()
+    const render = vi.fn(async () => ({ width: 400, height: 600, scale: 1 }))
+    const wrapper = mount(PdfPageView, {
+      props: {
+        tracking,
+        managedProximity: true,
+        initialDimensions: { width: 400, height: 600 },
+        session: { getPageDimensions, render } as unknown as PdfDocumentSession,
+        pageNumber: 2,
+        fitMode: 'width',
+        zoom: 1,
+        availableWidth: 400,
+        availableHeight: 600,
+        scrollRoot: null,
+      },
+    })
+    await flushPromises()
+    expect(tracking.register).not.toHaveBeenCalled()
+    expect(getPageDimensions).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
+    expect(wrapper.emitted('state')).toContainEqual([2, 'ready'])
+    wrapper.unmount()
+  })
+
+  it('does not publish a measurement completed after its managed page unmounts', async () => {
+    let finish!: (size: { width: number; height: number }) => void
+    const render = vi.fn()
+    const wrapper = mount(PdfPageView, {
+      props: {
+        tracking: { register: vi.fn(), schedule: vi.fn() },
+        managedProximity: true,
+        session: {
+          getPageDimensions: () =>
+            new Promise((resolve) => {
+              finish = resolve
+            }),
+          render,
+        } as unknown as PdfDocumentSession,
+        pageNumber: 2,
+        fitMode: 'width',
+        zoom: 1,
+        availableWidth: 400,
+        availableHeight: 600,
+        scrollRoot: null,
+      },
+    })
+    wrapper.unmount()
+    finish({ width: 400, height: 600 })
+    await flushPromises()
+    expect(wrapper.emitted('measured')).toBeUndefined()
+    expect(render).not.toHaveBeenCalled()
+  })
+
   it('delegates proximity to its workspace and releases its registration', async () => {
     let proximity!: (near: boolean) => void
     const unregister = vi.fn()
