@@ -2005,6 +2005,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-page-shell {
+  /* The stable slot also owns oversized placeholders before content mounts. */
+  justify-content: safe center;
+}
 .pdf-pages {
   display: flex;
   min-width: 100%;
