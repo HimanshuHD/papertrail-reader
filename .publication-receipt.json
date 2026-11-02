@@ -230,6 +230,14 @@
     },
     "306": {
       "status": "retired"
+    },
+    "312": {
+      "sha": "e6388ec85fe0dbead48204578e14496dee751df5",
+      "runId": "41427776051",
+      "sourceSha": "cf5b9a45e956a97065a9161698b1d88eefc79011",
+      "tree": "d9cda0f30fc56ee648931d28aaec1e5446acd8d3",
+      "branch": "staging",
+      "status": "active"
     }
   },
   "production": {
