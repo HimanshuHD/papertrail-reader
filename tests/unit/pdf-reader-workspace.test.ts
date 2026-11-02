@@ -38,6 +38,7 @@ function mountReader(
     initialState?: import('../../src/features/reader/document-sessions').SessionState
   } = {},
   autoRender = true,
+  pageTemplate = '<div />',
 ) {
   return mount(PdfReaderWorkspace, {
     attachTo: document.body,
@@ -61,7 +62,7 @@ function mountReader(
           mounted() {
             if (autoRender) this.$emit('rendered', this.pageNumber, 1)
           },
-          template: '<div />',
+          template: pageTemplate,
         },
       },
     },
@@ -190,6 +191,57 @@ describe('PDF reader utility workspace', () => {
     expect(wrapper.text()).toContain('Page 3 of 3')
     expect(continuity.save).toHaveBeenCalledWith(3, { fitMode: 'custom', zoom: 1.5 })
   })
+
+  it('keeps custom zoom authoritative when a remounted page reports an older rendered scale', async () => {
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const input = wrapper.get('input[aria-label="PDF zoom percent"]')
+    await input.trigger('focus')
+    ;(input.element as HTMLInputElement).value = '400'
+    await input.trigger('input')
+    wrapper.findComponent({ name: 'PdfPageView' }).vm.$emit('rendered', 1, 1)
+    await flushPromises()
+    expect(input.element).toHaveProperty('value', '400')
+    await input.trigger('keydown', { key: 'Enter' })
+    wrapper.findComponent({ name: 'PdfPageView' }).vm.$emit('rendered', 1, 1)
+    await flushPromises()
+    expect(input.element).toHaveProperty('value', '400')
+  })
+
+  for (const superseded of [false, true]) {
+    it(`corrects earlier-page estimates without applying a stale anchor (${superseded ? 'new navigation' : 'same reading point'})`, async () => {
+      const wrapper = mountReader({}, true, '<div class="pdf-page" />')
+      wrappers.push(wrapper)
+      await flushPromises()
+      const pane = wrapper.get<HTMLElement>('[aria-label="PDF pages"]').element
+      Object.defineProperties(pane, {
+        clientHeight: { configurable: true, value: 400 },
+        clientWidth: { configurable: true, value: 400 },
+      })
+      pane.scrollTo = vi.fn()
+      let correction = 0
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (
+        this: HTMLElement,
+      ) {
+        if (this === pane) return new DOMRect(0, 0, 400, 400)
+        const page = Number(this.closest<HTMLElement>('[data-pdf-page]')?.dataset.pdfPage)
+        return new DOMRect(0, (page - 2) * 600 + (page > 1 ? correction : 0), 400, 600)
+      })
+      wrapper
+        .findComponent({ name: 'PdfPageView' })
+        .vm.$emit('measured', 1, { width: 612, height: 892 })
+      const previous = wrapper.get('#pdf-page-2 .pdf-page').element
+      const replacement = document.createElement('div')
+      replacement.className = 'pdf-page'
+      previous.replaceWith(replacement)
+      correction = 100
+      if (superseded) await wrapper.get('input[aria-label="Current page"]').setValue('3')
+      await flushPromises()
+      expect(pane.scrollTop).toBe(superseded ? 0 : 100)
+      vi.restoreAllMocks()
+    })
+  }
 
   it('keeps a page-number edit intact while the visible page changes', async () => {
     continuity.restore.mockResolvedValueOnce({ page: 3, view: { fitMode: 'width', zoom: 1 } })
@@ -352,9 +404,12 @@ describe('PDF reader utility workspace', () => {
     const viewport = wrapper.get('[aria-label="PDF pages"]').element as HTMLElement
     expect(viewport.getAttribute('aria-busy')).toBe('true')
     Object.defineProperty(viewport, 'clientWidth', { configurable: true, value: 900 })
-    const target = wrapper.findAllComponents({ name: 'PdfPageView' })[2]!
-    target.element.setAttribute('data-pdf-page', '3')
-    vi.spyOn(target.element, 'getBoundingClientRect').mockReturnValue({ top: 1800 } as DOMRect)
+    const target = wrapper
+      .findAllComponents({ name: 'PdfPageView' })
+      .find((page) => page.props('pageNumber') === 3)!
+    vi.spyOn(wrapper.get('#pdf-page-3').element, 'getBoundingClientRect').mockReturnValue({
+      top: 1800,
+    } as DOMRect)
     const scroll = vi.fn()
     viewport.scrollTo = scroll
     vi.spyOn(globalThis, 'requestAnimationFrame').mockImplementation((callback) => {

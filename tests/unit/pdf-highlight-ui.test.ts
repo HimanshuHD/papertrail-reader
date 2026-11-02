@@ -91,10 +91,11 @@ it('keeps selection creation safe during a drag and opens the note editor after 
         PdfPageView: {
           props: ['pageNumber'],
           mounted() {
+            this.$emit('state', 1, 'ready')
             this.$emit('rendered', 1, 1)
           },
           template:
-            '<article data-pdf-page="1" data-render-state="ready"><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></article>',
+            '<div><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></div>',
         },
       },
     },

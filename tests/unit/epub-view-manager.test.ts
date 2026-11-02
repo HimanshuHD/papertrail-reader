@@ -9,11 +9,56 @@ const EngineManager = Rendition.prototype.requireManager('default') as EpubManag
 
 beforeEach(() => vi.spyOn(window, 'addEventListener'))
 afterEach(() => {
+  vi.useRealTimers()
   for (const [name, callback] of vi.mocked(window.addEventListener).mock.calls) {
     if (['unload', 'orientationchange', 'resize'].includes(name) && callback)
       window.removeEventListener(name, callback)
   }
   vi.restoreAllMocks()
+})
+
+it('keeps live scroll delivery but coalesces costly engine location reports to the latest settled scroll', () => {
+  vi.useFakeTimers()
+  const emit = vi.spyOn(EngineManager.prototype, 'emit')
+  const Manager = managedEpubViewManager(EngineManager)
+  const manager = new Manager({ settings: {} })
+  manager.container = document.createElement('div')
+  manager.addEventListeners()
+  for (let index = 0; index < 12; index++) {
+    manager.container.scrollTop = index * 100
+    manager.container.dispatchEvent(new Event('scroll'))
+    vi.advanceTimersByTime(35)
+  }
+  expect(emit.mock.calls.filter(([type]) => type === 'scroll')).toHaveLength(12)
+  expect(emit.mock.calls.filter(([type]) => type === 'scrolled')).toHaveLength(0)
+  vi.advanceTimersByTime(150)
+  expect(emit.mock.calls.filter(([type]) => type === 'scrolled')).toEqual([
+    ['scrolled', { top: 1100, left: 0 }],
+  ])
+  manager.removeEventListeners()
+  expect(vi.getTimerCount()).toBe(0)
+})
+
+it('cancels both engine and adapter trailing reports on removal and rejects a stale bound callback', () => {
+  vi.useFakeTimers()
+  const emit = vi.spyOn(EngineManager.prototype, 'emit')
+  const Manager = managedEpubViewManager(EngineManager)
+  const manager = new Manager({ settings: {} })
+  manager.container = document.createElement('div')
+  manager.addEventListeners()
+  const stale = manager._onScroll!
+  manager.container.dispatchEvent(new Event('scroll'))
+  vi.advanceTimersByTime(25)
+  manager.removeEventListeners()
+  stale(new Event('scroll'))
+  vi.advanceTimersByTime(500)
+  expect(emit.mock.calls.filter(([type]) => type === 'scrolled')).toHaveLength(0)
+  expect(vi.getTimerCount()).toBe(0)
+  manager.addEventListeners()
+  manager.container.dispatchEvent(new Event('scroll'))
+  manager.removeEventListeners()
+  vi.advanceTimersByTime(500)
+  expect(emit.mock.calls.filter(([type]) => type === 'scrolled')).toHaveLength(0)
 })
 
 for (const fullsize of [false, true]) {

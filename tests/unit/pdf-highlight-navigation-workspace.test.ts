@@ -85,7 +85,7 @@ async function reader(initialPanel?: 'annotations') {
             this.$emit('rendered', this.pageNumber, 1)
           },
           template:
-            '<article :id="`pdf-page-${pageNumber}`" :data-pdf-page="pageNumber" data-render-state="pending"><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></article>',
+            '<div><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></div>',
         },
       },
     },
@@ -113,7 +113,8 @@ it('waits for the selected PDF page text layer, then aligns the exact text with 
   expect(pane.scrollTop).toBe(100)
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
   wrapper
-    .findAllComponents({ name: 'PdfPageView' })[1]!
+    .findAllComponents({ name: 'PdfPageView' })
+    .find((page) => page.props('pageNumber') === 2)!
     .vm.$emit('highlightResolution', 'saved', true, 2)
   await flushPromises()
   expect(pane.scrollTop).toBe(476)
@@ -123,13 +124,19 @@ it('does not apply a late highlight jump after a different page navigation', asy
   await wrapper.get('button[aria-label="Annotations"]').trigger('click')
   await wrapper.get('[data-annotation-id="saved"]').trigger('click')
   await flushPromises()
+  const departingPage = wrapper
+    .findAllComponents({ name: 'PdfPageView' })
+    .find((page) => page.props('pageNumber') === 2)!
   await wrapper.get('input[aria-label="Current page"]').setValue('3')
   await flushPromises()
   pane.scrollTop = 123
   wrapper.get('#pdf-page-2').element.setAttribute('data-render-state', 'ready')
-  wrapper
-    .findAllComponents({ name: 'PdfPageView' })[1]!
-    .vm.$emit('highlightResolution', 'saved', true, 2)
+  expect(
+    wrapper
+      .findAllComponents({ name: 'PdfPageView' })
+      .some((page) => page.props('pageNumber') === 2),
+  ).toBe(false)
+  departingPage.vm.$emit('highlightResolution', 'saved', true, 2)
   await flushPromises()
   expect(pane.scrollTop).toBe(123)
 })
@@ -154,7 +161,10 @@ it('opens the shared PDF annotation panel and returns focus on Escape', async ()
 
 it('opens and focuses the matching annotation when its reader note indicator is activated', async () => {
   const { wrapper } = await reader()
-  wrapper.findAllComponents({ name: 'PdfPageView' })[1]!.vm.$emit('noteSelected', 'saved')
+  wrapper
+    .findAllComponents({ name: 'PdfPageView' })
+    .find((page) => page.props('pageNumber') === 2)!
+    .vm.$emit('noteSelected', 'saved')
   await flushPromises()
   expect(wrapper.find('[aria-label="PDF annotations panel"]').exists()).toBe(true)
   expect(wrapper.get('[data-annotation-id="saved"]').attributes('aria-pressed')).toBe('true')

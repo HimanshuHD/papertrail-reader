@@ -4,6 +4,7 @@ import type { SessionState, UtilityPanel } from '../../features/reader/document-
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
+import { EpubNoteGeometry, observeEpubNoteLayout } from '../../features/epub/note-geometry'
 import { bindEpubPageAppearance } from '../../features/epub/page-appearance'
 import { selectionColorPreview } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
@@ -123,6 +124,12 @@ const highlightStatus = computed(() =>
 )
 const hoveredHighlight = ref<string | null>(null)
 const noteIndicators = ref<{ id: string; note: string; left: number; top: number }[]>([])
+const noteAnnotations = computed(() =>
+  highlights.highlights.value.filter((item) => item.note.trim()),
+)
+const noteGeometry = new EpubNoteGeometry()
+const noteLayouts: ReturnType<typeof observeEpubNoteLayout>[] = []
+let noteAnimation = false
 let noteFrame = 0
 let noteResizeObserver: ResizeObserver | undefined
 let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
@@ -130,6 +137,7 @@ const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
 function paintHighlights() {
   if (readerDisposed) return
+  noteGeometry.invalidate()
   highlightHovers.forEach((hover) => hover.clear())
   const context = reader.session.value?.annotationContext?.()
   paintedHighlights?.dispose()
@@ -150,40 +158,49 @@ function paintHighlights() {
   scheduleNoteIndicators()
 }
 function updateNoteIndicators() {
+  noteFrame = 0
   if (readerDisposed) return
   noteIndicators.value = []
+  if (props.active === false || !noteAnnotations.value.length) return
   const context = reader.session.value?.annotationContext?.()
   const stage = host.value?.parentElement
   const frame = host.value?.querySelector('iframe')
   if (!context || !stage || !frame || loading.value) return
   const outer = frame.getBoundingClientRect(),
     bounds = stage.getBoundingClientRect()
-  for (const item of highlights.highlights.value) {
-    if (!item.note.trim()) continue
-    const range = paintedHighlights?.resolvedRanges.get(item.id)
-    const rect =
-      range?.getClientRects &&
-      Array.from(range.getClientRects()).find(
-        (rect) =>
-          rect.width > 0 &&
-          rect.height > 0 &&
-          outer.top + rect.bottom > bounds.top &&
-          outer.top + rect.top < bounds.bottom,
-      )
-    if (!rect) continue
+  // Animated author content needs fresh geometry at every scheduled update.
+  const animated = !context.document.getAnimations || !!context.document.getAnimations().length
+  const fresh = animated || noteAnimation
+  noteAnimation = animated
+  const scrollY = context.document.defaultView?.scrollY ?? 0
+  const visible = noteGeometry.visible(
+    () =>
+      noteAnnotations.value.flatMap((item) => {
+        const range = paintedHighlights?.resolvedRanges.get(item.id)
+        return range?.getClientRects ? [{ id: item.id, note: item.note, range }] : []
+      }),
+    scrollY,
+    bounds.top - outer.top + scrollY,
+    bounds.bottom - outer.top + scrollY,
+    fresh,
+  )
+  for (const item of visible) {
     // EPUB body reserves 24px of padding; use that margin, inside the document edge.
     noteIndicators.value.push({
       id: item.id,
       note: item.note,
       left: Math.max(0, Math.min(outer.right - bounds.left - 40, bounds.width - 40)),
-      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 40)),
+      top: Math.max(0, Math.min(outer.top + item.top - bounds.top, bounds.height - 40)),
     })
   }
 }
 function scheduleNoteIndicators() {
-  if (readerDisposed) return
-  cancelAnimationFrame(noteFrame)
+  if (readerDisposed || noteFrame) return
   noteFrame = requestAnimationFrame(updateNoteIndicators)
+}
+function invalidateNoteIndicators() {
+  noteGeometry.invalidate()
+  scheduleNoteIndicators()
 }
 async function openNote(id: string) {
   const owner = openGeneration
@@ -367,7 +384,7 @@ const showLoader = ref(false)
 const restoringContentsEntry = ref<string | null>(null)
 let loaderTimer: ReturnType<typeof setTimeout> | undefined
 function updateWindowWidth() {
-  scheduleNoteIndicators()
+  invalidateNoteIndicators()
   toolbarSavedId.value = ''
   pendingHighlight.value = null
   windowWidth.value = globalThis.innerWidth
@@ -467,6 +484,9 @@ function clearFrameListeners() {
   highlightHovers.splice(0).forEach((dispose) => dispose())
   pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
+  noteLayouts.splice(0).forEach((layout) => layout.dispose())
+  noteGeometry.invalidate()
+  noteAnimation = false
   noteResizeObserver?.disconnect()
   if (host.value && !readerDisposed) noteResizeObserver?.observe(host.value)
   shellRegistrations?.set('ownedObservers', noteResizeObserver && !readerDisposed ? 1 : 0)
@@ -475,6 +495,7 @@ function clearFrameListeners() {
   paintedHighlights?.dispose()
   paintedHighlights = undefined
   cancelAnimationFrame(noteFrame)
+  noteFrame = 0
   noteIndicators.value = []
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
@@ -507,6 +528,7 @@ function bindFrameListeners() {
     doc.addEventListener('pointerup', captureHighlight)
     doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
+    noteLayouts.push(observeEpubNoteLayout(doc, invalidateNoteIndicators))
     colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
     linkDisposers.push(
       bindDocumentLinks(
@@ -555,8 +577,13 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
-  frameRegistrations?.set('ownedListeners', (readingContainer ? 1 : 0) + frameDocuments.size * 15)
-  frameRegistrations?.set('ownedObservers', highlightObservers.length)
+  frameRegistrations?.set(
+    'ownedListeners',
+    (readingContainer ? 1 : 0) +
+      frameDocuments.size * 15 +
+      noteLayouts.reduce((count, layout) => count + layout.listenerCount, 0),
+  )
+  frameRegistrations?.set('ownedObservers', highlightObservers.length + noteLayouts.length)
   paintHighlights()
 }
 watch(
@@ -700,7 +727,7 @@ defineExpose({ capture, dispose })
 
 onMounted(() => {
   if (host.value && typeof ResizeObserver !== 'undefined') {
-    noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
+    noteResizeObserver = new ResizeObserver(invalidateNoteIndicators)
     noteResizeObserver.observe(host.value)
     shellRegistrations?.set('ownedObservers', 1)
   }
@@ -751,6 +778,7 @@ function selectContents(entry: EpubContentsEntry) {
   if (entry.chapter !== null) void reader.go(entry.chapter, entry.fragment, entry.id)
 }
 function applyTypography() {
+  invalidateNoteIndicators()
   reader.session.value?.typography(typography.value)
   persistReading()
 }
