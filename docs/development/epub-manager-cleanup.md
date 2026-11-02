@@ -16,6 +16,12 @@ after a cleanup exception. No window API or dependency source is patched.
 This adapter is version-specific. Recheck the default-manager and stage lifecycle
 when upgrading epub.js; real-engine tests cover their registration behavior.
 
+The same isolated integration also coalesces trailing engine location reports.
+Its engine and adapter timers are cancelled on listener removal. See
+[EPUB scroll attribution](epub-scroll-attribution.md) for measured behavior,
+notification-delay tradeoffs and remaining work. Live scroll delivery and the
+application's accurate final-location flush remain independent.
+
 ## Verification and limits
 
 - The initial five listener lifecycle regressions failed against unmodified

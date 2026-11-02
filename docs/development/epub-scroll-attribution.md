@@ -75,3 +75,69 @@ cancellation through removal/rebinding.
 This increment deliberately does not introduce a note-geometry cache or remove
 EPUB blocks. Notes remain frame-coalesced with fresh rectangles. Any future cache
 needs its own layout/font/image/nested-scroll invalidation and ownership tests.
+
+## Matched results and remaining cost
+
+The candidate repeated all 36 baseline trials (72 wheel trials total). Median
+results for the eighty-note fragmented chapter:
+
+| Mode / caret         | Engine calculations before → after | Engine Range reads before → after | Engine location ms before → after | Main-thread task ms before → after |
+| -------------------- | ---------------------------------: | --------------------------------: | --------------------------------: | ---------------------------------: |
+| Formatted / native   |                             12 → 1 |                    66,858 → 5,657 |                      533.6 → 34.7 |                      684.6 → 130.0 |
+| Formatted / fallback |                             12 → 1 |                    66,858 → 5,657 |                      598.4 → 30.0 |                      754.9 → 118.6 |
+| Text / native        |                             11 → 1 |                    61,291 → 5,657 |                      545.9 → 35.9 |                      734.2 → 119.1 |
+| Text / fallback      |                             12 → 1 |                    66,840 → 5,657 |                      477.7 → 36.6 |                      628.4 → 130.9 |
+
+Application location capture remained twelve calls in each of these cases.
+Note rectangle reads remained 960; note positioning medians remained roughly
+27–30ms. Coalescing engine reports does not eliminate annotation geometry work.
+
+Twelve supplemental trials used the eighty-note formatted/native fixture, three
+repetitions per input type/revision. Twelve native PageDown presses or twelve
+scroll-offset jumps replaced wheel input. Offset jumps exercise scrollbar-like
+position changes, not a physical thumb-drag latency measurement. Actual forward
+movement was asserted in both input modes.
+
+| Input               | Engine calculations before → after | Engine location ms before → after | Main-thread task ms before → after |
+| ------------------- | ---------------------------------: | --------------------------------: | ---------------------------------: |
+| PageDown            |                              3 → 1 |                      165.2 → 97.7 |                      526.5 → 572.8 |
+| Scroll-offset jumps |                             12 → 1 |                      642.6 → 64.1 |                      889.1 → 211.4 |
+
+PageDown did **not** improve in the task-time sample. Its native smooth-scroll
+animation produced median 41 → 43 note-update frames and 142.7 → 157.2ms of note
+work. Frame counts and timing vary, and three repetitions do not establish a
+universal keyboard regression or improvement. They do confirm that keyboard
+scroll work remains, and that reduced engine callback counts alone are inadequate
+evidence of responsiveness. Note-marker geometry is the next measured target.
+
+Layout-duration deltas in the primary eighty-note wheel cases were around
+0–0.1ms; this does not establish a layout bottleneck or justify intra-chapter DOM
+virtualization. Neither zero-ish layout counters nor passing functionality prove
+that other authored books cannot have expensive layout/paint behavior. No RAM,
+GPU, frame-latency percentile or complete leak-freedom claim is made.
+
+## Validation and manual checks
+
+Local tracked-source validation passed: 611 unit tests across 103 files, 128
+pipeline tests, lint/format/types, and a production build. This increment passed
+seven focused PDF functional cases and 26 EPUB functional cases with zero retries.
+Coverage includes keyboard-extended PDF selections, replaced inner-page anchors,
+EPUB immediate-close persistence through native/alternate/forced-fallback caret
+paths, RTL, typography/reflow, modes, bookmarks, links, highlights and warm reload.
+The 84 instrumented comparison trials are separate from functional acceptance.
+
+On a local production preview or later ready-for-review preview, manually check:
+
+1. Scroll long formatted/text-only EPUB chapters using wheel, PageDown and the
+   scrollbar. Compare books with no notes and many notes, including offscreen notes.
+2. Scroll and immediately close/switch tabs, change chapter, typography or mode;
+   reopen/reveal the saved passage and verify exact reading continuity.
+3. Resize during/after scrolling; check RTL, images, end-of-chapter positions and
+   note-marker placement/click targets.
+4. Keyboard-extend a cross-page PDF selection, scroll away/back, then clear it;
+   use a heterogeneous PDF and check anchors when nearby dimensions resolve.
+
+Visual QA is manual-only and was not performed by these automated tests. #304 and
+PR #312 remain in progress for remaining note-marker work, owner UI validation,
+source CI and matching merged-source staging delivery. No merge/release/tag is
+performed here.
