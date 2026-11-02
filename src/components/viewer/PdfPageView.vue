@@ -614,7 +614,8 @@ onBeforeUnmount(() => {
   outline-offset: 2px;
 }
 
-.pdf-page-shell {
+.pdf-page-shell,
+.pdf-page-content {
   /* Keep oversized pages inside the reachable scroll area. */
   justify-content: safe center;
 }

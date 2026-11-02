@@ -141,3 +141,70 @@ test('selected text stays mounted while scrolling away and releases after select
   })
   await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-virtual-placeholder', '')
 })
+
+test('oversized rotated pages keep both horizontal edges reachable before and after remounting', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  await page.goto('./#/app')
+  await waitForWorkspaceReady(page)
+  await page.locator('input[accept*=".pdf"]').setInputFiles({
+    name: 'oversized.pdf',
+    mimeType: 'application/pdf',
+    buffer: createPdfFixture(60, undefined, false, 270),
+  })
+  await page.getByRole('button', { name: 'PDF: oversized.pdf', exact: true }).click()
+  await page.getByRole('button', { name: 'Hide library', exact: true }).click()
+  const pane = page.getByRole('region', { name: 'PDF pages', exact: true })
+  const first = page.locator('[data-pdf-page="1"]')
+  const field = page.getByRole('spinbutton', { name: 'Current page', exact: true })
+  const zoom = page.getByRole('spinbutton', { name: 'PDF zoom percent', exact: true })
+  await expect(pane).toHaveAttribute('aria-busy', 'false')
+  await zoom.fill('50')
+  await zoom.press('Enter')
+  await zoom.press('Tab')
+  await expect(first).toHaveAttribute('data-render-state', 'ready')
+  await settleReaderLayout(page.locator('.reader-layout'))
+  const edges = () =>
+    pane.evaluate((element) => {
+      const content = element.querySelector('[data-pdf-page="1"] .pdf-page')!
+      element.scrollLeft = 0
+      const start = content.getBoundingClientRect()
+      element.scrollLeft = element.scrollWidth
+      const end = content.getBoundingClientRect()
+      const viewport = element.getBoundingClientRect()
+      element.scrollLeft = 0
+      return {
+        width: start.width,
+        left: start.left - viewport.left,
+        right: viewport.right - end.right,
+        viewportWidth: element.clientWidth,
+      }
+    })
+  const mounted = await edges()
+  expect(mounted.width).toBeGreaterThan(mounted.viewportWidth)
+  expect(mounted.left).toBeGreaterThanOrEqual(0)
+  expect(mounted.right).toBeGreaterThanOrEqual(0)
+  // At 270 degrees the first text sits near the previously clipped left edge.
+  await first.locator('.textLayer span').first().scrollIntoViewIfNeeded()
+  await expect(first.locator('.textLayer span').first()).toBeInViewport({ ratio: 1 })
+  await field.fill('40')
+  await field.press('Tab')
+  await expect(first).toHaveAttribute('data-virtual-placeholder', '')
+  expect(await edges()).toEqual(mounted)
+  await field.fill('1')
+  await field.press('Tab')
+  await expect(first).toHaveAttribute('data-render-state', 'ready')
+  expect(await edges()).toEqual(mounted)
+  // Safe alignment still centers pages that fit inside the viewport.
+  await zoom.fill('25')
+  await zoom.press('Enter')
+  await zoom.press('Tab')
+  await settleReaderLayout(page.locator('.reader-layout'))
+  const centered = await first.locator('.pdf-page').evaluate((element) => {
+    const bounds = element.getBoundingClientRect()
+    const viewport = element.closest('.pdf-scroll')!.getBoundingClientRect()
+    return (bounds.left + bounds.right - viewport.left - viewport.right) / 2
+  })
+  expect(Math.abs(centered)).toBeLessThan(1)
+})

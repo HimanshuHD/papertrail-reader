@@ -146,3 +146,53 @@ cross-page selection, then verifies its exact text survives scrolling away and
 releases its pages when cleared. Seven focused PDF functional cases and the
 22-case workspace unit file passed for this follow-up; the earlier results above
 describe the original increment and are not new timing measurements.
+
+## Oversized-page alignment follow-up
+
+The first staging acceptance of PR #312 failed a 320px Chromium drag precondition
+at 270 degrees and 50% zoom. The proposed text endpoint was outside the left edge
+before the drag began; retrying produced the same result. Local reproduction
+confirmed an application layout defect rather than grounds to relax that assertion.
+
+The old standalone `.pdf-page-shell` had component-scoped
+`justify-content: safe center`. Virtualization introduced a `.pdf-page-content`
+wrapper and moved the stable `.pdf-page-shell` article into the workspace. Neither
+owner received that old scoped rule. Ordinary flex centering allowed oversized
+content to overflow into an unreachable negative horizontal scroll region.
+
+The page component now applies safe centering to both its standalone shell and
+managed content wrapper. The workspace applies the same rule to its own stable
+slot, including the placeholder. Pages that fit remain centered; oversized pages
+align to the start so the full page stays reachable through horizontal scrolling.
+Page dimensions, zoom, bitmap density and selection logic are unchanged.
+
+The regression test uses a 320px viewport, 270-degree pages and 50% zoom. It checks
+that both horizontal edges are reachable when mounted, after replacement with a
+placeholder, and after remounting. It also checks complete visibility of the
+formerly clipped text and centering after zooming down to 25%. Existing native
+cross-page forward/backward drag, gap/re-entry and cancellation assertions remain
+intact; the failure was not addressed by widening the test or clamping endpoints.
+
+Validation for this follow-up:
+
+- The original failing native-drag case reproduced locally before the fix and
+  passed afterward. A private pre-fix control build also fails the new edge test
+  because the mounted page starts outside the reachable left boundary.
+- All 60 focused Chromium functional executions passed with zero retries: eight
+  rotation/zoom drag combinations plus four component-window cases at each of
+  320, 375, 768, 1024 and 1440px. The new edge test explicitly uses 320px in every
+  project. These are functional assertions, not automated visual review.
+- `npm run check` passed: 615 unit tests / 104 files, 128 pipeline tests,
+  lint/format/types. The staging-configured production build and diff check passed.
+- The original failed staging run is retained as evidence; local passing tests
+  do not retroactively mark that run or deployment successful.
+
+For manual review, use a narrow reader or split pane, rotate to 270 degrees and
+set 50% zoom. Pan to both horizontal extremes, select text near each edge, drag
+across pages in both directions and return after a distant page jump. Repeat at
+higher zoom and then fit/25%; smaller pages should center normally. Review the
+same behavior with an oversized mixed-orientation PDF. Visual QA remains manual.
+
+This correctness follow-up makes no additional performance or memory claim. #304
+still requires owner review and matching merged-source staging acceptance,
+publication and live identity/asset verification before delivery is complete.
