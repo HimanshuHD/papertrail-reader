@@ -7,7 +7,22 @@ import {
   statistics,
   traceSummary,
   calibrationCandidates,
+  processCPUSummary,
 } from './browser-profile-metrics.mjs'
+
+test('zero renderer counters during active page work cannot be published as idle CPU', () => {
+  const samples = [0, 2].map((TaskDuration) => ({
+    processes: [{ type: 'renderer', cpuTime: 0 }],
+    pageMetrics: { TaskDuration },
+    cpuInterval: { groups: { renderer: { cpuSeconds: 0 } } },
+  }))
+  assert.equal(processCPUSummary({ samples }).seconds, null)
+  assert.match(processCPUSummary({ samples }).reason, /unavailable/)
+  samples[1].processes[0].cpuTime = 1
+  samples[1].cpuInterval.groups.renderer.cpuSeconds = 1
+  assert.equal(processCPUSummary({ samples }).seconds, 1)
+  assert.equal(processCPUSummary({ samples: [] }).seconds, null)
+})
 
 test('RSS is resident KiB, absent/inaccessible readings remain null', async () => {
   assert.equal(rssBytesFromStatus('VmSize: 999 kB\nVmRSS:    123 kB\n'), 125952)

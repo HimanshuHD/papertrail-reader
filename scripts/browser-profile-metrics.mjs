@@ -216,14 +216,41 @@ export function memorySummary(run) {
       : null,
   }
 }
+export function processCPUSummary(run) {
+  const samples = run.samples ?? []
+  const rendererCounters = samples.flatMap((sample) =>
+    sample.processes
+      .filter((process) => process.type === 'renderer')
+      .map((process) => process.cpuTime),
+  )
+  const taskAdvance =
+    (samples.at(-1)?.pageMetrics.TaskDuration ?? 0) - (samples[0]?.pageMetrics.TaskDuration ?? 0)
+  if (
+    rendererCounters.length > 1 &&
+    rendererCounters.every((value) => value === 0) &&
+    taskAdvance > 0.05
+  )
+    return {
+      seconds: null,
+      reason:
+        'Renderer CPU counters stayed zero during active page tasks; process CPU attribution is unavailable.',
+    }
+  if (!samples.some((sample) => sample.cpuInterval))
+    return { seconds: null, reason: 'No matched process CPU intervals were recorded.' }
+  return {
+    seconds: samples
+      .flatMap((sample) => Object.values(sample.cpuInterval?.groups ?? {}))
+      .reduce((sum, group) => sum + group.cpuSeconds, 0),
+    reason: 'Matched process CPU seconds are a lower bound; short-lived processes may be missed.',
+  }
+}
+
 export function reportMarkdown(report) {
   const mb = (value) => (value == null ? 'Unavailable' : (value / 1048576).toFixed(1))
   const rows = report.runs.map((run) => {
     const memory = memorySummary(run)
-    const cpu = run.samples
-      .flatMap((sample) => Object.values(sample.cpuInterval?.groups ?? {}))
-      .reduce((sum, group) => sum + group.cpuSeconds, 0)
-    return `| ${run.mode} | ${run.trial} | ${run.status} | ${run.traced ? 'trace' : 'metrics'}${run.heaps ? ' + GC heaps' : ''} | ${cpu.toFixed(2)} | ${mb(memory.baseline?.pageJSHeapBytes)} / ${mb(memory.afterFive?.pageJSHeapBytes)} / ${mb(memory.afterTen?.pageJSHeapBytes)} | ${mb(memory.sampledPeakCompleteRSSBytes)} |`
+    const cpu = processCPUSummary(run)
+    return `| ${run.mode} | ${run.trial} | ${run.status} | ${run.traced ? 'trace' : 'metrics'}${run.heaps ? ' + GC heaps' : ''} | ${cpu.seconds === null ? 'Unavailable' : cpu.seconds.toFixed(2)} | ${mb(memory.baseline?.pageJSHeapBytes)} / ${mb(memory.afterFive?.pageJSHeapBytes)} / ${mb(memory.afterTen?.pageJSHeapBytes)} | ${mb(memory.sampledPeakCompleteRSSBytes)} |`
   })
   return [
     '# External profiling — private local report',
@@ -237,6 +264,7 @@ export function reportMarkdown(report) {
     ...rows,
     '',
     'RSS includes shared pages; incomplete process coverage is unavailable for the sum peak. Heap is the page target only. CPU is not GPU utilization. Nested trace categories overlap.',
+    'CPU counters that stay zero while page TaskDuration advances are treated as unavailable, not as measured idle processes.',
     '',
     '## Calibration worksheet',
     '',
