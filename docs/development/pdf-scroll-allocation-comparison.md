@@ -61,3 +61,7 @@ accepted targets. Do not silently waive this finding to close #304/#16.
 Raw profiles and private probe remain private. No new runtime implementation or
 memory-reduction claim is made by this measurement increment. Owner manual UI
 review and matching integration of the new EPUB edge tests remain separate.
+
+## Subsequent attribution
+
+The 5 November [source-map attribution and private controls](pdf-scroll-allocation-attribution.md) identify document-wide slot presentation as a dominant sampled cause for this fixture. The measurements above remain the original comparison; no production allocation fix or complete acceptance is implied by the later experiment.
