@@ -12,6 +12,7 @@ import { createPdfFixture } from '../tests/fixtures/pdf.ts'
 import { createFormattedEpubFixture } from '../tests/fixtures/epub.ts'
 import { startDiagnosticPreview } from './diagnostics-preview.mjs'
 import { bundleEvidence } from './diagnostics-acceptance-report.mjs'
+import { profileOptions } from './browser-profile-options.mjs'
 import {
   processRSSBatch,
   processInterval,
@@ -32,16 +33,7 @@ if (!Number.isInteger(repeats) || repeats < 1 || repeats > 10)
   throw new Error('PROFILE_REPEATS must be 1..10')
 const heaps = process.env.PROFILE_HEAPS === 'true'
 const traces = process.env.PROFILE_TRACES !== 'false'
-const modes = [
-  'production',
-  'closed',
-  'sampling',
-  'paused',
-  'expanded',
-  'sampling-sensors',
-  'expanded-sensors',
-  'paused-sensors',
-]
+const { modes, browserArgs } = profileOptions()
 const source = {
   sha: git('rev-parse', 'HEAD'),
   tree: git('rev-parse', 'HEAD^{tree}'),
@@ -64,6 +56,7 @@ const report = {
     logicalCPUs: os.cpus().length,
     ramBytes: os.totalmem(),
     viewport: { width: 1440, height: 900 },
+    browserArgs,
   },
   method: {
     repeats,
@@ -148,6 +141,7 @@ async function profile(mode, trial) {
   await mkdir(folder)
   const browser = await chromium.launch({
     headless: process.env.PROFILE_HEADED !== 'true',
+    args: browserArgs,
     ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH
       ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH }
       : {}),
