@@ -6,7 +6,16 @@ import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { SELECTION_COLORS } from '../../features/annotations/selection-colors'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onBeforeUpdate,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { usePdfHighlights } from '../../composables/usePdfHighlights'
 import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/highlights'
 import type { AnnotationSelector } from '../../features/annotations/selectors'
@@ -530,16 +539,37 @@ function registerPageSlot(page: number, node: Element | ComponentPublicInstance 
   })
   pageSlots.set(page, { element, release })
 }
-function slotSize(page: number) {
-  // The revision invalidates estimates after an asynchronous page measurement.
+// Only placeholders are reusable. Mounted slots must render on every workspace update,
+// including future child props that are not geometry-related. Keep this non-reactive.
+let pageRenderEpoch = 0
+onBeforeUpdate(() => {
+  pageRenderEpoch++
+})
+function slotMemo(page: number) {
+  // Subscribe to measurements, but invalidate only the page whose dimensions changed.
   void dimensionsVersion.value
-  return pageLayout.value.size(
+  const mounted = mountedPages.value.has(page)
+  return [
+    mounted,
+    mounted ? pageRenderEpoch : 0,
+    pageLayout.value,
+    pageLayout.value.known(page),
+    fitMode.value,
+    zoom.value,
+    pageAvailableWidth.value,
+    availableHeight.value,
+    props.idPrefix,
+  ]
+}
+function slotStyle(page: number) {
+  const size = pageLayout.value.size(
     page,
     fitMode.value,
     zoom.value,
     pageAvailableWidth.value,
     availableHeight.value,
   )
+  return { width: `${size.width}px`, height: `${size.height}px` }
 }
 function handleMeasured(page: number, size: PdfPageSize) {
   const point = phase.value === 'ready' ? captureReadingPoint() : null
@@ -1726,6 +1756,7 @@ onBeforeUnmount(() => {
               :id="readerId(`pdf-page-${pageNumber}`)"
               :key="`${openSequence}:${pageNumber}`"
               :ref="(node) => registerPageSlot(pageNumber, node)"
+              v-memo="slotMemo(pageNumber)"
               class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
               :aria-label="`PDF page ${pageNumber}`"
               :data-pdf-page="pageNumber"
@@ -1775,10 +1806,7 @@ onBeforeUnmount(() => {
               <div
                 v-else
                 class="pdf-page shrink-0 bg-white shadow-sm"
-                :style="{
-                  width: `${slotSize(pageNumber).width}px`,
-                  height: `${slotSize(pageNumber).height}px`,
-                }"
+                :style="slotStyle(pageNumber)"
               />
             </article>
           </div>
