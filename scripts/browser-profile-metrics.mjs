@@ -252,6 +252,7 @@ export function reportMarkdown(report) {
     const cpu = processCPUSummary(run)
     return `| ${run.mode} | ${run.trial} | ${run.status} | ${run.traced ? 'trace' : 'metrics'}${run.heaps ? ' + GC heaps' : ''} | ${cpu.seconds === null ? 'Unavailable' : cpu.seconds.toFixed(2)} | ${mb(memory.baseline?.pageJSHeapBytes)} / ${mb(memory.afterFive?.pageJSHeapBytes)} / ${mb(memory.afterTen?.pageJSHeapBytes)} | ${mb(memory.sampledPeakCompleteRSSBytes)} |`
   })
+  const ms = (value) => (value == null ? 'Unavailable' : value.toFixed(2))
   return [
     '# External profiling — private local report',
     '',
@@ -265,6 +266,15 @@ export function reportMarkdown(report) {
     '',
     'RSS includes shared pages; incomplete process coverage is unavailable for the sum peak. Heap is the page target only. CPU is not GPU utilization. Nested trace categories overlap.',
     'CPU counters that stay zero while page TaskDuration advances are treated as unavailable, not as measured idle processes.',
+    '',
+    '## Active workload timing (ordinary repetitions)',
+    '',
+    '| Mode | Repeats | Active workload median / worst ms | Poll drain median / worst ms | Checkpoint settle and probe median / worst ms |',
+    '| --- | ---: | ---: | ---: | ---: |',
+    ...report.workloadTiming.map(
+      ({ mode, activeWorkloadMs, pollDrainMs, settleAndProbeMs }) =>
+        `| ${mode} | ${activeWorkloadMs.count} | ${ms(activeWorkloadMs.median)} / ${ms(activeWorkloadMs.worst)} | ${ms(pollDrainMs.median)} / ${ms(pollDrainMs.worst)} | ${ms(settleAndProbeMs.median)} / ${ms(settleAndProbeMs.worst)} |`,
+    ),
     '',
     '## Calibration worksheet',
     '',
@@ -291,4 +301,29 @@ export function calibrationForRuns(runs) {
       .filter((run) => run.status === 'passed' && run.traced === false && run.heaps === false)
       .flatMap((run) => run.operations),
   )
+}
+
+export function workloadTimingForRuns(runs, modes) {
+  const summarize = (values) =>
+    values.length ? statistics(values) : { count: 0, median: null, worst: null, p95: null }
+  return modes.map((mode) => {
+    const rows = runs.filter(
+      (row) =>
+        row.mode === mode && row.status === 'passed' && row.traced === false && row.heaps === false,
+    )
+    return {
+      mode,
+      activeWorkloadMs: summarize(
+        rows.map((row) =>
+          row.workloadSegments.reduce((sum, segment) => sum + segment.elapsedMs, 0),
+        ),
+      ),
+      pollDrainMs: summarize(
+        rows.map((row) => row.checkpoints.reduce((sum, point) => sum + point.pollDrainMs, 0)),
+      ),
+      settleAndProbeMs: summarize(
+        rows.map((row) => row.checkpoints.reduce((sum, point) => sum + point.settleAndProbeMs, 0)),
+      ),
+    }
+  })
 }

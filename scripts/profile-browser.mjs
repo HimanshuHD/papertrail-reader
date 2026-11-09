@@ -13,14 +13,15 @@ import { createFormattedEpubFixture } from '../tests/fixtures/epub.ts'
 import { startDiagnosticPreview } from './diagnostics-preview.mjs'
 import { bundleEvidence } from './diagnostics-acceptance-report.mjs'
 import { profileOptions } from './browser-profile-options.mjs'
+import { startProfilePolling } from './browser-profile-polling.mjs'
 import {
   processRSSBatch,
   processInterval,
   traceSummary,
   calibrationForRuns,
-  statistics,
   memorySummary,
   reportMarkdown,
+  workloadTimingForRuns,
 } from './browser-profile-metrics.mjs'
 
 const browserExecutable = await realpath(
@@ -44,7 +45,7 @@ const out = await mkdtemp(path.join(root, 'browser-evidence', 'external-profilin
 const builds = await mkdtemp(path.join(os.tmpdir(), 'papertrail-external-profile-'))
 const servers = []
 const report = {
-  schema: 1,
+  schema: 2,
   source,
   status: 'incomplete',
   acceptedBudgets: false,
@@ -81,11 +82,13 @@ const report = {
     'Trace/heap capture adds overhead. First repeat trace mode is separate from subsequent repeats. Heap mode forces GC only at baseline/5/10 checkpoints; use a separate no-heap run for natural memory/latency.',
     'Sampling sees sampled peaks only, not guaranteed true peaks. Baseline/5/10 are settled observations, not proof of a leak or its absence.',
     'All local raw traces, heap snapshots, process IDs and environment metadata stay private. No upload transport.',
+    'Active workload timing excludes sampler drain, checkpoint settling/probes and export. It includes browser automation and concurrent metric polling. Sensor export counters cover the panel session through export, including setup and settling.',
     'Observed latency is not an accepted user-experience budget. Saved-workspace/expiry/warm-dispatch, large-library and real-document calibration need separate matching evidence.',
   ],
   builds: {},
   runs: [],
   calibration: [],
+  workloadTiming: [],
 }
 const run = (args, env) =>
   new Promise((resolve, reject) => {
@@ -155,12 +158,13 @@ async function profile(mode, trial) {
     heaps,
     cycles: [],
     samples: [],
+    workloadSegments: [],
+    diagnostics: null,
     checkpoints: [],
     operations: [],
   }
   report.runs.push(row)
-  let sampling = false,
-    loop,
+  let stopPolling,
     tracing = false,
     browserCDP,
     activePage
@@ -230,7 +234,8 @@ async function profile(mode, trial) {
       row.samples.push(next)
       return next
     }
-    const checkpoint = async (cycle) => {
+    const checkpoint = async (cycle, pollDrainMs = 0) => {
+      const started = performance.now()
       // Real foreground observation; identical across modes, no fake timer acceleration.
       expect(await page.evaluate(() => document.visibilityState)).toBe('visible')
       await page.waitForTimeout(2200)
@@ -240,6 +245,8 @@ async function profile(mode, trial) {
         cycle,
         sampleIndex: row.samples.indexOf(snapshot),
         afterForcedGC: heaps,
+        pollDrainMs,
+        settleAndProbeMs: performance.now() - started,
       })
     }
     await checkpoint(0)
@@ -250,18 +257,10 @@ async function profile(mode, trial) {
       })
       tracing = true
     }
-    const start = performance.now()
-    sampling = true
-    loop = (async () => {
-      while (sampling) {
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        if (sampling) await sample()
-      }
-    })()
-    // Prevent an asynchronous sampler failure becoming an unhandled rejection.
-    loop.catch(() => {})
     const pdf = createPdfFixture(12),
       epub = Buffer.from(createFormattedEpubFixture())
+    let segmentStarted = performance.now()
+    stopPolling = startProfilePolling(sample, report.method.sampleIntervalMs)
     await page.locator('input[accept*=".pdf"]').setInputFiles([
       { name: 'profile.pdf', mimeType: 'application/pdf', buffer: pdf },
       { name: 'profile.epub', mimeType: 'application/epub+zip', buffer: epub },
@@ -320,23 +319,17 @@ async function profile(mode, trial) {
       await expect(page.locator('.pdf-reader, .epub-reader')).toHaveCount(0)
       row.cycles.push({ cycle, ...timings })
       if (cycle === 5 || cycle === 10) {
-        // Serialize checkpoint reads with polling; never overlap CDP heap/metrics operations.
-        sampling = false
-        await loop
-        await checkpoint(cycle)
+        const segmentEnded = performance.now()
+        row.workloadSegments.push({ throughCycle: cycle, elapsedMs: segmentEnded - segmentStarted })
+        await stopPolling()
+        stopPolling = undefined
+        await checkpoint(cycle, performance.now() - segmentEnded)
         if (cycle < 10) {
-          sampling = true
-          loop = (async () => {
-            while (sampling) {
-              await new Promise((resolve) => setTimeout(resolve, 1000))
-              if (sampling) await sample()
-            }
-          })()
-          loop.catch(() => {})
+          segmentStarted = performance.now()
+          stopPolling = startProfilePolling(sample, report.method.sampleIntervalMs)
         }
       }
     }
-    row.elapsedMs = performance.now() - start
     if (tracing) {
       row.trace = await traceStop(browserCDP, path.join(folder, 'trace.json'))
       tracing = false
@@ -350,6 +343,14 @@ async function profile(mode, trial) {
       const data = JSON.parse(text)
       expect(data.identity.sourceSha).toBe(source.sha)
       expect(data.running).toBe(!mode.startsWith('paused'))
+      const sensorsRequested = mode.endsWith('-sensors')
+      expect(data.responsiveness.active).toBe(sensorsRequested && data.running)
+      row.diagnostics = {
+        sensorsRequested,
+        capabilities: data.capabilities,
+        samplerOverhead: data.samplerOverhead,
+        responsiveness: data.responsiveness,
+      }
       row.resources = data.resources
       expect(data.resources.viewers ?? 0).toBe(0)
       expect(data.resources.pdfWorkerOwners ?? 0).toBe(0)
@@ -394,8 +395,7 @@ async function profile(mode, trial) {
       .catch(() => null)
     throw error
   } finally {
-    sampling = false
-    await loop?.catch(() => {})
+    await stopPolling?.().catch(() => {})
     if (tracing)
       await traceStop(browserCDP, path.join(folder, 'partial-trace.json')).catch(() => {})
     await browser.close()
@@ -423,16 +423,7 @@ try {
       await profile(modes[(offset + trial - 1) % modes.length], trial)
   }
   report.calibration = calibrationForRuns(report.runs)
-  report.wallTime = modes.map((mode) => ({
-    mode,
-    untracedOnly: true,
-    ...(() => {
-      const rows = report.runs.filter((row) => row.mode === mode && !row.traced)
-      return rows.length
-        ? statistics(rows.map((row) => row.elapsedMs))
-        : { count: 0, median: null, worst: null, p95: null }
-    })(),
-  }))
+  report.workloadTiming = workloadTimingForRuns(report.runs, modes)
   report.status = 'passed'
 } catch (error) {
   report.status = 'failed'
