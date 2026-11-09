@@ -110,3 +110,27 @@ test('calibration excludes traced, GC, failed and unknown-instrumentation repeti
   ]
   assert.equal(calibrationForRuns(rows)[0].count, 1)
 })
+
+test('workload timing separates checkpoints and excludes GC, trace and failed repetitions', async () => {
+  const { workloadTimingForRuns } = await import('./browser-profile-metrics.mjs')
+  const run = {
+    mode: 'sampling',
+    status: 'passed',
+    traced: false,
+    heaps: false,
+    workloadSegments: [{ elapsedMs: 30 }, { elapsedMs: 50 }],
+    checkpoints: [
+      { pollDrainMs: 2, settleAndProbeMs: 2200 },
+      { pollDrainMs: 4, settleAndProbeMs: 2200 },
+    ],
+  }
+  const [sampling, production] = workloadTimingForRuns(
+    [run, { ...run, status: 'failed' }, { ...run, traced: true }, { ...run, heaps: true }],
+    ['sampling', 'production'],
+  )
+  assert.deepEqual(sampling.activeWorkloadMs, { count: 1, median: 80, worst: 80, p95: null })
+  assert.equal(sampling.pollDrainMs.median, 6)
+  assert.equal(sampling.settleAndProbeMs.median, 4400)
+  assert.equal(production.activeWorkloadMs.count, 0)
+  assert.equal(production.activeWorkloadMs.median, null)
+})
