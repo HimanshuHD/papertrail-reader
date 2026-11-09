@@ -1,5 +1,10 @@
 # Lifecycle and diagnostics baseline — 4 November 2026
 
+The [profiler timing follow-up](./performance-profiler-window.md) separates active
+work from checkpoint drain and retains negotiated sensor evidence. The tables
+below use the earlier timing boundary. See the [representative workload baseline](./performance-representative-baseline.md)
+for folder, PDF, EPUB, trace and retaining-path observations.
+
 ## Scope and evidence identity
 
 This is the first focused #16 lifecycle/diagnostics-overhead increment. It does not
