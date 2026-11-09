@@ -1,5 +1,7 @@
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref } from 'vue'
+import { PdfViewportTracker } from '../../src/features/pdf/viewport-tracker'
+import { PdfPageLayout } from '../../src/features/pdf/page-layout'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PdfReaderWorkspace from '../../src/components/viewer/PdfReaderWorkspace.vue'
 
@@ -58,7 +60,7 @@ function mountReader(
       stubs: {
         PdfPageView: {
           name: 'PdfPageView',
-          props: ['pageNumber'],
+          props: ['pageNumber', 'active', 'fitMode', 'zoom', 'searchQuery'],
           mounted() {
             if (autoRender) this.$emit('rendered', this.pageNumber, 1)
           },
@@ -95,6 +97,66 @@ describe('PDF reader utility workspace', () => {
   afterEach(() => {
     wrappers.splice(0).forEach((wrapper) => wrapper.unmount())
     vi.clearAllMocks()
+  })
+
+  it('reuses distant placeholders while mounted page props and state stay live', async () => {
+    // jsdom has no layout: suppress synthetic proximity to every zero-sized shell.
+    vi.spyOn(PdfViewportTracker.prototype, 'schedule').mockImplementation(() => {})
+    const sizes = vi.spyOn(PdfPageLayout.prototype, 'size')
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const child = wrapper.findComponent({ name: 'PdfPageView' })
+    const placeholder = wrapper.get('#pdf-page-3 .pdf-page').element
+    sizes.mockClear()
+
+    await wrapper.setProps({ active: false })
+    child.vm.$emit('state', 1, 'ready')
+    await flushPromises()
+    expect(child.props('active')).toBe(false)
+    expect(wrapper.get('#pdf-page-1').attributes('data-render-state')).toBe('ready')
+    expect(wrapper.get('#pdf-page-3 .pdf-page').element).toBe(placeholder)
+    expect(sizes).not.toHaveBeenCalled()
+
+    await wrapper.setProps({ active: true })
+    await wrapper.get('[aria-label="Search PDF"]').trigger('click')
+    await wrapper.get('[aria-label="Search PDF text"]').setValue('matching')
+    await wrapper.get('form[role="search"]').trigger('submit')
+    await flushPromises()
+    expect(child.props('searchQuery')).toBe('matching')
+    expect(sizes).not.toHaveBeenCalled()
+  })
+
+  it('invalidates only measured placeholders, and all placeholders after geometry or identity changes', async () => {
+    // jsdom has no layout: suppress synthetic proximity to every zero-sized shell.
+    vi.spyOn(PdfViewportTracker.prototype, 'schedule').mockImplementation(() => {})
+    const sizes = vi.spyOn(PdfPageLayout.prototype, 'size')
+    const wrapper = mountReader()
+    wrappers.push(wrapper)
+    await flushPromises()
+    const child = wrapper.findComponent({ name: 'PdfPageView' })
+    sizes.mockClear()
+    child.vm.$emit('measured', 3, { width: 900, height: 450 })
+    await flushPromises()
+    expect(sizes.mock.calls.map(([page]) => page)).toEqual([3])
+    const style = wrapper.get('#pdf-page-3 .pdf-page').attributes('style')
+    sizes.mockClear()
+    child.vm.$emit('measured', 1, { width: 600, height: 800 })
+    await flushPromises()
+    expect(sizes).not.toHaveBeenCalled()
+    expect(wrapper.get('#pdf-page-3 .pdf-page').attributes('style')).toBe(style)
+
+    const zoom = wrapper.get('[aria-label="PDF zoom percent"]')
+    await zoom.setValue('150')
+    await zoom.trigger('keydown', { key: 'Enter' })
+    await flushPromises()
+    expect(child.props('zoom')).toBe(1.5)
+    expect(child.props('fitMode')).toBe('custom')
+    expect(wrapper.get('#pdf-page-3 .pdf-page').attributes('style')).toContain('width: 1350px')
+    sizes.mockClear()
+    await wrapper.setProps({ idPrefix: 'split-' })
+    expect(wrapper.find('#split-pdf-page-3 .pdf-page').exists()).toBe(true)
+    expect(sizes.mock.calls.map(([page]) => page)).toEqual([2, 3])
   })
 
   it('only the active retained reader handles global shortcuts', async () => {

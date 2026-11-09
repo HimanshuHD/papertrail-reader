@@ -1,5 +1,9 @@
 # PDF scroll allocation attribution — 5 November 2026
 
+Production follow-up: [placeholder reuse, paired measurements and validation](./pdf-placeholder-reuse.md).
+The private controls below remain historical diagnostic evidence; the follow-up uses
+complete placeholder invalidation and keeps mounted page props live.
+
 ## Finding
 
 The previous increase in sampled scroll-time JS allocation reproduces. Source-map
