@@ -1,0 +1,35 @@
+# Responsiveness and loading sensors (#251)
+
+Open Developer diagnostics → Sensors → **Capture sensors** in development, preview or staging. Ordinary production/release builds exclude the panel and sensor code. The additional observers remain **off by default**, independently of the existing frame/long-task sampler. Readings are informational and do not change the health evaluation or duplicate Long Tasks in a score.
+
+## Reading the cards
+
+| Source                | Reading                                                                                                        | Scope and limitations                                                                                                                                                                                                                                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Event Timing          | Input waiting = processingStart − startTime; handler = processingEnd − processingStart; browser event duration | Only events with a nonzero interaction ID are grouped. Each retained interaction keeps its longest observed event and that event's consistent breakdown. Requested duration threshold is16ms; browser durations are rounded (typically8ms). Short/unreported events and continuous scroll/move are missing. This is not page INP. |
+| Long Animation Frames | Duration, blocking, render-to-end and style/layout-to-end phase durations; attributed forced layout            | Browser entries over50ms. Overlaps Long Tasks; do not add the two. Script duration categories use fixed event/callback/other keys; no source attribution strings. Attribution can be partial and is capped at120 scripts per frame. Missing fields stay null.                                                                     |
+| Resource Timing       | Resource duration and available transfer/encoded bytes; fixed script/css/fetch/xmlhttprequest/other categories | No URL, filename or content retained. This measures browser resource loads, not local file reads. Fonts/workers cannot reliably be identified from initiator type alone and can appear under other. Zero transfer is ambiguous: cache, restricted cross-origin information or a non-network source.                               |
+
+All observers cover only the current frame, not complete EPUB iframe or worker activity. Secure-context and embedded-frame state, actual support detection and fixed initialization-failure reasons appear under Technical details and in JSON. Browser-supported entry types do not guarantee all attribution fields are available. No blanket event-listener patching or document-content observation occurs.
+
+## Lifecycle, retention and privacy
+
+Observers start only after explicit enable while sampling. Minimize continues recording. Pause, close and unmount disconnect observers and remove visibility listeners; resume starts new non-buffered observers. Visibility transitions discard queued pre-transition entries, and callbacks/entries from background, before resume or from a stopped generation are ignored. Reset clears all additional readings and counters; if running and enabled, sampling restarts. Disabling retains previous readings until Reset/reload.
+
+Each type retains at most120 readings. Each callback processes its latest120 entries; excess entries are counted as dropped. Only numeric timing/size fields and fixed categories are projected immediately; PerformanceEntry objects, raw interaction IDs, event targets, URLs, selectors, invoker text and function names never enter the recording. Dashboard snapshots refresh with the existing one-second sampler. JSON export takes a current copy; paused data is explicitly retained history.
+
+## Controlled overhead smoke measurement
+
+Reproduce with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/path/to/chromium node scripts/benchmark-diagnostic-sensors.mjs` (omit the variable when a Playwright Chromium installation is available). This is a local Vite fixture with real browser input and resource events, not the reader workload.
+
+[Captured output](./sensors-smoke-2026-10-21.json), Chromium153.0.8010.0, Linux headless,21October2026: six alternating disabled/enabled trials;30 clicks per trial,20ms handlers with every sixth70ms, plus one fetch. Each enabled trial retained30 grouped interactions,5 long frames and1 resource; no callback-cap drops. Projection callbacks totaled1.4/1.4/4.0ms; maximum callback0.3/0.2/2.4ms. Disabled trials captured nothing. Elapsed trial times overlapped (disabled1984–2087ms; enabled1978–2083ms), so this run does not establish a reliable total overhead difference.
+
+Callback timing excludes browser-native instrumentation, Vue rendering and total application overhead. Automation elapsed times are noisy and include rendering/scheduling. The observations validate capture and bounded callback work only; they do not justify default enablement or certify accepted performance budgets. Real PDF/EPUB workload calibration, other browsers and device classes remain under #253/#16. Optional navigation/paint/LCP/layout-shift startup sensors are deferred; they are not runtime reader health.
+
+Primary API references: [Event Timing](https://www.w3.org/TR/event-timing/), [Long Animation Frames](https://www.w3.org/TR/long-animation-frames/), [Resource Timing](https://www.w3.org/TR/resource-timing/).
+
+## Dedicated Sensors view
+
+Owner-approved [interactive prototype](../design/diagnostics/sensors-prototype.html) and [source fragment](../design/diagnostics/sensors-prototype-fragment.html) use simulated values only. The live app uses recorded readings. Sensors is a separate main tab after Overview; Inputs, Long frames and Loading are keyboard-accessible categories. Selected view/category persist through minimize/reopen. Each shows latest duration, zero-based duration trend, retained count, median/worst and p95 only after20 observations. These are retained-observation statistics, not page INP, a rolling time window or calibrated targets.
+
+“How to read this / captured evidence” explains the source, actual API status, threshold/rounding, retained count, coverage, privacy-safe loading size/category evidence and investigation hints. Unavailable attribution remains unavailable; overlapping long-frame phases are not stacked or added. Header/footer, evaluation status, icon tooltips, opt-in lifecycle and production exclusion remain intact.

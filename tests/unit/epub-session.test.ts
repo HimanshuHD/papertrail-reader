@@ -5,6 +5,7 @@ import {
   createFormattedEpubFixture,
   createContentsEpubFixture,
 } from '../fixtures/epub'
+import { diagnostics } from '../../src/features/diagnostics/recorder'
 import { openEpubSession } from '../../src/features/epub/epub-session'
 
 const mocks = vi.hoisted(() => ({
@@ -17,12 +18,19 @@ const mocks = vi.hoisted(() => ({
   on: vi.fn(),
   css: vi.fn(),
   hook: vi.fn(),
+  serialize: vi.fn(),
 }))
 vi.mock('../../src/features/epub/scroll-layout', () => ({
   keepScrolledChapterMounted: () => vi.fn(),
 }))
 vi.mock('epubjs', () => ({
+  Rendition: class {
+    requireManager() {
+      return class {}
+    }
+  },
   default: () => ({
+    spine: { hooks: { serialize: { register: mocks.serialize } } },
     open: mocks.open,
     destroy: mocks.destroy,
     renderTo: mocks.render.mockImplementation(() => ({
@@ -52,19 +60,31 @@ it('owns an isolated root, renders inert text and disposes once without deleting
   const sibling = document.createElement('span')
   target.append(sibling)
   const controller = new AbortController()
+  diagnostics.reset()
+  diagnostics.resume()
   const session = await openEpubSession(file(), target, controller.signal, { textOnly: true })
   expect(mocks.open).toHaveBeenCalledWith(expect.any(ArrayBuffer), 'binary')
   expect(mocks.render).toHaveBeenCalledWith(
     expect.any(HTMLElement),
-    expect.objectContaining({ allowScriptedContent: false }),
+    expect.objectContaining({ allowScriptedContent: true, manager: expect.any(Function) }),
   )
   await session.display(1)
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
   session.appearance(true)
   expect(mocks.override).toHaveBeenCalledWith('color', '#e7e9ee', true)
+  const ownedRoot = target.lastElementChild!
+  expect(diagnostics.owners.has(ownedRoot)).toBe(true)
   session.destroy()
   session.destroy()
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
+  expect(diagnostics.snapshot().timings).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ metric: 'epub.open-readable', outcome: 'completed' }),
+      expect.objectContaining({ metric: 'epub.chapter', outcome: 'completed' }),
+    ]),
+  )
+  expect(diagnostics.owners.has(ownedRoot)).toBe(false)
+  diagnostics.pause()
   expect(target.children).toHaveLength(1)
   expect(target.firstChild).toBe(sibling)
   await expect(session.display(0)).rejects.toThrow('unavailable')
@@ -100,6 +120,26 @@ it('cleans up a rejected engine open', async () => {
     'engine rejected',
   )
   expect(target.children).toHaveLength(0)
+  expect(mocks.destroy).toHaveBeenCalledTimes(1)
+})
+
+it('cleans up once when aborted during the first chapter display', async () => {
+  let finish!: () => void
+  mocks.display.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  const target = document.createElement('div')
+  const controller = new AbortController()
+  const opening = openEpubSession(file(), target, controller.signal)
+  await vi.waitFor(() => expect(finish).toBeTypeOf('function'))
+  controller.abort()
+  expect(target.children).toHaveLength(0)
+  expect(mocks.destroy).toHaveBeenCalledTimes(1)
+  finish()
+  await expect(opening).rejects.toThrow()
   expect(mocks.destroy).toHaveBeenCalledTimes(1)
 })
 
@@ -183,6 +223,11 @@ it('opens the requested chapter and revokes formatted image URLs on session disp
     { chapter: 1 },
   )
   expect(mocks.display).toHaveBeenLastCalledWith('chapter-1.xhtml')
+  expect(create).not.toHaveBeenCalled() // Inactive chapter illustrations are not prepared.
+  const serialize = mocks.serialize.mock.calls.at(-1)![0]
+  await serialize('', { index: 0, output: '' })
+  expect(create).toHaveBeenCalledOnce()
+  await serialize('', { index: 1, output: '' })
   session.appearance(true)
   expect(mocks.override).not.toHaveBeenCalled()
   session.destroy()
@@ -192,8 +237,8 @@ it('opens the requested chapter and revokes formatted image URLs on session disp
   await expect(
     openEpubSession(source(), document.createElement('div'), new AbortController().signal),
   ).rejects.toThrow('engine rejected')
-  expect(create).toHaveBeenCalledTimes(2)
-  expect(revoke).toHaveBeenCalledTimes(2)
+  expect(create).toHaveBeenCalledTimes(1)
+  expect(revoke).toHaveBeenCalledTimes(1)
 })
 
 it('validates contents targets, reuses same-chapter rendering, and replaces typography on reset', async () => {
@@ -301,15 +346,18 @@ it('keeps the text-node offset and cancels deferred corrections on input, naviga
       range.getBoundingClientRect = () => bounds(logicalTop)
       return range
     }
-    doc.caretRangeFromPoint = () => {
+    const caret = vi.fn(() => {
       const range = doc.createRange()
       range.setStart(doc.querySelector('p')!.firstChild!, visibleCharacter)
       range.collapse(true)
       return range
-    }
+    })
+    doc.caretRangeFromPoint = caret
     container.dispatchEvent(new Event('wheel'))
-    container.dispatchEvent(new Event('scroll'))
+    for (let event = 0; event < 50; event++) container.dispatchEvent(new Event('scroll'))
+    expect(caret).not.toHaveBeenCalled()
     const saved = session.location!()!
+    expect(caret).toHaveBeenCalledTimes(1)
     expect(saved.character).toBe(7)
     expect(await session.restore!(saved)).toBe(true)
     visibleCharacter = 4

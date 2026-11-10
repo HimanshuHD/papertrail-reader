@@ -1,6 +1,11 @@
+import type { DocumentLink } from '../reader/document-links'
+import { settleBookFonts } from './font-readiness'
+import { applyBookViewport } from './book-viewport'
+import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type Book from 'epubjs/types/book'
 import type Rendition from 'epubjs/types/rendition'
 import type Contents from 'epubjs/types/contents'
+import type Section from 'epubjs/types/section'
 import type { EpubContentsEntry } from './navigation'
 import { normalizeTypography, typographyCSS, type EpubTypography } from './typography'
 import { preparePublication } from './publication'
@@ -11,7 +16,9 @@ import {
   type EpubLocation,
   type CfiBridge,
 } from './location'
+import { EpubLocationCapture } from './location-capture'
 import { keepScrolledChapterMounted } from './scroll-layout'
+import { managedEpubViewManager, type EpubManagerConstructor } from './view-manager'
 import { scrollHighlightRange } from '../annotations/highlight-navigation'
 
 export interface EpubPosition {
@@ -33,6 +40,8 @@ export interface EpubAnnotationContext {
   cfiFromRange?: (range: Range) => string
 }
 export interface EpubSession {
+  imageWarnings?: readonly string[]
+  fontWarnings?: readonly string[]
   title: string
   chapters: readonly { label: string; href: string }[]
   contents: readonly EpubContentsEntry[]
@@ -45,18 +54,19 @@ export interface EpubSession {
   location?(): EpubLocation | undefined
   restore?(location: EpubLocation): Promise<boolean>
   position?(): EpubPosition | undefined
+  resolveLink?(chapter: number, href: string): DocumentLink
   appearance(dark: boolean): void
   destroy(): void
 }
 
 /** One engine book per component; active content is removed before engine open. */
-export async function openEpubSession(
+async function createEpubSession(
   file: Blob,
   target: HTMLElement,
   signal: AbortSignal,
   options: EpubOpenOptions = {},
 ): Promise<EpubSession> {
-  const publication = await preparePublication(file, signal, options.textOnly ?? false)
+  const publication = await preparePublication(file, signal, options.textOnly ?? false, true)
   let engine: typeof import('epubjs')
   try {
     engine = await import('epubjs')
@@ -84,11 +94,92 @@ export async function openEpubSession(
     overflow: 'hidden',
   })
   target.append(root)
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { viewers: 1 })
   let rendition: Rendition | null = null
   let destroyed = false
   let disposed = false
   let opening = true
+  const pendingDisplays = new Set<() => void>()
+  const fontLayoutWarnings = new WeakMap<Document, string | null>()
+  async function displayChapter(href: string): Promise<void> {
+    const current = rendition
+    if (!current || destroyed) return Promise.reject(new Error('EPUB session is unavailable.'))
+    await new Promise<void>((resolve, reject) => {
+      let settled = false
+      const pending = current as Rendition & { displaying?: { reject(reason: unknown): void } }
+      function finish(error?: unknown) {
+        if (settled) return
+        settled = true
+        current!.off?.('displayerror', failed)
+        signal.removeEventListener('abort', cancel)
+        pendingDisplays.delete(cancel)
+        if (error) reject(error)
+        else resolve()
+      }
+      function failed(error: unknown) {
+        // epub.js 0.3.93 emits displayError without rejecting its display defer.
+        // Settle that defer as well so its queue cannot stay blocked forever.
+        pending.displaying?.reject(error)
+        pending.displaying = undefined
+        finish(error)
+      }
+      function cancel() {
+        failed(new DOMException('EPUB display was cancelled.', 'AbortError'))
+      }
+      current.on('displayerror', failed)
+      pendingDisplays.add(cancel)
+      signal.addEventListener('abort', cancel, { once: true })
+      if (signal.aborted || destroyed) cancel()
+      else {
+        try {
+          Promise.resolve(current.display(href)).then(() => finish(), finish)
+        } catch (error) {
+          failed(error)
+        }
+      }
+    })
+    const doc = root.querySelector('iframe')?.contentDocument
+    if (doc && !options.textOnly) {
+      fontLayoutWarnings.set(doc, await settleBookFonts(doc, signal))
+      signal.throwIfAborted()
+      // Reframe the mounted chapter after font metrics settle, without clearing it.
+      const manager = (
+        current as unknown as {
+          manager?: { views?: { forEach(callback: (view: { expand?(): void }) => void): void } }
+        }
+      ).manager
+      manager?.views?.forEach((view) => view.expand?.())
+    }
+  }
   let observer: ResizeObserver | null = null
+  let diagnosticFrame = 0
+  let finishReflow: ReturnType<typeof diagnostics.start>
+  let unregisterReflow: (() => void) | undefined
+  function cancelReflow() {
+    cancelAnimationFrame(diagnosticFrame)
+    diagnosticFrame = 0
+    unregisterReflow?.()
+    unregisterReflow = undefined
+    finishReflow?.('cancelled')
+    finishReflow = undefined
+  }
+  function measureReflow() {
+    cancelReflow()
+    finishReflow = diagnostics.start('epub.reflow')
+    if (!finishReflow) return
+    unregisterReflow = diagnostics.onStop(cancelReflow)
+    return () => {
+      diagnosticFrame = requestAnimationFrame(() => {
+        diagnosticFrame = requestAnimationFrame(() => {
+          finishReflow?.()
+          finishReflow = undefined
+          unregisterReflow?.()
+          unregisterReflow = undefined
+          diagnosticFrame = 0
+        })
+      })
+    }
+  }
   let resizeTimer: ReturnType<typeof setTimeout> | null = null
   let width = 0
   let height = 0
@@ -114,6 +205,13 @@ export async function openEpubSession(
   function currentLocation() {
     return destroyed || navigating ? undefined : captureLocation(root, chapterIndex, mode, bridge())
   }
+  const scrollCapture = new EpubLocationCapture(() => {
+    if (!destroyed && !restoring && !navigating) lastLocation = currentLocation() ?? lastLocation
+  })
+  function readLocation() {
+    scrollCapture.flush()
+    return lastLocation ?? currentLocation()
+  }
   function cancelRestoration() {
     ++restorationEpoch
     cancelAnimationFrame(restorationFrame)
@@ -121,6 +219,7 @@ export async function openEpubSession(
     restoring = false
   }
   function keepLocation(saved: EpubLocation | undefined) {
+    scrollCapture.cancel()
     cancelRestoration()
     if (!saved || destroyed || navigating || saved.chapter !== chapterIndex) return false
     const owner = restorationEpoch
@@ -144,12 +243,13 @@ export async function openEpubSession(
     return applied
   }
   function rememberScroll() {
-    if (!restoring && !navigating) lastLocation = currentLocation()
+    if (!destroyed && !restoring && !navigating) scrollCapture.schedule()
   }
   function userInput() {
     cancelRestoration()
   }
   function bindLocationEvents() {
+    scrollCapture.cancel()
     if (!scrollContainer) {
       scrollContainer = root.querySelector<HTMLElement>('.epub-container')
       scrollContainer?.addEventListener('scroll', rememberScroll, { passive: true })
@@ -217,10 +317,24 @@ export async function openEpubSession(
     const nextHeight = root.clientHeight
     // Hidden panels must not replace the last usable layout with a zero-sized one.
     if (!nextWidth || !nextHeight || (nextWidth === width && nextHeight === height)) return
-    const saved = lastLocation ?? currentLocation()
+    const saved = readLocation()
     width = nextWidth
     height = nextHeight
-    rendition.resize(width, height)
+    root.style.setProperty('--papertrail-viewport-height', `${height}px`)
+    const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
+    try {
+      for (const frame of root.querySelectorAll('iframe')) {
+        if (frame.contentDocument) applyBookViewport(frame.contentDocument, width, height)
+      }
+      rendition.resize(width, height)
+      settled?.()
+    } catch (error) {
+      if (__READER_DIAGNOSTICS__) {
+        finishReflow?.(diagnosticOutcome(error))
+        cancelReflow()
+      }
+      throw error
+    }
     if (saved) keepLocation(saved)
   }
   function scheduleResize() {
@@ -247,6 +361,12 @@ export async function openEpubSession(
   function destroy() {
     if (destroyed) return
     destroyed = true
+    scrollCapture.cancel()
+    for (const cancel of [...pendingDisplays]) cancel()
+    if (__READER_DIAGNOSTICS__) {
+      cancelReflow()
+    }
+    if (__READER_DIAGNOSTICS__) diagnostics.release(root)
     ++navigationEpoch
     cancelRestoration()
     scrollContainer?.removeEventListener('scroll', rememberScroll)
@@ -268,21 +388,46 @@ export async function openEpubSession(
   signal.addEventListener('abort', destroy, { once: true })
   try {
     await book.open(publication.bytes, 'binary')
+    book.spine?.hooks.serialize.register(async (_markup: string, section: Section) => {
+      const markup = await publication.renderChapter(section.index)
+      if (markup !== undefined) section.output = markup
+    })
     opening = false
     cleanup()
     signal.throwIfAborted()
+    root.style.setProperty('--papertrail-viewport-height', `${root.clientHeight || 1}px`)
     rendition = book.renderTo(root, {
+      manager: managedEpubViewManager(
+        engine.Rendition.prototype.requireManager('default') as EpubManagerConstructor,
+      ),
       width: root.clientWidth || 1,
       height: root.clientHeight || 1,
       resizeOnOrientationChange: false,
       flow: 'scrolled-doc',
       spread: 'none',
-      allowScriptedContent: false,
+      // WebKit suppresses even parent-owned DOM callbacks in a scripts-disabled
+      // frame. Chapters are rebuilt from an allowlist before loading and begin
+      // with a CSP that denies all scripts, inline handlers and remote resources.
+      // Permit the scripting environment for trusted parent event listeners;
+      // publication content still cannot execute script or open native popups.
+      allowScriptedContent: true,
     })
+    // epub.js's paginated-image adjustment also runs in scrolled-doc and injects
+    // !important width/height caps. Replace that hook with our low-specificity
+    // responsive defaults so a book's narrower image sizing remains authoritative.
+    const imageAdjustment = rendition.hooks.content
+      .list?.()
+      .find((hook: { name?: string }) => hook.name === 'bound adjustImages')
+    if (imageAdjustment) rendition.hooks.content.deregister(imageAdjustment)
     function applyTheme(dark: boolean) {
       rendition?.themes.default({
-        html: { 'overflow-x': 'hidden !important' },
+        html: {
+          'overflow-x': 'hidden !important',
+          'overflow-y': 'hidden !important',
+          height: 'auto !important',
+        },
         ':where(body)': {
+          display: 'flow-root',
           'font-family': 'Georgia, serif',
           'font-size': '18px',
           'line-height': '1.7',
@@ -291,16 +436,22 @@ export async function openEpubSession(
           margin: '0',
           padding: '24px',
         },
-        body: { 'box-sizing': 'border-box !important', 'overflow-x': 'hidden !important' },
-        '*': {
-          'max-width': '100% !important',
-          'min-width': '0 !important',
+        body: {
+          'box-sizing': 'border-box !important',
+          'overflow-x': 'clip !important',
+          'overflow-y': 'visible !important',
+          height: 'auto !important',
+          'min-height': 'calc(100 * var(--papertrail-reader-height)) !important',
+        },
+        ':where(*)': {
+          'max-width': '100%',
+          'min-width': '0',
           'overflow-wrap': 'anywhere',
           'box-sizing': 'border-box',
         },
         pre: { 'white-space': 'pre-wrap', 'overflow-wrap': 'anywhere' },
         table: { 'table-layout': 'fixed', 'max-width': '100%' },
-        img: { 'max-width': '100% !important', height: 'auto' },
+        ':where(img, svg)': { 'max-width': '100%', height: 'auto' },
       })
       if (options.textOnly) {
         rendition?.themes.override('color', dark ? '#e7e9ee' : '#202636', true)
@@ -314,6 +465,7 @@ export async function openEpubSession(
     const defaultSizes = new WeakMap<Document, number>()
     rendition.hooks.content.register((contents: Contents) => {
       const doc = contents.document
+      applyBookViewport(doc, root.clientWidth || 1, root.clientHeight || 1)
       const sample = doc.querySelector('p,li') ?? doc.body
       const size =
         sample && doc.defaultView
@@ -329,13 +481,13 @@ export async function openEpubSession(
           .querySelector('iframe')
           ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     })
-    await rendition.display(publication.chapters[chapterIndex]!.href)
+    await displayChapter(publication.chapters[chapterIndex]!.href)
     signal.throwIfAborted()
     root
       .querySelector('iframe')
       ?.setAttribute('title', `EPUB chapter: ${publication.chapters[chapterIndex]!.label}`)
     restoreResize = keepScrolledChapterMounted(rendition, root, {
-      capture: () => lastLocation ?? currentLocation(),
+      capture: readLocation,
       restore: (saved) => {
         if (saved) keepLocation(saved as EpubLocation)
       },
@@ -347,7 +499,18 @@ export async function openEpubSession(
     if (requestedLocation) keepLocation(requestedLocation)
     else restorePosition(options.position)
     bindLocationEvents()
+    publication.warmChapters(chapterIndex)
+    let displayedChapter = chapterIndex
     const session: EpubSession = {
+      resolveLink: (chapter, href) => publication.resolveLink(chapter, href),
+      get imageWarnings() {
+        return publication.imageWarnings
+      },
+      get fontWarnings() {
+        const doc = root.querySelector('iframe')?.contentDocument
+        const warning = doc && fontLayoutWarnings.get(doc)
+        return [...publication.fontWarnings, ...(warning ? [warning] : [])]
+      },
       title: publication.title,
       chapters: publication.chapters,
       contents: publication.contents,
@@ -358,15 +521,19 @@ export async function openEpubSession(
         if (destroyed || !rendition || !chapter) throw new Error('EPUB session is unavailable.')
         if (fragment && !publication.fragments[index]?.has(fragment))
           throw new Error('EPUB contents target is unavailable.')
+        const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('epub.chapter') : undefined
         const owner = ++navigationEpoch
+        scrollCapture.cancel()
         cancelRestoration()
         lastLocation = undefined
         const previousChapter = chapterIndex
-        const sameChapter = chapterIndex === index
+        const sameChapter = chapterIndex === index && displayedChapter === index
         chapterIndex = index
         navigating = true
         try {
-          if (!sameChapter) await rendition.display(chapter.href)
+          if (!sameChapter) await displayChapter(chapter.href)
+          displayedChapter = index
+          publication.warmChapters(index)
           signal.throwIfAborted()
           if (owner !== navigationEpoch) throw new Error('EPUB navigation was replaced.')
           if (destroyed) throw new Error('EPUB session is unavailable.')
@@ -374,14 +541,18 @@ export async function openEpubSession(
           const iframe = root.querySelector('iframe')
           if (container && iframe) {
             const anchor = fragment ? iframe.contentDocument?.getElementById(fragment) : null
-            if (anchor)
+            if (anchor) {
               container.scrollTop +=
                 iframe.getBoundingClientRect().top +
                 anchor.getBoundingClientRect().top -
                 container.getBoundingClientRect().top
-            else container.scrollTop = 0
+              if (!anchor.hasAttribute('tabindex')) anchor.setAttribute('tabindex', '-1')
+              ;(anchor as HTMLElement).focus?.({ preventScroll: true })
+            } else container.scrollTop = 0
           }
         } catch (error) {
+          displayedChapter = -1
+          finish?.(diagnosticOutcome(error))
           if (owner === navigationEpoch) chapterIndex = previousChapter
           throw error
         } finally {
@@ -391,22 +562,33 @@ export async function openEpubSession(
             scheduleResize()
           }
         }
+        finish?.()
         signal.throwIfAborted()
         root.querySelector('iframe')?.setAttribute('title', `EPUB chapter: ${chapter.label}`)
       },
       typography(settings) {
         if (destroyed || !rendition || navigating) return
-        const savedLocation = lastLocation ?? currentLocation()
-        const saved = capturePosition()
-        rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
-        // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
-        const contents = rendition.getContents() as unknown as Contents[]
-        contents.forEach((content) => rendition?.themes.add('papertrail-typography', content))
-        // Recalculate the existing view even when the viewport dimensions are unchanged.
-        if (root.clientWidth && root.clientHeight)
-          rendition.resize(root.clientWidth, root.clientHeight)
-        if (savedLocation) keepLocation(savedLocation)
-        else restorePosition(saved)
+        const settled = __READER_DIAGNOSTICS__ ? measureReflow() : undefined
+        try {
+          const savedLocation = readLocation()
+          const saved = savedLocation ? undefined : capturePosition()
+          rendition.themes.registerCss('papertrail-typography', typographyCSS(settings))
+          // epub.js 0.3.93 returns an array; its declaration incorrectly says one Contents.
+          const contents = rendition.getContents() as unknown as Contents[]
+          contents.forEach((content) => rendition?.themes.add('papertrail-typography', content))
+          // Recalculate the existing view even when the viewport dimensions are unchanged.
+          if (root.clientWidth && root.clientHeight)
+            rendition.resize(root.clientWidth, root.clientHeight)
+          if (savedLocation) keepLocation(savedLocation)
+          else restorePosition(saved)
+          settled?.()
+        } catch (error) {
+          if (__READER_DIAGNOSTICS__) {
+            finishReflow?.(diagnosticOutcome(error))
+            cancelReflow()
+          }
+          throw error
+        }
       },
       annotationContext() {
         if (destroyed || navigating) return
@@ -426,6 +608,7 @@ export async function openEpubSession(
         const frame = root.querySelector('iframe')
         if (!container || !frame) return false
         // An explicit highlight jump replaces any earlier resize/location restoration.
+        scrollCapture.cancel()
         cancelRestoration()
         if (!scrollHighlightRange(container, range, frame)) return false
         lastLocation = currentLocation()
@@ -435,7 +618,7 @@ export async function openEpubSession(
         const doc = root.querySelector('iframe')?.contentDocument
         return doc ? (defaultSizes.get(doc) ?? 18) : 18
       },
-      location: () => lastLocation ?? currentLocation(),
+      location: readLocation,
       async restore(value) {
         const saved = normalizeLocation(value, publication.chapters.length)
         if (!saved || destroyed || navigating) return false
@@ -464,5 +647,22 @@ export async function openEpubSession(
   } finally {
     opening = false
     cleanup()
+  }
+}
+
+export async function openEpubSession(
+  file: Blob,
+  target: HTMLElement,
+  signal: AbortSignal,
+  options: EpubOpenOptions = {},
+): Promise<EpubSession> {
+  const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('epub.open-readable') : undefined
+  try {
+    const session = await createEpubSession(file, target, signal, options)
+    finish?.()
+    return session
+  } catch (error) {
+    finish?.(diagnosticOutcome(error))
+    throw error
   }
 }

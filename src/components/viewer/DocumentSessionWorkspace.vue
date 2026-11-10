@@ -24,7 +24,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   comparisonChange: [ids: [string, string] | null]
   status: [message: string]
-  snapshotChange: []
+  snapshotChange: [immediate?: boolean]
   recover: []
   change: [tabs: DocumentSession[], selectedId: string | null]
   activeChange: [document: DiscoveredDocument | null, fingerprint: string | null]
@@ -46,7 +46,6 @@ const comparedPanels = computed(
       ?.map((id) => panels.value.find((panel) => panel.id === id))
       .filter((panel): panel is DocumentSession => !!panel) ?? [],
 )
-let observer: ResizeObserver | undefined
 let disposed = false
 const sessions = new DocumentSessions(() => {
   if (disposed) return
@@ -143,7 +142,6 @@ watch(
   { immediate: true, flush: 'pre' },
 )
 onBeforeUnmount(() => {
-  observer?.disconnect()
   disposed = true
   opening?.abort()
   void sessions.reset().catch(reportOpenFailure)
@@ -183,14 +181,22 @@ async function endComparison() {
 }
 watch(
   root,
-  (element) => {
-    observer?.disconnect()
+  (element, _previous, onCleanup) => {
     if (!element) return
-    const measure = () => sessions.setComparisonCompact(element.getBoundingClientRect().width < 960)
+    let observing = true
+    // Read the current ref rather than retaining a removed workspace in the callback.
+    const measure = () => {
+      if (!observing || disposed || !root.value) return
+      sessions.setComparisonCompact(root.value.getBoundingClientRect().width < 960)
+    }
     measure()
     if (typeof ResizeObserver !== 'undefined') {
-      observer = new ResizeObserver(measure)
+      const observer = new ResizeObserver(measure)
       observer.observe(element)
+      onCleanup(() => {
+        observing = false
+        observer.disconnect()
+      })
     }
   },
   { flush: 'post' },
@@ -285,7 +291,7 @@ defineExpose({
           :initial-state="owner.session.state"
           :active="owner.session.id === selected"
           @focus-pane="visible.includes(owner.session.id) && focusPane(owner.session.id)"
-          @reading-change="emit('snapshotChange')"
+          @reading-change="emit('snapshotChange', $event)"
           @phase-change="sessions.update(owner.session.id, owner.generation, $event)"
           @status="current(owner) && emit('status', $event)"
           @identity="identity(owner, $event)"

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { bindDocumentLinks, type DocumentLink } from '../../features/reader/document-links'
+import type { PdfContentLink } from '../../features/pdf/pdf-session'
+import type { PdfPageTracking } from '../../features/pdf/viewport-tracker'
+import { diagnostics } from '../../features/diagnostics/recorder'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
 import NoteIndicator from './NoteIndicator.vue'
@@ -6,7 +10,7 @@ import type { Annotation } from '../../services/annotation-storage'
 import { resolvePdfAnnotation, projectPdfRectangle } from '../../features/annotations/selectors'
 import {
   pdfTextIndex,
-  pdfTextRange,
+  pdfIndexedRange,
   capturePdfRectangles,
   PDF_HIGHLIGHT_COLORS,
 } from '../../features/pdf/highlights'
@@ -18,25 +22,45 @@ import {
   type PdfFitMode,
 } from '../../features/pdf/pdf-session'
 
-const props = defineProps<{
-  session: PdfDocumentSession
-  pageNumber: number
-  fitMode: PdfFitMode
-  zoom: number
-  availableWidth: number
-  availableHeight: number
-  scrollRoot: HTMLElement | null
-  searchQuery?: string
-  selectedOccurrence?: number | null
-  selectionRequest?: number
-  annotations?: Annotation[]
-  fingerprint?: string | null
-  activeHighlight?: string | null
-}>()
+const props = withDefaults(
+  defineProps<{
+    active?: boolean
+    managedProximity?: boolean
+    initialDimensions?: { width: number; height: number }
+    tracking: PdfPageTracking
+    session: PdfDocumentSession
+    pageNumber: number
+    fitMode: PdfFitMode
+    zoom: number
+    availableWidth: number
+    availableHeight: number
+    scrollRoot: HTMLElement | null
+    searchQuery?: string
+    selectedOccurrence?: number | null
+    selectionRequest?: number
+    annotations?: Annotation[]
+    fingerprint?: string | null
+    activeHighlight?: string | null
+  }>(),
+  {
+    active: true,
+    managedProximity: false,
+    initialDimensions: undefined,
+    searchQuery: undefined,
+    selectedOccurrence: undefined,
+    selectionRequest: undefined,
+    annotations: undefined,
+    fingerprint: undefined,
+    activeHighlight: undefined,
+  },
+)
 
 const emit = defineEmits<{
-  visibility: [pageNumber: number, ratio: number]
+  link: [action: DocumentLink, origin: HTMLElement]
+  linkNotice: [message: string]
   rendered: [pageNumber: number, scale: number]
+  measured: [pageNumber: number, size: { width: number; height: number }]
+  state: [pageNumber: number, state: 'pending' | 'rendering' | 'ready']
   error: [message: string]
   highlightSelected: [id: string]
   noteSelected: [id: string]
@@ -44,6 +68,7 @@ const emit = defineEmits<{
 }>()
 
 const root = ref<HTMLElement | null>(null)
+const contentLinks = ref<readonly PdfContentLink[]>([])
 const canvas = ref<HTMLCanvasElement | null>(null)
 const textLayer = ref<HTMLElement | null>(null)
 const highlightRects = ref<
@@ -98,14 +123,21 @@ function selectSavedHighlight(event: PointerEvent) {
   }
 }
 function updateSavedHighlights() {
+  releaseHighlightHover?.clear()
   savedRects.value = []
   const layer = textLayer.value
   const page = root.value?.querySelector<HTMLElement>('.pdf-page')
   if (!layer || !page || !rendered.value || rendering.value || !props.fingerprint) return
-  const text = pdfTextIndex(layer).text
+  const applicable = (props.annotations ?? []).filter(
+    (annotation) =>
+      annotation.selector.format === 'PDF' &&
+      annotation.selector.segments.some((segment) => segment.page === props.pageNumber),
+  )
+  if (!applicable.length) return
+  const index = pdfTextIndex(layer)
   const identity = { format: 'PDF' as const, fingerprint: props.fingerprint }
   const rotation = Number(layer.dataset.mainRotation ?? 0) as 0 | 90 | 180 | 270
-  for (const annotation of props.annotations ?? []) {
+  for (const annotation of applicable) {
     if (annotation.selector.format !== 'PDF') continue
     const segments = annotation.selector.segments.filter(
       (segment) => segment.page === props.pageNumber,
@@ -115,7 +147,7 @@ function updateSavedHighlights() {
       identity,
       identity,
       { ...annotation.selector, segments },
-      new Map([[props.pageNumber, text]]),
+      new Map([[props.pageNumber, index.text]]),
     )
     if (result.status !== 'resolved') {
       emit('highlightResolution', annotation.id, false, props.pageNumber)
@@ -124,7 +156,7 @@ function updateSavedHighlights() {
     let visible = false
     for (const segment of result.value) {
       // Always measure verified text in the current layer, including rotated glyphs/crop boxes.
-      const range = pdfTextRange(layer, segment.start, segment.end)
+      const range = pdfIndexedRange(index, segment.start, segment.end)
       if (!range) continue
       for (const rectangle of capturePdfRectangles(range, page, layer)) {
         const rect = projectPdfRectangle(rectangle, rotation)
@@ -193,7 +225,14 @@ watch(
 const rendered = ref(false)
 const previewed = ref(false)
 const rendering = ref(false)
-const dimensions = ref<{ width: number; height: number } | null>(null)
+watch([rendering, rendered], () => {
+  emit(
+    'state',
+    props.pageNumber,
+    rendering.value ? 'rendering' : rendered.value ? 'ready' : 'pending',
+  )
+})
+const dimensions = ref<{ width: number; height: number } | null>(props.initialDimensions ?? null)
 const layout = computed(() => {
   const size = dimensions.value ??
     props.session.defaultPageDimensions ?? { width: 612, height: 792 }
@@ -207,17 +246,22 @@ const layout = computed(() => {
   )
   return { width: size.width * scale, height: size.height * scale }
 })
-let observer: IntersectionObserver | null = null
-let visibilityObserver: IntersectionObserver | null = null
+let unregisterPage: (() => void) | undefined
 let renderSequence = 0
 let nearViewport = false
 let dirty = true
 let disposed = false
-let scrollFrame = 0
 let measuring = false
 let pendingBitmap: HTMLCanvasElement | null = null
+let releaseLinks: (() => void) | undefined
 let releaseTextSelection: (() => void) | undefined
-let releaseHighlightHover: (() => void) | undefined
+let releaseHighlightHover: ReturnType<typeof bindHighlightHover> | undefined
+watch(
+  () => props.active,
+  (active) => {
+    if (active === false) releaseHighlightHover?.clear()
+  },
+)
 
 async function renderPage() {
   if (!nearViewport || rendering.value || !dirty || disposed) return
@@ -226,6 +270,8 @@ async function renderPage() {
     measuring = true
     try {
       dimensions.value = await props.session.getPageDimensions(props.pageNumber)
+      if (disposed) return
+      emit('measured', props.pageNumber, dimensions.value)
     } catch (error) {
       if (!disposed)
         emit('error', error instanceof Error ? error.message : 'Unable to measure PDF page.')
@@ -240,6 +286,7 @@ async function renderPage() {
   if (!currentCanvas || !currentTextLayer) return
 
   const pendingCanvas = document.createElement('canvas')
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(pendingCanvas, { canvases: 1 })
   const pendingText = document.createElement('div')
   pendingBitmap = pendingCanvas
   const sequence = ++renderSequence
@@ -248,7 +295,10 @@ async function renderPage() {
   savedRects.value = []
   dirty = false
 
+  let releaseSlot: (() => void) | undefined
   try {
+    releaseSlot = await props.session.reserveRender?.(pendingCanvas)
+    if (sequence !== renderSequence || disposed || !nearViewport) return
     const result = await props.session.render({
       canvas: pendingCanvas,
       textLayer: pendingText,
@@ -264,6 +314,11 @@ async function renderPage() {
     if (!context) throw new Error('Canvas rendering is unavailable in this browser.')
     currentCanvas.width = pendingCanvas.width
     currentCanvas.height = pendingCanvas.height
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(root, {
+        canvases: 1,
+        canvasBytes: currentCanvas.width * currentCanvas.height * 4,
+      })
     context.drawImage(pendingCanvas, 0, 0)
     currentTextLayer.style.cssText = pendingText.style.cssText
     currentTextLayer.dataset.mainRotation = pendingText.dataset.mainRotation ?? '0'
@@ -288,7 +343,16 @@ async function renderPage() {
       (id) => {
         hoveredHighlight.value = id
       },
+      () => props.active !== false,
     )
+    try {
+      const found = (await props.session.getPageLinks?.(props.pageNumber)) ?? []
+      if (sequence !== renderSequence) return
+      contentLinks.value = found
+    } catch {
+      if (sequence !== renderSequence || disposed) return
+      emit('linkNotice', 'Links on this page could not be read. You can continue reading.')
+    }
     rendered.value = true
     previewed.value = false
     props.session.cachePagePreview?.(props.pageNumber, pendingCanvas)
@@ -310,8 +374,10 @@ async function renderPage() {
         : `PaperTrail could not render page ${props.pageNumber}.`,
     )
   } finally {
+    if (__READER_DIAGNOSTICS__) diagnostics.release(pendingCanvas)
     pendingCanvas.width = 0
     pendingCanvas.height = 0
+    releaseSlot?.()
     pendingBitmap = null
     rendering.value = false
     void nextTick(() => {
@@ -329,6 +395,11 @@ function showPreview() {
   if (preview && displayed) {
     displayed.width = preview.width
     displayed.height = preview.height
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(root, {
+        canvases: 1,
+        canvasBytes: displayed.width * displayed.height * 4,
+      })
     displayed.getContext('2d', { alpha: false })?.drawImage(preview, 0, 0)
     previewed.value = true
   }
@@ -339,8 +410,11 @@ function releaseBitmap() {
   if (!displayed) return
   displayed.width = 0
   displayed.height = 0
+  if (__READER_DIAGNOSTICS__ && !disposed)
+    diagnostics.resources(root, { canvases: 1, canvasBytes: 0 })
   highlightRects.value = []
   savedRects.value = []
+  contentLinks.value = []
   releaseTextSelection?.()
   releaseTextSelection = undefined
   releaseHighlightHover?.()
@@ -364,101 +438,58 @@ function updateProximity(next: boolean) {
   }
 }
 
-function checkScrollPosition() {
-  if (disposed) return
-  cancelAnimationFrame(scrollFrame)
-  scrollFrame = requestAnimationFrame(() => {
-    const element = root.value
-    const pane = props.scrollRoot
-    if (!element || !pane) return
-    const box = element.getBoundingClientRect()
-    const bounds = pane.getBoundingClientRect()
-    const next = box.bottom >= bounds.top - 700 && box.top <= bounds.bottom + 700
-    if (next !== nearViewport || dirty) updateProximity(next)
-  })
-}
-
-function observePage() {
-  const element = root.value
-  if (!element) return
-
-  if (typeof IntersectionObserver === 'undefined') {
-    nearViewport = true
-    void renderPage()
-    return
-  }
-
-  observer = new IntersectionObserver(
-    (entries) => {
-      const entry = entries[0]
-      if (!entry) return
-
-      if (entry.isIntersecting !== nearViewport || dirty) updateProximity(entry.isIntersecting)
-    },
-    {
-      root: props.scrollRoot,
-      rootMargin: '700px 0px',
-      threshold: [0, 0.1, 0.25, 0.5, 0.75, 1],
-    },
-  )
-  observer.observe(element)
-  visibilityObserver = new IntersectionObserver(
-    ([entry]) => {
-      if (entry)
-        emit('visibility', props.pageNumber, entry.isIntersecting ? entry.intersectionRatio : 0)
-    },
-    { root: props.scrollRoot, threshold: [0, 0.1, 0.25, 0.5, 0.75, 1] },
-  )
-  visibilityObserver.observe(element)
-}
-
 watch(
   () => [props.fitMode, props.zoom, props.availableWidth, props.availableHeight] as const,
   () => {
     renderSequence += 1
     dirty = true
+    if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
     void renderPage()
-    checkScrollPosition()
+    void nextTick(() => props.tracking.schedule())
   },
 )
 
-watch(
-  () => props.scrollRoot,
-  (next, previous) => {
-    previous?.removeEventListener('scroll', checkScrollPosition)
-    next?.addEventListener('scroll', checkScrollPosition, { passive: true })
-    observer?.disconnect()
-    visibilityObserver?.disconnect()
-    observePage()
-  },
-)
+// Newly measured dimensions can move all following pages, even without scrolling.
+watch(layout, () => void nextTick(() => props.tracking.schedule()))
 onMounted(() => {
-  props.scrollRoot?.addEventListener('scroll', checkScrollPosition, { passive: true })
-  observePage()
+  if (root.value)
+    releaseLinks = bindDocumentLinks(
+      root.value,
+      (element) =>
+        contentLinks.value[Number(element.dataset.readerLink)]?.action ?? {
+          kind: 'blocked',
+          message: 'This link is unavailable.',
+        },
+      (action, origin) => emit('link', action, origin),
+    )
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(root, { canvases: 1 })
+  if (root.value && !props.managedProximity)
+    unregisterPage = props.tracking.register(root.value, props.pageNumber, updateProximity)
+  if (props.managedProximity) updateProximity(true)
   if (nearViewport) showPreview()
 })
 
 onBeforeUnmount(() => {
+  releaseLinks?.()
+  if (__READER_DIAGNOSTICS__) diagnostics.release(root)
   disposed = true
   if (pendingBitmap) void props.session.cancelRender?.(pendingBitmap).catch(() => undefined)
   releaseBitmap()
-  cancelAnimationFrame(scrollFrame)
-  props.scrollRoot?.removeEventListener('scroll', checkScrollPosition)
+  unregisterPage?.()
+  unregisterPage = undefined
   renderSequence += 1
-  observer?.disconnect()
-  observer = null
-  visibilityObserver?.disconnect()
-  visibilityObserver = null
 })
 </script>
 
 <template>
-  <article
-    :id="`pdf-page-${pageNumber}`"
+  <component
+    :is="managedProximity ? 'div' : 'article'"
+    :id="managedProximity ? undefined : `pdf-page-${pageNumber}`"
     ref="root"
-    class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
-    :aria-label="`PDF page ${pageNumber}`"
-    :data-pdf-page="pageNumber"
+    class="flex w-full scroll-mt-4 items-start justify-center"
+    :class="managedProximity ? 'pdf-page-content' : 'pdf-page-shell'"
+    :aria-label="managedProximity ? undefined : `PDF page ${pageNumber}`"
+    :data-pdf-page="managedProximity ? undefined : pageNumber"
     :data-render-state="rendering ? 'rendering' : rendered ? 'ready' : 'pending'"
   >
     <div
@@ -526,6 +557,22 @@ onBeforeUnmount(() => {
           }"
         />
       </div>
+      <div v-if="rendered && !rendering" class="pdf-content-links">
+        <a
+          v-for="(link, index) in contentLinks"
+          :key="index"
+          role="link"
+          tabindex="0"
+          :data-reader-link="index"
+          :aria-label="link.label"
+          :style="{
+            left: `${link.x * 100}%`,
+            top: `${link.y * 100}%`,
+            width: `${link.width * 100}%`,
+            height: `${link.height * 100}%`,
+          }"
+        />
+      </div>
       <div
         ref="textLayer"
         class="textLayer absolute top-0 left-0 overflow-hidden"
@@ -542,11 +589,33 @@ onBeforeUnmount(() => {
         Rendering page {{ pageNumber }}…
       </div>
     </div>
-  </article>
+  </component>
 </template>
 
 <style scoped>
-.pdf-page-shell {
+.pdf-content-links {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+.pdf-content-links a {
+  position: absolute;
+  display: block;
+  border-bottom: 1px solid #075caa;
+  pointer-events: auto;
+  cursor: pointer;
+}
+.pdf-content-links a:hover {
+  background: #1674bd18;
+}
+.pdf-content-links a:focus-visible {
+  outline: 2px solid #075caa;
+  outline-offset: 2px;
+}
+
+.pdf-page-shell,
+.pdf-page-content {
   /* Keep oversized pages inside the reachable scroll area. */
   justify-content: safe center;
 }

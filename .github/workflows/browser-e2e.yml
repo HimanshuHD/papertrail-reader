@@ -31,8 +31,17 @@ jobs:
       matrix:
         shard: [1, 2]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # Setup, the full test allowance and evidence upload have separate bounds.
+    timeout-minutes: 45
+    container:
+      # Keep this version/digest aligned with @playwright/test (checked by pipeline tests).
+      image: mcr.microsoft.com/playwright:v1.63.0-noble@sha256:eff16c30e6f3f4af0a03fa4b706120d5e9b0891c344a27d64559aff5900a4a27
+      options: --ipc=host
     env:
+      # The container runs as root; Firefox requires a root-owned HOME.
+      HOME: /root
+      PLAYWRIGHT_IMAGE_VERSION: '1.63.0'
+      E2E_DEPLOY_CHANNEL: ${{ inputs.channel }}
       E2E_SOURCE_SHA: ${{ inputs.source_sha }}
       E2E_SHARD: ${{ matrix.shard }}/2
       E2E_BASE_PATH: ${{ inputs.channel == 'staging' && format('{0}staging/', vars.PAGES_BASE_PATH || '/papertrail-reader/') || vars.PAGES_BASE_PATH || '/papertrail-reader/' }}
@@ -41,11 +50,23 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ inputs.source_sha }}
+      - name: Trust checked-out workspace in container
+        timeout-minutes: 1
+        # Checkout's temporary HOME may differ from later shell steps in the container.
+        run: HOME=/root git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
           cache: npm
-      - run: npm ci --no-audit --no-fund
+      - name: Install application dependencies
+        timeout-minutes: 5
+        run: npm ci --no-audit --no-fund
+      - name: Verify browser image matches installed Playwright
+        timeout-minutes: 1
+        run: >-
+          node -e "const actual=require('@playwright/test/package.json').version;
+          if(actual!==process.env.PLAYWRIGHT_IMAGE_VERSION)
+          throw new Error('Playwright/image version mismatch: '+actual+' / '+process.env.PLAYWRIGHT_IMAGE_VERSION)"
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: candidate-build
@@ -58,20 +79,25 @@ jobs:
           BUILD_RUN: ${{ inputs.build_run }}
           SOURCE_SHA: ${{ inputs.source_sha }}
         run: |
+          export HOME=/root
           node --input-type=module -e "import fs from 'node:fs'; import {execFileSync} from 'node:child_process'; import {verifyCandidate} from './scripts/candidate-artifact.mjs'; const b=JSON.parse(fs.readFileSync('incoming/'+process.env.CHANNEL+'/build.json')); await verifyCandidate('incoming/'+process.env.CHANNEL,{...b,channel:process.env.CHANNEL,runId:process.env.BUILD_RUN,headSha:process.env.SOURCE_SHA,tree:execFileSync('git',['rev-parse','HEAD^{tree}'],{encoding:'utf8'}).trim(),basePath:process.env.E2E_BASE_PATH})"
           cp -a "incoming/$CHANNEL" dist
-      - name: Install browser engines for explicit acceptance
-        run: npx playwright install --with-deps chromium firefox webkit
       - name: Install native focus window manager
-        run: sudo apt-get install -y openbox
+        timeout-minutes: 5
+        # Signed Ubuntu HTTPS repositories; ignore the image's slow Azure package mirror.
+        # Keep total apt time bounded independently of browser execution.
+        run: HOME=/root timeout 240 sh scripts/install-browser-window-manager.sh
       - name: Record exact browser and candidate identity
-        run: node scripts/browser-evidence.mjs
+        timeout-minutes: 2
+        run: HOME=/root node scripts/browser-evidence.mjs
       - name: Run browser acceptance with native window activation
+        timeout-minutes: 20
         run: >-
-          xvfb-run --auto-servernum sh -c
+          HOME=/root xvfb-run --auto-servernum sh -c
           'openbox >/tmp/papertrail-window-manager.log 2>&1 &
           npm run test:e2e -- --shard=${{ matrix.shard }}/2'
       - name: Upload browser evidence
+        timeout-minutes: 3
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
@@ -83,6 +109,7 @@ jobs:
           if-no-files-found: ignore
           retention-days: 30
       - name: Upload compact acceptance summary
+        timeout-minutes: 3
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:

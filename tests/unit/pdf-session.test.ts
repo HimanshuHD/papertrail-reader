@@ -1,3 +1,4 @@
+import { diagnostics } from '../../src/features/diagnostics/recorder'
 import { describe, expect, it, vi } from 'vitest'
 import {
   classifyPdfOpenError,
@@ -278,6 +279,8 @@ describe('PDF render and session lifecycle', () => {
   })
 
   it('cancels pending canvas work before document teardown', async () => {
+    diagnostics.reset()
+    diagnostics.resume()
     const { session, request, tasks, documentProxy, loadingTask } = makeRenderer()
     const rendering = session.render(request)
     const cancelled = expect(rendering).rejects.toMatchObject({
@@ -286,6 +289,12 @@ describe('PDF render and session lifecycle', () => {
     await vi.waitFor(() => expect(tasks).toHaveLength(1))
     await session.close()
     await cancelled
+    expect(diagnostics.snapshot().timings).toContainEqual(
+      expect.objectContaining({ metric: 'pdf.render', outcome: 'cancelled' }),
+    )
+    expect(diagnostics.snapshot().pending.render).toBe(0)
+    expect(diagnostics.owners.has(session)).toBe(false)
+    diagnostics.pause()
     expect(tasks[0]!.cancel).toHaveBeenCalledOnce()
     expect(documentProxy.cleanup).toHaveBeenCalledOnce()
     expect(loadingTask.destroy).toHaveBeenCalledOnce()
@@ -326,6 +335,8 @@ describe('demand-driven PDF preparation', () => {
   })
 
   it('bounds reusable preview pixels with LRU eviction and releases them on close', async () => {
+    diagnostics.reset()
+    diagnostics.resume()
     const context = vi
       .spyOn(HTMLCanvasElement.prototype, 'getContext')
       .mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D)
@@ -351,10 +362,19 @@ describe('demand-driven PDF preparation', () => {
     )
     expect(previews).toHaveLength(128)
     expect(
+      diagnostics.investigation.snapshot(diagnostics.snapshot().resources, null).caches.preview,
+    ).toMatchObject({ evictions: 1 })
+    expect(diagnostics.snapshot().resources.canvasBytes).toBeGreaterThan(0)
+    expect(
       previews.reduce((sum, canvas) => sum + canvas.width * canvas.height * 4, 0),
     ).toBeLessThan(18 * 1024 * 1024)
     await session.close()
     expect(previews.every((canvas) => canvas.width === 0 && canvas.height === 0)).toBe(true)
+    expect(diagnostics.owners.has(session)).toBe(false)
+    expect(diagnostics.investigation.snapshot({}, null).timings.at(-1)?.operation).toBe(
+      'pdf.release',
+    )
+    diagnostics.pause()
     context.mockRestore()
   })
 })
@@ -432,4 +452,54 @@ it('destroys the PDF worker even if document cleanup fails', async () => {
   )
   await expect(session.close()).rejects.toThrow('cleanup failed')
   expect(destroy).toHaveBeenCalledTimes(1)
+})
+
+it('late PDF dimensions cannot repopulate a closed session or resurrect its diagnostic owner', async () => {
+  let complete!: (page: unknown) => void
+  const page = new Promise((resolve) => (complete = resolve))
+  const session = new PdfDocumentSession(
+    {} as never,
+    { destroy: async () => {} } as never,
+    { numPages: 1, getPage: () => page, cleanup: async () => {} } as never,
+  )
+  const pending = session.getPageDimensions(1)
+  await session.close()
+  complete({ getViewport: () => ({ width: 600, height: 800 }) })
+  await expect(pending).rejects.toThrow('closed')
+  expect(diagnostics.owners.has(session)).toBe(false)
+  expect(session.defaultPageDimensions).toEqual({ width: 612, height: 792 })
+})
+
+it('rejects a reserved render cancelled while getPage is pending before allocating its canvas', async () => {
+  let resolve!: (value: unknown) => void
+  const getPage = vi.fn(
+    () =>
+      new Promise((done) => {
+        resolve = done
+      }),
+  )
+  const session = new PdfDocumentSession(
+    {} as never,
+    { destroy: async () => {} } as never,
+    { numPages: 1, getPage, cleanup: async () => {} } as never,
+  )
+  const canvas = document.createElement('canvas')
+  const context = vi.spyOn(canvas, 'getContext')
+  const release = await session.reserveRender(canvas)
+  const work = session.render({
+    canvas,
+    pageNumber: 1,
+    fitMode: 'custom',
+    zoom: 4,
+    availableWidth: 600,
+    availableHeight: 800,
+  })
+  const rejected = expect(work).rejects.toMatchObject({ name: 'RenderingCancelledException' })
+  await vi.waitFor(() => expect(getPage).toHaveBeenCalledOnce())
+  await session.cancelRender(canvas)
+  resolve({})
+  await rejected
+  expect(context).not.toHaveBeenCalled()
+  release()
+  await session.close()
 })

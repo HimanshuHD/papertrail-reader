@@ -1,3 +1,4 @@
+import { immediatePdfTracking } from '../fixtures/pdf-tracking'
 import { config } from '@vue/test-utils'
 config.global.stubs.teleport = true
 import { mount, flushPromises } from '@vue/test-utils'
@@ -90,10 +91,11 @@ it('keeps selection creation safe during a drag and opens the note editor after 
         PdfPageView: {
           props: ['pageNumber'],
           mounted() {
+            this.$emit('state', 1, 'ready')
             this.$emit('rendered', 1, 1)
           },
           template:
-            '<article data-pdf-page="1" data-render-state="ready"><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></article>',
+            '<div><div class="pdf-page"><div class="textLayer"><span>One</span></div></div></div>',
         },
       },
     },
@@ -185,6 +187,7 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   } as unknown as PdfDocumentSession
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session,
       pageNumber: 1,
       fitMode: 'width',
@@ -211,6 +214,15 @@ it('rebuilds saved overlays after zoom and avoids painting a mismatched text anc
   await wrapper.get('.reader-note-indicator').trigger('click')
   expect(wrapper.emitted('noteSelected')).toEqual([['one']])
   const layer = wrapper.get('.textLayer')
+  // A click before the queued hover frame must still resolve fresh painted geometry.
+  vi.stubGlobal(
+    'requestAnimationFrame',
+    vi.fn(() => 1),
+  )
+  layer.element.dispatchEvent(
+    new MouseEvent('pointermove', { clientX: 20, clientY: 30, bubbles: true }),
+  )
+  expect(requestAnimationFrame).toHaveBeenCalledTimes(1)
   layer.element.dispatchEvent(
     new MouseEvent('pointerdown', { clientX: 20, clientY: 30, bubbles: true }),
   )

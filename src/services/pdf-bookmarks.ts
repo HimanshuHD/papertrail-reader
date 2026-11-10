@@ -44,25 +44,28 @@ export class IndexedDbBookmarkStorage implements BookmarkStorage {
     documentId: string,
     transform?: (bookmarks: PdfBookmark[]) => PdfBookmark[],
   ): Promise<PdfBookmark[]> {
-    return this.database.transaction((store, done) => {
-      const request = store.get(documentId)
-      request.onsuccess = () => {
-        const record = request.result as (ReadingRecord & { bookmarks?: unknown }) | undefined
-        if (!record || (record.version !== 1 && record.version !== 2)) {
-          // Clearing storage must not resurrect an old document or its bookmarks.
-          store.transaction.abort()
-          return
+    return this.database.transaction(
+      (store, done) => {
+        const request = store.get(documentId)
+        request.onsuccess = () => {
+          const record = request.result as (ReadingRecord & { bookmarks?: unknown }) | undefined
+          if (!record || (record.version !== 1 && record.version !== 2)) {
+            // Clearing storage must not resurrect an old document or its bookmarks.
+            store.transaction.abort()
+            return
+          }
+          try {
+            const bookmarks = normalizeBookmarks(record.bookmarks)
+            const next = transform ? transform(bookmarks) : bookmarks
+            if (transform) store.put({ ...record, bookmarks: next })
+            done(next)
+          } catch {
+            store.transaction.abort()
+          }
         }
-        try {
-          const bookmarks = normalizeBookmarks(record.bookmarks)
-          const next = transform ? transform(bookmarks) : bookmarks
-          if (transform) store.put({ ...record, bookmarks: next })
-          done(next)
-        } catch {
-          store.transaction.abort()
-        }
-      }
-    })
+      },
+      __READER_DIAGNOSTICS__ ? (transform ? 'reading.write' : 'reading.read') : undefined,
+    )
   }
 
   load(documentId: string) {

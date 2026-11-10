@@ -1,0 +1,104 @@
+{
+  "browser": "153.0.8010.0",
+  "interactionsPerTrial": 30,
+  "workload": "Synthetic 20 ms handlers with every sixth handler 70 ms; one resource fetch. No reader document workload.",
+  "limitations": "Callback timings exclude native observer instrumentation and Vue rendering; elapsed includes automation. Not calibration, INP, CPU usage or production overhead proof. Sensors stay opt-in.",
+  "trials": [
+    {
+      "enabled": false,
+      "elapsedMs": 2002.5628980000001,
+      "captured": {
+        "inputs": 0,
+        "frames": 0,
+        "resources": 0
+      },
+      "callbacks": {
+        "callbacks": 0,
+        "entries": 0,
+        "dropped": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2082.928633,
+      "captured": {
+        "inputs": 30,
+        "frames": 5,
+        "resources": 1
+      },
+      "callbacks": {
+        "callbacks": 36,
+        "entries": 162,
+        "dropped": 0,
+        "totalMs": 1.400000000372529,
+        "maxMs": 0.30000000074505806
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 2029.0028119999997,
+      "captured": {
+        "inputs": 30,
+        "frames": 5,
+        "resources": 1
+      },
+      "callbacks": {
+        "callbacks": 36,
+        "entries": 162,
+        "dropped": 0,
+        "totalMs": 1.3999999985098839,
+        "maxMs": 0.2000000011175871
+      }
+    },
+    {
+      "enabled": false,
+      "elapsedMs": 1984.0732420000004,
+      "captured": {
+        "inputs": 0,
+        "frames": 0,
+        "resources": 0
+      },
+      "callbacks": {
+        "callbacks": 0,
+        "entries": 0,
+        "dropped": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      }
+    },
+    {
+      "enabled": false,
+      "elapsedMs": 2087.2901059999986,
+      "captured": {
+        "inputs": 0,
+        "frames": 0,
+        "resources": 0
+      },
+      "callbacks": {
+        "callbacks": 0,
+        "entries": 0,
+        "dropped": 0,
+        "totalMs": 0,
+        "maxMs": 0
+      }
+    },
+    {
+      "enabled": true,
+      "elapsedMs": 1978.3554289999993,
+      "captured": {
+        "inputs": 30,
+        "frames": 5,
+        "resources": 1
+      },
+      "callbacks": {
+        "callbacks": 36,
+        "entries": 162,
+        "dropped": 0,
+        "totalMs": 4.000000001862645,
+        "maxMs": 2.400000000372529
+      }
+    }
+  ]
+}

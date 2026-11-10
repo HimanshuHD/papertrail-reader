@@ -7,6 +7,7 @@ const props = defineProps<{
   text: string
   open: boolean
   id?: string
+  side?: 'left'
 }>()
 const emit = defineEmits<{ dismiss: [] }>()
 const fallbackId = useId()
@@ -23,6 +24,14 @@ async function place() {
   }
   const a = props.anchor.getBoundingClientRect(),
     b = popup.value.getBoundingClientRect()
+  if (props.side === 'left') {
+    position.value = {
+      left: `${Math.max(8, Math.min(a.left - b.width - 8, innerWidth - b.width - 8))}px`,
+      top: `${Math.max(8, Math.min(a.top + a.height / 2 - b.height / 2, innerHeight - b.height - 8))}px`,
+      visibility: 'visible',
+    }
+    return
+  }
   position.value = {
     left: `${Math.max(8, Math.min(a.left + a.width / 2 - b.width / 2, innerWidth - b.width - 8))}px`,
     top: `${a.bottom + 8 + b.height <= innerHeight - 8 ? a.bottom + 8 : Math.max(8, a.top - b.height - 8)}px`,

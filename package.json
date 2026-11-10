@@ -1,7 +1,7 @@
 {
   "name": "papertrail-reader",
   "private": true,
-  "version": "2.2.0",
+  "version": "2.3.0",
   "type": "module",
   "engines": {
     "node": ">=24.12.0 <25"
@@ -20,7 +20,11 @@
     "test": "npm run test:pipeline && npm run test:unit",
     "check": "npm run lint && npm run format:check && npm test && npm run type-check",
     "test:e2e": "playwright test",
-    "test:visual": "node scripts/run-visual-qa.mjs"
+    "test:visual": "node scripts/run-visual-qa.mjs",
+    "profile:browser": "node scripts/profile-browser.mjs",
+    "profile:pdf-canvases": "node scripts/profile-pdf-canvases.mjs",
+    "test:diagnostics:acceptance": "node scripts/run-diagnostics-acceptance.mjs",
+    "test:reader:acceptance": "node scripts/run-reader-acceptance.mjs"
   },
   "dependencies": {
     "css-tree": "3.2.1",

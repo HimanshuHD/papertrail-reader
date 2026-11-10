@@ -37,7 +37,9 @@ try {
         engines: versions,
         capturedAt: new Date().toISOString(),
         scope:
-          'Linux Chromium full suite (headed native tab-focus under Xvfb; other cases headless), Firefox/WebKit smoke subset. Viewport emulation does not certify devices, installed Chrome/Edge or macOS Safari.',
+          process.env.E2E_ENVIRONMENT_PREFLIGHT === 'true'
+            ? 'Container environment preflight only: three-engine startup and Git identity; no document E2E or native-focus acceptance.'
+            : 'Linux Chromium full suite (headed native tab-focus under Xvfb; other cases headless), Firefox/WebKit smoke subset. Viewport emulation does not certify devices, installed Chrome/Edge or macOS Safari.',
       },
       null,
       2,

@@ -7,6 +7,10 @@ it('adapts dark chapter colors without changing content and restores authored co
   const before = doc.body.innerHTML
   const appearance = bindEpubPageAppearance(doc, true)
   expect(doc.head.querySelector('style')?.textContent).toContain('#111b22')
+  expect(doc.head.querySelector('style')?.textContent).toContain(
+    'body :where(img, svg) { background-color:#ffffff!important; color-scheme:light; }',
+  )
+  expect(doc.head.querySelector('style')?.textContent).not.toMatch(/filter:|stroke:|fill:/)
   expect(doc.body.innerHTML).toBe(before)
   appearance.set(false)
   expect(doc.head.querySelector('style')?.textContent).toBe('')

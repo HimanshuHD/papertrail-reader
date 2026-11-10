@@ -1,6 +1,17 @@
-import { findTextMatches, indexPdfText, type SearchContext } from './search-text'
+import { PdfRenderSlots } from './render-slots'
+import { externalLink, unavailableLink, type DocumentLink } from '../reader/document-links'
+import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
+import { findTextMatches, canonicalPdfText, type SearchContext } from './search-text'
 import type { PDFDocumentLoadingTask, PDFDocumentProxy, PDFPageProxy, RenderTask } from 'pdfjs-dist'
 
+export interface PdfContentLink {
+  x: number
+  y: number
+  width: number
+  height: number
+  label: string
+  action: DocumentLink
+}
 export type PdfFitMode = 'width' | 'page' | 'custom'
 
 export interface PdfRenderRequest {
@@ -127,6 +138,20 @@ export function resolvePdfScale(
 }
 
 export class PdfDocumentSession {
+  private readonly renderSlots = new PdfRenderSlots(2)
+
+  reserveRender(canvas: HTMLCanvasElement): Promise<() => void> {
+    return this.renderSlots.acquire(canvas)
+  }
+
+  private assertRenderCurrent(canvas: HTMLCanvasElement) {
+    if (this.closed) throw new Error('PDF session is closed.')
+    if (this.renderSlots.isCancelled(canvas)) {
+      const error = new Error('PDF rendering cancelled.')
+      error.name = 'RenderingCancelledException'
+      throw error
+    }
+  }
   private readonly activeRenders = new Map<HTMLCanvasElement, ActiveRender>()
   private closed = false
   private closing: Promise<void> | undefined
@@ -135,6 +160,8 @@ export class PdfDocumentSession {
 
   getPagePreview(pageNumber: number): HTMLCanvasElement | undefined {
     const preview = this.previews.get(pageNumber)
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.investigation.cache('preview', preview ? 'hits' : 'misses')
     if (preview) {
       this.previews.delete(pageNumber)
       this.previews.set(pageNumber, preview)
@@ -169,14 +196,36 @@ export class PdfDocumentSession {
       evicted.width = 0
       evicted.height = 0
       this.previews.delete(oldest)
+      if (__READER_DIAGNOSTICS__) diagnostics.investigation.cache('preview', 'evictions')
     }
+    if (__READER_DIAGNOSTICS__) this.reportResources()
   }
 
   constructor(
     private readonly pdfjs: PdfJsModule,
     private readonly loadingTask: PDFDocumentLoadingTask,
     private readonly document: PDFDocumentProxy,
-  ) {}
+  ) {
+    if (__READER_DIAGNOSTICS__) this.reportResources()
+  }
+  private reportResources() {
+    if (this.closed) return
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.resources(this, {
+        viewers: 1,
+        previewEntries: this.previews.size,
+        canvases: this.previews.size,
+        previewBytes: [...this.previews.values()].reduce(
+          (sum, canvas) => sum + canvas.width * canvas.height * 4,
+          0,
+        ),
+        canvasBytes: [...this.previews.values()].reduce(
+          (sum, canvas) => sum + canvas.width * canvas.height * 4,
+          0,
+        ),
+        dimensionEntries: this.dimensions.size,
+      })
+  }
 
   get totalPages(): number {
     return this.document.numPages
@@ -184,15 +233,24 @@ export class PdfDocumentSession {
 
   async getPageDimensions(pageNumber: number): Promise<{ width: number; height: number }> {
     const cached = this.dimensions.get(pageNumber)
+    if (__READER_DIAGNOSTICS__)
+      diagnostics.investigation.cache('dimensions', cached ? 'hits' : 'misses')
     if (cached) return cached
     const page = await this.getPage(pageNumber)
     const viewport = page.getViewport({ scale: 1 })
     const size = { width: viewport.width, height: viewport.height }
+    if (this.closed) throw new Error('PDF session is closed.')
     this.dimensions.set(pageNumber, size)
+    if (__READER_DIAGNOSTICS__) this.reportResources()
     return size
   }
 
   async cancelRender(canvas: HTMLCanvasElement): Promise<void> {
+    this.renderSlots.cancel(canvas)
+    await this.cancelActiveRender(canvas)
+  }
+
+  private async cancelActiveRender(canvas: HTMLCanvasElement): Promise<void> {
     const current = this.activeRenders.get(canvas)
     this.activeRenders.delete(canvas)
     if (!current) return
@@ -219,6 +277,92 @@ export class PdfDocumentSession {
       throw new RangeError(`Page ${pageNumber} is outside this PDF.`)
     }
     return this.document.getPage(pageNumber)
+  }
+
+  async getPageLinks(pageNumber: number): Promise<readonly PdfContentLink[]> {
+    const page = await this.getPage(pageNumber),
+      viewport = page.getViewport({ scale: 1 })
+    const annotations = await page.getAnnotations({ intent: 'display' })
+    if (this.closed) return []
+    const links: PdfContentLink[] = []
+    for (const item of annotations.slice(0, 2000)) {
+      if (
+        item.subtype !== 'Link' ||
+        !Array.isArray(item.rect) ||
+        item.rect.length !== 4 ||
+        !item.rect.every(Number.isFinite)
+      )
+        continue
+      const rect = [
+        ...viewport.convertToViewportPoint(item.rect[0], item.rect[1]),
+        ...viewport.convertToViewportPoint(item.rect[2], item.rect[3]),
+      ]
+      const x = Math.max(0, Math.min(...[rect[0]!, rect[2]!]) / viewport.width),
+        y = Math.max(0, Math.min(rect[1]!, rect[3]!) / viewport.height)
+      const width = Math.min(1 - x, Math.abs(rect[2]! - rect[0]!) / viewport.width),
+        height = Math.min(1 - y, Math.abs(rect[3]! - rect[1]!) / viewport.height)
+      if (width <= 0 || height <= 0) continue
+      let action: DocumentLink = unavailableLink()
+      if (typeof item.url === 'string' || typeof item.unsafeUrl === 'string')
+        action = externalLink(item.url ?? item.unsafeUrl)
+      else if (typeof item.dest === 'string' || Array.isArray(item.dest))
+        action = { kind: 'pdf', destination: item.dest }
+      const label =
+        typeof item.contentsObj?.str === 'string' && item.contentsObj.str.slice(0, 200).trim()
+          ? item.contentsObj.str.slice(0, 200)
+          : action.kind === 'external'
+            ? `External link: ${action.url}`
+            : action.kind === 'pdf'
+              ? 'Go to document destination'
+              : 'Unsupported document link'
+      links.push({ x, y, width, height, label, action })
+    }
+    return links
+  }
+
+  async resolveLinkDestination(
+    destination: string | unknown[],
+  ): Promise<{ pageNumber: number; x?: number; y?: number } | null> {
+    try {
+      const resolved =
+        typeof destination === 'string'
+          ? await this.document.getDestination(destination)
+          : destination
+      const pageNumber = await this.resolveDestinationPage(resolved)
+      if (!resolved || !pageNumber || pageNumber < 1 || pageNumber > this.totalPages || this.closed)
+        return null
+      const page = await this.getPage(pageNumber),
+        viewport = page.getViewport({ scale: 1 })
+      await this.getPageDimensions(pageNumber)
+      const mode = (resolved[1] as { name?: string } | undefined)?.name
+      if (!['XYZ', 'Fit', 'FitB', 'FitH', 'FitBH', 'FitV', 'FitBV', 'FitR'].includes(mode ?? ''))
+        return null
+      let x: number | undefined, y: number | undefined
+      if (mode === 'XYZ') {
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+        y = typeof resolved[3] === 'number' ? resolved[3] : undefined
+      } else if (mode === 'FitH' || mode === 'FitBH')
+        y = typeof resolved[2] === 'number' ? resolved[2] : undefined
+      else if (mode === 'FitV' || mode === 'FitBV')
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+      else if (mode === 'FitR') {
+        x = typeof resolved[2] === 'number' ? resolved[2] : undefined
+        y = typeof resolved[5] === 'number' ? resolved[5] : undefined
+      }
+      if ((x !== undefined && !Number.isFinite(x)) || (y !== undefined && !Number.isFinite(y)))
+        return null
+      const point = viewport.convertToViewportPoint(x ?? page.view[0]!, y ?? page.view[3]!)
+      const [a, b, c, d] = viewport.transform ?? [1, 0, 0, -1]
+      const viewportX = (x !== undefined && a !== 0) || (y !== undefined && c !== 0)
+      const viewportY = (x !== undefined && b !== 0) || (y !== undefined && d !== 0)
+      return {
+        pageNumber,
+        ...(viewportX ? { x: Math.max(0, Math.min(1, point[0]! / viewport.width)) } : {}),
+        ...(viewportY ? { y: Math.max(0, Math.min(1, point[1]! / viewport.height)) } : {}),
+      }
+    } catch {
+      return null
+    }
   }
 
   private async resolveDestinationPage(
@@ -290,7 +434,7 @@ export class PdfDocumentSession {
 
       const page = await this.getPage(pageNumber)
       const content = await page.getTextContent()
-      const text = indexPdfText(content.items.map((item) => ('str' in item ? item.str : ''))).text
+      const text = canonicalPdfText(content.items.map((item) => ('str' in item ? item.str : '')))
       if (!text) continue
       textPageCount += 1
       for (const match of findTextMatches(text, query, maxMatches - matches.length)) {
@@ -312,8 +456,34 @@ export class PdfDocumentSession {
   }
 
   async render(request: PdfRenderRequest): Promise<PdfRenderResult> {
-    await this.cancelRender(request.canvas)
+    const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.render') : undefined
+    const pixelOwner = __READER_DIAGNOSTICS__ ? {} : undefined
+    const requestTiming = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.begin('pdf.render-request')
+      : undefined
+    try {
+      const result = await this.renderPage(request, requestTiming, pixelOwner)
+      requestTiming?.finish()
+      finish?.()
+      return result
+    } catch (error) {
+      requestTiming?.finish(diagnosticOutcome(error))
+      finish?.(diagnosticOutcome(error))
+      throw error
+    } finally {
+      if (pixelOwner) diagnostics.release(pixelOwner)
+    }
+  }
+  private async renderPage(
+    request: PdfRenderRequest,
+    requestTiming?: ReturnType<typeof diagnostics.investigation.begin>,
+    pixelOwner?: object,
+  ): Promise<PdfRenderResult> {
+    await this.cancelActiveRender(request.canvas)
+    this.assertRenderCurrent(request.canvas)
+    requestTiming?.start()
     const page = await this.getPage(request.pageNumber)
+    this.assertRenderCurrent(request.canvas)
     const baseViewport = page.getViewport({ scale: 1 })
 
     const scale = resolvePdfScale(
@@ -331,6 +501,10 @@ export class PdfDocumentSession {
 
     request.canvas.width = Math.floor(viewport.width * outputScale)
     request.canvas.height = Math.floor(viewport.height * outputScale)
+    if (__READER_DIAGNOSTICS__ && pixelOwner)
+      diagnostics.resources(pixelOwner, {
+        canvasBytes: request.canvas.width * request.canvas.height * 4,
+      })
     request.canvas.style.width = `${Math.floor(viewport.width)}px`
     request.canvas.style.height = `${Math.floor(viewport.height)}px`
 
@@ -361,6 +535,7 @@ export class PdfDocumentSession {
 
       if (request.textLayer) {
         const textContent = await page.getTextContent()
+        this.assertRenderCurrent(request.canvas)
         const textLayer = new this.pdfjs.TextLayer({
           textContentSource: textContent,
           container: request.textLayer,
@@ -390,7 +565,14 @@ export class PdfDocumentSession {
   close(): Promise<void> {
     if (this.closing) return this.closing
     this.closed = true
-    this.closing = this.releaseResources()
+    this.renderSlots.close()
+    if (__READER_DIAGNOSTICS__) diagnostics.release(this)
+    this.closing = __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.track('pdf.release', async (start) => {
+          start()
+          return this.releaseResources()
+        })
+      : this.releaseResources()
     return this.closing
   }
 
@@ -405,7 +587,11 @@ export class PdfDocumentSession {
     try {
       await this.document.cleanup()
     } finally {
-      await this.loadingTask.destroy()
+      try {
+        await this.loadingTask.destroy()
+      } finally {
+        if (__READER_DIAGNOSTICS__) diagnostics.release(this.loadingTask)
+      }
     }
   }
 }
@@ -421,8 +607,12 @@ export async function openPdfDocument(
   const data = new Uint8Array(await file.arrayBuffer())
   signal?.throwIfAborted()
   const loadingTask = pdfjs.getDocument({ data })
+  if (__READER_DIAGNOSTICS__) diagnostics.resources(loadingTask, { pdfWorkerOwners: 1 })
   let destruction: Promise<void> | undefined
-  const destroyLoading = () => (destruction ??= loadingTask.destroy())
+  const destroyLoading = () =>
+    (destruction ??= loadingTask.destroy().finally(() => {
+      if (__READER_DIAGNOSTICS__) diagnostics.release(loadingTask)
+    }))
   let rejectAbort!: (reason: DOMException) => void
   const cancelled = new Promise<never>((_resolve, reject) => {
     rejectAbort = reject
@@ -489,6 +679,7 @@ export async function readPdfTitle(
     const data = new Uint8Array(await file.arrayBuffer())
     if (signal?.aborted) return null
     task = pdfjs.getDocument({ data })
+    if (__READER_DIAGNOSTICS__) diagnostics.resources(task, { pdfWorkerOwners: 1 })
     task.onPassword = abort
     signal?.addEventListener('abort', abort, { once: true })
     const document = await task.promise
@@ -509,5 +700,6 @@ export async function readPdfTitle(
   } finally {
     signal?.removeEventListener('abort', abort)
     await task?.destroy().catch(() => undefined)
+    if (__READER_DIAGNOSTICS__ && task) diagnostics.release(task)
   }
 }

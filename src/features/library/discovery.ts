@@ -1,3 +1,4 @@
+import { diagnostics, diagnosticOutcome } from '../diagnostics/recorder'
 import type { BrowserLibrarySelection } from './browser-selection'
 
 export type DocumentFormat = 'PDF' | 'EPUB'
@@ -107,7 +108,7 @@ async function yieldToBrowser(): Promise<void> {
   await new Promise<void>((resolve) => globalThis.setTimeout(resolve, 0))
 }
 
-export async function discoverDocuments(
+async function discover(
   selection: BrowserLibrarySelection,
   options: DiscoveryOptions = {},
 ): Promise<DiscoveryResult> {
@@ -219,5 +220,33 @@ export async function discoverDocuments(
     documents,
     problems,
     scanned,
+  }
+}
+
+/** Scan duration includes asynchronous traversal/yields, never document names. */
+export async function discoverDocuments(
+  selection: BrowserLibrarySelection,
+  options: DiscoveryOptions = {},
+) {
+  const finish = __READER_DIAGNOSTICS__ ? diagnostics.start('library.scan') : undefined
+  let first = __READER_DIAGNOSTICS__ ? diagnostics.start('library.first-listing') : undefined
+  try {
+    const result = await discover(selection, {
+      ...options,
+      onProgress(progress) {
+        if (progress.supported && first) {
+          first()
+          first = undefined
+        }
+        options.onProgress?.(progress)
+      },
+    })
+    finish?.(result.status === 'cancelled' ? 'cancelled' : 'completed')
+    return result
+  } catch (error) {
+    finish?.(diagnosticOutcome(error))
+    throw error
+  } finally {
+    first?.(options.signal?.aborted ? 'cancelled' : 'unavailable')
   }
 }

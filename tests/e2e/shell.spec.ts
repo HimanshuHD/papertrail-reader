@@ -1,4 +1,9 @@
-import { libraryAction, openAnnotationActions, waitForWorkspaceReady } from '../fixtures/browser'
+import {
+  libraryAction,
+  openAnnotationActions,
+  waitForWorkspaceReady,
+  settleReaderLayout,
+} from '../fixtures/browser'
 import { createPdfFixture } from '../fixtures/pdf'
 import { expect, test } from '@playwright/test'
 import type { Page, TestInfo, Locator } from '@playwright/test'
@@ -46,7 +51,34 @@ test('EPUB text reader sanitizes local chapters, navigates and disposes on sourc
   expect(titleBounds!.y).toBeGreaterThanOrEqual(openerBounds!.y + openerBounds!.height)
   const frame = reader.frameLocator('iframe')
   await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
-  await expect(reader.locator('iframe')).toHaveAttribute('sandbox', 'allow-same-origin')
+  // Parent-owned link callbacks need a scripting-capable frame in WebKit.
+  // Author code remains forbidden by the first-head CSP and rebuilt allowlist.
+  await expect(reader.locator('iframe')).toHaveAttribute(
+    'sandbox',
+    'allow-same-origin allow-scripts',
+  )
+  await expect(frame.locator('head > :first-child')).toHaveAttribute(
+    'http-equiv',
+    'Content-Security-Policy',
+  )
+  await expect(frame.locator('meta[http-equiv="Content-Security-Policy"]')).toHaveAttribute(
+    'content',
+    /script-src 'none'; script-src-attr 'none'/,
+  )
+  const scriptBlocked = await frame.locator('body').evaluate((body) => {
+    const doc = body.ownerDocument
+    const script = doc.createElement('script')
+    script.textContent = 'document.documentElement.dataset.epubScriptProbe="ran"'
+    doc.head.append(script)
+    const button = doc.createElement('button')
+    button.setAttribute('onclick', 'document.documentElement.dataset.epubScriptProbe="ran"')
+    body.append(button)
+    button.click()
+    script.remove()
+    button.remove()
+    return !doc.documentElement.hasAttribute('data-epub-script-probe')
+  })
+  expect(scriptBlocked).toBe(true)
   expect(await frame.locator('script,img,iframe,style[src],link[href^="https:"]').count()).toBe(0)
   expect(await page.evaluate(() => Reflect.get(window, 'epubAttack'))).toBeUndefined()
   await reader.getByRole('button', { name: 'Next chapter' }).click()
@@ -209,7 +241,8 @@ test('EPUB preserves local formatting by default and keeps mode anchors and side
   await toggle.click()
   await expect(frame.locator('img')).toHaveCount(0)
   await expect(frame.locator('p').first()).toHaveCSS('text-align', 'start')
-  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  // Cross-mode restoration keeps a clipped text anchor visible at the top.
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(Math.max(0, anchor.offset), 0)
   await next.click()
   await expect(frame.getByRole('heading', { name: 'Second chapter' })).toBeVisible()
   await toggle.click()
@@ -290,7 +323,8 @@ for (const kind of ['nav', 'ncx'] as const) {
         .poll(() => frame.locator('body').evaluate((el) => el.getBoundingClientRect().width))
         .toBeLessThanOrEqual(481)
     const area = await reader.locator('.epub-container').boundingBox()
-    await page.mouse.click(area!.x + area!.width / 2, area!.y + area!.height - 20)
+    // Click the reader edge, clear of the bottom-docked diagnostics launcher.
+    await page.mouse.click(area!.x + 8, area!.y + area!.height - 20)
     await expect(reader.getByRole('heading', { name: 'Typography', exact: true })).toHaveCount(0)
     await reader.getByRole('switch', { name: 'Text-only view' }).click()
     await expect(frame.getByRole('heading', { name: 'First chapter' })).toBeVisible()
@@ -427,7 +461,7 @@ test('EPUB retains a character inside a long paragraph through typography, panel
   await expect(
     reader.frameLocator('iframe').getByRole('heading', { name: 'Long chapter' }),
   ).toBeVisible()
-  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(anchor.offset, 0)
+  await expect.poll(() => epubTextOffset(reader, anchor)).toBeCloseTo(Math.max(0, anchor.offset), 0)
   await noOverflow(page)
 })
 
@@ -671,6 +705,7 @@ test('PDF highlights and notes persist through the contextual toolbar and annota
       'false',
     )
     await page.getByRole('button', { name: 'Hide library' }).click()
+    await settleReaderLayout(page.locator('.reader-layout'))
   }
   const bytes = createPdfFixture(2, undefined, true)
   await select('highlights.pdf', bytes)
@@ -766,6 +801,7 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
     .getByRole('button', { name: 'PDF: rotated.pdf', exact: true })
     .click()
   await page.getByRole('button', { name: 'Hide library' }).click()
+  await settleReaderLayout(page.locator('.reader-layout'))
   const layer = page.locator('[data-pdf-page="1"] .textLayer')
   await expect(page.locator('[data-pdf-page="1"]')).toHaveAttribute('data-render-state', 'ready')
   await layer.evaluate((element) => {
@@ -779,10 +815,24 @@ test('PDF highlights align on rotated pages and rebuild after virtualized render
   const overlay = page.locator('[data-pdf-page="1"] .pdf-saved-highlight').first()
   await expect(overlay).toBeVisible()
   const aligned = async () => {
-    const expected = await layer.locator('span').first().boundingBox(),
-      actual = await overlay.boundingBox()
-    expect(Math.abs(actual!.x - expected!.x)).toBeLessThan(3)
-    expect(Math.abs(actual!.y - expected!.y)).toBeLessThan(3)
+    await expect(overlay).toBeVisible()
+    // A rotated span's layout box differs from the actual selected glyph Range.
+    // Read both geometries in one frame; keep the same pixel tolerance.
+    const errors = await layer.evaluate((element) => {
+      const span = element.querySelector('span')!
+      const overlay = element.closest('.pdf-page')!.querySelector('.pdf-saved-highlight')!
+      const range = element.ownerDocument.createRange()
+      range.selectNodeContents(span)
+      const expected = range.getBoundingClientRect()
+      const actual = overlay.getBoundingClientRect()
+      return [
+        Math.abs(actual.x - expected.x),
+        Math.abs(actual.y - expected.y),
+        Math.abs(actual.width - expected.width),
+        Math.abs(actual.height - expected.height),
+      ]
+    })
+    for (const error of errors) expect(error).toBeLessThan(3)
   }
   await aligned()
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
@@ -816,7 +866,9 @@ test('home and app respond in both themes without overflow', async ({ page }, in
     await expect(page).toHaveURL(/#\/app$/)
     await expect(page.locator('[id$="reader-title"]:visible')).toBeVisible()
     await noOverflow(page)
-    const sidebar = await page.getByRole('complementary').boundingBox()
+    const sidebar = await page
+      .getByRole('complementary', { name: 'Document library', exact: true })
+      .boundingBox()
     const title = await page.locator('[id$="reader-title"]:visible').boundingBox()
     expect(sidebar).not.toBeNull()
     expect(title).not.toBeNull()
@@ -850,7 +902,9 @@ test('empty reader survives sidebar collapse and source actions remain available
   await page.keyboard.press('Escape')
 
   await page.getByRole('button', { name: 'Hide library' }).click()
-  await expect(page.getByRole('complementary')).toHaveCount(0)
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toHaveCount(0)
   await expect(page.locator('[id$="reader-title"]:visible')).toHaveText('Welcome to PaperTrail')
   await noOverflow(page)
 
@@ -872,9 +926,13 @@ test('keyboard entry, sidebar focus restoration, theme persistence and browser h
   await page.keyboard.press('Escape')
   const libraryToggle = page.getByRole('button', { name: 'Show library' })
   await expect(libraryToggle).toBeFocused()
-  await expect(page.getByRole('complementary')).toHaveCount(0)
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toHaveCount(0)
   await page.keyboard.press('Enter')
-  await expect(page.getByRole('complementary')).toBeVisible()
+  await expect(
+    page.getByRole('complementary', { name: 'Document library', exact: true }),
+  ).toBeVisible()
 
   const toggle = page.getByRole('button', { name: 'Dark mode' })
   await toggle.focus()

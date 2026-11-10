@@ -69,7 +69,10 @@ it('captures complete multi-line and multi-page text selections with source offs
     second.layer.firstChild!.firstChild as Text,
     6,
   )
+  const walk = vi.spyOn(document, 'createTreeWalker')
   const annotation = capturePdfHighlight(root, document.getSelection())
+  expect(walk.mock.calls.filter(([root]) => root === first.layer)).toHaveLength(1)
+  expect(walk.mock.calls.filter(([root]) => root === second.layer)).toHaveLength(1)
   expect(annotation).toMatchObject({
     format: 'PDF',
     segments: [

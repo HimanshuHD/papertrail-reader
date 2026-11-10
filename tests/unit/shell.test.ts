@@ -133,7 +133,7 @@ describe('home and product shell', () => {
     await toggle.trigger('click')
     const opener = wrapper.get('button[aria-label="Show library"]')
     expect(opener.attributes('aria-expanded')).toBe('false')
-    expect(wrapper.find('aside').exists()).toBe(false)
+    expect(wrapper.find('#document-sidebar').exists()).toBe(false)
     expect(wrapper.get('[id$="reader-title"]').text()).toBe('Welcome to PaperTrail')
 
     await opener.trigger('click')
@@ -172,7 +172,7 @@ describe('home and product shell', () => {
     await addButton.trigger('keydown', { key: 'Escape' })
     await flushPromises()
     const toggle = wrapper.get('button[aria-controls="document-sidebar"]')
-    expect(wrapper.find('aside').exists()).toBe(false)
+    expect(wrapper.find('#document-sidebar').exists()).toBe(false)
     expect(document.activeElement).toBe(toggle.element)
     expect(wrapper.get('p.sr-only[aria-live="polite"]').text()).toBe('Library hidden.')
     wrapper.unmount()

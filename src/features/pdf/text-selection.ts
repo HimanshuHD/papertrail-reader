@@ -12,6 +12,7 @@
  * https://github.com/mozilla/pdf.js/blob/master/web/text_layer_builder.js
  * Low-level TextLayer rendering does not install this native selection guard.
  */
+import { OwnedRegistrations } from '../diagnostics/owned-registrations'
 import { pdfCaretAt, type PdfCaret } from './selection-caret'
 
 type SelectionGuard = { add: (layer: HTMLElement) => () => void }
@@ -28,6 +29,7 @@ export function bindPdfTextSelection(layer: HTMLElement): () => void {
 }
 
 function createGuard(doc: Document): SelectionGuard {
+  const registrationOwner = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
   const layers = new Map<HTMLElement, HTMLElement>()
   const win = doc.defaultView!
   let previous: Range | undefined
@@ -174,6 +176,7 @@ function createGuard(doc: Document): SelectionGuard {
   doc.addEventListener('keyup', keyup)
   doc.addEventListener('selectionchange', change)
   win.addEventListener('blur', resetAll)
+  registrationOwner?.set('ownedListeners', 8)
   return {
     add(layer) {
       const end = doc.createElement('div')
@@ -196,6 +199,7 @@ function createGuard(doc: Document): SelectionGuard {
         doc.removeEventListener('keyup', keyup)
         doc.removeEventListener('selectionchange', change)
         win.removeEventListener('blur', resetAll)
+        registrationOwner?.dispose()
         guards.delete(doc)
       }
     },

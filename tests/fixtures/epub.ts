@@ -39,14 +39,14 @@ export function createEpubFixture(
 }
 
 /** Local author styling and a self-contained vector illustration, without network dependencies. */
-export function createFormattedEpubFixture() {
+export function createFormattedEpubFixture(paragraphCount = 40) {
   return createEpubFixture({
     manifest:
       '<item id="css" href="styles/book.css" media-type="text/css"/><item id="image" href="images/illustration.svg" media-type="image/svg+xml"/>',
     chapter:
       '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Formatted chapter</title><link rel="stylesheet" href="styles/book.css"/><style>.intro{padding:12px}</style></head><body><h1>Formatted chapter</h1><p class="intro" style="letter-spacing:1px">Author formatting.</p><img src="images/illustration.svg" alt="Local illustration"/>' +
       Array.from(
-        { length: 40 },
+        { length: paragraphCount },
         (_, i) => '<p>Reading paragraph ' + i + '. Local text flows across the reader.</p>',
       ).join('') +
       '</body></html>',
@@ -89,5 +89,96 @@ export function createContentsEpubFixture(kind: 'nav' | 'ncx' = 'nav') {
         '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Second chapter</title></head><body><h1 id="next">Second chapter</h1><p>The next local chapter.</p></body></html>',
       ),
     },
+  })
+}
+
+/** Many small chapters exercise metadata limits without oversized image/text payloads. */
+export function createLargeSpineEpubFixture(count = 844, navigation = true) {
+  const chapters = Array.from({ length: count }, (_, index) => ({
+    id: `chapter-${index}`,
+    href: `chapters/${index}.xhtml`,
+    label: `Section ${index + 1}`,
+  }))
+  const files: Record<string, Uint8Array> = {}
+  for (const chapter of chapters)
+    files[`OPS/${chapter.href}`] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>${chapter.label}</title></head><body><h1>${chapter.label}</h1><p id="passage">Reading passage in ${chapter.label}.</p></body></html>`,
+    )
+  if (navigation)
+    files['OPS/toc.xhtml'] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><ol>${chapters.map((c) => `<li><a href="${c.href}#passage">${c.label}</a></li>`).join('')}</ol></nav></body></html>`,
+    )
+  return createEpubFixture({
+    packageBody: `<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">large-spine-fixture</dc:identifier><dc:title>Large spine test book</dc:title><dc:language>en</dc:language></metadata><manifest>${chapters.map((c) => `<item id="${c.id}" href="${c.href}" media-type="application/xhtml+xml"/>`).join('')}${navigation ? '<item id="nav" href="toc.xhtml" media-type="application/xhtml+xml" properties="nav"/>' : ''}</manifest><spine>${chapters.map((c) => `<itemref idref="${c.id}"/>`).join('')}</spine></package>`,
+    files,
+  })
+}
+
+/** Detailed vector artwork with a legitimate path larger than the former 64 KiB attribute cap. */
+export function createSvgFidelityEpubFixture() {
+  const d = 'M10 10 L310 10 310 190 10 190 10 10 ' + '10 10 '.repeat(350000) + 'Z'
+  const styles =
+    '<style>.picture{display:block;width:100%;max-width:240px;margin-left:auto;margin-right:auto}h1{text-align:center;font-variant:small-caps}</style>'
+  return createEpubFixture({
+    manifest: '<item id="art" href="art.svg" media-type="image/svg+xml"/>',
+    chapter: `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Vector chapter</title>${styles}</head><body><h1>Vector chapter</h1><img class="picture" src="art.svg" alt="Complete vector illustration"/><p>Text below the illustration.</p></body></html>`,
+    files: {
+      'OPS/art.svg': encode(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200" viewBox="0 0 320 200"><style>.art{fill:#123456;stroke:none}</style><path class="art" d="${d}"/></svg>`,
+      ),
+      'OPS/two.xhtml': encode(
+        `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Wrapper chapter</title>${styles}</head><body><h1>Wrapper chapter</h1><svg xmlns="http://www.w3.org/2000/svg" class="picture" viewBox="0 0 320 200" width="320" height="200"><title>Complete vector illustration</title><image href="art.svg" width="320" height="200"/></svg><p>Text below the wrapper.</p></body></html>`,
+      ),
+    },
+  })
+}
+
+export function createImageHeavyEpubFixture() {
+  const files: Record<string, Uint8Array> = {}
+  let manifest = '',
+    spine = ''
+  for (let chapter = 0; chapter < 3; chapter++) {
+    manifest += `<item id="c${chapter}" href="c${chapter}.xhtml" media-type="application/xhtml+xml"/>`
+    spine += `<itemref idref="c${chapter}"/>`
+    let content = `<h1>Illustrated section ${chapter + 1}</h1>`
+    for (let image = 0; image < 65; image++) {
+      const id = `image-${chapter}-${image}`
+      manifest += `<item id="${id}" href="${id}.svg" media-type="image/svg+xml"/>`
+      files[`OPS/${id}.svg`] = encode(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="10"><rect width="20" height="10"/></svg>',
+      )
+      content += `<img src="${id}.svg" alt="Illustration ${image + 1}"/>`
+    }
+    files[`OPS/c${chapter}.xhtml`] = encode(
+      `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Illustrated section ${chapter + 1}</title></head><body>${content}</body></html>`,
+    )
+  }
+  return createEpubFixture({
+    files,
+    packageBody: `<package xmlns="http://www.idpf.org/2007/opf" version="3.0"><metadata/><manifest>${manifest}</manifest><spine>${spine}</spine></package>`,
+  })
+}
+
+/** Generated geometric fonts expose deterministic width metrics without private book assets. */
+export async function createFontEpubFixture(
+  format: 'ttf' | 'woff' | 'woff2' | 'otf',
+  invalid = false,
+) {
+  const fonts = await import('./fonts/generated-font')
+  const encoded = {
+    ttf: fonts.ttfBase64,
+    woff: fonts.woffBase64,
+    woff2: fonts.woff2Base64,
+    otf: fonts.otfBase64,
+  }[format]
+  const font = invalid ? new Uint8Array([0, 1, 2]) : new Uint8Array(Buffer.from(encoded, 'base64'))
+  const family = 'PaperTrail Generated Fixture'
+  const face = (extra = '') =>
+    `@font-face{font-family:"${family}";src:url(font.${format});${extra}}`
+  const chapter = `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Embedded font chapter</title><style>${face()}${face('font-weight:700')}${face('font-style:italic')}body{font-family:"${family}";font-size:20px}p{font-family:"${family}"}#probe{font-size:20px;white-space:nowrap}</style></head><body><h1>Embedded font chapter</h1><p><span id="probe">iii</span></p><p><strong>Bold mapping</strong> <em>Italic mapping</em></p>${Array.from({ length: 50 }, (_, i) => `<p id="font-line-${i}">Reading line ${i}. Stable text for position restoration.</p>`).join('')}</body></html>`
+  return createEpubFixture({
+    chapter,
+    manifest: `<item id="font" href="font.${format}" media-type="font/${format}"/>`,
+    files: { [`OPS/font.${format}`]: font },
   })
 }

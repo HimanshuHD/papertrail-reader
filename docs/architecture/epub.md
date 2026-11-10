@@ -1,8 +1,17 @@
-# EPUB implementation — #12
+# EPUB architecture
+
+Publication metadata supports at most 1,024 linear reading-order sections, with
+2,048 optional Contents entries. Empty reading orders and over-limit counts have
+distinct feedback. Archive, decompression, text/image/CSS byte and structural
+budgets remain independent. A book passing the spine bound can still encounter a
+separate resource limit. Large-spine generated acceptance and boundary checks are
+in the manual reader suite and publication tests (#280).
+
+## EPUB implementation — #12
 
 ## Contents and session typography — #131
 
-`navigation.ts` extracts nested EPUB 3 XHTML toc and EPUB 2 NCX labels/targets only, after optional local resources are size/CRC/XML verified. Navigation has a 1 MiB resource, 8192 elements, 512 entries and depth 16 budget. Invalid or unavailable nav falls through to declared NCX, then verified linear-spine chapter order. Malformed optional navigation does not prevent reading; cancellation remains observable. Root namespaces and toc ownership are checked; no original navigation markup or URLs are inserted into the UI.
+`navigation.ts` extracts nested EPUB 3 XHTML toc and EPUB 2 NCX labels/targets only, after optional local resources are size/CRC/XML verified. Navigation has a 1 MiB resource, 8192 elements, 2,048 entries and depth 16 budget. Invalid or unavailable nav falls through to declared NCX, then verified linear-spine chapter order. Malformed optional navigation does not prevent reading; cancellation remains observable. Root namespaces and toc ownership are checked; no original navigation markup or URLs are inserted into the UI.
 
 Publication preparation resolves targets only to verified linear chapters and unique IDs that survive reconstruction. IDs remain available in both rendering modes; engine/application reserved IDs and duplicates are excluded from destinations. Fragment navigation validates the chapter's target set, uses DOM `getElementById` rather than interpolated selectors/engine URLs, and scrolls the owned container. Same-chapter navigation retains its mounted iframe. The Contents hierarchy uses native lists/buttons, focus indication and an active navigation/current-chapter marker; live CFI/section tracking remains #132.
 
@@ -90,3 +99,128 @@ After reflow, retain the restored logical character and its viewport offset rath
 Owner merged PR #138 as `fa709356eee6a08bdac41e76986aa0cc46d1c610`. Accepted source `3e4fef1` passed Frontend CI 37229583694 and Browser E2E 37229662269 (152 passed, zero failed/flaky, eight intentional duplicate skips). #12/#134 are closed/completed and stale active labels are removed. EPUB milestone 3 is verified open with zero open and ten completed issues; owner closure is now appropriate.
 
 Deferred observations are tracked in [#139](https://github.com/HimanshuHD/papertrail-reader/issues/139), status:new under reliability #16/roadmap #78. Roadmap 2 remains open for annotations, reliability/browser and delivery scope. #129/#130 remain Roadmap 3 Preparation planning with owner milestone assignment pending. Earlier review/merge/count checkpoints are superseded.
+
+## SVG fidelity and rolling chapter resources (#282/#284)
+
+The runtime validates archive/spine metadata and bounded text across the reading
+order. Formatting and illustration resources are prepared in a rolling window:
+current, previous and next chapter. The cache retains at most three prepared
+chapters under a shared 96 MiB budget counting serialized markup and image Blob
+bytes. Individual chapter limits remain independent. Speculative neighbors are
+skipped when the shared budget is exhausted; foreground preparation can reclaim
+unneeded neighbors. This is not a process/decoded-image/GPU RAM measurement.
+
+An awaited EPUB.js spine serialization hook supplies rebuilt XHTML before loading
+its iframe. Chapter navigation keeps the full-reader loading cover visible until
+the replacement chapter is ready; controls remain busy. The rolling resource cache
+reduces preparation work without exposing incomplete chapter painting. The white
+page fills the reading viewport even for short chapters. Iframe/body dimensions
+avoid a second vertical scrollbar; the outer reading container owns scrolling.
+Initial opening, mode changes and reading-position restoration retain their own
+loading states. Adjacent resources prepare in the background, with sequential SVG
+warm-up and yields between resources; raster bitmaps are not forcibly decoded in
+advance. Obsolete jobs are cancelled. Resources outside the new window are released
+after the departing view is removed. Revisiting a retained neighbor reuses its
+prepared markup and image URLs. Warm document-tab retention remains unchanged.
+
+Each active chapter admits up to 128 validated images, 32 MiB of image input and
+32 MiB of owned image Blob data. Missing/unsupported paths do not consume accepted
+image slots; repeated CSS/HTML references are deduplicated. Validation attempts
+are separately bounded to 256 resources and 32 MiB, including rejected inputs. Other images remain
+readable placeholders with a bounded notice. These are resource/byte bounds, not
+claims about actual renderer, decoded-image, process or GPU memory. Archive limits
+and the 8 MiB individual-image bound remain independent.
+
+SVG input now allows 4 MiB. Long valid path/points attributes are preserved; SVG
+presentation styles and classes are rebuilt with local-fragment-only resource
+references. Geometry is bounded across a resource (1,000,000 numbers, 100,000 path
+commands, finite coordinate magnitudes at most 1e9). Source structure remains
+20,000 elements/depth 64; reference expansion is bounded to 100,000 estimated
+nodes with recursive references rejected. Existing image dimension/pixel limits
+remain. Unsupported drawing elements (including scripts/foreign content) cause explicit
+illustration omission rather than silent partial reconstruction. Remote requests
+remain excluded.
+
+Simple SVG image wrappers are rebuilt as application-owned SVG/image elements
+using only approved layout attributes and owned Blob references. Source wrapper
+nodes are never inserted. Author classes, sanitized inline layout, viewBox and
+aspect ratio survive. Low-specificity responsive rules replace the engine's
+paginated image adjustment, preserving narrower author maximum widths and
+centering. Arbitrary inline drawing SVG and every possible SVG feature are not
+promised by this policy.
+
+Unsupported images provide alternative text and an accessible notice. A formatted
+opening failure offers explicit text-only retry. CRC/read errors, cancellation and
+unexpected exceptions are not swallowed. Disposal clears cached chapter markup,
+styles and URL ownership, including pending preparation. Embedded fonts remain
+separate work in #286; font loading is not enabled by these changes.
+
+## Embedded fonts (#286)
+
+Formatted chapters may rebuild manifest-local `@font-face` sources for TTF,
+CFF OpenType, WOFF and WOFF2. Only verified owned Blob URLs enter the font source
+map; the image-source map remains independent. Approved family, weight, style,
+stretch and unicode-range descriptors survive. Remote URLs, `local()` alternatives
+and imports are excluded; a valid local alternative can remain. Conditional
+font-face declarations inside conditional rules are omitted with a notice, preventing
+a new deferred font load from shifting restored text after a resize. Formatted chapter
+CSP allows Blob fonts only when a font was admitted. Text-only mode keeps fonts
+blocked and creates no font resources.
+
+Admission limits are 4 MiB encoded input per font, 16 MiB declared expanded data,
+128 tables, 16 resources/faces and 16 MiB font Blob data per chapter. Validation work
+is capped separately at 32 resources/32 MiB. SFNT/WOFF table ranges, overlap and
+container lengths are checked. WOFF2 fixed-header bounds are checked; its variable
+directory/compressed outlines are left to the browser decoder. These checks do not
+promise that every admitted container decodes or provide a physical-memory limit.
+Encrypted/obfuscated books still receive the existing explicit unsupported error;
+no encryption declaration is bypassed or silently ignored.
+
+A publication-local reference-counted pool shares verified font URLs across
+retained chapters. Chapter entries conservatively count their referenced font
+bytes toward the existing 96 MiB markup/resource budget, even when URLs are shared.
+Font admission reserves the existing full image allowance under cache pressure;
+fonts that do not fit fall back with a notice instead of displacing illustrations.
+Cancellation, eviction and close release font references; the final owner revokes
+the URL. No font payloads or source paths are persisted.
+
+After display, an explicit gate loads the chapter's at-most-16 faces and awaits
+FontFaceSet readiness for up to three seconds before reframing the mounted view
+and restoring the reading position. EPUB.js content hooks alone are not an awaited
+readiness boundary. Decoder rejection/timeout removes font-face rules before
+restoration so late font loads cannot change the restored layout. An accessible
+Font notice is separate from illustration notices. Reader font-size, line-spacing
+and reading-width overrides/reset remain authoritative.
+
+Generated font metrics/mappings, mode changes, chapter navigation, warm tabs,
+reconnect and fallback have manual browser acceptance cases. Container/policy,
+shared ownership, cancellation and readiness cleanup have unit coverage. Browser
+acceptance and owner preview must pass before this scope is declared delivered.
+
+## Author heading groups and semantic selectors
+
+The rebuilt element allowlist retains `hgroup`, preserving the author's selector
+hierarchy for grouped heading numbers/titles, inherited caps/alignment, boldness
+and group spacing. No generic title centering, capitalization or margin theme is
+added. The low-specificity body default establishes a flow root so child heading
+margins stay inside the page; an authored body display rule remains authoritative.
+
+Bounded EPUB `type` and XML `lang` metadata survive reconstruction. Known namespace
+declarations are retained, and their semantic attribute selectors are normalized
+to application-owned `data-reader-epub-type`/`data-reader-xml-lang` mirrors. These
+selectors therefore work when the engine uses HTML `srcdoc`, whose parser does
+not retain XML attribute namespace identity. Source attributes cannot supply the
+owned mirrors. Unknown namespace selectors/default namespaces are omitted rather
+than broadened into a different match.
+
+Approved caps/numeric/ligature/font-feature and hyphenation declarations are
+retained. Bounded `@supports` rules follow the same selector/declaration filtering
+as media rules; conditional font-face definitions remain omitted with a notice.
+Script/resource restrictions, CRC/byte budgets, source text, node identifiers and
+reader-selected typography behavior remain independent.
+
+FontFaceSet inspection/readiness uses native iteration rather than callback-based
+`forEach`, avoiding sandboxed-frame callback execution restrictions. Generated
+heading-group tests cover the semantic selectors, bold hierarchy, spacing, caps,
+mode changes, resize and page bounds. These tests are not a claim of pixel-identical
+rendering to another reader or acceptance of every EPUB CSS feature.

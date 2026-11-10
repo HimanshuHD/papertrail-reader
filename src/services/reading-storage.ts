@@ -34,62 +34,68 @@ export class IndexedDbReadingStorage implements ReadingStorage {
     fingerprint: string,
     name: string,
   ): Promise<{ record: ReadingRecord; ambiguous: boolean }> {
-    return this.database.transaction((store, done) => {
-      const request = store.index('fingerprint').getAll(fingerprint)
-      request.onsuccess = () => {
-        const matches = request.result as ReadingRecord[]
-        const valid = matches.filter(
-          (record) =>
-            (record.version === 1 || record.version === 2) &&
-            Number.isInteger(record.page) &&
-            record.page >= 1,
-        )
-        if (matches.length === 1 && valid.length === 1) {
-          const record: ReadingRecord = {
-            ...valid[0]!,
-            version: 2,
-            view: normalizePdfView(valid[0]!.view),
-            anchor: normalizePdfAnchor(valid[0]!.anchor),
+    return this.database.transaction(
+      (store, done) => {
+        const request = store.index('fingerprint').getAll(fingerprint)
+        request.onsuccess = () => {
+          const matches = request.result as ReadingRecord[]
+          const valid = matches.filter(
+            (record) =>
+              (record.version === 1 || record.version === 2) &&
+              Number.isInteger(record.page) &&
+              record.page >= 1,
+          )
+          if (matches.length === 1 && valid.length === 1) {
+            const record: ReadingRecord = {
+              ...valid[0]!,
+              version: 2,
+              view: normalizePdfView(valid[0]!.view),
+              anchor: normalizePdfAnchor(valid[0]!.anchor),
+            }
+            store.put(record)
+            done({ record, ambiguous: false })
+            return
           }
-          store.put(record)
-          done({ record, ambiguous: false })
-          return
+          const record: ReadingRecord = {
+            id: crypto.randomUUID(),
+            version: 2,
+            view: normalizePdfView(),
+            fingerprint,
+            name,
+            page: 1,
+            updatedAt: Date.now(),
+          }
+          // Never choose between ambiguous/corrupt matches or overwrite their positions.
+          if (matches.length === 0) store.add(record)
+          done({ record, ambiguous: matches.length > 0 })
         }
-        const record: ReadingRecord = {
-          id: crypto.randomUUID(),
-          version: 2,
-          view: normalizePdfView(),
-          fingerprint,
-          name,
-          page: 1,
-          updatedAt: Date.now(),
-        }
-        // Never choose between ambiguous/corrupt matches or overwrite their positions.
-        if (matches.length === 0) store.add(record)
-        done({ record, ambiguous: matches.length > 0 })
-      }
-    })
+      },
+      __READER_DIAGNOSTICS__ ? 'reading.restore' : undefined,
+    )
   }
 
   save(id: string, page: number, view?: PdfViewSettings, anchor?: PdfReadingAnchor): Promise<void> {
     if (!Number.isInteger(page) || page < 1)
       return Promise.reject(new RangeError('Invalid reading page.'))
-    return this.database.transaction<void>((store, done) => {
-      const request = store.get(id)
-      request.onsuccess = () => {
-        const record = request.result as ReadingRecord | undefined
-        // Cleared storage starts fresh on reselection; do not resurrect deleted metadata.
-        if (record && (record.version === 1 || record.version === 2))
-          store.put({
-            ...record,
-            version: 2,
-            page,
-            view: normalizePdfView(view ?? record.view),
-            anchor: normalizePdfAnchor(anchor),
-            updatedAt: Date.now(),
-          })
-        done(undefined)
-      }
-    })
+    return this.database.transaction<void>(
+      (store, done) => {
+        const request = store.get(id)
+        request.onsuccess = () => {
+          const record = request.result as ReadingRecord | undefined
+          // Cleared storage starts fresh on reselection; do not resurrect deleted metadata.
+          if (record && (record.version === 1 || record.version === 2))
+            store.put({
+              ...record,
+              version: 2,
+              page,
+              view: normalizePdfView(view ?? record.view),
+              anchor: normalizePdfAnchor(anchor),
+              updatedAt: Date.now(),
+            })
+          done(undefined)
+        }
+      },
+      __READER_DIAGNOSTICS__ ? 'reading.write' : undefined,
+    )
   }
 }

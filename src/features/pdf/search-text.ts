@@ -1,3 +1,4 @@
+import { TextSourceMapBuilder } from '../annotations/text-source-map'
 export interface SearchContext {
   before: string
   term: string
@@ -12,28 +13,32 @@ export interface TextMatch {
   context: SearchContext
 }
 
-/** Same canonical text for PDF extraction and rendered text nodes; retain source offsets. */
+/** Canonical text with UTF-16 source offsets, built without growing-string scans. */
 export function indexPdfText(parts: readonly string[]) {
-  let text = ''
-  const positions: ({ part: number; offset: number } | null)[] = []
-  function append(char: string, position: { part: number; offset: number } | null) {
+  const characters: string[] = []
+  const source = new TextSourceMapBuilder()
+  function append(char: string, part: number | null, offset = 0) {
     if (/\s/u.test(char)) {
-      if (!text || text.endsWith(' ')) return
+      if (!characters.length || characters.at(-1) === ' ') return
       char = ' '
     }
-    text += char
-    positions.push(position)
+    characters.push(char)
+    source.append(part, offset)
   }
   parts.forEach((part, index) => {
     if (index) append(' ', null)
-    for (let offset = 0; offset < part.length; offset++)
-      append(part[offset]!, { part: index, offset })
+    for (let offset = 0; offset < part.length; offset++) append(part[offset]!, index, offset)
   })
-  if (text.endsWith(' ')) {
-    text = text.slice(0, -1)
-    positions.pop()
+  if (characters.at(-1) === ' ') {
+    characters.pop()
+    source.trimLast()
   }
-  return { text, positions }
+  return { text: characters.join(''), source: source.finish() }
+}
+
+/** Equivalent search-only text: no source-position objects or character array. */
+export function canonicalPdfText(parts: readonly string[]) {
+  return parts.join(' ').replace(/\s+/gu, ' ').trim()
 }
 
 export function findTextMatches(text: string, query: string, limit = 200): TextMatch[] {
@@ -70,8 +75,8 @@ export function textLayerMatchRanges(layer: HTMLElement, query: string) {
   while (walker.nextNode()) nodes.push(walker.currentNode as Text)
   const indexed = indexPdfText(nodes.map((node) => node.data))
   return findTextMatches(indexed.text, query).flatMap((match) => {
-    const first = indexed.positions[match.start]
-    const last = indexed.positions[match.end - 1]
+    const first = indexed.source.at(match.start)
+    const last = indexed.source.at(match.end - 1)
     if (!first || !last) return []
     const range = document.createRange()
     range.setStart(nodes[first.part]!, first.offset)

@@ -1,0 +1,13 @@
+# Selection and partial-result fix — #257 / #253
+
+Clean measured source `3bebde4657c5a04a158b26c09e9054c71a98cc31`, tree `91190be6208b6a2e6d1ccba3b8ae51b067366944`. This evidence archive changes no measured application, harness or workflow bytes.
+
+The full manual runner passed Chromium 153.0.8010.0 and Linux WebKit 26.6: **14 browser cases passed, zero failed/flaky, two expected duplicate production-only skips; 24 workload trials completed** (three per mode per engine). Each production workload trial separately asserts query/keyboard exclusion. The new delayed-selection fixture confirms the library stays open until tab selection commits. Numeric failure snapshots omit document labels; closed-page UI is null. [Reviewed summary, artifact manifests, trial/stage values and case outcomes](selection-fix-summary.json).
+
+WebKit's missing Ubuntu shared libraries were downloaded/extracted locally and linked into the isolated downloaded browser bundle. Host-package validation was skipped because these dependencies were not installed system-wide; the actual engine launched and executed all checks. No repository dependencies or deployment workflows changed. This is local Linux Playwright WebKit evidence, not Windows WebKit or installed macOS Safari acceptance.
+
+Separately, a controlled failed CLI workload after one completed trial retained that trial, the `closed` / `epubOpen` failure stage, completed PDF stages and the PDF-only UI snapshot, while returning failure/incomplete coverage. The injected fault was temporary and is not shipped. Report helper regression tests cover partial/missing browser results, a separate functional failure despite complete timings, flaky retries and mismatched attachments. Reprocessing the owner's earlier failed cross-browser report recovers all 24 completed Chromium/Firefox trials and eight groups while retaining failed/incomplete WebKit status.
+
+The original Windows failure on `dc152e8` showed only the PDF tab at the EPUB-heading timeout. The selected-tab barrier addresses the test's premature sidebar transition; no EPUB engine rendering fix or exact Windows root cause is claimed. A fresh owner Windows cross-browser rerun is still required. Existing five-second readiness assertions, content checks and zero retries remain; no forced clicks or blind sleeps were added.
+
+Local `npm run check` passed lint/format/types, 105 pipeline and 442 unit/component tests. These small synthetic workloads do not certify CPU/GPU/process-memory usage, accepted overhead budgets, long documents, native-folder scans or five-minute expiry. #252/#253/#16 residual scope remains open. The original [first checkpoint](README.md) is historical evidence for its own pinned source.

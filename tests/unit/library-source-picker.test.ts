@@ -59,4 +59,22 @@ describe('responsive library actions', () => {
     expect(document.activeElement).toBe(wrapper.get('[aria-label="Library actions"]').element)
     wrapper.unmount()
   })
+  it('dismisses when keyboard focus leaves the menu for another control', async () => {
+    const outside = document.createElement('input')
+    document.body.append(outside)
+    const wrapper = mount(LibrarySourcePicker, { attachTo: document.body, props })
+    try {
+      await wrapper.get('[aria-label="Add local documents"]').trigger('click')
+      await flushPromises()
+      expect(wrapper.find('[role="menu"]').exists()).toBe(true)
+      expect(wrapper.get('[role="menuitem"]').element).toBe(document.activeElement)
+      outside.focus()
+      await flushPromises()
+      expect(wrapper.find('[role="menu"]').exists()).toBe(false)
+      expect(document.activeElement).toBe(outside)
+    } finally {
+      wrapper.unmount()
+      outside.remove()
+    }
+  })
 })

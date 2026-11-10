@@ -1,0 +1,885 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Resources design reference</title>
+    <style>
+      :root {
+        font-family: Arial, sans-serif;
+        color: #183348;
+        background: #eaf0f2;
+        --pt-panel: #fff;
+        --pt-canvas: #f0f5f6;
+        --pt-line: #c7d7dd;
+        --pt-ink: #183348;
+        --pt-muted: #627686;
+        --pt-brand: #23686b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: 26px;
+      }
+      main {
+        width: 650px;
+        margin: auto;
+      }
+      .label {
+        font-size: 12px;
+        color: #627686;
+        margin: 0 0 14px;
+      }
+      .panel {
+        background: #fff;
+        border: 1px solid #c7d7dd;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      header {
+        padding: 17px 20px;
+        display: flex;
+        justify-content: space-between;
+        border-bottom: 1px solid #c7d7dd;
+      }
+      header strong {
+        font-size: 17px;
+      }
+      header small {
+        display: block;
+        color: #627686;
+        font-size: 12px;
+        margin-top: 5px;
+      }
+      .chrome {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+      }
+      .chrome svg,
+      footer svg {
+        width: 19px;
+        height: 19px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .status {
+        background: #f0f5f6;
+        padding: 15px 20px;
+      }
+      .status strong {
+        font-size: 14px;
+      }
+      .status p {
+        font-size: 12px;
+        color: #627686;
+        margin-bottom: 0;
+      }
+      .tabs {
+        padding: 10px 15px;
+        display: flex;
+        gap: 3px;
+        border-block: 1px solid #c7d7dd;
+        font-size: 12px;
+        align-items: center;
+      }
+      .tabs span {
+        padding: 9px 8px;
+      }
+      .tabs .active {
+        color: white;
+        background: #23686b;
+        border-radius: 5px;
+      }
+      .content {
+        padding: 5px 18px 16px;
+        font-size: 13px;
+        line-height: 1.5;
+      }
+      footer {
+        padding: 14px 20px;
+        background: #f0f5f6;
+        border-top: 1px solid #c7d7dd;
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: #627686;
+      }
+      .icons {
+        display: flex;
+        gap: 22px;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:disabled {
+        cursor: default;
+      }
+      h3 {
+        line-height: 1.4;
+      }
+      .prototype-note {
+        font-size: 11px;
+        color: #627686;
+        margin: 12px 0 0;
+      }
+    </style>
+    <style
+      type="text/css"
+      data-vite-dev-id="/workspace/scratch/cfe054ff5c6b/papertrail-reader/src/features/diagnostics/ResourceInvestigation.vue?vue&amp;type=style&amp;index=0&amp;scoped=0585e133&amp;lang.css"
+    >
+      .resource-investigation[data-v-0585e133] {
+        margin-top: 14px;
+        min-width: 0;
+      }
+      .categories[data-v-0585e133] {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 4px;
+        padding: 4px;
+        margin-bottom: 20px;
+        background: var(--pt-canvas);
+        border: 1px solid var(--pt-line);
+        border-radius: 9px;
+      }
+      button[data-v-0585e133] {
+        border: 1px solid var(--pt-line);
+        border-radius: 6px;
+        padding: 7px 10px;
+        background: var(--pt-panel);
+        color: var(--pt-ink);
+        font-size: 12px;
+      }
+      .categories button[data-v-0585e133] {
+        background: transparent;
+        border-color: transparent;
+      }
+      .categories button[aria-selected='true'][data-v-0585e133] {
+        background: var(--pt-panel);
+        border-color: var(--pt-line);
+        font-weight: 600;
+      }
+      button[data-v-0585e133]:disabled {
+        opacity: 0.55;
+      }
+      button[data-v-0585e133]:focus-visible,
+      summary[data-v-0585e133]:focus-visible,
+      [role='tabpanel'][data-v-0585e133]:focus-visible {
+        outline: 2px solid var(--pt-brand);
+        outline-offset: 2px;
+      }
+      h3[data-v-0585e133] {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 0 6px;
+      }
+      p[data-v-0585e133],
+      li[data-v-0585e133] {
+        margin: 8px 0;
+        overflow-wrap: anywhere;
+      }
+      .muted[data-v-0585e133],
+      small[data-v-0585e133],
+      caption[data-v-0585e133],
+      .scope-note[data-v-0585e133] {
+        color: var(--pt-muted);
+        font-size: 12px;
+      }
+      .heading[data-v-0585e133],
+      .controls[data-v-0585e133] {
+        display: flex;
+        align-items: start;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .heading[data-v-0585e133] {
+        justify-content: space-between;
+      }
+      .heading > div[data-v-0585e133]:first-child {
+        flex: 1 1 230px;
+      }
+      .explanation[data-v-0585e133] {
+        background: var(--pt-canvas);
+        border: 1px solid var(--pt-line);
+        border-radius: 8px;
+        padding: 12px;
+        margin: 14px 0;
+        font-size: 12px;
+      }
+      .explanation p[data-v-0585e133]:last-child {
+        margin-bottom: 0;
+      }
+      .metrics[data-v-0585e133] {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        margin: 16px 0;
+        border: 1px solid var(--pt-line);
+        border-radius: 8px;
+      }
+      .metrics > div[data-v-0585e133] {
+        padding: 12px 10px;
+        min-width: 0;
+        overflow-wrap: anywhere;
+      }
+      .metrics > div + div[data-v-0585e133] {
+        border-left: 1px solid var(--pt-line);
+      }
+      .metrics span[data-v-0585e133],
+      small[data-v-0585e133] {
+        display: block;
+      }
+      .metrics span[data-v-0585e133] {
+        color: var(--pt-muted);
+        font-size: 12px;
+      }
+      .metrics strong[data-v-0585e133] {
+        display: block;
+        font-size: 19px;
+        margin: 5px 0;
+        font-variant-numeric: tabular-nums;
+      }
+      .table-wrap[data-v-0585e133] {
+        overflow-x: auto;
+      }
+      table[data-v-0585e133] {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      caption[data-v-0585e133] {
+        text-align: left;
+        margin: 8px 0;
+      }
+      th[data-v-0585e133],
+      td[data-v-0585e133] {
+        padding: 9px 5px;
+        border-bottom: 1px solid var(--pt-line);
+        text-align: right;
+        vertical-align: top;
+      }
+      th[data-v-0585e133]:first-child {
+        text-align: left;
+      }
+      th[data-v-0585e133] {
+        font-weight: 500;
+      }
+      details[data-v-0585e133] {
+        border-top: 1px solid var(--pt-line);
+        padding-top: 12px;
+        margin-top: 14px;
+        font-size: 12px;
+      }
+      summary[data-v-0585e133] {
+        cursor: pointer;
+        font-weight: 500;
+      }
+      .scope-note[data-v-0585e133] {
+        border-top: 1px solid var(--pt-line);
+        margin-top: 18px;
+        padding-top: 12px;
+      }
+      .requests[data-v-0585e133] {
+        padding: 0;
+        list-style: none;
+      }
+      .requests li[data-v-0585e133] {
+        padding: 10px 0;
+        border-bottom: 1px solid var(--pt-line);
+      }
+      .request-heading[data-v-0585e133] {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 6px;
+        font-size: 12px;
+      }
+      .stage[data-v-0585e133] {
+        margin-top: 12px;
+      }
+      .stage > div[data-v-0585e133]:first-child {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .track[data-v-0585e133] {
+        height: 6px;
+        border-radius: 4px;
+        background: var(--pt-line);
+        margin-top: 6px;
+        overflow: hidden;
+      }
+      .track > div[data-v-0585e133] {
+        height: 100%;
+        background: var(--pt-brand);
+      }
+      @media (max-width: 440px) {
+        .categories[data-v-0585e133] {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+        .metrics strong[data-v-0585e133] {
+          font-size: 16px;
+        }
+        .metrics > div[data-v-0585e133] {
+          padding: 10px 6px;
+        }
+      }
+      @media (pointer: coarse) {
+        button[data-v-0585e133],
+        summary[data-v-0585e133] {
+          min-height: 44px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p class="label">PaperTrail · Resources design reference · Simulated data</p>
+      <div class="panel">
+        <header>
+          <div><strong>Developer diagnostics</strong><small>PaperTrail · Local session</small></div>
+          <div class="chrome" aria-label="Header icon reference">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"></path></svg
+            ><svg viewBox="0 0 24 24"><path d="M5 12h14"></path></svg
+            ><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"></path></svg>
+          </div>
+        </header>
+        <div class="status">
+          <strong>● Evaluation status unchanged</strong>
+          <p>Resource evidence provides context; it does not change the app health verdict.</p>
+        </div>
+        <nav class="tabs" aria-label="Diagnostic views reference">
+          <span>Overview</span><span>Sensors</span><span>Operations</span
+          ><span class="active">Resources</span><span>Timeline</span><span>Technical details</span>
+        </nav>
+        <div id="app" class="content" data-v-app="">
+          <section
+            data-v-0585e133=""
+            class="resource-investigation"
+            aria-label="Resource investigation"
+          >
+            <div
+              data-v-0585e133=""
+              class="categories"
+              role="tablist"
+              aria-label="Resource categories"
+            >
+              <button
+                data-v-0585e133=""
+                id="resource-tab-Cleanup"
+                class="pt-plain-control"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="resource-panel-Cleanup"
+                tabindex="0"
+              >
+                Cleanup</button
+              ><button
+                data-v-0585e133=""
+                id="resource-tab-Caches"
+                class="pt-plain-control"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="resource-panel-Caches"
+                tabindex="-1"
+              >
+                Caches</button
+              ><button
+                data-v-0585e133=""
+                id="resource-tab-Requests"
+                class="pt-plain-control"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="resource-panel-Requests"
+                tabindex="-1"
+              >
+                Requests</button
+              ><button
+                data-v-0585e133=""
+                id="resource-tab-Storage"
+                class="pt-plain-control"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="resource-panel-Storage"
+                tabindex="-1"
+              >
+                Storage
+              </button>
+            </div>
+            <section
+              data-v-0585e133=""
+              id="resource-panel-Cleanup"
+              role="tabpanel"
+              aria-labelledby="resource-tab-Cleanup"
+              tabindex="0"
+            >
+              <div data-v-0585e133="" class="heading">
+                <div data-v-0585e133="">
+                  <h3 data-v-0585e133="">What remains after closing?</h3>
+                  <p data-v-0585e133="" class="muted">
+                    Baseline marked · compare after cleanup settles
+                  </p>
+                </div>
+                <div data-v-0585e133="" class="controls">
+                  <button data-v-0585e133="" class="pt-plain-control" type="button">
+                    Mark baseline</button
+                  ><button data-v-0585e133="" class="pt-plain-control" type="button">Clear</button>
+                </div>
+              </div>
+              <div data-v-0585e133="" class="explanation">
+                <strong data-v-0585e133="">Tracked owner counts differ from the baseline</strong>
+                <p data-v-0585e133="">
+                  Readers may be active or retained while inactive. Close documents and allow
+                  cleanup to settle before comparing.
+                </p>
+              </div>
+              <div data-v-0585e133="" class="metrics">
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Tracked readers</span
+                  ><strong data-v-0585e133="">3</strong
+                  ><small data-v-0585e133="">+3 · vs baseline</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Canvas estimate</span
+                  ><strong data-v-0585e133="">24 MiB</strong
+                  ><small data-v-0585e133="">RGBA pixels only</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">JS heap</span><strong data-v-0585e133="">44 MiB</strong
+                  ><small data-v-0585e133="">+16 MiB · vs baseline</small>
+                </div>
+              </div>
+              <div data-v-0585e133="" class="table-wrap">
+                <table data-v-0585e133="">
+                  <caption data-v-0585e133="">
+                    Instrumented ownership · zero means no tracked ownership
+                  </caption>
+                  <thead data-v-0585e133="">
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="">Resource</th>
+                      <th data-v-0585e133="">Before</th>
+                      <th data-v-0585e133="">Now</th>
+                      <th data-v-0585e133="">Change</th>
+                    </tr>
+                  </thead>
+                  <tbody data-v-0585e133="">
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">
+                        Readers<small data-v-0585e133="">Registered owner</small>
+                      </th>
+                      <td data-v-0585e133="">0</td>
+                      <td data-v-0585e133="">3</td>
+                      <td data-v-0585e133="">+3</td>
+                    </tr>
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">
+                        PDF task owners<small data-v-0585e133="">Registered owner</small>
+                      </th>
+                      <td data-v-0585e133="">0</td>
+                      <td data-v-0585e133="">2</td>
+                      <td data-v-0585e133="">+2</td>
+                    </tr>
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">
+                        Canvas buffers<small data-v-0585e133="">Registered owner</small>
+                      </th>
+                      <td data-v-0585e133="">0</td>
+                      <td data-v-0585e133="">8</td>
+                      <td data-v-0585e133="">+8</td>
+                    </tr>
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">
+                        Blob URLs<small data-v-0585e133="">Registered owner</small>
+                      </th>
+                      <td data-v-0585e133="">0</td>
+                      <td data-v-0585e133="">2</td>
+                      <td data-v-0585e133="">+2</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <details data-v-0585e133="">
+                <summary data-v-0585e133="">Byte estimates and remaining owned counts</summary>
+                <div data-v-0585e133="" class="table-wrap">
+                  <table data-v-0585e133="">
+                    <thead data-v-0585e133="">
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="">Resource</th>
+                        <th data-v-0585e133="">Before</th>
+                        <th data-v-0585e133="">Now</th>
+                        <th data-v-0585e133="">Change</th>
+                      </tr>
+                    </thead>
+                    <tbody data-v-0585e133="">
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">
+                          Preview entries<small data-v-0585e133="">Registered owner</small>
+                        </th>
+                        <td data-v-0585e133="">0</td>
+                        <td data-v-0585e133="">6</td>
+                        <td data-v-0585e133="">+6</td>
+                      </tr>
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">
+                          Preview pixel estimate<small data-v-0585e133="">Registered owner</small>
+                        </th>
+                        <td data-v-0585e133="">0 MiB</td>
+                        <td data-v-0585e133="">18 MiB</td>
+                        <td data-v-0585e133="">+18 MiB</td>
+                      </tr>
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">
+                          Dimension entries<small data-v-0585e133="">Registered owner</small>
+                        </th>
+                        <td data-v-0585e133="">0</td>
+                        <td data-v-0585e133="">12</td>
+                        <td data-v-0585e133="">+12</td>
+                      </tr>
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">
+                          Blob payload<small data-v-0585e133="">Registered owner</small>
+                        </th>
+                        <td data-v-0585e133="">0 MiB</td>
+                        <td data-v-0585e133="">3 MiB</td>
+                        <td data-v-0585e133="">+3 MiB</td>
+                      </tr>
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">
+                          Canvas RGBA<small data-v-0585e133="">Registered owner</small>
+                        </th>
+                        <td data-v-0585e133="">0 MiB</td>
+                        <td data-v-0585e133="">24 MiB</td>
+                        <td data-v-0585e133="">+24 MiB</td>
+                      </tr>
+                      <tr data-v-0585e133="">
+                        <th data-v-0585e133="" scope="row">JS heap</th>
+                        <td data-v-0585e133="">28 MiB</td>
+                        <td data-v-0585e133="">44 MiB</td>
+                        <td data-v-0585e133="">+16 MiB</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </details>
+              <details data-v-0585e133="">
+                <summary data-v-0585e133="">How to read this / captured evidence</summary>
+                <p data-v-0585e133="">
+                  Mark a baseline → open and switch documents → close them → wait → compare.
+                  Inactive readers may remain for five minutes. A baseline marked with documents
+                  open includes their owners.
+                </p>
+                <p data-v-0585e133="">
+                  Instrumented application owners only; zero means no tracked ownership, never
+                  browser-wide zero. Canvas RGBA is a pixel estimate; Blob bytes are logical payload
+                  size. Do not sum these with heap/process memory.
+                </p>
+                <p data-v-0585e133="">
+                  Mark before open/switch/close, then compare after disposal settles. Expected
+                  inactive readers can remain for five minutes. Positive deltas are investigation
+                  hints, not leak proof.
+                </p>
+                <p data-v-0585e133="">
+                  PDF task owners are not actual worker-thread counts. Registered zero and no
+                  registered owner describe different coverage. JS heap comes from nonstandard
+                  performance.memory where supported; it is not process or GPU memory. Do not add
+                  heap, canvas, Blob and preview estimates: they overlap. Preview pixel estimates
+                  are a subset of tracked canvas estimates.
+                </p>
+              </details>
+            </section>
+            <section
+              data-v-0585e133=""
+              id="resource-panel-Caches"
+              role="tabpanel"
+              hidden
+              aria-labelledby="resource-tab-Caches"
+              tabindex="0"
+            >
+              <h3 data-v-0585e133="">Is cached PDF work being reused?</h3>
+              <p data-v-0585e133="" class="muted">
+                Recorded lookups since session start/reset, while sampling
+              </p>
+              <div data-v-0585e133="" class="metrics">
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Preview hits</span><strong data-v-0585e133="">42</strong
+                  ><small data-v-0585e133="">Reused cached work</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Preview misses</span><strong data-v-0585e133="">8</strong
+                  ><small data-v-0585e133="">Work requested again</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Capacity evictions</span
+                  ><strong data-v-0585e133="">2</strong
+                  ><small data-v-0585e133="">Preview cache limit reached</small>
+                </div>
+              </div>
+              <div data-v-0585e133="" class="table-wrap">
+                <table data-v-0585e133="">
+                  <thead data-v-0585e133="">
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="">Cache</th>
+                      <th data-v-0585e133="">Hits</th>
+                      <th data-v-0585e133="">Misses</th>
+                      <th data-v-0585e133="">Evicted</th>
+                    </tr>
+                  </thead>
+                  <tbody data-v-0585e133="">
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">Page previews</th>
+                      <td data-v-0585e133="">42</td>
+                      <td data-v-0585e133="">8</td>
+                      <td data-v-0585e133="">2</td>
+                    </tr>
+                    <tr data-v-0585e133="">
+                      <th data-v-0585e133="" scope="row">Page dimensions</th>
+                      <td data-v-0585e133="">35</td>
+                      <td data-v-0585e133="">12</td>
+                      <td data-v-0585e133="">0</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div data-v-0585e133="" class="explanation">
+                <strong data-v-0585e133="">A miss can be normal on a first visit</strong>
+                <p data-v-0585e133="">
+                  A hit means cached work was reused. A capacity eviction makes room for another
+                  entry; it is not a failed request.
+                </p>
+              </div>
+              <details data-v-0585e133="">
+                <summary data-v-0585e133="">How to read this / captured evidence</summary>
+                <p data-v-0585e133="">
+                  Session-window hits/misses and capacity evictions at instrumented PDF
+                  preview/dimension lookups; no cache keys, files or document identities.
+                </p>
+                <p data-v-0585e133="">
+                  Current occupancy: 6 preview entries and 12 dimension entries. Occupancy counts
+                  differ from lookup counters. The preview cache holds up to 128 entries. Closing a
+                  reader is not a capacity eviction. These counters alone do not establish overall
+                  performance.
+                </p>
+              </details>
+            </section>
+            <section
+              data-v-0585e133=""
+              id="resource-panel-Requests"
+              role="tabpanel"
+              hidden
+              aria-labelledby="resource-tab-Requests"
+              tabindex="0"
+            >
+              <h3 data-v-0585e133="">Where is the request taking time?</h3>
+              <p data-v-0585e133="" class="muted">Retained request timings · milliseconds</p>
+              <div data-v-0585e133="" class="metrics">
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Pending now</span><strong data-v-0585e133="">0</strong
+                  ><small data-v-0585e133="">Recorded in-flight work</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Retained</span><strong data-v-0585e133="">3</strong
+                  ><small data-v-0585e133="">Includes failed and cancelled</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Record limit</span><strong data-v-0585e133="">120</strong
+                  ><small data-v-0585e133="">Bounded timing history</small>
+                </div>
+              </div>
+              <div data-v-0585e133="" class="explanation">
+                <strong data-v-0585e133="">Latest PDF render request · 84 ms</strong>
+                <div data-v-0585e133="" class="stage">
+                  <div data-v-0585e133="">
+                    <span data-v-0585e133="">Before processing</span
+                    ><span data-v-0585e133="">12 ms</span>
+                  </div>
+                  <div data-v-0585e133="" class="track">
+                    <div data-v-0585e133="" style="width: 14.2857%"></div>
+                  </div>
+                </div>
+                <div data-v-0585e133="" class="stage">
+                  <div data-v-0585e133="">
+                    <span data-v-0585e133="">Processing</span><span data-v-0585e133="">72 ms</span>
+                  </div>
+                  <div data-v-0585e133="" class="track">
+                    <div data-v-0585e133="" style="width: 85.7143%"></div>
+                  </div>
+                </div>
+                <p data-v-0585e133="" class="muted">
+                  Application stages, not worker CPU time or internal worker queues.
+                </p>
+              </div>
+              <p data-v-0585e133="" class="muted">No recorded pending requests.</p>
+              <ol data-v-0585e133="" class="requests" aria-label="Latest retained requests">
+                <li data-v-0585e133="">
+                  <div data-v-0585e133="" class="request-heading">
+                    <strong data-v-0585e133="">PDF render request</strong
+                    ><span data-v-0585e133="">84 ms · completed</span>
+                  </div>
+                  <p data-v-0585e133="" class="muted">Before processing 12 ms · Processing 72 ms</p>
+                </li>
+                <li data-v-0585e133="">
+                  <div data-v-0585e133="" class="request-heading">
+                    <strong data-v-0585e133="">Reading metadata transaction</strong
+                    ><span data-v-0585e133="">22 ms · failed · quota</span>
+                  </div>
+                  <p data-v-0585e133="" class="muted">Connection 4 ms · Transaction 18 ms</p>
+                </li>
+                <li data-v-0585e133="">
+                  <div data-v-0585e133="" class="request-heading">
+                    <strong data-v-0585e133="">Workspace transaction</strong
+                    ><span data-v-0585e133="">18 ms · completed</span>
+                  </div>
+                  <p data-v-0585e133="" class="muted">Connection 3 ms · Transaction 15 ms</p>
+                </li>
+              </ol>
+              <details data-v-0585e133="">
+                <summary data-v-0585e133="">How to read this / captured evidence</summary>
+                <p data-v-0585e133="">
+                  PDF wait covers previous-render cancellation/preparation; processing includes
+                  asynchronous PDF.js/render response. IndexedDB wait covers opening the connection;
+                  processing ends with transaction completion. Not worker CPU or engine-internal
+                  queue/response phases.
+                </p>
+                <p data-v-0585e133="">
+                  Showing the latest 12 retained records. 0 requests skipped by the recording limit.
+                  Pending age measures elapsed time so far, not a completed duration. Unavailable
+                  stages are not zero. Connection and transaction stages are application boundaries;
+                  transaction completion records commit rather than a staged result. Fixed failure
+                  categories omit private error details.
+                </p>
+                <ul data-v-0585e133="">
+                  <li data-v-0585e133="">
+                    PDF render request: <code data-v-0585e133="">pdf.render-request</code>
+                  </li>
+                  <li data-v-0585e133="">
+                    PDF teardown: <code data-v-0585e133="">pdf.release</code>
+                  </li>
+                  <li data-v-0585e133="">
+                    Reading metadata transaction:
+                    <code data-v-0585e133="">reading.transaction</code>
+                  </li>
+                  <li data-v-0585e133="">
+                    Workspace transaction: <code data-v-0585e133="">workspace.transaction</code>
+                  </li>
+                </ul>
+              </details>
+            </section>
+            <section
+              data-v-0585e133=""
+              id="resource-panel-Storage"
+              role="tabpanel"
+              hidden
+              aria-labelledby="resource-tab-Storage"
+              tabindex="0"
+            >
+              <div data-v-0585e133="" class="heading">
+                <div data-v-0585e133="">
+                  <h3 data-v-0585e133="">How much origin storage is used?</h3>
+                  <p data-v-0585e133="" class="muted">
+                    Browser origin estimate · disk usage, not memory
+                  </p>
+                </div>
+                <button data-v-0585e133="" class="pt-plain-control" type="button">
+                  Refresh estimate
+                </button>
+              </div>
+              <div data-v-0585e133="" class="metrics">
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Usage</span><strong data-v-0585e133="">128 MiB</strong
+                  ><small data-v-0585e133="">Origin disk estimate</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Quota</span><strong data-v-0585e133="">10,240 MiB</strong
+                  ><small data-v-0585e133="">Browser-reported allowance</small>
+                </div>
+                <div data-v-0585e133="">
+                  <span data-v-0585e133="">Source</span
+                  ><strong data-v-0585e133="">Storage API</strong
+                  ><small data-v-0585e133="">Manual estimate</small>
+                </div>
+              </div>
+              <div data-v-0585e133="" class="explanation">
+                <strong data-v-0585e133="">Estimate captured</strong>
+                <p data-v-0585e133="" role="status">
+                  Origin storage estimate; disk usage, not RAM or per-document allocation
+                </p>
+              </div>
+              <details data-v-0585e133="">
+                <summary data-v-0585e133="">How to read this / captured evidence</summary>
+                <p data-v-0585e133="">
+                  Refresh requests an estimate only when selected; it does not request storage
+                  permissions. Usage and quota cover this origin, potentially including other
+                  deployment channels on the same origin. They are not document size, RAM, or a
+                  per-document allocation.
+                </p>
+                <p data-v-0585e133="">
+                  Unavailable: optional page memory API unsupported; no hosting changes made.
+                </p>
+                <p data-v-0585e133="">
+                  Reader-wide listener/observer/timer registrations, engine-internal worker stages
+                  and cold/warm/restore attribution are not instrumented in this increment.
+                </p>
+                <p data-v-0585e133="">
+                  CPU/GPU/process memory requires external profiling in #16. Optional page-memory
+                  capability does not mean that a measurement has been captured.
+                </p>
+              </details>
+            </section>
+            <p data-v-0585e133="" class="scope-note">
+              Instrumented application data · No automatic memory-leak verdict
+            </p>
+          </section>
+        </div>
+        <footer>
+          <span>Local only · Ctrl+Alt+D · Escape closes</span
+          ><span class="icons"
+            ><svg viewBox="0 0 24 24"><path d="M4 10a8 8 0 1 1 2 8M4 4v6h6"></path></svg
+            ><svg viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M5 17v4h14v-4"></path></svg
+          ></span>
+        </footer>
+      </div>
+      <p class="prototype-note">
+        Recreated from the approved Resources layout. Illustrative values only; not measured app
+        evidence. Header/footer icons are visual context.
+      </p>
+    </main>
+    <script>
+      const tabs = [...document.querySelectorAll('[role="tab"]')]
+      function select(tab) {
+        tabs.forEach((t) => {
+          const active = t === tab
+          t.setAttribute('aria-selected', String(active))
+          t.tabIndex = active ? 0 : -1
+          document.getElementById(t.getAttribute('aria-controls')).hidden = !active
+        })
+      }
+      tabs.forEach((tab, index) => {
+        tab.addEventListener('click', () => select(tab))
+        tab.addEventListener('keydown', (event) => {
+          let target =
+            event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? 3
+                : event.key === 'ArrowRight'
+                  ? (index + 1) % 4
+                  : event.key === 'ArrowLeft'
+                    ? (index + 3) % 4
+                    : null
+          if (target !== null) {
+            event.preventDefault()
+            select(tabs[target])
+            tabs[target].focus()
+          }
+        })
+      })
+    </script>
+  </body>
+</html>

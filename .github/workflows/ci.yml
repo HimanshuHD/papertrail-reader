@@ -29,6 +29,12 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --no-audit --no-fund
+      - name: Preflight changed browser container environment
+        if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'staging'
+        timeout-minutes: 5
+        env:
+          BROWSER_PREFLIGHT_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/browser-container-preflight.mjs
       - run: npm run lint
       - run: npm run format:check
       - run: npm test

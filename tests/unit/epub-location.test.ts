@@ -92,7 +92,7 @@ it('uses stable source text when mode CFIs differ, excluding image alternate tex
   }
   expect(restoreLocation(s.root, saved, 'text', wrong)).toBe(true)
   expect(wrong.range).not.toHaveBeenCalled()
-  expect(s.container.scrollTop).toBe(101)
+  expect(s.container.scrollTop).toBe(96)
 })
 it('rejects bad locations and wrong text anchors without moving scroll', () => {
   const s = scene()
@@ -157,4 +157,103 @@ it('uses RTL caret coordinates and rejects a CFI for a different chapter base', 
     ),
   ).toBe(true)
   expect(bridge.range).not.toHaveBeenCalled()
+})
+
+it('keeps the anchored passage visible when a mode change shrinks a partially visible line', () => {
+  const s = scene('x'.repeat(1000))
+  s.reflow(10, 80)
+  s.container.scrollTop = 55
+  const saved = captureLocation(s.root, 0, 'formatted')!
+  expect(saved.offset).toBe(-55)
+  s.reflow(20, 20)
+  expect(restoreLocation(s.root, saved, 'text')).toBe(true)
+  expect(s.container.scrollTop).toBe(0)
+  expect(captureLocation(s.root, 0, 'text')?.character).toBe(saved.character)
+})
+
+it('uses caretPositionFromPoint when the range caret API is unavailable or unhelpful', () => {
+  const s = scene()
+  s.container.scrollTop = 45
+  Object.defineProperty(s.doc, 'caretRangeFromPoint', { configurable: true, value: () => null })
+  const caret = vi.fn(() => ({ offsetNode: s.node, offset: 20 }))
+  Object.defineProperty(s.doc, 'caretPositionFromPoint', { configurable: true, value: caret })
+  const saved = captureLocation(s.root, 0, 'formatted')!
+  expect(saved.character).toBe(20)
+  expect(saved.offset).toBe(-5)
+  expect(caret).toHaveBeenCalledWith(32, 53)
+})
+
+it('narrows forced fallback to point-hit text and reads fresh geometry after reflow', () => {
+  const s = scene()
+  s.container.scrollTop = 45
+  Object.defineProperty(s.doc, 'caretRangeFromPoint', { configurable: true, value: undefined })
+  Object.defineProperty(s.doc, 'caretPositionFromPoint', { configurable: true, value: undefined })
+  const element = s.doc.querySelector('p')!
+  Object.defineProperty(s.doc, 'elementsFromPoint', {
+    configurable: true,
+    value: () => [element, s.doc.body],
+  })
+  const walk = vi.spyOn(s.doc, 'createTreeWalker')
+  const saved = captureLocation(s.root, 0, 'formatted')!
+  expect(saved.character).toBe(20)
+  expect(walk.mock.calls.every(([root]) => root === element)).toBe(true)
+  s.reflow(5, 30)
+  expect(restoreLocation(s.root, saved, 'formatted')).toBe(true)
+  expect(captureLocation(s.root, 0, 'formatted')?.character).toBe(20)
+})
+
+it('streams the bounded fallback and stops when it finds the visible text', () => {
+  const s = scene()
+  s.doc
+    .querySelector('p')!
+    .insertAdjacentHTML('afterend', '<p data-reader-node="pt-9">Later text</p>')
+  const original = s.doc.createTreeWalker.bind(s.doc)
+  const visits = vi.fn()
+  vi.spyOn(s.doc, 'createTreeWalker').mockImplementation((...args) => {
+    const walker = original(...args)
+    const next = walker.nextNode.bind(walker)
+    walker.nextNode = () => {
+      const node = next()
+      if (node) visits(node)
+      return node
+    }
+    return walker
+  })
+  const saved = captureLocation(s.root, 0, 'text')!
+  expect(saved.node).toBe('pt-3')
+  expect(visits.mock.calls.every(([node]) => node === s.node)).toBe(true)
+})
+
+it('rejects a foreign caret and falls back safely', () => {
+  const s = scene()
+  const other = document.createTextNode('Foreign')
+  Object.defineProperty(s.doc, 'caretPositionFromPoint', {
+    configurable: true,
+    value: () => ({ offsetNode: other, offset: 0 }),
+  })
+  expect(captureLocation(s.root, 0, 'text')?.node).toBe('pt-3')
+})
+
+it('probes past paragraph margins before falling back to the full chapter', () => {
+  const s = scene()
+  s.container.scrollTop = 45
+  const element = s.doc.querySelector('p')!
+  const hit = vi.fn((_x: number, y: number) => (y < 90 ? [s.doc.body] : [element, s.doc.body]))
+  Object.defineProperty(s.doc, 'elementsFromPoint', { configurable: true, value: hit })
+  const walk = vi.spyOn(s.doc, 'createTreeWalker')
+  expect(captureLocation(s.root, 0, 'formatted')?.character).toBe(20)
+  expect(hit.mock.calls.map(([, y]) => y)).toEqual([53, 69, 93])
+  expect(walk.mock.calls.every(([root]) => root === element)).toBe(true)
+})
+
+it('retains UTF-16 character offsets when the alternate caret API lands after an emoji', () => {
+  const s = scene('😀A visible passage')
+  Object.defineProperty(s.doc, 'caretPositionFromPoint', {
+    configurable: true,
+    value: () => ({ offsetNode: s.node, offset: 2 }),
+  })
+  const saved = captureLocation(s.root, 0, 'formatted')!
+  expect(saved.character).toBe(2)
+  expect(saved.quote).toBe('A visible passage')
+  expect(restoreLocation(s.root, saved, 'text')).toBe(true)
 })

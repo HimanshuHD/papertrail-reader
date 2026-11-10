@@ -1,8 +1,8 @@
 import { expect, type Locator, type Page } from '@playwright/test'
 
 /** File-input injection bypasses actionability; wait for startup before inspecting sidebar state. */
-export async function waitForWorkspaceReady(page: Page) {
-  await expect(page.locator('#app')).toHaveJSProperty('inert', false)
+export async function waitForWorkspaceReady(page: Page, timeout = 5000) {
+  await expect(page.locator('#app')).toHaveJSProperty('inert', false, { timeout })
   await expect(page.locator('#startup-loading')).toBeHidden()
 }
 

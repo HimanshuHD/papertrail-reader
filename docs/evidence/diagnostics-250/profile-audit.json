@@ -1,0 +1,261 @@
+{
+  "source": {
+    "sha": "f3fdb38da2460353ec4ee83715858d44dc75ca2c",
+    "tree": "a6d5219ce4557d8d0cb698320e3d564419dc7584",
+    "dirty": false
+  },
+  "stats": {
+    "startTime": "2026-10-21T19:15:27.356Z",
+    "duration": 41739.482,
+    "expected": 10,
+    "skipped": 1,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "profiles": [
+    {
+      "engine": "chromium",
+      "identity": {
+        "environment": "production",
+        "version": "2.2.0",
+        "sourceSha": "f3fdb38da2460353ec4ee83715858d44dc75ca2c",
+        "workingTree": "Clean"
+      },
+      "configuration": {
+        "version": 2,
+        "source": "provisional local configuration; not accepted #16 budgets",
+        "windowMs": 30000,
+        "minSamples": 3,
+        "sustainedSamples": 3,
+        "recoverySamples": 3,
+        "staleAfterMs": 5000,
+        "frames": {
+          "attentionMs": 50,
+          "criticalMs": 150
+        },
+        "longTasks": {
+          "attentionMs": 200,
+          "criticalMs": 1000
+        },
+        "operations": {
+          "pdf.warm-activate": {
+            "attentionMs": 200,
+            "criticalMs": 1000
+          }
+        },
+        "pending": {
+          "pdf.cold-open": {
+            "attentionMs": 10000,
+            "criticalMs": 300000
+          }
+        }
+      },
+      "profileDefinitions": [
+        {
+          "profile": "library.scan",
+          "name": "Library scan",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "library.first-listing",
+          "name": "First library listing",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "pdf.open-readable",
+          "name": "PDF open to readable",
+          "units": "milliseconds",
+          "boundary": "Aggregate open-to-readable metric. Use reader lifecycle profiles for distinct cold, saved-workspace and expiry expectations; avoid configuring overlapping rules unless intentional."
+        },
+        {
+          "profile": "pdf.render",
+          "name": "PDF page render",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "pdf.navigation",
+          "name": "PDF page navigation",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "epub.open-readable",
+          "name": "EPUB open to readable",
+          "units": "milliseconds",
+          "boundary": "Aggregate open-to-readable metric. Use reader lifecycle profiles for distinct cold, saved-workspace and expiry expectations; avoid configuring overlapping rules unless intentional."
+        },
+        {
+          "profile": "epub.chapter",
+          "name": "EPUB chapter navigation",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "epub.reflow",
+          "name": "EPUB layout reflow",
+          "units": "milliseconds",
+          "boundary": "Measured application operation; configure this workload separately from reader lifecycle operations. No accepted budget is supplied."
+        },
+        {
+          "profile": "pdf.cold-open",
+          "name": "PDF cold reader open",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "pdf.restored-open",
+          "name": "PDF saved-workspace reader restore",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "pdf.expired-open",
+          "name": "PDF reader recreation after expiry",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "pdf.warm-activate",
+          "name": "PDF warm selection dispatch",
+          "units": "milliseconds",
+          "boundary": "Synchronous selection dispatch for a retained ready reader. This does not measure browser paint or first-readable latency."
+        },
+        {
+          "profile": "epub.cold-open",
+          "name": "EPUB cold reader open",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "epub.restored-open",
+          "name": "EPUB saved-workspace reader restore",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "epub.expired-open",
+          "name": "EPUB reader recreation after expiry",
+          "units": "milliseconds",
+          "boundary": "Reader instance creation through ready/error, including restoration. Cold means a new application reader instance, not cleared browser or OS caches. Saved-workspace restoration and five-minute expiry recreation use separate profiles."
+        },
+        {
+          "profile": "epub.warm-activate",
+          "name": "EPUB warm selection dispatch",
+          "units": "milliseconds",
+          "boundary": "Synchronous selection dispatch for a retained ready reader. This does not measure browser paint or first-readable latency."
+        }
+      ],
+      "lifecycleTimings": [
+        {
+          "operation": "pdf.cold-open",
+          "queuedAtMs": 914.3999999999069,
+          "endedAtMs": 1269.1999999999534,
+          "waitMs": 0.10000000009313226,
+          "processingMs": 354.69999999995343,
+          "durationMs": 354.80000000004657,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.cold-open",
+          "queuedAtMs": 1831.6999999999534,
+          "endedAtMs": 2034.0999999998603,
+          "waitMs": 0,
+          "processingMs": 202.39999999990687,
+          "durationMs": 202.39999999990687,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2201.5,
+          "endedAtMs": 2202,
+          "waitMs": 0,
+          "processingMs": 0.5,
+          "durationMs": 0.5,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.warm-activate",
+          "queuedAtMs": 2240.5,
+          "endedAtMs": 2240.6999999999534,
+          "waitMs": 0,
+          "processingMs": 0.19999999995343387,
+          "durationMs": 0.19999999995343387,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2281.399999999907,
+          "endedAtMs": 2282.0999999998603,
+          "waitMs": 0,
+          "processingMs": 0.6999999999534339,
+          "durationMs": 0.6999999999534339,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.warm-activate",
+          "queuedAtMs": 2320.5999999998603,
+          "endedAtMs": 2320.7999999998137,
+          "waitMs": 0,
+          "processingMs": 0.19999999995343387,
+          "durationMs": 0.19999999995343387,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "pdf.warm-activate",
+          "queuedAtMs": 2364.7999999998137,
+          "endedAtMs": 2368.6999999999534,
+          "waitMs": 0,
+          "processingMs": 3.9000000001396984,
+          "durationMs": 3.9000000001396984,
+          "outcome": "completed",
+          "failure": null
+        },
+        {
+          "operation": "epub.warm-activate",
+          "queuedAtMs": 2440.7999999998137,
+          "endedAtMs": 2441.0999999998603,
+          "waitMs": 0,
+          "processingMs": 0.30000000004656613,
+          "durationMs": 0.30000000004656613,
+          "outcome": "completed",
+          "failure": null
+        }
+      ],
+      "informationalObservations": [
+        {
+          "key": "viewers",
+          "delta": 2
+        },
+        {
+          "key": "pdfWorkerOwners",
+          "delta": 1
+        },
+        {
+          "key": "canvases",
+          "delta": 5
+        },
+        {
+          "key": "ownedListeners",
+          "delta": 31
+        },
+        {
+          "key": "ownedObservers",
+          "delta": 3
+        },
+        {
+          "key": "ownedTimers",
+          "delta": 1
+        }
+      ]
+    }
+  ]
+}

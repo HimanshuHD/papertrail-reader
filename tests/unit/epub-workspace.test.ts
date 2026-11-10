@@ -30,6 +30,45 @@ const mocked = vi.hoisted(() => ({
 }))
 vi.mock('../../src/features/epub/epub-session', () => ({ openEpubSession: mocked.open }))
 
+it('offers text-only recovery after formatted preparation fails', async () => {
+  mocked.open.mockRejectedValueOnce(new Error('EPUB images exceed their reading budget.'))
+  mocked.open.mockResolvedValueOnce({
+    title: 'Recovered',
+    chapters: [{ label: 'One', href: 'one' }],
+    contents: [],
+    contentsSource: 'spine',
+    typography: vi.fn(),
+    display: vi.fn(),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  })
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'recovery',
+        name: 'recovery.epub',
+        format: 'EPUB',
+        relativePath: 'recovery.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'recovery.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  const recovery = wrapper
+    .findAll('button')
+    .find((button) => button.text() === 'Open text-only view')!
+  expect(recovery.exists()).toBe(true)
+  await recovery.trigger('click')
+  await flushPromises()
+  expect(mocked.open.mock.lastCall![3]).toMatchObject({ textOnly: true })
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.get('button[role="switch"]').attributes('aria-checked')).toBe('true')
+  wrapper.unmount()
+})
+
 vi.mock('../../src/services/annotation-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../src/services/annotation-storage')>()
   return {
@@ -306,7 +345,7 @@ it('dismisses utility surfaces with Escape and outside pointers, restores focus 
   wrapper.unmount()
 })
 
-it('keeps Contents stable while loading and delays the overlay loader without changing the stage layout', async () => {
+it('keeps Contents stable and covers chapter navigation until the replacement is ready', async () => {
   let finish!: () => void
   const session: EpubSession = {
     title: 'Stable book',
@@ -356,10 +395,11 @@ it('keeps Contents stable while loading and delays the overlay loader without ch
     await flushPromises()
     expect(wrapper.findAll('nav button').map((button) => button.text())).toEqual(['One', 'Two'])
     expect(wrapper.find('.epub-loading-cover').exists()).toBe(true)
+    expect(wrapper.get('.epub-host').classes()).toContain('epub-host-loading')
     expect(wrapper.find('.loading-card').exists()).toBe(false)
     expect(wrapper.find('header + p[role="status"]').exists()).toBe(false)
     await vi.advanceTimersByTimeAsync(150)
-    expect(wrapper.get('.loading-card').text()).toContain('Loading chapter')
+    expect(wrapper.find('.loading-card').exists()).toBe(true)
     finish()
     await flushPromises()
     expect(wrapper.find('.epub-loading-cover').exists()).toBe(false)
@@ -763,4 +803,108 @@ it('restores an owning session snapshot and captures EPUB state before flushing 
   expect(session.destroy).toHaveBeenCalledTimes(1)
   wrapper.unmount()
   expect(session.destroy).toHaveBeenCalledTimes(1)
+})
+
+it('does not reobserve the EPUB host or rebind frames after disposal and releases tracked shell owners', async () => {
+  const { diagnostics } = await import('../../src/features/diagnostics/recorder')
+  let notify!: ResizeObserverCallback
+  const observe = vi.fn(),
+    disconnect = vi.fn()
+  vi.stubGlobal(
+    'ResizeObserver',
+    class {
+      constructor(callback: ResizeObserverCallback) {
+        notify = callback
+      }
+      observe = observe
+      disconnect = disconnect
+    },
+  )
+  mocked.open.mockResolvedValueOnce({
+    title: 'Book',
+    contents: [],
+    contentsSource: 'spine',
+    chapters: [{ label: 'One', href: 'one' }],
+    typography: vi.fn(),
+    appearance: vi.fn(),
+    display: vi.fn(async () => {}),
+    destroy: vi.fn(),
+  })
+  const baseline = diagnostics.snapshot().resources
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'private',
+        name: 'private.epub',
+        format: 'EPUB',
+        relativePath: 'private.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'private.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  try {
+    await flushPromises()
+    expect(diagnostics.snapshot().resources.ownedListeners ?? 0).toBe(
+      (baseline.ownedListeners ?? 0) + 4,
+    )
+    observe.mockClear()
+    await (wrapper.vm as unknown as { dispose(): Promise<void> }).dispose()
+    await flushPromises()
+    expect(observe).not.toHaveBeenCalled()
+    expect(disconnect).toHaveBeenCalled()
+    const requestFrame = vi.spyOn(globalThis, 'requestAnimationFrame')
+    requestFrame.mockClear()
+    notify([], {} as ResizeObserver)
+    expect(requestFrame).not.toHaveBeenCalled()
+    wrapper.unmount()
+    await flushPromises()
+    expect(observe).not.toHaveBeenCalled()
+    expect(diagnostics.snapshot().resources.ownedListeners ?? 0).toBe(baseline.ownedListeners ?? 0)
+    expect(diagnostics.snapshot().resources.ownedObservers ?? 0).toBe(baseline.ownedObservers ?? 0)
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('persists explicit mode round trips without waiting for the scroll debounce', async () => {
+  const sessions: EpubSession[] = Array.from({ length: 3 }, () => ({
+    title: 'Mode persistence',
+    contents: [],
+    contentsSource: 'spine',
+    chapters: [{ label: 'One', href: 'one' }],
+    typography: vi.fn(),
+    display: vi.fn(async () => {}),
+    appearance: vi.fn(),
+    destroy: vi.fn(),
+  }))
+  for (const session of sessions) mocked.open.mockResolvedValueOnce(session)
+  const wrapper = mount(EpubReaderWorkspace, {
+    props: {
+      document: {
+        id: 'mode',
+        name: 'mode.epub',
+        format: 'EPUB',
+        relativePath: 'mode.epub',
+        parentPath: '',
+        source: 'file-input',
+        file: new File([], 'mode.epub'),
+      },
+    },
+    global: { plugins: [createPinia()] },
+  })
+  await flushPromises()
+  mocked.save.mockClear()
+  for (const textOnly of [true, false]) {
+    await wrapper.get('button[role="switch"]').trigger('click')
+    await flushPromises()
+    expect(mocked.save).toHaveBeenLastCalledWith(
+      expect.any(String),
+      expect.objectContaining({ textOnly }),
+    )
+    expect(wrapper.emitted('readingChange')?.at(-1)).toEqual([true])
+  }
+  wrapper.unmount()
 })

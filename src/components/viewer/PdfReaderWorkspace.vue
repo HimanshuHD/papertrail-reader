@@ -1,15 +1,30 @@
 <script setup lang="ts">
+import { OwnedRegistrations } from '../../features/diagnostics/owned-registrations'
+import { diagnostics, diagnosticOutcome } from '../../features/diagnostics/recorder'
 import type { SessionState } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { hideTransitionSurface, restoreTransitionSurface } from '../../services/transition-surface'
 import { SELECTION_COLORS } from '../../features/annotations/selection-colors'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import {
+  computed,
+  nextTick,
+  onBeforeUnmount,
+  onBeforeUpdate,
+  onMounted,
+  ref,
+  shallowRef,
+  watch,
+} from 'vue'
 import { usePdfHighlights } from '../../composables/usePdfHighlights'
 import { capturePdfHighlight, revealPdfHighlight } from '../../features/pdf/highlights'
 import type { AnnotationSelector } from '../../features/annotations/selectors'
 import type { AnnotationColor } from '../../services/annotation-storage'
 import LoadingState from '../LoadingState.vue'
+import ExternalLinkDialog from './ExternalLinkDialog.vue'
+import { useDocumentLinks } from '../../composables/useDocumentLinks'
+import type { DocumentLink } from '../../features/reader/document-links'
+import ReaderNotice from './ReaderNotice.vue'
 import { useReadingContinuity } from '../../composables/useReadingContinuity'
 import IconButton from '../IconButton.vue'
 import PdfBookmarksPanel from './PdfBookmarksPanel.vue'
@@ -19,6 +34,10 @@ import { selectionAnchor, type SelectionAnchor } from '../../features/annotation
 import { usePdfBookmarks } from '../../composables/usePdfBookmarks'
 import type { PdfBookmark } from '../../services/pdf-bookmarks'
 import PdfPageView from './PdfPageView.vue'
+import { PdfViewportTracker, type PdfViewportSample } from '../../features/pdf/viewport-tracker'
+import { PdfPageLayout, type PdfPageSize } from '../../features/pdf/page-layout'
+import { PdfPageWindow } from '../../features/pdf/page-window'
+import type { ComponentPublicInstance } from 'vue'
 import {
   openPdfDocument,
   resolvePdfScale,
@@ -29,6 +48,8 @@ import {
   type PdfSearchMatch,
 } from '../../features/pdf/pdf-session'
 import type { DiscoveredDocument } from '../../features/library/discovery'
+
+const registrationOwner = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
 
 const props = withDefaults(
   defineProps<{
@@ -66,9 +87,9 @@ import { normalizePdfAnchor, type PdfReadingAnchor } from '../../services/pdf-re
 
 let restoredAnchor: PdfReadingAnchor | undefined
 let restoredPage: number | undefined
-function saveReadingPoint() {
+function saveReadingPoint(sample?: PdfViewportSample) {
   if (phase.value !== 'ready') return
-  const point = captureReadingPoint()
+  const point = captureReadingPoint(sample)
   const page = Number(point?.page.closest('article')?.dataset.pdfPage)
   const view = {
     fitMode: fitMode.value,
@@ -97,12 +118,73 @@ const searchInput = ref<HTMLInputElement | null>(null)
 const popoverRoot = ref<HTMLElement | null>(null)
 const session = shallowRef<PdfDocumentSession | null>(null)
 const phase = ref<ReaderPhase>('loading')
+const linksActive = () => props.active !== false && phase.value === 'ready'
+const links = useDocumentLinks(linksActive)
 const errorMessage = ref('')
 const currentPage = ref(1)
 const pageEditing = ref(false)
 const pageDraft = ref('1')
 const continuity = useReadingContinuity()
 const persistenceNotice = continuity.notice
+const readerNotices = computed(() => [
+  ...(persistenceNotice.value
+    ? [
+        {
+          title: 'Reading position',
+          label: 'Reading position notice',
+          message: persistenceNotice.value,
+        },
+      ]
+    : []),
+  ...(links.notice.value
+    ? [{ title: 'Link availability', label: 'Link notice', message: links.notice.value }]
+    : []),
+])
+let contentLinkSequence = 0
+let pendingContentDestination: {
+  pageNumber: number
+  x?: number
+  y?: number
+  layout: number
+  sequence: number
+  owner: PdfDocumentSession
+} | null = null
+function cancelContentNavigation() {
+  ++contentLinkSequence
+  pendingContentDestination = null
+}
+function finishContentNavigation() {
+  const target = pendingContentDestination
+  if (!target) return
+  if (
+    target.owner !== session.value ||
+    target.layout !== layoutOperation ||
+    target.sequence !== contentLinkSequence ||
+    !linksActive()
+  ) {
+    pendingContentDestination = null
+    return
+  }
+  const pane = viewport.value,
+    shell = pane?.querySelector<HTMLElement>(`[data-pdf-page="${target.pageNumber}"]`),
+    page = shell?.querySelector<HTMLElement>('.pdf-page')
+  if (!pane || !page || shell?.dataset.renderState !== 'ready') return
+  pendingContentDestination = null
+  const box = page.getBoundingClientRect(),
+    bounds = pane.getBoundingClientRect()
+  pane.scrollTo({
+    top: box.top - bounds.top + pane.scrollTop + (target.y ?? 0) * box.height,
+    left:
+      target.x === undefined
+        ? pane.scrollLeft
+        : box.left - bounds.left + pane.scrollLeft + target.x * box.width,
+    behavior: 'instant',
+  })
+  shell.tabIndex = -1
+  shell.focus({ preventScroll: true })
+  saveReadingPoint()
+}
+
 const bookmarks = usePdfBookmarks(continuity.documentId)
 const highlights = usePdfHighlights(continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
@@ -138,10 +220,15 @@ const highlightList = computed(() =>
   highlights.highlights.value.filter((h) => h.selector.format === 'PDF'),
 )
 function clearPendingHighlight(event: PointerEvent) {
+  cancelContentNavigation()
   selectingHighlight =
     event.target instanceof Element &&
     !!event.target.closest('.textLayer') &&
     !!viewport.value?.contains(event.target)
+  if (selectingHighlight) {
+    componentWindow.beginSelection()
+    refreshPageWindow()
+  }
   if (
     !(event.target instanceof Element) ||
     !event.target.closest('[aria-label="PDF highlights"]')
@@ -153,13 +240,18 @@ function clearPendingHighlight(event: PointerEvent) {
 function finishHighlightSelection() {
   if (!selectingHighlight) return
   selectingHighlight = false
+  componentWindow.endSelection()
+  retainSelectedPages()
   captureSelection()
 }
 function cancelHighlightSelection() {
   selectingHighlight = false
+  componentWindow.endSelection()
+  retainSelectedPages()
   pendingHighlight.value = null
 }
 function captureSelection(event?: Event) {
+  retainSelectedPages()
   if (props.active === false) return
   if (event?.defaultPrevented) return
   // Native selection paints continuously; measuring every drag update stalls it.
@@ -311,6 +403,8 @@ const statistics = useReadingStatistics(
   statisticsPosition,
 )
 const zoom = ref(1)
+const zoomEditing = ref(false)
+const zoomDraft = ref('100')
 const twoPage = ref(false)
 const pageAvailableWidth = computed(() =>
   twoPage.value ? Math.max(1, (availableWidth.value - 24) / 2) : availableWidth.value,
@@ -319,7 +413,7 @@ const fitMode = ref<PdfFitMode>('width')
 watch(
   [currentPage, fitMode, zoom],
   () => {
-    if (phase.value === 'ready') void nextTick().then(saveReadingPoint)
+    if (phase.value === 'ready') void nextTick().then(() => saveReadingPoint())
   },
   { flush: 'sync' },
 )
@@ -371,19 +465,135 @@ const searchError = ref('')
 const fullscreen = ref(false)
 let openSequence = 0
 let resizeFrame = 0
-let scrollFrame = 0
+const pageTracking = new PdfViewportTracker((sample) => {
+  // Read native selection before pruning even if selectionchange is still queued.
+  retainSelectedPages()
+  chooseMostVisiblePage(sample)
+  saveReadingPoint(sample)
+})
+watch(
+  viewport,
+  (root) => {
+    pageTracking.setRoot(root)
+    registrationOwner?.set('ownedObservers', (resizeObserver ? 1 : 0) + pageTracking.observerCount)
+  },
+  { flush: 'post' },
+)
+watch(twoPage, (spread) => {
+  void nextTick(() => pageTracking.setColumns(spread ? 2 : 1))
+})
 let layoutOperation = 0
 let resizeObserver: ResizeObserver | null = null
 let searchController: AbortController | null = null
 let documentController: AbortController | null = null
 
 const pages = computed(() => Array.from({ length: totalPages.value }, (_, index) => index + 1))
+let componentWindow = new PdfPageWindow()
+const mountedPages = shallowRef(new Set<number>([1]))
+const pageRenderStates = ref<Record<number, string>>({})
+const pageLayout = shallowRef(new PdfPageLayout({ width: 612, height: 792 }))
+const dimensionsVersion = ref(0)
+const pageSlots = new Map<number, { element: HTMLElement; release: () => void }>()
+
+function pageOf(node: Node | null) {
+  const element = node instanceof Element ? node : node?.parentElement
+  const article = element?.closest<HTMLElement>('[data-pdf-page]')
+  return article && viewport.value?.contains(article) ? Number(article.dataset.pdfPage) : undefined
+}
+function refreshPageWindow() {
+  const next = componentWindow.pages(currentPage.value, pageOf(document.activeElement))
+  if (
+    next.size !== mountedPages.value.size ||
+    [...next].some((page) => !mountedPages.value.has(page))
+  ) {
+    pageRenderStates.value = Object.fromEntries(
+      [...next].map((page) => [
+        page,
+        mountedPages.value.has(page) ? (pageRenderStates.value[page] ?? 'pending') : 'pending',
+      ]),
+    )
+    mountedPages.value = next
+  }
+}
+function handlePageState(page: number, state: string) {
+  if (mountedPages.value.has(page) && pageRenderStates.value[page] !== state)
+    pageRenderStates.value = { ...pageRenderStates.value, [page]: state }
+}
+function retainSelectedPages() {
+  const selection = document.getSelection()
+  componentWindow.selection(
+    selection && !selection.isCollapsed ? pageOf(selection.anchorNode) : undefined,
+    selection && !selection.isCollapsed ? pageOf(selection.focusNode) : undefined,
+  )
+  refreshPageWindow()
+}
+function registerPageSlot(page: number, node: Element | ComponentPublicInstance | null) {
+  const element = node instanceof HTMLElement ? node : null
+  const previous = pageSlots.get(page)
+  if (previous?.element === element) return
+  previous?.release()
+  pageSlots.delete(page)
+  if (!element) return
+  const release = pageTracking.register(element, page, (near) => {
+    componentWindow.proximity(page, near)
+  })
+  pageSlots.set(page, { element, release })
+}
+// Only placeholders are reusable. Mounted slots must render on every workspace update,
+// including future child props that are not geometry-related. Keep this non-reactive.
+let pageRenderEpoch = 0
+onBeforeUpdate(() => {
+  pageRenderEpoch++
+})
+function slotMemo(page: number) {
+  // Subscribe to measurements, but invalidate only the page whose dimensions changed.
+  void dimensionsVersion.value
+  const mounted = mountedPages.value.has(page)
+  return [
+    mounted,
+    mounted ? pageRenderEpoch : 0,
+    pageLayout.value,
+    pageLayout.value.known(page),
+    fitMode.value,
+    zoom.value,
+    pageAvailableWidth.value,
+    availableHeight.value,
+    props.idPrefix,
+  ]
+}
+function slotStyle(page: number) {
+  const size = pageLayout.value.size(
+    page,
+    fitMode.value,
+    zoom.value,
+    pageAvailableWidth.value,
+    availableHeight.value,
+  )
+  return { width: `${size.width}px`, height: `${size.height}px` }
+}
+function handleMeasured(page: number, size: PdfPageSize) {
+  const point = phase.value === 'ready' ? captureReadingPoint() : null
+  const pane = viewport.value
+  const before = pane?.scrollTop
+  const operation = layoutOperation
+  if (!pageLayout.value.measure(page, size)) return
+  dimensionsVersion.value++
+  void nextTick(() => {
+    if (pane === viewport.value && pane?.scrollTop === before)
+      void restoreReadingPoint(point, operation)
+    pageTracking.schedule()
+  })
+}
+watch(currentPage, refreshPageWindow, { flush: 'sync' })
 
 const progressPercent = computed(() =>
   totalPages.value > 0 ? Math.round((currentPage.value / totalPages.value) * 100) : 0,
 )
 
-const zoomPercent = computed(() => Math.round(renderedScale.value * 100))
+// Remounted pages may finish an older fit render while custom zoom is being edited.
+const zoomPercent = computed(() =>
+  Math.round((fitMode.value === 'custom' ? zoom.value : renderedScale.value) * 100),
+)
 
 const flatOutline = computed<readonly FlatOutlineItem[]>(() => {
   const result: FlatOutlineItem[] = []
@@ -420,11 +630,13 @@ function clampPage(page: number): number {
 function measureViewport() {
   const element = viewport.value
   if (!element) return
+  pageTracking.schedule()
 
   const atEnd =
     element.scrollHeight > element.clientHeight &&
     element.scrollHeight - element.scrollTop - element.clientHeight < 2
   const preservePosition = phase.value === 'ready'
+  const sequence = openSequence
   const readingPoint = preservePosition ? captureReadingPoint() : null
   const operation = layoutOperation
   const scrollBefore = element.scrollTop
@@ -445,7 +657,14 @@ function measureViewport() {
   )
   if (previousWidth !== availableWidth.value || previousHeight !== availableHeight.value) {
     void nextTick(() => {
-      if (!preservePosition || viewport.value !== element || operation !== layoutOperation) return
+      if (viewport.value !== element || sequence !== openSequence) return
+      // Sidebar transitions can change page heights after the first restore scroll.
+      // Keep its target visible so lazy rendering can finish the restore.
+      if (phase.value === 'restoring' && !completingRestore) {
+        void goToPage(restoredAnchor?.page ?? currentPage.value)
+        return
+      }
+      if (!preservePosition || operation !== layoutOperation) return
       if (Math.abs(element.scrollTop - scrollBefore) > 1) return
       if (atEnd) element.scrollTop = element.scrollHeight
       else void restoreReadingPoint(readingPoint)
@@ -483,12 +702,16 @@ async function closeCurrentSession() {
   if (current) await current.close()
 }
 
+let finishOpen: ReturnType<typeof diagnostics.start>
+let finishNavigation: ReturnType<typeof diagnostics.start>
 let opening: Promise<void> = Promise.resolve()
 function openDocument() {
   opening = loadDocument()
   return opening
 }
 async function loadDocument() {
+  finishOpen?.('cancelled')
+  finishOpen = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.open-readable') : undefined
   pendingBookmark = null
   continuity.reset()
   documentController?.abort()
@@ -506,6 +729,9 @@ async function loadDocument() {
   pageEditing.value = false
   pageDraft.value = '1'
   totalPages.value = 0
+  componentWindow = new PdfPageWindow()
+  mountedPages.value = new Set([1])
+  pageRenderStates.value = {}
   fitMode.value = 'width'
   zoom.value = 1
   renderedScale.value = 1
@@ -535,6 +761,7 @@ async function loadDocument() {
     renderedScale.value = zoom.value
     phase.value = 'restoring'
     session.value = next
+    pageLayout.value = new PdfPageLayout(next.defaultPageDimensions ?? { width: 612, height: 792 })
     totalPages.value = next.totalPages
     rightPanel.value = props.initialState ? props.initialState.panel : (props.initialPanel ?? null)
     await nextTick()
@@ -544,6 +771,8 @@ async function loadDocument() {
     if (target !== 1) await goToPage(target)
   } catch (error) {
     if (sequence !== openSequence) return
+    finishOpen?.(diagnosticOutcome(error))
+    finishOpen = undefined
     phase.value = 'error'
     emit('phaseChange', 'error')
     errorMessage.value =
@@ -556,8 +785,46 @@ async function loadDocument() {
   }
 }
 
+async function activateContentLink(link: DocumentLink, origin: HTMLElement) {
+  const sequence = ++contentLinkSequence
+  const layout = layoutOperation
+  if (link.kind !== 'pdf') {
+    links.request(link, origin)
+    return
+  }
+  const current = session.value
+  if (!current || props.active === false) return
+  const destination = await current.resolveLinkDestination(link.destination)
+  if (
+    current !== session.value ||
+    !linksActive() ||
+    sequence !== contentLinkSequence ||
+    layout !== layoutOperation
+  )
+    return
+  if (!destination) {
+    links.notice.value = 'This link destination is unavailable or unsupported.'
+    return
+  }
+  links.notice.value = ''
+  const navigating = goToPage(destination.pageNumber)
+  const expectedLayout = layoutOperation
+  await navigating
+  if (
+    current !== session.value ||
+    !linksActive() ||
+    sequence !== contentLinkSequence ||
+    expectedLayout !== layoutOperation
+  )
+    return
+  pendingContentDestination = { ...destination, layout: expectedLayout, sequence, owner: current }
+  finishContentNavigation()
+}
+
 async function goToPage(page: number, bookmarkNavigation = false) {
   if (!bookmarkNavigation) pendingBookmark = null
+  finishNavigation?.('cancelled')
+  finishNavigation = __READER_DIAGNOSTICS__ ? diagnostics.start('pdf.navigation') : undefined
   layoutOperation += 1
   const next = clampPage(page)
   currentPage.value = next
@@ -570,24 +837,28 @@ async function goToPage(page: number, bookmarkNavigation = false) {
       scrollElement.getBoundingClientRect().top +
       scrollElement.scrollTop
     scrollElement.scrollTo?.({ top, behavior: 'instant' })
+    pageTracking.schedule()
+  }
+  if (pageElement?.dataset.renderState === 'ready') {
+    finishNavigation?.()
+    finishNavigation = undefined
   }
   emit('status', `Page ${next} of ${totalPages.value}.`)
 }
 
-function chooseMostVisiblePage() {
+function chooseMostVisiblePage(sample = pageTracking.measure()) {
   if (phase.value !== 'ready') return
   const pane = viewport.value
   if (!pane) return
-  const bounds = pane.getBoundingClientRect()
+  if (!sample) return
+  const bounds = sample.bounds
   let bestPage = currentPage.value
   let bestPixels = 0
-  for (const element of pane.querySelectorAll<HTMLElement>('.pdf-page-shell')) {
-    const box = element.getBoundingClientRect()
+  for (const { page, box } of sample.pages) {
     const pixels = Math.max(
       0,
       Math.min(box.bottom, bounds.top + pane.clientHeight) - Math.max(box.top, bounds.top),
     )
-    const page = Number(element.dataset.pdfPage)
     // Two fully visible pages can differ by a fractional CSS pixel after resizing.
     // Preserve the selected page in a visibility tie instead of advancing spuriously.
     if (
@@ -607,15 +878,7 @@ function chooseMostVisiblePage() {
 function handleViewerScroll() {
   toolbarSavedId.value = ''
   pendingHighlight.value = null
-  cancelAnimationFrame(scrollFrame)
-  scrollFrame = requestAnimationFrame(() => {
-    chooseMostVisiblePage()
-    saveReadingPoint()
-  })
-}
-
-function handleVisibility() {
-  handleViewerScroll()
+  pageTracking.schedule()
 }
 
 function stepPage(delta: number) {
@@ -625,6 +888,7 @@ function stepPage(delta: number) {
 
 let completingRestore = false
 async function handleRendered(pageNumber: number, scale: number) {
+  if (pendingContentDestination?.pageNumber === pageNumber) void nextTick(finishContentNavigation)
   if (phase.value === 'ready' && pendingBookmark?.anchor.page === pageNumber)
     await finishBookmarkNavigation(pageNumber)
   if (
@@ -632,6 +896,8 @@ async function handleRendered(pageNumber: number, scale: number) {
     (phase.value === 'restoring' ? (restoredAnchor?.page ?? currentPage.value) : currentPage.value)
   )
     return
+  finishNavigation?.()
+  finishNavigation = undefined
   renderedScale.value = scale
   if (phase.value !== 'restoring' || completingRestore) return
   completingRestore = true
@@ -656,6 +922,8 @@ async function handleRendered(pageNumber: number, scale: number) {
     // The viewport center can lie on a neighboring fully visible page. Keep the
     // saved page indicator as well as the independently restored viewport anchor.
     if (restoredPage !== undefined) currentPage.value = clampPage(restoredPage)
+    finishOpen?.()
+    finishOpen = undefined
     phase.value = 'ready'
     emit('phaseChange', 'ready')
     if (continuity.fingerprint.value) emit('identity', continuity.fingerprint.value)
@@ -685,12 +953,22 @@ function handleRenderError(message: string) {
   emit('status', message)
 }
 
-function captureReadingPoint() {
+interface PdfReadingPoint {
+  pane: HTMLElement
+  page: HTMLElement
+  x: number
+  y: number
+  pageNumber?: number
+  sequence?: number
+}
+function captureReadingPoint(sample = pageTracking.measure()): PdfReadingPoint | null {
   const pane = viewport.value
   if (!pane) return null
-  const bounds = pane.getBoundingClientRect()
+  const bounds = sample?.bounds ?? pane.getBoundingClientRect()
   const center = bounds.top + pane.clientHeight / 2
-  const candidates = [...pane.querySelectorAll<HTMLElement>('.pdf-page')]
+  const candidates = (sample?.pages ?? [])
+    .map(({ element }) => element.querySelector<HTMLElement>('.pdf-page'))
+    .filter((element): element is HTMLElement => !!element)
   const page =
     candidates.find((element) => {
       const box = element.getBoundingClientRect()
@@ -705,9 +983,12 @@ function captureReadingPoint() {
     }, null)
   if (!page) return null
   const box = page.getBoundingClientRect()
+  if (box.width <= 0 || box.height <= 0) return null
   return {
     pane,
     page,
+    pageNumber: Number(page.closest<HTMLElement>('[data-pdf-page]')?.dataset.pdfPage),
+    sequence: openSequence,
     x: (bounds.left + pane.clientWidth / 2 - box.left) / Math.max(1, box.width),
     y: (bounds.top + pane.clientHeight / 2 - box.top) / Math.max(1, box.height),
   }
@@ -721,12 +1002,19 @@ async function restoreReadingPoint(
   if (
     operation !== layoutOperation ||
     !point ||
-    !point.page.isConnected ||
+    (point.sequence !== undefined && point.sequence !== openSequence) ||
     viewport.value !== point.pane
   )
     return
+  // A stable article can replace its estimated inner page while correction awaits Vue.
+  const page = point.page.isConnected
+    ? point.page
+    : point.pageNumber
+      ? point.pane.querySelector<HTMLElement>(`[data-pdf-page="${point.pageNumber}"] .pdf-page`)
+      : null
+  if (!page || !point.pane.contains(page)) return
   const bounds = point.pane.getBoundingClientRect()
-  const box = point.page.getBoundingClientRect()
+  const box = page.getBoundingClientRect()
   point.pane.scrollTop += box.top + point.y * box.height - bounds.top - point.pane.clientHeight / 2
   point.pane.scrollLeft += box.left + point.x * box.width - bounds.left - point.pane.clientWidth / 2
 }
@@ -754,11 +1042,20 @@ function handleZoomInput(event: Event) {
   const value = input.valueAsNumber
   if (!Number.isFinite(value)) {
     input.value = String(zoomPercent.value)
+    zoomDraft.value = input.value
     return
   }
   const percentage = Math.min(400, Math.max(25, value))
   input.value = String(Math.round(percentage))
+  zoomDraft.value = input.value
   void applyCustomZoom(percentage / 100)
+}
+function beginZoomEdit(event: FocusEvent) {
+  zoomDraft.value = (event.target as HTMLInputElement).value
+  zoomEditing.value = true
+}
+function editZoom(event: Event) {
+  zoomDraft.value = (event.target as HTMLInputElement).value
 }
 async function applyCustomZoom(value: number) {
   if (!session.value || phase.value !== 'ready') return
@@ -1093,8 +1390,15 @@ function capture(): SessionState {
   }
 }
 function dispose(): Promise<void> {
+  finishOpen?.('cancelled')
+  finishNavigation?.('cancelled')
+  finishOpen = undefined
+  finishNavigation = undefined
   if (disposed) return disposed
   saveReadingPoint()
+  pageTracking.dispose()
+  pageSlots.clear()
+  registrationOwner?.set('ownedObservers', resizeObserver ? 1 : 0)
   const writes = continuity.reset()
   phase.value = 'loading'
   ++openSequence
@@ -1110,6 +1414,7 @@ function dispose(): Promise<void> {
 watch(
   () => props.active,
   (active) => {
+    if (active) pageTracking.schedule()
     if (active === false) {
       annotationsPanel.value?.closeMenu()
       if (document.fullscreenElement === readerRoot.value) void document.exitFullscreen()
@@ -1126,6 +1431,7 @@ onMounted(() => {
   if (typeof ResizeObserver !== 'undefined' && viewport.value) {
     resizeObserver = new ResizeObserver(scheduleViewportMeasure)
     resizeObserver.observe(viewport.value)
+    registrationOwner?.set('ownedObservers', 1 + pageTracking.observerCount)
   }
   void openDocument()
   globalThis.addEventListener('resize', scheduleViewportMeasure)
@@ -1137,6 +1443,7 @@ onMounted(() => {
   globalThis.addEventListener('pointerup', finishHighlightSelection)
   globalThis.addEventListener('pointercancel', cancelHighlightSelection)
   globalThis.addEventListener('blur', cancelHighlightSelection)
+  registrationOwner?.set('ownedListeners', 9)
 })
 
 watch(
@@ -1147,8 +1454,8 @@ watch(
 onBeforeUnmount(() => {
   void dispose()
   cancelAnimationFrame(resizeFrame)
-  cancelAnimationFrame(scrollFrame)
   resizeObserver?.disconnect()
+  registrationOwner?.dispose()
   globalThis.removeEventListener('resize', scheduleViewportMeasure)
   globalThis.removeEventListener('keydown', handleShortcut)
   globalThis.removeEventListener('pointerdown', handlePopoverPointer)
@@ -1169,13 +1476,6 @@ onBeforeUnmount(() => {
     :style="{ '--pt-selection-color': SELECTION_COLORS[highlightColor] }"
     @pointerdown.capture="clearPendingHighlight"
   >
-    <p
-      v-if="persistenceNotice"
-      role="status"
-      class="border-b border-line bg-panel px-4 py-2 text-xs text-muted"
-    >
-      {{ persistenceNotice }}
-    </p>
     <header
       class="pdf-header relative z-20 flex h-14 shrink-0 items-center justify-between gap-2 border-b border-line bg-panel px-3 py-2 sm:px-4"
     >
@@ -1239,13 +1539,16 @@ onBeforeUnmount(() => {
           <label class="pdf-zoom-field">
             <span class="sr-only">PDF zoom percent</span>
             <input
-              :value="zoomPercent"
+              :value="zoomEditing ? zoomDraft : zoomPercent"
               aria-label="PDF zoom percent"
               type="number"
               min="25"
               max="400"
               step="25"
               class="pdf-zoom-input"
+              @focus="beginZoomEdit"
+              @input="editZoom"
+              @blur="zoomEditing = false"
               @change="handleZoomInput"
               @keydown.enter.prevent="handleZoomInput"
             />
@@ -1396,77 +1699,119 @@ onBeforeUnmount(() => {
       <button type="button" class="underline" @click="highlights.reload">Retry annotations</button>
     </p>
 
+    <ExternalLinkDialog
+      v-if="links.pending.value"
+      :url="links.pending.value.url"
+      @close="links.close"
+    />
     <div class="pdf-body relative flex min-h-0 flex-1">
-      <section
-        ref="viewport"
-        class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
-        aria-label="PDF pages"
-        tabindex="0"
-        :aria-describedby="readerId('reader-title')"
-        :aria-busy="phase === 'loading' || phase === 'restoring'"
-        @scroll.passive="handleViewerScroll"
-      >
-        <div
-          v-if="phase === 'loading' || phase === 'restoring'"
-          class="absolute inset-0 z-10 bg-canvas"
+      <div class="relative z-0 flex min-w-0 flex-1">
+        <ReaderNotice
+          :viewport="viewport"
+          :active="active !== false && phase === 'ready'"
+          :sections="readerNotices"
+        />
+        <section
+          ref="viewport"
+          class="pdf-scroll min-w-0 flex-1 overflow-auto bg-canvas px-6 py-4 sm:p-6"
+          aria-label="PDF pages"
+          tabindex="0"
+          :aria-describedby="readerId('reader-title')"
+          :aria-busy="phase === 'loading' || phase === 'restoring'"
+          @wheel.passive="cancelContentNavigation"
+          @scroll.passive="handleViewerScroll"
         >
-          <LoadingState
-            :label="initialState?.pdf ? 'Restoring your reading position…' : 'Opening document'"
-            :detail="document.name"
-          />
-        </div>
+          <div
+            v-if="phase === 'loading' || phase === 'restoring'"
+            class="absolute inset-0 z-10 bg-canvas"
+          >
+            <LoadingState
+              :label="initialState?.pdf ? 'Restoring your reading position…' : 'Opening document'"
+              :detail="document.name"
+            />
+          </div>
 
-        <div
-          v-if="phase === 'error'"
-          class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
-          role="alert"
-        >
-          <p class="font-medium">PaperTrail could not open this PDF</p>
-          <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
-        </div>
+          <div
+            v-if="phase === 'error'"
+            class="mx-auto max-w-2xl rounded-lg border border-line bg-panel p-5"
+            role="alert"
+          >
+            <p class="font-medium">PaperTrail could not open this PDF</p>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{{ errorMessage }}</p>
+          </div>
 
-        <div
-          v-else-if="session"
-          class="pdf-pages"
-          :class="{ 'pdf-pages-spread': twoPage }"
-          :inert="phase !== 'ready'"
-          :aria-hidden="phase !== 'ready'"
-          :style="{
-            visibility: phase === 'ready' ? 'visible' : 'hidden',
-            opacity: phase === 'ready' ? 1 : 0,
-          }"
-        >
-          <PdfPageView
-            v-for="pageNumber in pages"
-            :id="readerId(`pdf-page-${pageNumber}`)"
-            :key="`${openSequence}:${pageNumber}`"
-            :session="session"
-            :page-number="pageNumber"
-            :fit-mode="fitMode"
-            :zoom="zoom"
-            :available-width="pageAvailableWidth"
-            :available-height="availableHeight"
-            :scroll-root="viewport"
-            :annotations="highlights.highlights.value"
-            :fingerprint="continuity.fingerprint.value"
-            :active-highlight="selectedHighlight"
-            :search-query="completedSearchQuery"
-            :selected-occurrence="
-              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.occurrence : null
-            "
-            :selection-request="
-              selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
-            "
-            @highlight-selected="openHighlight"
-            @note-selected="openNote"
-            @highlight-resolution="highlightResolution"
-            @pointerup="captureSelection"
-            @visibility="handleVisibility"
-            @rendered="handleRendered"
-            @error="handleRenderError"
-          />
-        </div>
-      </section>
+          <div
+            v-else-if="session"
+            class="pdf-pages"
+            :class="{ 'pdf-pages-spread': twoPage }"
+            :inert="phase !== 'ready'"
+            :aria-hidden="phase !== 'ready'"
+            :style="{
+              visibility: phase === 'ready' ? 'visible' : 'hidden',
+              opacity: phase === 'ready' ? 1 : 0,
+            }"
+          >
+            <article
+              v-for="pageNumber in pages"
+              :id="readerId(`pdf-page-${pageNumber}`)"
+              :key="`${openSequence}:${pageNumber}`"
+              :ref="(node) => registerPageSlot(pageNumber, node)"
+              v-memo="slotMemo(pageNumber)"
+              class="pdf-page-shell flex w-full scroll-mt-4 items-start justify-center"
+              :aria-label="`PDF page ${pageNumber}`"
+              :data-pdf-page="pageNumber"
+              :data-render-state="
+                mountedPages.has(pageNumber)
+                  ? (pageRenderStates[pageNumber] ?? 'pending')
+                  : 'pending'
+              "
+              :data-virtual-placeholder="mountedPages.has(pageNumber) ? undefined : ''"
+            >
+              <PdfPageView
+                v-if="mountedPages.has(pageNumber)"
+                :managed-proximity="true"
+                :initial-dimensions="pageLayout.known(pageNumber)"
+                :session="session"
+                :active="active !== false"
+                :tracking="pageTracking"
+                :page-number="pageNumber"
+                :fit-mode="fitMode"
+                :zoom="zoom"
+                :available-width="pageAvailableWidth"
+                :available-height="availableHeight"
+                :scroll-root="viewport"
+                :annotations="highlights.highlights.value"
+                :fingerprint="continuity.fingerprint.value"
+                :active-highlight="selectedHighlight"
+                :search-query="completedSearchQuery"
+                :selected-occurrence="
+                  selectedSearchMatch?.pageNumber === pageNumber
+                    ? selectedSearchMatch.occurrence
+                    : null
+                "
+                :selection-request="
+                  selectedSearchMatch?.pageNumber === pageNumber ? selectedSearchMatch.request : 0
+                "
+                @highlight-selected="openHighlight"
+                @note-selected="openNote"
+                @highlight-resolution="highlightResolution"
+                @pointerup="captureSelection"
+                @rendered="handleRendered"
+                @measured="handleMeasured"
+                @state="handlePageState"
+                @link="activateContentLink"
+                @link-notice="links.notice.value = $event"
+                @error="handleRenderError"
+              />
+              <div
+                v-else
+                class="pdf-page shrink-0 bg-white shadow-sm"
+                :style="slotStyle(pageNumber)"
+              />
+            </article>
+          </div>
+        </section>
+      </div>
 
       <Transition
         name="utility-panel"
@@ -1688,6 +2033,10 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
+.pdf-page-shell {
+  /* The stable slot also owns oversized placeholders before content mounts. */
+  justify-content: safe center;
+}
 .pdf-pages {
   display: flex;
   min-width: 100%;

@@ -17,16 +17,24 @@ export function pdfTextIndex(layer: HTMLElement) {
   while (walker.nextNode()) nodes.push(walker.currentNode as Text)
   return { nodes, ...indexPdfText(nodes.map((node) => node.data)) }
 }
-export function pdfTextRange(layer: HTMLElement, start: number, end: number): Range | undefined {
-  const index = pdfTextIndex(layer)
-  const first = index.positions[start]
-  const last = index.positions[end - 1]
+/** Reuse a fresh index within one operation; never retain DOM maps across renders. */
+export function pdfIndexedRange(
+  index: ReturnType<typeof pdfTextIndex>,
+  start: number,
+  end: number,
+): Range | undefined {
+  const first = index.source.at(start)
+  const last = index.source.at(end - 1)
   if (!first || !last) return
-  const range = layer.ownerDocument.createRange()
+  const range = index.nodes[first.part]!.ownerDocument.createRange()
   range.setStart(index.nodes[first.part]!, first.offset)
   range.setEnd(index.nodes[last.part]!, last.offset + 1)
   return range
 }
+export function pdfTextRange(layer: HTMLElement, start: number, end: number): Range | undefined {
+  return pdfIndexedRange(pdfTextIndex(layer), start, end)
+}
+
 function rotation(layer: HTMLElement): 0 | 90 | 180 | 270 {
   const value = Number(layer.dataset.mainRotation ?? 0)
   if (![0, 90, 180, 270].includes(value)) throw Error('Unsupported PDF page rotation.')
@@ -129,25 +137,16 @@ export function capturePdfHighlight(
       const b = node === selected.endContainer ? selected.endOffset : node.length
       if (b > a) selectedParts.set(part, { start: a, end: b })
     })
-    const offsets: number[] = []
-    index.positions.forEach((position, offset) => {
-      if (!position) return
-      const bounds = selectedParts.get(position.part)
-      if (bounds && position.offset >= bounds.start && position.offset < bounds.end) {
-        if (!offsets.length) offsets.push(offset)
-        offsets[1] = offset + 1
-      }
-    })
-    if (!offsets.length) return
-    const from = Math.min(...offsets),
-      to = Math.max(...offsets)
+    const offsets = index.source.bounds(selectedParts)
+    if (!offsets) return
+    const [from, to] = offsets
     let text
     try {
       text = captureTextSelector(index.text, from, to)
     } catch {
       return
     }
-    const range = pdfTextRange(layer, from, to)
+    const range = pdfIndexedRange(index, from, to)
     if (!range) return
     const rectangles = capturePdfRectangles(range, page, layer)
     if (!rectangles.length) return
@@ -176,14 +175,15 @@ export function revealPdfHighlight(
   const layer = shell?.querySelector<HTMLElement>('.textLayer')
   if (!layer || shell?.dataset.renderState !== 'ready') return false
   const identity = { format: 'PDF' as const, fingerprint }
+  const index = pdfTextIndex(layer)
   const resolved = resolvePdfAnnotation(
     identity,
     identity,
     { ...selector, segments: [first] },
-    new Map([[first.page, pdfTextIndex(layer).text]]),
+    new Map([[first.page, index.text]]),
   )
   if (resolved.status !== 'resolved') return false
   const segment = resolved.value[0]!
-  const range = pdfTextRange(layer, segment.start, segment.end)
+  const range = pdfIndexedRange(index, segment.start, segment.end)
   return !!range && scrollHighlightRange(root, range)
 }

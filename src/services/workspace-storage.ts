@@ -1,3 +1,4 @@
+import { diagnostics } from '../features/diagnostics/recorder'
 import {
   assertWorkspaceSchemaSupported,
   normalizeWorkspaceTabs,
@@ -137,6 +138,22 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
       result: (value: T) => void,
       fail: (error: unknown) => void,
     ) => void,
+    operation?:
+      'workspace.transaction' | 'workspace.restore' | 'workspace.write' | 'workspace.clear',
+  ): Promise<T> {
+    return __READER_DIAGNOSTICS__
+      ? diagnostics.investigation.track(operation ?? 'workspace.transaction', (start) =>
+          this.runTransaction(run, start),
+        )
+      : this.runTransaction(run)
+  }
+  private async runTransaction<T>(
+    run: (
+      store: IDBObjectStore,
+      result: (value: T) => void,
+      fail: (error: unknown) => void,
+    ) => void,
+    started?: () => void,
   ): Promise<T> {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       if (!globalThis.indexedDB) return reject(new Error('Workspace storage unavailable.'))
@@ -153,6 +170,7 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
         else resolve(request.result)
       }
     })
+    started?.()
     try {
       return await new Promise<T>((resolve, reject) => {
         const transaction = database.transaction('workspace', 'readwrite')
@@ -183,41 +201,50 @@ export class IndexedDbWorkspaceStorage implements WorkspaceStorage {
     }
   }
   load(): Promise<WorkspaceSnapshot | null> {
-    return this.transaction((store, done, fail) => {
-      const request = store.get('current')
-      request.onsuccess = () => {
-        try {
-          assertWorkspaceSchemaSupported(request.result)
-          done(validateWorkspaceSnapshot(request.result))
-        } catch (error) {
-          fail(error)
+    return this.transaction(
+      (store, done, fail) => {
+        const request = store.get('current')
+        request.onsuccess = () => {
+          try {
+            assertWorkspaceSchemaSupported(request.result)
+            done(validateWorkspaceSnapshot(request.result))
+          } catch (error) {
+            fail(error)
+          }
         }
-      }
-    })
+      },
+      __READER_DIAGNOSTICS__ ? 'workspace.restore' : undefined,
+    )
   }
   save(snapshot: WorkspaceSnapshot): Promise<void> {
-    return this.transaction((store, done, fail) => {
-      assertWorkspaceSchemaSupported(snapshot)
-      const safe = validateWorkspaceSnapshot(snapshot)
-      if (!safe) throw new Error('Invalid workspace metadata.')
-      // Read/check/write in the same transaction: another window may have saved
-      // a newer schema after this window loaded. Only explicit Forget may remove it.
-      const request = store.get('current')
-      request.onsuccess = () => {
-        try {
-          assertWorkspaceSchemaSupported(request.result)
-          store.put(safe, 'current')
-          done(undefined)
-        } catch (error) {
-          fail(error)
+    return this.transaction(
+      (store, done, fail) => {
+        assertWorkspaceSchemaSupported(snapshot)
+        const safe = validateWorkspaceSnapshot(snapshot)
+        if (!safe) throw new Error('Invalid workspace metadata.')
+        // Read/check/write in the same transaction: another window may have saved
+        // a newer schema after this window loaded. Only explicit Forget may remove it.
+        const request = store.get('current')
+        request.onsuccess = () => {
+          try {
+            assertWorkspaceSchemaSupported(request.result)
+            store.put(safe, 'current')
+            done(undefined)
+          } catch (error) {
+            fail(error)
+          }
         }
-      }
-    })
+      },
+      __READER_DIAGNOSTICS__ ? 'workspace.write' : undefined,
+    )
   }
   clear(): Promise<void> {
-    return this.transaction((store, done) => {
-      store.delete('current')
-      done(undefined)
-    })
+    return this.transaction(
+      (store, done) => {
+        store.delete('current')
+        done(undefined)
+      },
+      __READER_DIAGNOSTICS__ ? 'workspace.clear' : undefined,
+    )
   }
 }

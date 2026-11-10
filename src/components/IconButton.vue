@@ -8,6 +8,10 @@ const tooltipId = useId()
 defineProps<{
   label: string
   icon:
+    | 'pause'
+    | 'play'
+    | 'minimize'
+    | 'download'
     | 'refresh'
     | 'plus'
     | 'more'

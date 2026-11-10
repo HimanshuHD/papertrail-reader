@@ -7,11 +7,12 @@ const props = withDefaults(
     anchor: HTMLElement | null
     expanded?: boolean
     compact?: boolean
+    notice?: boolean
     reserveAsideHeader?: boolean
   }>(),
   { reserveAsideHeader: true },
 )
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; ready: [] }>()
 const root = ref<HTMLElement | null>(null)
 const position = ref({
   left: '8px',
@@ -66,6 +67,10 @@ onMounted(async () => {
   await nextTick()
   if (!root.value) return
   place()
+  // Focus is possible only after Vue commits visibility: visible to the DOM.
+  await nextTick()
+  if (!root.value) return
+  emit('ready')
   if (typeof ResizeObserver !== 'undefined') {
     observer = new ResizeObserver(place)
     if (root.value) observer.observe(root.value)
@@ -111,7 +116,7 @@ watch(
     <div
       ref="root"
       class="floating-popover"
-      :class="{ expanded, compact }"
+      :class="{ expanded, compact, notice }"
       :style="position"
       @pointerdown.stop
     >
@@ -141,6 +146,13 @@ watch(
   width: min(224px, calc(100vw - 16px));
   padding: 8px;
   border-radius: 8px;
+  box-shadow: 0 4px 16px #0003;
+}
+.notice {
+  width: min(320px, calc(100vw - 16px));
+  padding: 12px;
+  border-radius: 10px;
+  border-color: var(--pt-line);
   box-shadow: 0 4px 16px #0003;
 }
 .expanded {

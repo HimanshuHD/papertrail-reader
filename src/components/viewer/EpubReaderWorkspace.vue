@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { OwnedRegistrations } from '../../features/diagnostics/owned-registrations'
 import type { SessionState, UtilityPanel } from '../../features/reader/document-sessions'
 import ReadingInsightsPanel from './ReadingInsightsPanel.vue'
 import { useReadingStatistics } from '../../composables/useReadingStatistics'
 import { bindHighlightHover } from '../../features/annotations/highlight-hover'
+import { EpubNoteGeometry, observeEpubNoteLayout } from '../../features/epub/note-geometry'
 import { bindEpubPageAppearance } from '../../features/epub/page-appearance'
 import { selectionColorPreview } from '../../features/annotations/selection-colors'
 import { computed, nextTick, onMounted, onBeforeUnmount, ref, shallowRef, watch } from 'vue'
@@ -14,6 +16,14 @@ import type { AnnotationColor } from '../../services/annotation-storage'
 import { useEpubReader } from '../../composables/useEpubReader'
 import { useThemeStore } from '../../stores/theme'
 import LoadingState from '../LoadingState.vue'
+import ExternalLinkDialog from './ExternalLinkDialog.vue'
+import { useDocumentLinks } from '../../composables/useDocumentLinks'
+import {
+  bindDocumentLinks,
+  unavailableLink,
+  type DocumentLink,
+} from '../../features/reader/document-links'
+import ReaderNotice, { type ReaderNoticeSection } from './ReaderNotice.vue'
 import { useEpubContinuity } from '../../composables/useEpubContinuity'
 import { useEpubBookmarks } from '../../composables/useEpubBookmarks'
 import EpubBookmarksPanel from './EpubBookmarksPanel.vue'
@@ -35,6 +45,46 @@ import {
   type EpubTypography,
 } from '../../features/epub/typography'
 
+const linkDisposers: (() => void)[] = []
+async function activateContentLink(link: DocumentLink, origin: HTMLElement) {
+  if (props.active === false || reader.busy.value) return
+  if (link.kind !== 'epub') {
+    links.request(link, origin)
+    return
+  }
+  links.notice.value = ''
+  await reader.go(link.chapter, link.fragment)
+}
+const renderingNotices = computed<ReaderNoticeSection[]>(() => {
+  // Session warning getters are not reactive; refresh after each chapter's readiness gate.
+  if (loading.value) return []
+  const sections: ReaderNoticeSection[] = []
+  const session = reader.session.value
+  if (session?.imageWarnings?.length)
+    sections.push({
+      title: 'Illustration availability',
+      label: 'Illustration notice',
+      message:
+        'Some illustrations are unavailable. You can continue reading or use Text-only view.',
+      reasons: session.imageWarnings,
+    })
+  if (session?.fontWarnings?.length)
+    sections.push({
+      title: 'Font availability',
+      label: 'Font notice',
+      message: 'Some book fonts are unavailable. Reading continues with fallback fonts.',
+      reasons: session.fontWarnings,
+    })
+  if (links.notice.value)
+    sections.push({ title: 'Link availability', label: 'Link notice', message: links.notice.value })
+  return sections
+})
+
+const shellRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+const frameRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+const loaderRegistrations = __READER_DIAGNOSTICS__ ? new OwnedRegistrations() : undefined
+let readerDisposed = false
+
 const props = withDefaults(
   defineProps<{
     document: DiscoveredDocument
@@ -49,7 +99,7 @@ const readerId = (id: string) => `${props.idPrefix}${id}`
 
 const emit = defineEmits<{
   focusPane: []
-  readingChange: []
+  readingChange: [immediate?: boolean]
   phaseChange: [phase: 'ready' | 'error']
   utilityChange: [panel: UtilityPanel, query: string]
   status: [message: string]
@@ -58,6 +108,7 @@ const emit = defineEmits<{
 }>()
 const continuity = useEpubContinuity(captureReading)
 const reader = useEpubReader()
+const links = useDocumentLinks(() => props.active !== false && !reader.busy.value)
 const bookmarks = useEpubBookmarks(continuity.documentId)
 const highlights = useAnnotationHighlights('EPUB', continuity.fingerprint)
 const pendingHighlight = shallowRef<AnnotationSelector | null>(null)
@@ -73,12 +124,21 @@ const highlightStatus = computed(() =>
 )
 const hoveredHighlight = ref<string | null>(null)
 const noteIndicators = ref<{ id: string; note: string; left: number; top: number }[]>([])
+const noteAnnotations = computed(() =>
+  highlights.highlights.value.filter((item) => item.note.trim()),
+)
+const noteGeometry = new EpubNoteGeometry()
+const noteLayouts: ReturnType<typeof observeEpubNoteLayout>[] = []
+let noteAnimation = false
 let noteFrame = 0
 let noteResizeObserver: ResizeObserver | undefined
 let paintedHighlights: ReturnType<typeof paintEpubHighlights> | undefined
 const highlightObservers: MutationObserver[] = []
 let highlightFrame = 0
 function paintHighlights() {
+  if (readerDisposed) return
+  noteGeometry.invalidate()
+  highlightHovers.forEach((hover) => hover.clear())
   const context = reader.session.value?.annotationContext?.()
   paintedHighlights?.dispose()
   paintedHighlights = undefined
@@ -98,38 +158,49 @@ function paintHighlights() {
   scheduleNoteIndicators()
 }
 function updateNoteIndicators() {
+  noteFrame = 0
+  if (readerDisposed) return
   noteIndicators.value = []
+  if (props.active === false || !noteAnnotations.value.length) return
   const context = reader.session.value?.annotationContext?.()
   const stage = host.value?.parentElement
   const frame = host.value?.querySelector('iframe')
   if (!context || !stage || !frame || loading.value) return
   const outer = frame.getBoundingClientRect(),
     bounds = stage.getBoundingClientRect()
-  for (const item of highlights.highlights.value) {
-    if (!item.note.trim()) continue
-    const range = paintedHighlights?.resolvedRanges.get(item.id)
-    const rect =
-      range?.getClientRects &&
-      Array.from(range.getClientRects()).find(
-        (rect) =>
-          rect.width > 0 &&
-          rect.height > 0 &&
-          outer.top + rect.bottom > bounds.top &&
-          outer.top + rect.top < bounds.bottom,
-      )
-    if (!rect) continue
+  // Animated author content needs fresh geometry at every scheduled update.
+  const animated = !context.document.getAnimations || !!context.document.getAnimations().length
+  const fresh = animated || noteAnimation
+  noteAnimation = animated
+  const scrollY = context.document.defaultView?.scrollY ?? 0
+  const visible = noteGeometry.visible(
+    () =>
+      noteAnnotations.value.flatMap((item) => {
+        const range = paintedHighlights?.resolvedRanges.get(item.id)
+        return range?.getClientRects ? [{ id: item.id, note: item.note, range }] : []
+      }),
+    scrollY,
+    bounds.top - outer.top + scrollY,
+    bounds.bottom - outer.top + scrollY,
+    fresh,
+  )
+  for (const item of visible) {
     // EPUB body reserves 24px of padding; use that margin, inside the document edge.
     noteIndicators.value.push({
       id: item.id,
       note: item.note,
       left: Math.max(0, Math.min(outer.right - bounds.left - 40, bounds.width - 40)),
-      top: Math.max(0, Math.min(outer.top + rect.top - bounds.top, bounds.height - 40)),
+      top: Math.max(0, Math.min(outer.top + item.top - bounds.top, bounds.height - 40)),
     })
   }
 }
 function scheduleNoteIndicators() {
-  cancelAnimationFrame(noteFrame)
+  if (readerDisposed || noteFrame) return
   noteFrame = requestAnimationFrame(updateNoteIndicators)
+}
+function invalidateNoteIndicators() {
+  noteGeometry.invalidate()
+  scheduleNoteIndicators()
 }
 async function openNote(id: string) {
   const owner = openGeneration
@@ -140,6 +211,7 @@ async function openNote(id: string) {
     annotationsPanel.value?.revealAnnotation(id)
 }
 function scheduleHighlights() {
+  if (readerDisposed) return
   cancelAnimationFrame(highlightFrame)
   highlightFrame = requestAnimationFrame(paintHighlights)
 }
@@ -284,6 +356,7 @@ watch(highlights.highlights, scheduleHighlights)
 
 let openGeneration = 0
 const host = ref<HTMLElement | null>(null)
+const noticeViewport = shallowRef<HTMLElement | null>(null)
 const theme = useThemeStore()
 const textOnly = ref(false)
 const root = ref<HTMLElement | null>(null)
@@ -311,7 +384,7 @@ const showLoader = ref(false)
 const restoringContentsEntry = ref<string | null>(null)
 let loaderTimer: ReturnType<typeof setTimeout> | undefined
 function updateWindowWidth() {
-  scheduleNoteIndicators()
+  invalidateNoteIndicators()
   toolbarSavedId.value = ''
   pendingHighlight.value = null
   windowWidth.value = globalThis.innerWidth
@@ -325,6 +398,7 @@ watch(windowWidth, () => {
 })
 const frameDocuments = new Set<Document>()
 const hoverDisposers: (() => void)[] = []
+const highlightHovers: ReturnType<typeof bindHighlightHover>[] = []
 const pageAppearances: ReturnType<typeof bindEpubPageAppearance>[] = []
 const colorPreviews: ReturnType<typeof selectionColorPreview>[] = []
 watch(highlightColor, (color) => colorPreviews.forEach((preview) => preview.set(color)))
@@ -362,6 +436,8 @@ function onFrameKey(event: KeyboardEvent) {
 }
 let readingContainer: HTMLElement | null = null
 let lastReading: EpubReadingSettings | undefined
+let readingFrame = 0
+let readingEpoch = 0
 function captureReading(): EpubReadingSettings | undefined {
   if (!reader.session.value || reader.busy.value) return lastReading
   lastReading = {
@@ -371,30 +447,59 @@ function captureReading(): EpubReadingSettings | undefined {
   }
   return lastReading
 }
-function persistReading() {
+function persistReading(immediate = false) {
+  ++readingEpoch
+  cancelAnimationFrame(readingFrame)
+  readingFrame = 0
   continuity.save()
-  emit('readingChange')
+  if (immediate) continuity.flush()
+  emit('readingChange', immediate)
 }
 function saveReading() {
   scheduleNoteIndicators()
   toolbarSavedId.value = ''
   pendingHighlight.value = null
-  persistReading()
+  if (readerDisposed || readingFrame) return
+  const session = reader.session.value
+  const chapter = reader.chapter.value
+  const epoch = readingEpoch
+  readingFrame = requestAnimationFrame(() => {
+    if (epoch !== readingEpoch) return
+    readingFrame = 0
+    if (
+      !readerDisposed &&
+      !reader.busy.value &&
+      reader.session.value === session &&
+      reader.chapter.value === chapter
+    )
+      persistReading()
+  })
 }
 function clearFrameListeners() {
+  ++readingEpoch
+  cancelAnimationFrame(readingFrame)
+  readingFrame = 0
+  linkDisposers.splice(0).forEach((dispose) => dispose())
   hoverDisposers.splice(0).forEach((dispose) => dispose())
+  highlightHovers.splice(0).forEach((dispose) => dispose())
   pageAppearances.splice(0).forEach((page) => page.dispose())
   colorPreviews.splice(0).forEach((preview) => preview.dispose())
+  noteLayouts.splice(0).forEach((layout) => layout.dispose())
+  noteGeometry.invalidate()
+  noteAnimation = false
   noteResizeObserver?.disconnect()
-  if (host.value) noteResizeObserver?.observe(host.value)
+  if (host.value && !readerDisposed) noteResizeObserver?.observe(host.value)
+  shellRegistrations?.set('ownedObservers', noteResizeObserver && !readerDisposed ? 1 : 0)
   highlightObservers.splice(0).forEach((observer) => observer.disconnect())
   cancelAnimationFrame(highlightFrame)
   paintedHighlights?.dispose()
   paintedHighlights = undefined
   cancelAnimationFrame(noteFrame)
+  noteFrame = 0
   noteIndicators.value = []
   readingContainer?.removeEventListener('scroll', saveReading)
   readingContainer = null
+  noticeViewport.value = null
   for (const doc of frameDocuments) {
     doc.removeEventListener('focusin', onFrameFocus, true)
     doc.removeEventListener('pointerdown', onFramePointer, true)
@@ -403,10 +508,14 @@ function clearFrameListeners() {
     doc.removeEventListener('keyup', captureHighlight)
   }
   frameDocuments.clear()
+  frameRegistrations?.set('ownedListeners', 0)
+  frameRegistrations?.set('ownedObservers', 0)
 }
 function bindFrameListeners() {
+  if (readerDisposed) return
   clearFrameListeners()
   readingContainer = host.value?.querySelector<HTMLElement>('.epub-container') ?? null
+  noticeViewport.value = readingContainer
   readingContainer?.addEventListener('scroll', saveReading, { passive: true })
   for (const frame of host.value?.querySelectorAll('iframe') ?? []) {
     const doc = frame.contentDocument
@@ -419,9 +528,23 @@ function bindFrameListeners() {
     doc.addEventListener('pointerup', captureHighlight)
     doc.addEventListener('keyup', captureHighlight)
     frameDocuments.add(doc)
+    noteLayouts.push(observeEpubNoteLayout(doc, invalidateNoteIndicators))
     colorPreviews.push(selectionColorPreview(doc, highlightColor.value))
+    linkDisposers.push(
+      bindDocumentLinks(
+        doc,
+        (element) =>
+          reader.session.value?.resolveLink?.(
+            reader.chapter.value,
+            element.dataset.readerLink ?? '',
+          ) ?? unavailableLink(),
+        (link, origin) => {
+          void activateContentLink(link, origin)
+        },
+      ),
+    )
     pageAppearances.push(bindEpubPageAppearance(doc, theme.resolvedTheme === 'dark'))
-    hoverDisposers.push(
+    highlightHovers.push(
       bindHighlightHover(
         doc.body,
         () =>
@@ -439,6 +562,7 @@ function bindFrameListeners() {
         (id) => {
           hoveredHighlight.value = id
         },
+        () => props.active !== false && !readerDisposed && !reader.busy.value,
       ),
     )
     const reportActivity = () =>
@@ -453,22 +577,33 @@ function bindFrameListeners() {
     observer.observe(doc.body, { childList: true, subtree: true, characterData: true })
     highlightObservers.push(observer)
   }
+  frameRegistrations?.set(
+    'ownedListeners',
+    (readingContainer ? 1 : 0) +
+      frameDocuments.size * 15 +
+      noteLayouts.reduce((count, layout) => count + layout.listenerCount, 0),
+  )
+  frameRegistrations?.set('ownedObservers', highlightObservers.length + noteLayouts.length)
   paintHighlights()
 }
 watch(
   () => reader.busy.value || continuity.preparing.value,
   async (busy) => {
     clearTimeout(loaderTimer)
+    loaderRegistrations?.set('ownedTimers', 0)
+    if (readerDisposed) return
     showLoader.value = false
     if (busy) {
       pendingHighlight.value = null
       clearFrameListeners()
     }
-    if (busy)
+    if (busy) {
+      loaderRegistrations?.set('ownedTimers', 1)
       loaderTimer = setTimeout(() => {
+        loaderRegistrations?.set('ownedTimers', 0)
         showLoader.value = true
       }, 150)
-    else {
+    } else {
       await nextTick()
       bindFrameListeners()
       bookFontSize.value = reader.session.value?.defaultFontSize?.() ?? 18
@@ -562,6 +697,9 @@ function capture(): SessionState {
 }
 function dispose(): Promise<void> {
   if (disposed) return disposed
+  readerDisposed = true
+  clearTimeout(loaderTimer)
+  loaderRegistrations?.dispose()
   // Capture persistence before destroying the rendition/iframe.
   const writes = continuity.reset()
   ++openGeneration
@@ -576,8 +714,9 @@ watch(
   () => props.active,
   (active) => {
     if (active === false) {
+      highlightHovers.forEach((hover) => hover.clear())
       annotationsPanel.value?.closeMenu()
-      saveReading()
+      persistReading(true)
       typographyOpen.value = false
       pendingHighlight.value = null
       selectionPosition.value = null
@@ -588,13 +727,15 @@ defineExpose({ capture, dispose })
 
 onMounted(() => {
   if (host.value && typeof ResizeObserver !== 'undefined') {
-    noteResizeObserver = new ResizeObserver(scheduleNoteIndicators)
+    noteResizeObserver = new ResizeObserver(invalidateNoteIndicators)
     noteResizeObserver.observe(host.value)
+    shellRegistrations?.set('ownedObservers', 1)
   }
   globalThis.addEventListener('blur', onWindowBlur)
   globalThis.addEventListener('keydown', onKey)
   globalThis.addEventListener('pointerdown', onPointer, true)
   globalThis.addEventListener('resize', updateWindowWidth)
+  shellRegistrations?.set('ownedListeners', 4)
 })
 onBeforeUnmount(() => {
   void dispose()
@@ -607,6 +748,9 @@ onBeforeUnmount(() => {
   globalThis.removeEventListener('resize', updateWindowWidth)
   clearTimeout(loaderTimer)
   clearFrameListeners()
+  shellRegistrations?.dispose()
+  frameRegistrations?.dispose()
+  loaderRegistrations?.dispose()
 })
 function changeFont(delta: number) {
   typography.value.fontSize =
@@ -634,6 +778,7 @@ function selectContents(entry: EpubContentsEntry) {
   if (entry.chapter !== null) void reader.go(entry.chapter, entry.fragment, entry.id)
 }
 function applyTypography() {
+  invalidateNoteIndicators()
   reader.session.value?.typography(typography.value)
   persistReading()
 }
@@ -696,7 +841,8 @@ async function open(preserve = false) {
     if (preserve) reader.contentsEntry.value = contentsEntry
     if (saved?.location && !normalizeLocation(saved.location, reader.session.value.chapters.length))
       continuity.notice.value = 'The saved chapter is unavailable. Reading starts at the beginning.'
-    persistReading()
+    // Explicit view changes should not wait behind the scroll-save debounce.
+    persistReading(preserve)
     if (continuity.fingerprint.value) {
       emit('identity', continuity.fingerprint.value)
       emit('recentReady', {
@@ -957,12 +1103,31 @@ watch(
 
     <div v-if="reader.error.value" class="p-4" role="alert">
       <p>{{ reader.error.value }}</p>
+      <button
+        v-if="!textOnly"
+        type="button"
+        class="mt-3 mr-3 rounded border border-line px-3 py-2"
+        :disabled="loading"
+        @click="toggleTextOnly"
+      >
+        Open text-only view
+      </button>
       <button class="mt-3 rounded border border-line px-3 py-2" @click="open()">
         Retry opening EPUB
       </button>
     </div>
+    <ExternalLinkDialog
+      v-if="links.pending.value"
+      :url="links.pending.value.url"
+      @close="links.close"
+    />
     <div class="epub-body">
       <div class="epub-stage">
+        <ReaderNotice
+          :sections="renderingNotices"
+          :viewport="noticeViewport"
+          :active="active !== false && !loading"
+        />
         <NoteIndicator
           v-for="item in noteIndicators"
           :key="item.id"
@@ -1385,6 +1550,16 @@ watch(
   position: absolute;
   inset: 0 40px;
   overflow: hidden;
+}
+.epub-host {
+  background: #ffffff;
+}
+:global(:root[data-theme='dark']) .epub-host {
+  background: #111b22;
+}
+.epub-host :deep(.epub-view),
+.epub-host :deep(iframe) {
+  min-height: var(--papertrail-viewport-height, 100%);
 }
 .epub-host :deep(.epub-container) {
   max-width: 100%;

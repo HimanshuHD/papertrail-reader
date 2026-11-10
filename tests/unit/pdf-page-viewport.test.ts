@@ -1,3 +1,4 @@
+import { immediatePdfTracking } from '../fixtures/pdf-tracking'
 import { mount, flushPromises } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import PdfPageView from '../../src/components/viewer/PdfPageView.vue'
@@ -14,26 +15,77 @@ afterEach(() => {
 })
 
 describe('PDF viewport ownership', () => {
-  it('prefetches inside the PDF pane without reporting offscreen pages as current and releases observers', async () => {
-    const observers: {
-      callback: IntersectionObserverCallback
-      options: IntersectionObserverInit
-      disconnect: ReturnType<typeof vi.fn>
-    }[] = []
-    vi.stubGlobal(
-      'IntersectionObserver',
-      class {
-        disconnect = vi.fn()
-        observe = vi.fn()
-        constructor(callback: IntersectionObserverCallback, options: IntersectionObserverInit) {
-          observers.push({ callback, options, disconnect: this.disconnect })
-        }
+  it('uses workspace-owned proximity and retained dimensions without another registration', async () => {
+    const tracking = { register: vi.fn(), schedule: vi.fn() }
+    const getPageDimensions = vi.fn()
+    const render = vi.fn(async () => ({ width: 400, height: 600, scale: 1 }))
+    const wrapper = mount(PdfPageView, {
+      props: {
+        tracking,
+        managedProximity: true,
+        initialDimensions: { width: 400, height: 600 },
+        session: { getPageDimensions, render } as unknown as PdfDocumentSession,
+        pageNumber: 2,
+        fitMode: 'width',
+        zoom: 1,
+        availableWidth: 400,
+        availableHeight: 600,
+        scrollRoot: null,
       },
-    )
+    })
+    await flushPromises()
+    expect(tracking.register).not.toHaveBeenCalled()
+    expect(getPageDimensions).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
+    expect(wrapper.emitted('state')).toContainEqual([2, 'ready'])
+    wrapper.unmount()
+  })
+
+  it('does not publish a measurement completed after its managed page unmounts', async () => {
+    let finish!: (size: { width: number; height: number }) => void
+    const render = vi.fn()
+    const wrapper = mount(PdfPageView, {
+      props: {
+        tracking: { register: vi.fn(), schedule: vi.fn() },
+        managedProximity: true,
+        session: {
+          getPageDimensions: () =>
+            new Promise((resolve) => {
+              finish = resolve
+            }),
+          render,
+        } as unknown as PdfDocumentSession,
+        pageNumber: 2,
+        fitMode: 'width',
+        zoom: 1,
+        availableWidth: 400,
+        availableHeight: 600,
+        scrollRoot: null,
+      },
+    })
+    wrapper.unmount()
+    finish({ width: 400, height: 600 })
+    await flushPromises()
+    expect(wrapper.emitted('measured')).toBeUndefined()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('delegates proximity to its workspace and releases its registration', async () => {
+    let proximity!: (near: boolean) => void
+    const unregister = vi.fn()
+    const tracking = {
+      register: vi.fn((_element: HTMLElement, _page: number, update: (near: boolean) => void) => {
+        proximity = update
+        return unregister
+      }),
+      schedule: vi.fn(),
+    }
     const pane = document.createElement('section')
+    const listen = vi.spyOn(pane, 'addEventListener')
     const render = vi.fn().mockResolvedValue({ width: 400, height: 600, scale: 1 })
     const wrapper = mount(PdfPageView, {
       props: {
+        tracking,
         session: {
           render,
           getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
@@ -46,39 +98,23 @@ describe('PDF viewport ownership', () => {
         scrollRoot: pane,
       },
     })
-    expect((wrapper.props().session as PdfDocumentSession).getPageDimensions).not.toHaveBeenCalled()
+    expect(tracking.register).toHaveBeenCalledWith(wrapper.element, 1, expect.any(Function))
+    expect(listen).not.toHaveBeenCalledWith('scroll', expect.any(Function), expect.anything())
+    expect(render).not.toHaveBeenCalled()
+    proximity(true)
+    await flushPromises()
+    expect(render).toHaveBeenCalledTimes(1)
+    proximity(false)
     expect(wrapper.get('canvas').attributes('width')).toBe('0')
-    expect(observers).toHaveLength(2)
-    expect(observers.every((o) => o.options.root === pane)).toBe(true)
-    const entry = { isIntersecting: true, intersectionRatio: 0.5 } as IntersectionObserverEntry
-    observers[0]!.callback([entry], {} as IntersectionObserver)
-    await flushPromises()
-    expect(render).toHaveBeenCalledOnce()
-    observers[0]!.callback(
-      [{ isIntersecting: false } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    )
-    await flushPromises()
-    expect(wrapper.get('canvas').attributes('width')).toBe('0')
-    observers[0]!.callback([entry], {} as IntersectionObserver)
-    await flushPromises()
-    expect(render).toHaveBeenCalledTimes(2)
-    observers[0]!.callback(
-      [{ isIntersecting: false } as IntersectionObserverEntry],
-      {} as IntersectionObserver,
-    )
     await wrapper.setProps({ availableWidth: 300 })
     expect(wrapper.get('.pdf-page').attributes('style')).toContain('width: 300px')
-    expect(render).toHaveBeenCalledTimes(2)
-    observers[0]!.callback([entry], {} as IntersectionObserver)
+    expect(render).toHaveBeenCalledTimes(1)
+    proximity(true)
     await flushPromises()
-    expect(render).toHaveBeenCalledTimes(3)
-    expect(render.mock.calls[2]![0].availableWidth).toBe(300)
-    expect(wrapper.emitted('visibility')).toBeUndefined()
-    observers[1]!.callback([entry], {} as IntersectionObserver)
-    expect(wrapper.emitted('visibility')).toEqual([[1, 0.5]])
+    expect(render).toHaveBeenCalledTimes(2)
+    expect(render.mock.calls[1]![0].availableWidth).toBe(300)
     wrapper.unmount()
-    expect(observers.every((o) => o.disconnect.mock.calls.length === 1)).toBe(true)
+    expect(unregister).toHaveBeenCalledOnce()
   })
 })
 
@@ -96,6 +132,7 @@ it('reserves measured geometry while drawing and serializes invalidated renders'
     .mockResolvedValue({ width: 300, height: 450, scale: 0.75 })
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session: {
         render,
         getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
@@ -136,6 +173,7 @@ it('keeps the completed bitmap visible while the next zoom render is pending', a
     )
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session: {
         render,
         getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
@@ -163,44 +201,6 @@ it('keeps the completed bitmap visible while the next zoom render is pending', a
   wrapper.unmount()
 })
 
-it('starts a dirty visible page on scrollbar movement before an observer callback', async () => {
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class {
-      observe = vi.fn()
-      disconnect = vi.fn()
-    },
-  )
-  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
-    callback(0)
-    return 1
-  })
-  vi.stubGlobal('cancelAnimationFrame', vi.fn())
-  const pane = document.createElement('section')
-  const render = vi.fn().mockResolvedValue({ width: 400, height: 600, scale: 1 })
-  const wrapper = mount(PdfPageView, {
-    props: {
-      session: {
-        render,
-        getPageDimensions: vi.fn().mockResolvedValue({ width: 400, height: 600 }),
-      } as unknown as PdfDocumentSession,
-      pageNumber: 1,
-      fitMode: 'width',
-      zoom: 1,
-      availableWidth: 400,
-      availableHeight: 600,
-      scrollRoot: pane,
-    },
-  })
-  await flushPromises()
-  expect(render).not.toHaveBeenCalled()
-  expect(wrapper.text()).toContain('Rendering page 1')
-  pane.dispatchEvent(new Event('scroll'))
-  await flushPromises()
-  expect(render).toHaveBeenCalledOnce()
-  wrapper.unmount()
-})
-
 it('shows a cached page preview before its first full-resolution render finishes', async () => {
   vi.stubGlobal('IntersectionObserver', undefined)
   const preview = document.createElement('canvas')
@@ -209,6 +209,7 @@ it('shows a cached page preview before its first full-resolution render finishes
   const render = vi.fn(() => new Promise(() => undefined))
   const wrapper = mount(PdfPageView, {
     props: {
+      tracking: immediatePdfTracking(),
       session: {
         render,
         getPagePreview: () => preview,

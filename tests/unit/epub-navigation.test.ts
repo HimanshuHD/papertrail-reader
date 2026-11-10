@@ -58,7 +58,7 @@ it('falls back to chapter order for absent, malformed, oversized or excessive op
     '<!DOCTYPE html [<!ENTITY x SYSTEM "https://evil.invalid">]><html/>',
     'x'.repeat(1024 * 1024 + 1),
     '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:e="http://www.idpf.org/2007/ops"><body><nav e:type="toc"><ol>' +
-      '<li><a href="../one.xhtml">Chapter</a></li>'.repeat(513) +
+      '<li><a href="../one.xhtml">Chapter</a></li>'.repeat(2049) +
       '</ol></nav></body></html>',
   ]) {
     const files = unzipSync(createContentsEpubFixture())
@@ -118,4 +118,16 @@ it('limits nested navigation independently of byte size', () => {
     'application/xml',
   )
   expect(() => parseEpubContents(document, 'nav', () => ({ chapter: 0 }))).toThrow('nesting')
+})
+
+it('accepts the bounded 2048-entry contents boundary and rejects the next entry', () => {
+  const navigation = (count: number) =>
+    new DOMParser().parseFromString(
+      `<html xmlns="http://www.w3.org/1999/xhtml" xmlns:e="http://www.idpf.org/2007/ops"><body><nav e:type="toc"><ol>${Array.from({ length: count }, (_, i) => `<li><a href="one.xhtml">Target ${i}</a></li>`).join('')}</ol></nav></body></html>`,
+      'application/xml',
+    )
+  expect(parseEpubContents(navigation(2048), 'nav', () => ({ chapter: 0 }))).toHaveLength(2048)
+  expect(() => parseEpubContents(navigation(2049), 'nav', () => ({ chapter: 0 }))).toThrow(
+    '2048 entries',
+  )
 })

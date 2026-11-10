@@ -1,0 +1,285 @@
+{
+  "source": {
+    "sha": "cf9a839da1e11a800f09cb0394d232a96a25999f",
+    "tree": "8864f0e66549a123935bba5827b653ff30b9f66f",
+    "dirty": false
+  },
+  "stats": {
+    "startTime": "2026-10-21T18:24:30.115Z",
+    "duration": 107141.75,
+    "expected": 18,
+    "skipped": 2,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "cleanup": [
+    {
+      "engine": "chromium",
+      "baseline": {},
+      "cycles": [
+        {
+          "cycle": 1,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 2197.2000000001863,
+              "endedAtMs": 2207.4000000003725,
+              "waitMs": 3.2000000001862645,
+              "processingMs": 7,
+              "durationMs": 10.200000000186265,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 2260.600000000559,
+              "endedAtMs": 2289.2000000001863,
+              "waitMs": 3.8999999994412065,
+              "processingMs": 24.700000000186265,
+              "durationMs": 28.59999999962747,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 2197.2000000001863,
+              "endedAtMs": 2207.4000000003725,
+              "waitMs": 3.2000000001862645,
+              "processingMs": 7,
+              "durationMs": 10.200000000186265,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 2260.600000000559,
+              "endedAtMs": 2289.2000000001863,
+              "waitMs": 3.8999999994412065,
+              "processingMs": 24.700000000186265,
+              "durationMs": 28.59999999962747,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 4429.9000000003725,
+              "endedAtMs": 4454.5,
+              "waitMs": 2.2999999998137355,
+              "processingMs": 22.299999999813735,
+              "durationMs": 24.59999999962747,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 4478.300000000745,
+              "endedAtMs": 4496.800000000745,
+              "waitMs": 2.5,
+              "processingMs": 16,
+              "durationMs": 18.5,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 4429.9000000003725,
+              "endedAtMs": 4454.5,
+              "waitMs": 2.2999999998137355,
+              "processingMs": 22.299999999813735,
+              "durationMs": 24.59999999962747,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 4478.300000000745,
+              "endedAtMs": 4496.800000000745,
+              "waitMs": 2.5,
+              "processingMs": 16,
+              "durationMs": 18.5,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 6516,
+              "endedAtMs": 6527.300000000745,
+              "waitMs": 3.300000000745058,
+              "processingMs": 8,
+              "durationMs": 11.300000000745058,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 6558.700000000186,
+              "endedAtMs": 6585.600000000559,
+              "waitMs": 3.2999999998137355,
+              "processingMs": 23.600000000558794,
+              "durationMs": 26.90000000037253,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "baseline": {},
+      "cycles": [
+        {
+          "cycle": 1,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 3315,
+              "endedAtMs": 3378,
+              "waitMs": 7,
+              "processingMs": 56,
+              "durationMs": 63,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 3401,
+              "endedAtMs": 3422,
+              "waitMs": 6,
+              "processingMs": 15,
+              "durationMs": 21,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        },
+        {
+          "cycle": 2,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 3315,
+              "endedAtMs": 3378,
+              "waitMs": 7,
+              "processingMs": 56,
+              "durationMs": 63,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 3401,
+              "endedAtMs": 3422,
+              "waitMs": 6,
+              "processingMs": 15,
+              "durationMs": 21,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 5895,
+              "endedAtMs": 5941,
+              "waitMs": 5,
+              "processingMs": 41,
+              "durationMs": 46,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 5977,
+              "endedAtMs": 5999,
+              "waitMs": 5,
+              "processingMs": 17,
+              "durationMs": 22,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        },
+        {
+          "cycle": 3,
+          "resources": {},
+          "releaseTimings": [
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 3315,
+              "endedAtMs": 3378,
+              "waitMs": 7,
+              "processingMs": 56,
+              "durationMs": 63,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 3401,
+              "endedAtMs": 3422,
+              "waitMs": 6,
+              "processingMs": 15,
+              "durationMs": 21,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 5895,
+              "endedAtMs": 5941,
+              "waitMs": 5,
+              "processingMs": 41,
+              "durationMs": 46,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 5977,
+              "endedAtMs": 5999,
+              "waitMs": 5,
+              "processingMs": 17,
+              "durationMs": 22,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "pdf.reader-release",
+              "queuedAtMs": 8882,
+              "endedAtMs": 8930,
+              "waitMs": 6,
+              "processingMs": 42,
+              "durationMs": 48,
+              "outcome": "completed",
+              "failure": null
+            },
+            {
+              "operation": "epub.reader-release",
+              "queuedAtMs": 8962,
+              "endedAtMs": 8981,
+              "waitMs": 4,
+              "processingMs": 15,
+              "durationMs": 19,
+              "outcome": "completed",
+              "failure": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
