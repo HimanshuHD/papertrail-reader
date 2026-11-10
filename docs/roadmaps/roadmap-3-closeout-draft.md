@@ -25,8 +25,7 @@ and [v2.2.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.2.0
 
 **Proposed final release** — v2.3.0. [#319](https://github.com/HimanshuHD/papertrail-reader/pull/319)
 merged as `d54bc70`. The owner accepted the fixture scope on 10 November 2026. [Matching staging delivery](https://github.com/HimanshuHD/papertrail-reader/actions/runs/42862739552)
-passed 592 browser cases (17 skips), publication and live verification. Manual
-candidate review and release delivery remain tracked in [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16)
+passed 592 browser cases (17 skips), publication and live verification. The owner reported manual preview passed. Release delivery remains tracked in [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16)
 and [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107).
 ```
 
@@ -38,7 +37,7 @@ release and recovery checkpoints.
 | [Milestone 7](https://github.com/HimanshuHD/papertrail-reader/milestone/7) — Preparation                               | Web deployment, versioned artifacts, immutable archives, promotion and rollback ([#26](https://github.com/HimanshuHD/papertrail-reader/issues/26), [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32))                                                                                                                                                                                                                                                                                                                                                                                  | [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1) · closed                                                                                 |
 | [Milestone 10](https://github.com/HimanshuHD/papertrail-reader/milestone/10) — Startup loading and delivery validation | Startup screen, staging/preview workflow, recovery and reviewed visual baselines ([#171](https://github.com/HimanshuHD/papertrail-reader/issues/171), [#130](https://github.com/HimanshuHD/papertrail-reader/issues/130), [#44](https://github.com/HimanshuHD/papertrail-reader/issues/44), [#175](https://github.com/HimanshuHD/papertrail-reader/issues/175), [#177](https://github.com/HimanshuHD/papertrail-reader/issues/177), [#193](https://github.com/HimanshuHD/papertrail-reader/issues/193))                                                                                               | [v2.1.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.0) / [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1) · closed |
 | [Milestone 8](https://github.com/HimanshuHD/papertrail-reader/milestone/8) — Multiple-document workspace               | Isolated tabs, restored sessions, compact workspace, split view, annotation export and manual-only Visual QA ([#17](https://github.com/HimanshuHD/papertrail-reader/issues/17), [#18](https://github.com/HimanshuHD/papertrail-reader/issues/18), [#224](https://github.com/HimanshuHD/papertrail-reader/issues/224), [#230](https://github.com/HimanshuHD/papertrail-reader/issues/230), [#239](https://github.com/HimanshuHD/papertrail-reader/issues/239), [#240](https://github.com/HimanshuHD/papertrail-reader/issues/240), [#244](https://github.com/HimanshuHD/papertrail-reader/issues/244)) | [v2.2.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.2.0) · closed                                                                                 |
-| [Milestone 9](https://github.com/HimanshuHD/papertrail-reader/milestone/9) — Performance and reliability               | Opt-in diagnostics, reader performance and final workload acceptance ([#167](https://github.com/HimanshuHD/papertrail-reader/issues/167), [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16), [#289](https://github.com/HimanshuHD/papertrail-reader/issues/289), [#304](https://github.com/HimanshuHD/papertrail-reader/issues/304))                                                                                                                                                                                                                                                   | Proposed v2.3.0 · [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) scope and staging accepted; manual review/release pending                           |
+| [Milestone 9](https://github.com/HimanshuHD/papertrail-reader/milestone/9) — Performance and reliability               | Opt-in diagnostics, reader performance and final workload acceptance ([#167](https://github.com/HimanshuHD/papertrail-reader/issues/167), [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16), [#289](https://github.com/HimanshuHD/papertrail-reader/issues/289), [#304](https://github.com/HimanshuHD/papertrail-reader/issues/304))                                                                                                                                                                                                                                                   | Proposed v2.3.0 · [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) scope and staging review accepted; release pending                                  |
 
 Remove the stale sentence immediately before **Phase 4 — Developer diagnostics
 and reliability** that says both #167 and #16 remain. Replace the existing
@@ -51,7 +50,7 @@ with this text:
 verification. Staging includes the PDF component window, EPUB cleanup and
 scroll work, EPUB compatibility and fonts, compact notices and document
 links. [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) records acceptance of the generated workload targets and their limits.
-Candidate review and release delivery remain pending.
+Candidate review passed; release delivery remains pending.
 The earlier reader regression report passed 123/123 across Chromium, Firefox
 and WebKit. This is functional evidence, separate from #16 and the final
 release delivery. Visual QA remains manual-only.
@@ -89,7 +88,7 @@ increments** beginning with “v2.2.0 release acceptance” and “Next: develop
 diagnostics”. Keep the manual Visual QA paragraph and existing delivery history.
 
 ```markdown
-| [[Roadmap-3]] | Final release review | Startup loading, versioned delivery and the workspace shipped in v2.1.0–v2.2.0. #16 fixture scope accepted; manual candidate review and v2.3.0 delivery remain pending. |
+| [[Roadmap-3]] | Final release review | Startup loading, versioned delivery and the workspace shipped in v2.1.0–v2.2.0. #16 fixture scope accepted; manual candidate review passed; v2.3.0 delivery remains pending. |
 ```
 
 ```markdown
@@ -133,8 +132,7 @@ validates scan 475/950 ms, PDF cold-open 425/850 ms and EPUB cold-open
 400/800 ms (attention/critical) only within the accepted configuration.
 Ordinary diagnostics do not inherit this fixture configuration. The acceptance
 record distinguishes temporary page allocation, retained page heap and
-process observations. This accepts the fixture scope; manual candidate
-review and release delivery remain separate. Visual QA stays manual.
+process observations. This accepts the fixture scope; manual candidate review passed and release delivery remains separate. Visual QA stays manual.
 [Target review](https://github.com/HimanshuHD/papertrail-reader/blob/d54bc700a5e81b109838fce92bcb3ed48fbbcfa2/docs/development/performance-target-review.md) ·
 [Release coordination](https://github.com/HimanshuHD/papertrail-reader/issues/107)
 ```
