@@ -236,13 +236,13 @@
     }
   },
   "production": {
-    "sha": "bf4dc7d4f5fe296bbaddb41655c30c26bf8bd378",
-    "runId": "39445651871",
-    "sourceSha": "dcac149b84f74eaf2fa0effb9225ae2da1f7e797",
-    "tree": "6e77ad7cbe6ee1098de5a587e1b0f1aa7f1e0389",
-    "version": "2.2.0",
+    "sha": "000c1939748f0d74192708bbb2206a67e64d0913",
+    "runId": "42868299404",
+    "sourceSha": "d5167b08dc2860bd72893d509404c61c5726157b",
+    "tree": "e65020ea2bbc8c6cf2744bea759af5d09b3b27e9",
+    "version": "2.3.0",
     "branch": "main",
-    "archiveId": "6e77ad7cbe6ee1098de5a587e1b0f1aa7f1e0389-39445651871"
+    "archiveId": "e65020ea2bbc8c6cf2744bea759af5d09b3b27e9-42868299404"
   },
   "rollbackHold": {},
   "staging": {
