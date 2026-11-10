@@ -1,65 +1,105 @@
 # Roadmap 3 Wiki update draft
 
-Use the first checkpoint while final review is underway. Use the closure text
-after the owner accepts #16, verifies release delivery and closes milestone 9.
-Replace the bracketed fields with the recorded evidence before publishing.
+Use the review text for the current checkpoint. Apply the closure substitutions
+after the release is published, the owner accepts #16, and milestone 9 and
+Roadmap 3 are reconciled. Fill in the recorded date, exact source and delivery
+links before publishing the closure update.
 
-## Roadmap-3 page — current checkpoint
+## Roadmap-3 page
 
-Insert below the introductory status on `Roadmap-3`.
+Replace the opening **Status** and **Released increments** lines. Keep the
+**Parent** line. Replace the uncommitted release line with this review status.
 
-> ### Final performance and reliability increment
+> **Status** — Final release review. Milestones 7, 10 and 8 are closed.
+> Milestone 9 remains open for [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16).
 >
-> Startup loading, versioned delivery and the multiple-document workspace are
-> released. Reader performance changes and diagnostics evidence are integrated
-> on staging. #304 is closed after owner review and verified staging delivery.
-> #16 is the final open issue in milestone 9. Its target review applies to the
-> named generated Chromium fixtures. Delivery and scope acceptance are tracked
-> in #16. The proposed final release is v2.3.0.
+> **Released increments** — [v2.1.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.0)
+> startup loading, [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1) versioned delivery,
+> and [v2.2.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.2.0) multiple-document workspace.
 >
-> [#16 acceptance](https://github.com/HimanshuHD/papertrail-reader/issues/16) ·
-> [Milestone 9](https://github.com/HimanshuHD/papertrail-reader/milestone/9)
+> **Proposed final release** — v2.3.0, pending scope acceptance and release delivery.
 
-## Roadmap-3 page — final status and release checkpoint
+Replace the table under **Milestones** with this table. Keep historical
+release and recovery checkpoints.
 
-Replace the opening status/release lines and add a final checkpoint above
-historical checkpoints.
+| Milestone                                                                                                              | Delivered scope                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       | Release or gate                                                                                                                                                        |
+| ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [Milestone 7](https://github.com/HimanshuHD/papertrail-reader/milestone/7) — Preparation                               | Web deployment, versioned artifacts, immutable archives, promotion and rollback ([#26](https://github.com/HimanshuHD/papertrail-reader/issues/26), [#32](https://github.com/HimanshuHD/papertrail-reader/issues/32))                                                                                                                                                                                                                                                                                                                                                                                  | [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1) · closed                                                                                 |
+| [Milestone 10](https://github.com/HimanshuHD/papertrail-reader/milestone/10) — Startup loading and delivery validation | Startup screen, staging/preview workflow, recovery and reviewed visual baselines ([#171](https://github.com/HimanshuHD/papertrail-reader/issues/171), [#130](https://github.com/HimanshuHD/papertrail-reader/issues/130), [#44](https://github.com/HimanshuHD/papertrail-reader/issues/44), [#175](https://github.com/HimanshuHD/papertrail-reader/issues/175), [#177](https://github.com/HimanshuHD/papertrail-reader/issues/177), [#193](https://github.com/HimanshuHD/papertrail-reader/issues/193))                                                                                               | [v2.1.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.0) / [v2.1.1](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.1.1) · closed |
+| [Milestone 8](https://github.com/HimanshuHD/papertrail-reader/milestone/8) — Multiple-document workspace               | Isolated tabs, restored sessions, compact workspace, split view, annotation export and manual-only Visual QA ([#17](https://github.com/HimanshuHD/papertrail-reader/issues/17), [#18](https://github.com/HimanshuHD/papertrail-reader/issues/18), [#224](https://github.com/HimanshuHD/papertrail-reader/issues/224), [#230](https://github.com/HimanshuHD/papertrail-reader/issues/230), [#239](https://github.com/HimanshuHD/papertrail-reader/issues/239), [#240](https://github.com/HimanshuHD/papertrail-reader/issues/240), [#244](https://github.com/HimanshuHD/papertrail-reader/issues/244)) | [v2.2.0](https://github.com/HimanshuHD/papertrail-reader/releases/tag/v2.2.0) · closed                                                                                 |
+| [Milestone 9](https://github.com/HimanshuHD/papertrail-reader/milestone/9) — Performance and reliability               | Opt-in diagnostics, reader performance and final workload acceptance ([#167](https://github.com/HimanshuHD/papertrail-reader/issues/167), [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16), [#289](https://github.com/HimanshuHD/papertrail-reader/issues/289), [#304](https://github.com/HimanshuHD/papertrail-reader/issues/304))                                                                                                                                                                                                                                                   | Proposed v2.3.0 · [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) pending                                                                             |
 
-> Status: Completed — [closure date].
+Remove the stale sentence immediately before **Phase 4 — Developer diagnostics
+and reliability** that says both #167 and #16 remain. Add the following at the
+end of Phase 4, above **Delivery model**.
+
+> **Final increment.** [#167](https://github.com/HimanshuHD/papertrail-reader/issues/167) completed opt-in diagnostics.
+> [#304](https://github.com/HimanshuHD/papertrail-reader/issues/304) closed after owner manual acceptance and staging
+> verification. Staging includes the PDF component window, EPUB cleanup and
+> scroll work, EPUB compatibility and fonts, compact notices and document
+> links. [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) remains the final issue for acceptance of the
+> generated workload targets and their evidence scope.
+> [Release and issue inventory](https://github.com/HimanshuHD/papertrail-reader/pull/319)
+
+After closure, set **Status** to **Completed — [date]**, add the published
+v2.3.0 link to **Released increments**, and replace **Proposed final release**
+with **Final release — [published release]**. Change the milestone 9 table
+entry to **v2.3.0 · closed** with the release link. Replace the Phase 4 review
+paragraph with this final entry under **Roadmap completion**.
+
+> ### Final acceptance — [date]
 >
-> Final release: [published stable release link and title].
+> All four milestones are closed. [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) records owner
+> acceptance of the versioned fixture targets and their evidence scope.
+> [#107](https://github.com/HimanshuHD/papertrail-reader/issues/107) records Roadmap 3 closure. v2.3.0 includes reader
+> compatibility and navigation fixes, opt-in diagnostics, and the PDF/EPUB
+> performance and reliability increment.
 >
-> ### Final acceptance
+> [Published release] · [Exact-source release record] · [Live delivery receipt] ·
+> [Immutable release URL]
 >
-> #16 closed after owner acceptance of the versioned fixture targets and evidence
-> scope. Milestone 9 and the Roadmap 3 parent #107 are closed. The release record
-> lists the exact main source, verified production and immutable release delivery,
-> and owner manual review.
+> Native-folder permission validation, screen-reader validation and EPUB
+> full-book search remain tracked separately in [#274](https://github.com/HimanshuHD/papertrail-reader/issues/274),
+> [#275](https://github.com/HimanshuHD/papertrail-reader/issues/275) and [#278](https://github.com/HimanshuHD/papertrail-reader/issues/278).
+
+## Roadmaps index
+
+Replace the Roadmap 3 table row and replace the two paragraphs in **Next
+increments** beginning with “v2.2.0 release acceptance” and “Next: developer
+diagnostics”. Keep the manual Visual QA paragraph and existing delivery history.
+
+```markdown
+| [[Roadmap-3]] | Final release review | Startup loading, versioned delivery and the workspace shipped in v2.1.0–v2.2.0. Final #16 acceptance and proposed v2.3.0 delivery are pending. |
+```
+
+> Milestones 7, 10 and 8 are closed. Diagnostics #167 and virtualization #304
+> are complete. [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) is the final open milestone 9 issue.
+> [PR #319](https://github.com/HimanshuHD/papertrail-reader/pull/319) carries the proposed release notes, change
+> inventory and acceptance checklist.
+
+After closure, use this final row and replace that **Next increments** paragraph
+with the closure text. Add the published version at the top of **Release history**.
+In **Current closure**, replace the present-tense v2.2.0 production/latest
+statement with a historical v2.2.0 acceptance statement. Keep the old run links.
+
+```markdown
+| [[Roadmap-3]] | Completed | Startup loading, versioned delivery, multiple-document workspace and reader performance/reliability — [v2.3.0] |
+```
+
+> Roadmap 3 and its four milestones closed after final #16 acceptance and
+> verified v2.3.0 delivery. [Roadmap closure] · [Release record]
 >
-> The fixture budgets cover the recorded generated Chromium workloads. The
-> measurement record documents cross-browser functional coverage, process and
-> heap measurement boundaries, remaining timing attribution and GPU capability.
-> Separate native permission and screen-reader follow-ups retain their own status.
+> - [v2.3.0 — Reader improvements, diagnostics and reliability][published release]
+
+## Decisions page
+
+After acceptance, add the following entry above the existing dated decisions.
+
+> ### [Date] — Scope of Roadmap 3 performance acceptance
 >
-> [Release acceptance record] · [Production receipt] · [Immutable release]
-
-## Roadmaps index — final row and history
-
-Replace the Roadmap 3 row with the following after closure.
-
-| Roadmap       | Status    | Outcome                                                                                                                          |
-| ------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| [[Roadmap-3]] | Completed | Startup loading, versioned delivery, multiple-document workspace and scoped reader performance acceptance — [final release link] |
-
-Add the final release at the top of release history. Replace the Roadmap 3
-“Next increments” text with its verified closure and the final release record.
-Keep the earlier release and recovery checkpoints as history.
-
-## Decisions page — acceptance note
-
-> ### [Closure date] — Scope of Roadmap 3 performance acceptance
->
-> The owner accepted [target version and scope] in #16. Its evidence covers the
-> listed fixtures, browser configuration and indicator rules. The release record
-> links exact source and deployment evidence. Follow-up scopes retain their own
-> issue statuses.
+> [#16](https://github.com/HimanshuHD/papertrail-reader/issues/16) records the accepted target version, generated
+> workloads, browser configuration and indicator rules. The acceptance
+> record distinguishes temporary page allocation, retained page heap and
+> process observations. The release record links the reviewed source,
+> functional browser checks and delivery receipts. Visual QA remains manual.
+> [Target review] · [Release record]
