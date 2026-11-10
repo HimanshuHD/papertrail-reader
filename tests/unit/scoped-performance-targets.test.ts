@@ -23,43 +23,55 @@ it('requires the full fixture and browser scope before configuring one operation
   expect(defaultIndicatorConfig().operations).toEqual({})
 })
 
-it('applies the scoped thresholds to fresh completed foreground work and recovers on fresh samples', () => {
-  const monitor = new IndicatorMonitor(fixtureTargetConfiguration(scope)!)
-  const base = new DiagnosticRecorder().snapshot()
-  const { attentionMs, criticalMs } = fixtureTargets['directory-1000']
-  const snapshot = (now: number, durations: number[]) => ({
-    ...base,
-    running: true,
-    samples: [now - 2000, now - 1000, now].map((observedAtMs) => ({
-      observedAtMs,
-      frameIntervalMs: 16,
-      longTaskMs: 0,
-      jsHeapBytes: null,
-    })),
-    timings: durations.map((durationMs, i) => ({
-      metric: 'library.scan' as const,
-      outcome: 'completed' as const,
-      durationMs,
-      startedAtMs: now - 2000 + i * 500,
-      endedAtMs: now - 1000 + i * 500,
-    })),
-  })
-  expect(monitor.update(snapshot(3000, [criticalMs, criticalMs]), 3000).state).toBe('recording')
-  expect(monitor.update(snapshot(4000, [attentionMs, attentionMs, attentionMs]), 4000).state).toBe(
-    'attention',
-  )
-  expect(monitor.update(snapshot(5000, [criticalMs, criticalMs, criticalMs]), 5000).state).toBe(
-    'critical',
-  )
-  const recovered = snapshot(6000, [100, 100, 100])
-  expect(monitor.update(recovered, 6000).state).toBe('critical')
-  expect(monitor.update(recovered, 6000).explanation).toContain('1/3')
-  expect(monitor.update(snapshot(7000, [100, 100, 100]), 7000).state).toBe('critical')
-  expect(monitor.update(snapshot(8000, [100, 100, 100]), 8000).state).toBe('recording')
-  expect(monitor.history[1]?.configuration.operations['library.scan']?.attentionMs).toBe(
-    attentionMs,
-  )
-  expect(
-    monitor.update(snapshot(9000, [criticalMs, criticalMs, criticalMs]), 9000, false).state,
-  ).toBe('inactive')
-})
+it.each(Object.entries(fixtureTargets))(
+  '%s requires sustained foreground breaches and fresh recovery',
+  (fixture, { profile, attentionMs, criticalMs }) => {
+    const monitor = new IndicatorMonitor(fixtureTargetConfiguration({ ...scope, fixture })!)
+    const recorder = new DiagnosticRecorder()
+    const base = recorder.snapshot()
+    const investigation = recorder.investigation.snapshot({}, null)
+    const update = (now: number, durations: number[], foreground = true) => {
+      const timings = durations.map((durationMs, i) => ({
+        outcome: 'completed' as const,
+        durationMs,
+        startedAtMs: now - 2000 + i * 500,
+        endedAtMs: now - 1000 + i * 500,
+      }))
+      const snapshot = {
+        ...base,
+        running: true,
+        samples: [now - 2000, now - 1000, now].map((observedAtMs) => ({
+          observedAtMs,
+          frameIntervalMs: 16,
+          longTaskMs: 0,
+          jsHeapBytes: null,
+        })),
+        timings: profile === 'library.scan' ? timings.map((t) => ({ ...t, metric: profile })) : [],
+      }
+      return monitor.update(snapshot, now, foreground, {
+        ...investigation,
+        timings:
+          profile === 'library.scan'
+            ? []
+            : timings.map((t) => ({
+                ...t,
+                operation: profile,
+                queuedAtMs: t.startedAtMs,
+                waitMs: 0,
+                processingMs: t.durationMs,
+                failure: null,
+              })),
+      })
+    }
+
+    expect(update(3000, [criticalMs, criticalMs]).state).toBe('recording')
+    expect(update(4000, [attentionMs, attentionMs, attentionMs]).state).toBe('attention')
+    expect(update(5000, [criticalMs, criticalMs, criticalMs]).state).toBe('critical')
+    expect(update(6000, [100, 100, 100]).state).toBe('critical')
+    expect(update(6000, [100, 100, 100]).explanation).toContain('1/3')
+    expect(update(7000, [100, 100, 100]).state).toBe('critical')
+    expect(update(8000, [100, 100, 100]).state).toBe('recording')
+    expect(monitor.history[1]?.configuration.operations[profile]?.attentionMs).toBe(attentionMs)
+    expect(update(9000, [criticalMs, criticalMs, criticalMs], false).state).toBe('inactive')
+  },
+)
