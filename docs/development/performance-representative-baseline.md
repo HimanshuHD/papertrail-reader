@@ -1,5 +1,9 @@
 # Representative reader workload baseline
 
+The [representative diagnostics comparison](./performance-representative-diagnostics.md)
+replays three of these fixtures across all eight diagnostics modes and records
+separate internal operation calibration and holdout observations.
+
 Source `5170f59f961c2401c0fafdf13abe3158a68d1fb1` uses the reader runtime
 from merged staging `1e1e8b0`. Production build with diagnostics excluded,
 locked dependencies, Chromium 153.0.8010.0, headless software graphics,
